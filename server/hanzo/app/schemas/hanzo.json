@@ -1,0 +1,19 @@
+{
+  "about": "PF HANZO's own config. HANZO is air gapped: its ONLY link to the platform is HTTP to the addresses below, signed with the secret named here. No path, file, database or module of the platform is ever named.",
+  "office": "hanzo",
+  "environment_variable": "HANZO_ENV",
+  "ports": {"rnd": 5010, "pf": 5010},
+  "host": "127.0.0.1",
+  "platform": {
+    "about": "where HANZO calls the platform, per side (the platform's global_config offices)",
+    "wid": {"rnd": "http://127.0.0.1:5004"},
+    "cc": {"rnd": "http://127.0.0.1:5007"}
+  },
+  "callers": {
+    "about": "the offices that may call HANZO's /api (X-Office), each checked with the secret",
+    "offices": ["wid"]
+  },
+  "secret": {"name": "hanzo_link", "purpose": "signs every call between the platform and HANZO; each side keeps its own copy in its own instance"},
+  "signed_window_seconds": 60,
+  "run": {"seconds": 20}
+}
