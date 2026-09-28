@@ -3,6 +3,7 @@ an unsigned, stale or wrongly signed call is refused (401) before any route runs
 harness; a RUN is accepted at once (202) and runs on its own thread, its result written back to the platform."""
 import datetime
 import json
+import logging
 import os
 import pathlib
 import sys
@@ -131,6 +132,7 @@ def main(argv):
         return
     if len(argv) > 1:
         raise SystemExit(main.__doc__)
+    logging.getLogger('werkzeug').setLevel(logging.ERROR)   # no request lines: a call's query names an account and a member (data stays in wid)
     catch_up(app)
     app.run(host=CONFIG['host'], port=CONFIG['ports'][side], threaded=True)
 
