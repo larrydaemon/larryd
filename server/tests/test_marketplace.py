@@ -28,21 +28,22 @@ class CollectionTest(unittest.TestCase):
         self.assertEqual(out['total'], 1)
         self.assertEqual(out['hired'], 0)
         self.assertEqual(out['cards'], [{
-            'key': 'MAGT_AAAAAAAAAAAA_0001', 'no': 'NO. 001', 'class': 'MARK I AGENT (NORMAL)', 'name': 'The Agent Marketplace',
-            'initials': 'TA', 'image_dam_key': '', 'place': 'LARRYD · AGENT', 'pitch': 'Every agent, one toggle.',
-            'developer': 'Positive Feedback', 'type': 'OFF-THE-SHELF', 'residency': 'INTERNAL', 'price': 'FREE',
-            'hired': False, 'hireable': True, 'reason': ''}])
+            'key': 'MAGT_AAAAAAAAAAAA_0001', 'number': 1, 'class': 'MARK I AGENT (NORMAL)', 'name': 'The Agent Marketplace',
+            'initials': 'TA', 'image_dam_key': '', 'product': 'LARRYD', 'module': 'AGENT', 'pitch': 'Every agent, one toggle.',
+            'developer': 'Positive Feedback', 'type': 'OFF-THE-SHELF', 'residency': 'INTERNAL', 'rate': 0,
+            'hired': False, 'hireable': True, 'needs': ''}])
 
     def test_counts_and_order_come_from_the_cards(self):
         cards = [card(key='K3', number='3', hired=True), card(key='K1', number='1'), card(key='K2', number='', name='PF Night Watch')]
         out = run({'do': 'collection', 'cards': cards})
         self.assertEqual([c['key'] for c in out['cards']], ['K1', 'K3', 'K2'])   # by number; unnumbered last
         self.assertEqual((out['total'], out['hired']), (3, 1))
-        self.assertEqual(out['cards'][2]['no'], '')
+        self.assertEqual(out['cards'][2]['number'], None)
         self.assertEqual(out['cards'][2]['initials'], 'NW')
 
-    def test_a_rate_is_shown_as_mtok(self):
-        self.assertEqual(run({'do': 'collection', 'cards': [card(price='12')]})['cards'][0]['price'], '12 mTok')
+    def test_values_never_words(self):
+        paid = run({'do': 'collection', 'cards': [card(price='12', hireable=False, needs='PACE SHIFT')]})['cards'][0]
+        self.assertEqual((paid['rate'], paid['hireable'], paid['needs']), (12, False, 'PACE SHIFT'))
 
     def test_filters_are_the_cards_own_values(self):
         cards = [card(key='A', product='INVOICE MAPS', module='CONTACTS', type='DEVELOPER', residency='EXTERNAL'), card(key='B')]

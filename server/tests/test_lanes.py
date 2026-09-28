@@ -25,6 +25,7 @@ class AssembleTest(unittest.TestCase):
         out = lanes.assemble(cards, hired, [], verify)
         self.assertEqual([(c['key'], c['hired'], c['hireable'], c['reason']) for c in out],
                          [('FREE', True, True, ''), ('PAID', False, False, 'needs the PACE SHIFT subscription')])
+        self.assertEqual([c['needs'] for c in out], ['', 'PACE SHIFT'])
 
     def test_a_subscription_opens_its_group(self):
         cards = [card('PAID', price='10', product_slug='paceshift', product='PACE SHIFT')]

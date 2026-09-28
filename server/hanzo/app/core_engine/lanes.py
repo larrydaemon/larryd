@@ -17,5 +17,5 @@ def assemble(cards, hired, subscribed, verify):
         if not gate.shown(c, verify(c['key']))[0]:
             continue
         may, why = gate.entitled(c, subscribed)
-        out.append({**c, 'hired': hired_on(hired, c['key']), 'hireable': may, 'reason': why})
+        out.append({**c, 'hired': hired_on(hired, c['key']), 'hireable': may, 'reason': why, 'needs': '' if may else c['product']})
     return out

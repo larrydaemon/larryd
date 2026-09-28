@@ -61,11 +61,11 @@ def create_app(instance, secret, now=_utc_now, addresses=None):
         except lanes_harness.Refused as no:
             return jsonify({'refused': no.reason}), no.status
 
-    @app.get('/api/marketplace/collection')
-    def collection():
-        return answered(lambda: h.collection(*(given()[k] for k in NEEDS)))
+    @app.get('/api/agents/answer')
+    def answer():
+        return answered(lambda: h.answer(*(given('agent_key')[k] for k in NEEDS + ('agent_key',))))
 
-    @app.post('/api/marketplace/hire')
+    @app.post('/api/agents/hire')
     def hire():
         def work():
             d = given('agent_key', 'on')
@@ -74,7 +74,7 @@ def create_app(instance, secret, now=_utc_now, addresses=None):
             return h.hire(d['account'], d['scope'], d['member'], d['agent_key'], str(d['on']) == 'on')
         return answered(work)
 
-    @app.post('/api/marketplace/defaults')
+    @app.post('/api/agents/defaults')
     def defaults():
         return answered(lambda: h.defaults(*(given('board')[k] for k in NEEDS + ('board',))))
 
@@ -116,14 +116,24 @@ def catch_up(app):
     return status
 
 
-def main():
+def main(argv):
+    """python hanzo/app/web/app.py            the host
+    python hanzo/app/web/app.py submit <key> an agent HANZO holds, to FROST's review (its key, its exact hashes, its manifest)"""
     side = os.environ.get(CONFIG['environment_variable'], 'localhost.rnd').split('.')[-1]
     secret_file = INSTANCE / 'secrets' / CONFIG['secret']['name']
     secret = secret_file.read_text().strip() if secret_file.is_file() else ''
     app = create_app(INSTANCE, secret, addresses=platform.addresses(CONFIG, side, INSTANCE))
+    if argv[1:2] == ['submit'] and len(argv) == 3:
+        try:
+            print(json.dumps(app.config['harness'].submit(argv[2])))
+        except lanes_harness.Refused as no:
+            raise SystemExit(f'refused ({no.status}): {no.reason}')
+        return
+    if len(argv) > 1:
+        raise SystemExit(main.__doc__)
     catch_up(app)
     app.run(host=CONFIG['host'], port=CONFIG['ports'][side], threaded=True)
 
 
 if __name__ == '__main__':
-    main()
+    main(sys.argv)

@@ -44,29 +44,31 @@ class HostLanes(unittest.TestCase):
     def post(self, route, data):
         return self.client.post('/api' + route, json=data, headers=self._headers(route, data))
 
-    def test_no_marketplace_in_the_locker(self):
-        r = self.get('/marketplace/collection', self.who)
-        self.assertEqual((r.status_code, r.get_json()), (503, {'refused': 'the marketplace is not in the locker'}))
+    def test_an_agent_not_in_the_locker_answers_nothing(self):
+        r = self.get('/agents/answer', {**self.who, 'agent_key': 'MAGT_SCRATCH00001_0001'})
+        self.assertEqual((r.status_code, r.get_json()), (404, {'refused': 'no agent that answers here'}))
 
     def test_a_silent_platform_is_said(self):
         locker.add(self.db, APP / 'agents', 'MAGT_SCRATCH00001_0001', 'marketplace')
-        r = self.get('/marketplace/collection', self.who)
+        r = self.get('/agents/answer', {**self.who, 'agent_key': 'MAGT_SCRATCH00001_0001'})
         self.assertEqual((r.status_code, r.get_json()), (502, {'refused': 'wid does not answer'}))
 
-    def test_defaults_need_the_marketplace_and_the_platform(self):
-        r = self.post('/marketplace/defaults', {**self.who, 'board': 'larryd/agnt/home'})
+    def test_hire_and_defaults_need_the_marketplace_and_the_platform(self):
+        r = self.post('/agents/defaults', {**self.who, 'board': 'larryd/agnt/home'})
+        self.assertEqual((r.status_code, r.get_json()), (503, {'refused': 'the marketplace is not in the locker'}))
+        r = self.post('/agents/hire', {**self.who, 'agent_key': 'K', 'on': 'on'})
         self.assertEqual((r.status_code, r.get_json()), (503, {'refused': 'the marketplace is not in the locker'}))
         locker.add(self.db, APP / 'agents', 'MAGT_SCRATCH00001_0001', 'marketplace')
-        r = self.post('/marketplace/defaults', {**self.who, 'board': 'larryd/agnt/home'})
+        r = self.post('/agents/defaults', {**self.who, 'board': 'larryd/agnt/home'})
         self.assertEqual((r.status_code, r.get_json()), (502, {'refused': 'wid does not answer'}))
-        r = self.post('/marketplace/defaults', self.who)
-        self.assertEqual((r.status_code, r.get_json()), (400, {'refused': 'missing: board'}))
 
     def test_what_a_call_must_carry(self):
-        r = self.get('/marketplace/collection', {'account': 'A'})
-        self.assertEqual((r.status_code, r.get_json()), (400, {'refused': 'missing: scope, member'}))
-        r = self.post('/marketplace/hire', {**self.who, 'agent_key': 'K', 'on': 'yes'})
+        r = self.get('/agents/answer', {'account': 'A'})
+        self.assertEqual((r.status_code, r.get_json()), (400, {'refused': 'missing: scope, member, agent_key'}))
+        r = self.post('/agents/hire', {**self.who, 'agent_key': 'K', 'on': 'yes'})
         self.assertEqual((r.status_code, r.get_json()), (400, {'refused': 'on is "on" or "off"'}))
+        r = self.post('/agents/defaults', self.who)
+        self.assertEqual((r.status_code, r.get_json()), (400, {'refused': 'missing: board'}))
         r = self.post('/jobs/run', {**self.who, 'job_key': 'J', 'run': 'one'})
         self.assertEqual((r.status_code, r.get_json()), (400, {'refused': 'run is the RUN number'}))
 

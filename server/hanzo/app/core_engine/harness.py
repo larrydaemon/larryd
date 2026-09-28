@@ -1,6 +1,7 @@
 """THE HARNESS: how HANZO answers the platform. Everything it knows about a member comes from the platform over the
-one signed client (the cards, the member's hired shells, the account's subscriptions); every agent runs in the
-sandbox; every call and run is a hanzo_runs row. Nothing is assumed when the platform does not answer."""
+one signed client (the cards, the member's hired shells, the account's subscriptions, FROST's approvals); every agent
+runs in the sandbox; every call and run is a hanzo_runs row. Nothing is assumed when the platform does not answer.
+An agent counts as verified only when its folder matches the locker AND FROST approved those exact hashes."""
 import datetime
 import hashlib
 import json
@@ -8,7 +9,7 @@ import sqlite3
 
 from . import gate, lanes, locker, sandbox
 
-MARKETPLACE = 'marketplace'   # the one agent's locker folder
+MARKETPLACE = 'marketplace'   # the one agent's locker folder: it answers the collection, hires, and places defaults
 
 
 class Refused(Exception):
@@ -33,13 +34,32 @@ class Harness:
         return body
 
     def facts(self, account, scope, member):
+        """(cards, hired, groups, verify): the platform's word now; verify(key) -> (ok, why) by the locker and FROST."""
         cards = self._ask('wid', 'GET', '/agnt/cards', {})['cards']
         hired = self._ask('wid', 'GET', '/agnt/hired', {'account': account, 'scope': scope, 'member': member})['hired']
         groups = lanes.groups(self._ask('cc', 'GET', '/mtok/balance', {'account': account}))
-        return cards, hired, groups
+        approved = {(a['agent_key'], a['code_sha256'], a['manifest_sha256']) for a in self._ask('fs', 'GET', '/agents/approved', {})['approved']}
+        return cards, hired, groups, self._verifier(approved)
 
-    def verify(self, agent_key):
-        return locker.verify(self.db, self.agents, agent_key)
+    def _verifier(self, approved):
+        def verify(agent_key):
+            ok, why = locker.verify(self.db, self.agents, agent_key)
+            if not ok:
+                return ok, why
+            row = locker.held(self.db, agent_key)
+            if (agent_key, row['code_sha256'], row['manifest_sha256']) not in approved:
+                return False, 'not approved by FROST'
+            return True, ''
+        return verify
+
+    def submit(self, agent_key):
+        """HANZO submits an agent it holds to FROST's review: its key, its exact hashes, its manifest."""
+        ok, why = locker.verify(self.db, self.agents, agent_key)
+        if not ok:
+            raise Refused(409, why)
+        row = locker.held(self.db, agent_key)
+        return self._ask('fs', 'POST', '/agents/submit', {'agent_key': agent_key, 'name': row['name'], 'code_sha256': row['code_sha256'],
+                                                          'manifest_sha256': row['manifest_sha256'], 'manifest': locker.manifest(self.agents, row['folder'])})
 
     def marketplace_key(self):
         con = sqlite3.connect(self.db)
@@ -63,50 +83,54 @@ class Harness:
         finally:
             con.close()
 
-    def _card(self, cards, key):
+    @staticmethod
+    def _card(cards, key):
         return next((c for c in cards if c['key'] == key), None)
 
-    def _the_marketplace_may_answer(self, key, cards, hired, groups):
-        card = self._card(cards, key)
+    # ---------------------------------------------------------------- the CALL lane: an agent answers now
+    def answer(self, account, scope, member, agent_key):
+        """An agent's answer for the member's screen: only an agent that answers calls, passing the gate itself."""
+        held = locker.held(self.db, agent_key)
+        calls = locker.manifest(self.agents, held['folder']).get('calls') if held else None
+        if not calls:
+            raise Refused(404, 'no agent that answers here')
+        cards, hired, groups, verify = self.facts(account, scope, member)
+        card = self._card(cards, agent_key)
         if card is None:
-            raise Refused(503, 'the marketplace has no card on the platform')
-        ok, why = gate.may_run(card, self.verify(key), lanes.hired_on(hired, key), groups)
-        return ok, why
-
-    # ---------------------------------------------------------------- the CALL lane: the marketplace answers now
-    def collection(self, account, scope, member):
-        key = self.marketplace_key()
-        cards, hired, groups = self.facts(account, scope, member)
-        ok, why = self._the_marketplace_may_answer(key, cards, hired, groups)
+            raise Refused(404, 'the agent has no LIVE card')
+        ok, why = gate.may_run(card, verify(agent_key), lanes.hired_on(hired, agent_key), groups)
         if not ok:
-            self._record('call', account, member, key, 'REFUSED', why)
+            self._record('call', account, member, agent_key, 'REFUSED', why)
             raise Refused(403, why)
-        state, answer, reason = sandbox.run(self.agents / MARKETPLACE, 'agent.py',
-                                            {'do': 'collection', 'cards': lanes.assemble(cards, hired, groups, self.verify)}, self.seconds)
-        self._record('call', account, member, key, state, reason, delivery=answer)
+        state, answer, reason = sandbox.run(self.agents / held['folder'], locker.manifest(self.agents, held['folder'])['entry'],
+                                            {'do': calls[0], 'cards': lanes.assemble(cards, hired, groups, verify)}, self.seconds)
+        self._record('call', account, member, agent_key, state, reason, delivery=answer)
         if state != 'DONE':
             raise Refused(500, reason)
-        return answer
+        return {'agent_key': agent_key, 'title': card['name'], **answer}
 
     def hire(self, account, scope, member, agent_key, on):
+        """THE MARKETPLACE'S HIRE: only a card in the collection the member may hire; the marketplace itself can always be hired again."""
         key = self.marketplace_key()
-        cards, hired, groups = self.facts(account, scope, member)
-        ok, why = self._the_marketplace_may_answer(key, cards, hired, groups)
-        if not ok and agent_key != key:   # the marketplace itself can always be hired again
+        cards, hired, groups, verify = self.facts(account, scope, member)
+        mcard = self._card(cards, key)
+        if mcard is None:
+            raise Refused(503, 'the marketplace has no card on the platform')
+        ok, why = gate.may_run(mcard, verify(key), lanes.hired_on(hired, key), groups)
+        if not ok and agent_key != key:
             raise Refused(403, why)
-        card = self._card(lanes.assemble(cards, hired, groups, self.verify), agent_key)
+        card = self._card(lanes.assemble(cards, hired, groups, verify), agent_key)
         if card is None:
             raise Refused(404, 'no such agent in the collection')
         if on and not card['hireable']:
             raise Refused(403, card['reason'])
-        route = '/agnt/hire' if on else '/agnt/unhire'
-        return self._ask('wid', 'POST', route, {'account': account, 'scope': scope, 'member': member, 'agent_key': agent_key})
+        return self._ask('wid', 'POST', '/agnt/hire' if on else '/agnt/unhire', {'account': account, 'scope': scope, 'member': member, 'agent_key': agent_key})
 
     def defaults(self, account, scope, member, board):
         """A board's first visit (the platform asks once): the marketplace is placed on its own screen, when it may be shown."""
         key = self.marketplace_key()
-        cards, hired, groups = self.facts(account, scope, member)
-        card = self._card(lanes.assemble(cards, hired, groups, self.verify), key)
+        cards, hired, groups, verify = self.facts(account, scope, member)
+        card = self._card(lanes.assemble(cards, hired, groups, verify), key)
         if card is None or card['screen'] != board or card['hired'] or not card['hireable']:
             return {'placed': []}
         self._ask('wid', 'POST', '/agnt/hire', {'account': account, 'scope': scope, 'member': member, 'agent_key': key})
@@ -120,7 +144,7 @@ class Harness:
     def run_job(self, account, scope, member, job_key, run):
         """-> the state it ended in. Refused and failed runs are written back and recorded like done ones."""
         try:
-            cards, hired, groups = self.facts(account, scope, member)
+            cards, hired, groups, verify = self.facts(account, scope, member)
         except Refused as silent:
             return self._end(account, scope, member, '', job_key, run, 'FAILED', f'HANZO could not read the platform: {silent.reason}')
         shell = next((h for h in hired if h.get('job_key') == job_key), None)
@@ -130,24 +154,24 @@ class Harness:
         card = self._card(cards, key)
         if card is None:
             return self._end(account, scope, member, key, job_key, run, 'REFUSED', 'the agent has no LIVE card')
-        ok, why = gate.may_run(card, self.verify(key), shell.get('on') is True, groups)
+        ok, why = gate.may_run(card, verify(key), shell.get('on') is True, groups)
         if not ok:
             return self._end(account, scope, member, key, job_key, run, 'REFUSED', why)
         folder = locker.held(self.db, key)['folder']
-        plan = locker.manifest(self.agents, folder).get('run') or {}
+        manifest = locker.manifest(self.agents, folder)
+        plan = manifest.get('run') or {}
         hands = plan.get('hands') or []
         if set(hands) - {'cards'}:
             return self._end(account, scope, member, key, job_key, run, 'FAILED', f"HANZO cannot hand {sorted(set(hands) - {'cards'})} yet")
         self._result(account, scope, job_key, run, 'RUNNING', f'RUN {run} RUNNING')
         given = {'do': plan.get('do', 'run')}
         if 'cards' in hands:
-            given['cards'] = lanes.assemble(cards, hired, groups, self.verify)
-        state, answer, reason = sandbox.run(self.agents / folder, locker.manifest(self.agents, folder)['entry'], given, self.seconds)
+            given['cards'] = lanes.assemble(cards, hired, groups, verify)
+        state, answer, reason = sandbox.run(self.agents / folder, manifest['entry'], given, self.seconds)
         if state != 'DONE':
             return self._end(account, scope, member, key, job_key, run, 'FAILED', reason)
-        rate = gate.rate(card)
         status, body = self.client.post('cc', '/mtok/use', {'account': account, 'member': member, 'agent_key': key,
-                                                            'job_key': f'{job_key}#{run}', 'agent_group': card['product_slug'], 'rate': str(rate)})
+                                                            'job_key': f'{job_key}#{run}', 'agent_group': card['product_slug'], 'rate': str(gate.rate(card))})
         if status != 200:
             return self._end(account, scope, member, key, job_key, run, 'FAILED',
                              f"not charged: {body.get('refused') or f'mTok answered {status}'}; the delivery is withheld")

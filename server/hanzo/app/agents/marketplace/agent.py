@@ -1,15 +1,16 @@
 """THE AGENT MARKETPLACE: the Pokémon-like collection. It is handed the cards the harness shows (each with the member's
-hired state, and whether the member may hire it and why not) and lays them out as the original's cards; it never
-reaches anything itself. RUN asks for the report."""
+hired state, whether the member may hire it, and the product whose subscription it needs when not) and answers them
+as the original's cards, in order, with the counts and the filters; values only, never words (the platform says them
+in the member's language). It never reaches anything itself. RUN asks for the report."""
 import json
 import sys
 
 FILTERS = ('product', 'module', 'type', 'residency', 'class')
 
 
-def _no(number):
+def _number(number):
     number = str(number or '').strip()
-    return f'NO. {int(number):03d}' if number.isdigit() else ''
+    return int(number) if number.isdigit() else None
 
 
 def _initials(name):
@@ -17,22 +18,22 @@ def _initials(name):
     return ''.join(w[0] for w in words[:2]).upper()
 
 
-def _price(price):
+def _rate(price):
     price = str(price or '').strip()
-    return 'FREE' if price in ('', '0') else f'{int(price)} mTok'
+    return int(price) if price.isdigit() else 0
 
 
 def _order(card):
-    number = str(card.get('number') or '').strip()
-    return (0, int(number)) if number.isdigit() else (1, 0)
+    number = _number(card.get('number'))
+    return (0, number) if number is not None else (1, 0)
 
 
 def collection(cards):
     cards = sorted(cards, key=_order)
-    out = [{'key': c['key'], 'no': _no(c.get('number')), 'class': c['class'], 'name': c['name'], 'initials': _initials(c['name']),
-            'image_dam_key': c.get('image_dam_key') or '', 'place': f"{c['product']} · {c['module']}", 'pitch': c.get('pitch') or '',
+    out = [{'key': c['key'], 'number': _number(c.get('number')), 'class': c.get('class') or '', 'name': c['name'], 'initials': _initials(c['name']),
+            'image_dam_key': c.get('image_dam_key') or '', 'product': c['product'], 'module': c['module'], 'pitch': c.get('pitch') or '',
             'developer': c.get('developer') or '', 'type': c.get('type') or '', 'residency': c.get('residency') or '',
-            'price': _price(c.get('price')), 'hired': bool(c.get('hired')), 'hireable': bool(c.get('hireable')), 'reason': c.get('reason') or ''}
+            'rate': _rate(c.get('price')), 'hired': bool(c.get('hired')), 'hireable': bool(c.get('hireable')), 'needs': c.get('needs') or ''}
            for c in cards]
     return {'cards': out, 'total': len(out), 'hired': sum(1 for c in out if c['hired']),
             'filters': {f: sorted({c[f] for c in cards if c.get(f)}) for f in FILTERS}}
