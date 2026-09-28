@@ -53,6 +53,15 @@ class HostLanes(unittest.TestCase):
         r = self.get('/marketplace/collection', self.who)
         self.assertEqual((r.status_code, r.get_json()), (502, {'refused': 'wid does not answer'}))
 
+    def test_defaults_need_the_marketplace_and_the_platform(self):
+        r = self.post('/marketplace/defaults', {**self.who, 'board': 'larryd/agnt/home'})
+        self.assertEqual((r.status_code, r.get_json()), (503, {'refused': 'the marketplace is not in the locker'}))
+        locker.add(self.db, APP / 'agents', 'MAGT_SCRATCH00001_0001', 'marketplace')
+        r = self.post('/marketplace/defaults', {**self.who, 'board': 'larryd/agnt/home'})
+        self.assertEqual((r.status_code, r.get_json()), (502, {'refused': 'wid does not answer'}))
+        r = self.post('/marketplace/defaults', self.who)
+        self.assertEqual((r.status_code, r.get_json()), (400, {'refused': 'missing: board'}))
+
     def test_what_a_call_must_carry(self):
         r = self.get('/marketplace/collection', {'account': 'A'})
         self.assertEqual((r.status_code, r.get_json()), (400, {'refused': 'missing: scope, member'}))

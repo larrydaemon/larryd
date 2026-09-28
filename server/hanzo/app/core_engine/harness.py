@@ -102,6 +102,16 @@ class Harness:
         route = '/agnt/hire' if on else '/agnt/unhire'
         return self._ask('wid', 'POST', route, {'account': account, 'scope': scope, 'member': member, 'agent_key': agent_key})
 
+    def defaults(self, account, scope, member, board):
+        """A board's first visit (the platform asks once): the marketplace is placed on its own screen, when it may be shown."""
+        key = self.marketplace_key()
+        cards, hired, groups = self.facts(account, scope, member)
+        card = self._card(lanes.assemble(cards, hired, groups, self.verify), key)
+        if card is None or card['screen'] != board or card['hired'] or not card['hireable']:
+            return {'placed': []}
+        self._ask('wid', 'POST', '/agnt/hire', {'account': account, 'scope': scope, 'member': member, 'agent_key': key})
+        return {'placed': [key]}
+
     # ---------------------------------------------------------------- the JOB lane: a RUN, pushed by the platform
     def _result(self, account, scope, job_key, run, state, log, delivery=''):
         return self._ask('wid', 'POST', '/jobs/result', {'account': account, 'scope': scope, 'job_key': job_key, 'run': str(run),

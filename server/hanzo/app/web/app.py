@@ -74,6 +74,10 @@ def create_app(instance, secret, now=_utc_now, addresses=None):
             return h.hire(d['account'], d['scope'], d['member'], d['agent_key'], str(d['on']) == 'on')
         return answered(work)
 
+    @app.post('/api/marketplace/defaults')
+    def defaults():
+        return answered(lambda: h.defaults(*(given('board')[k] for k in NEEDS + ('board',))))
+
     def start(account, scope, member, job_key, run):
         with lock:
             if (job_key, run) in running:
