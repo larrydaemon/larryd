@@ -4,10 +4,11 @@
 - writes only in its own run folder (made for the run, removed after), never into the locker;
 - reads nothing under /Users except its own folder (the python runtime lives outside /Users);
 - an empty environment, one JSON object in on stdin, one JSON object out on stdout, inside the time limit.
-Anything else is FAILED with the reason."""
+Anything else is FAILED with the kind of failure (never the agent's words)."""
 import json
 import os
 import pathlib
+import re
 import shutil
 import subprocess
 import sys
@@ -34,6 +35,16 @@ def _profile(agent, run):
 '''
 
 
+def _kind(stderr, code):
+    """The kind of failure, never the agent's words (they may carry what it was handed): the exception's name, and for a
+    refusal by the system its fixed words ('[Errno 1] Operation not permitted'), never a path."""
+    last = (stderr.strip().splitlines() or [''])[-1]
+    m = re.match(r'^([A-Za-z_][\w.]*)(?::\s*(\[Errno \d+\] [^:\'"]+))?', last)
+    if not m or not m.group(1).endswith(('Error', 'Exception', 'Exit', 'Interrupt')):
+        return f'exit {code}'
+    return m.group(1) + (f': {m.group(2).strip()}' if m.group(2) else '')
+
+
 def run(folder, entry, given, seconds=20):
     """-> (state, answer, reason): ('DONE', {...}, '') or ('FAILED', None, why)."""
     agent = os.path.realpath(folder)
@@ -46,8 +57,7 @@ def run(folder, entry, given, seconds=20):
         except subprocess.TimeoutExpired:
             return 'FAILED', None, f'over the time limit ({seconds} s)'
         if done.returncode != 0:
-            last = (done.stderr.strip().splitlines() or [f'exit {done.returncode}'])[-1]
-            return 'FAILED', None, last[-300:]
+            return 'FAILED', None, _kind(done.stderr, done.returncode)
         if len(done.stdout) > MOST_BYTES:
             return 'FAILED', None, 'the answer is too long'
         try:

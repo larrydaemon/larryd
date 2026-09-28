@@ -29,7 +29,7 @@ class StoreTest(unittest.TestCase):
             path = store.open_store(d)
             self.assertEqual(store.counts(path), {'locker': 0, 'runs': 0})
             con = sqlite3.connect(path)
-            con.execute("INSERT INTO hanzo_runs (lane, account, member, agent_key, state, started_at) VALUES ('call','A','M','K','REFUSED','t')")
+            con.execute("INSERT INTO hanzo_runs (lane, agent_key, state, started_at) VALUES ('call','K','REFUSED','t')")
             con.commit()
             con.close()
             self.assertEqual(store.counts(path), {'locker': 0, 'runs': 1})

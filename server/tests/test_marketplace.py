@@ -67,7 +67,7 @@ class RefusesTest(unittest.TestCase):
     def test_an_unknown_ask_fails(self):
         state, _answer, reason = sandbox.run(FOLDER, 'agent.py', {'do': 'anything'})
         self.assertEqual(state, 'FAILED')
-        self.assertIn('the marketplace does: collection, report', reason)
+        self.assertEqual(reason, 'exit 1')   # an agent's own words never reach a reason (data stays in wid)
 
 
 if __name__ == '__main__':

@@ -1,9 +1,10 @@
 """THE HARNESS: how HANZO answers the platform. Everything it knows about a member comes from the platform over the
 one signed client (the cards, the member's hired shells, the account's subscriptions, FROST's approvals); every agent
 runs in the sandbox; every call and run is a hanzo_runs row. Nothing is assumed when the platform does not answer.
+DATA STAYS IN wid (the owner): what a run is handed lives in memory and its run folder only; its result goes back to wid
+and is not kept; hanzo.db never holds a record value, a delivery, an account or a member.
 An agent counts as verified only when its folder matches the locker AND FROST approved those exact hashes."""
 import datetime
-import hashlib
 import json
 import sqlite3
 
@@ -72,13 +73,13 @@ class Harness:
         return row[0]
 
     # ---------------------------------------------------------------- the record
-    def _record(self, lane, account, member, agent_key, state, reason='', job_key='', run=0, charged=0, delivery=None):
+    def _record(self, lane, agent_key, state, reason='', job_key='', run=0, charged=0):
+        """One row per call and run: the agent's key, the job's, its state, times, charge and a plain reason; never an
+        account, a member, an input or a delivery (data stays in wid)."""
         con = sqlite3.connect(self.db)
         try:
-            con.execute('INSERT INTO hanzo_runs (lane, account, member, agent_key, job_key, run, state, reason, started_at, finished_at, charged, delivery_sha256) '
-                        'VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
-                        (lane, account, member, agent_key, job_key, run, state, reason, _now(), _now(), charged,
-                         '' if delivery is None else hashlib.sha256(json.dumps(delivery, sort_keys=True).encode('utf-8')).hexdigest()))
+            con.execute('INSERT INTO hanzo_runs (lane, agent_key, job_key, run, state, reason, started_at, finished_at, charged) VALUES (?,?,?,?,?,?,?,?,?)',
+                        (lane, agent_key, job_key, run, state, reason, _now(), _now(), charged))
             con.commit()
         finally:
             con.close()
@@ -100,11 +101,11 @@ class Harness:
             raise Refused(404, 'the agent has no LIVE card')
         ok, why = gate.may_run(card, verify(agent_key), lanes.hired_on(hired, agent_key), groups)
         if not ok:
-            self._record('call', account, member, agent_key, 'REFUSED', why)
+            self._record('call', agent_key, 'REFUSED', why)
             raise Refused(403, why)
         state, answer, reason = sandbox.run(self.agents / held['folder'], locker.manifest(self.agents, held['folder'])['entry'],
                                             {'do': calls[0], 'cards': lanes.assemble(cards, hired, groups, verify)}, self.seconds)
-        self._record('call', account, member, agent_key, state, reason, delivery=answer)
+        self._record('call', agent_key, state, reason)
         if state != 'DONE':
             raise Refused(500, reason)
         return {'agent_key': agent_key, 'title': card['name'], **answer}
@@ -186,5 +187,5 @@ class Harness:
             self._result(account, scope, job_key, run, state, log, delivery)
         except Refused as lost:
             reason = f'{reason} · the platform did not take the result: {lost.reason}'.lstrip(' ·')
-        self._record('job', account, member, key, state, reason, job_key, int(run), charged, delivery or None)
+        self._record('job', key, state, reason, job_key, int(run), charged)
         return state
