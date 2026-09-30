@@ -18,7 +18,7 @@ sys.path.insert(0, str(APP))
 from core_engine import developers, harness as lanes_harness, platform, signing, store  # noqa: E402
 
 CONFIG = json.loads((APP / 'schemas' / 'hanzo.json').read_text())
-INSTANCE = APP.parent / 'instance'
+INSTANCE = pathlib.Path(os.environ['LARRYD_INSTANCE']) if os.environ.get('LARRYD_INSTANCE') else APP.parent / 'instance'   # the daemon names it
 
 
 def _utc_now():
@@ -187,7 +187,7 @@ def main(argv):
         raise SystemExit(main.__doc__)
     logging.getLogger('werkzeug').setLevel(logging.ERROR)   # no request lines: a call's query names an account and a member (data stays in wid)
     catch_up(app)
-    app.run(host=CONFIG['host'], port=CONFIG['ports'][side], threaded=True)
+    app.run(host=CONFIG['host'], port=int(os.environ.get('LARRYD_PORT') or CONFIG['ports'][side]), threaded=True)   # always 127.0.0.1
 
 
 if __name__ == '__main__':

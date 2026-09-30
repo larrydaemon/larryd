@@ -7,16 +7,22 @@ name = "larryd"
 version = "0.1.0"
 description = "Your server has a daemon. Your agents should have one too."
 requires-python = ">=3.11"
-dependencies = []
+dependencies = ["flask>=3"]   # the daemon (LARRYD's runtime) serves over Flask; the tool itself is the standard library only
 
 [project.scripts]
 larryd = "larryd.cli:main"
 
 [tool.setuptools]
-packages = ["larryd"]
+# the tool (larryd/) and the daemon's code (the runtime, server/hanzo/app, as larryd_runtime); never an instance, a secret or a test
+packages = ["larryd", "larryd_runtime", "larryd_runtime.core_engine", "larryd_runtime.web"]
+
+[tool.setuptools.package-dir]
+larryd = "larryd"
+larryd_runtime = "server/hanzo/app"
 
 [tool.setuptools.package-data]
 larryd = ["kit/*", "kit/**/*", "skills.json"]
+larryd_runtime = ["schemas/*.json", "agents/marketplace/agent.json", "agents/marketplace/agent.py"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]   # the tool's tests; the runtime (server/) runs its own suite with its own venv

@@ -7,7 +7,7 @@ import pathlib
 from larryd import new
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
-READ = ['README.md', 'GUIDE.md', 'pyproject.toml', 'larryd/skills.json', '.claude-plugin/marketplace.json',
+READ = ['README.md', 'GUIDE.md', 'larryd/skills.json', '.claude-plugin/marketplace.json',
         'plugin/.claude-plugin/plugin.json', 'plugin/.mcp.json', 'plugin/skills/larryd/SKILL.md', 'plugin/README.md'] + [
         p.relative_to(REPO).as_posix() for p in (REPO / 'listings').rglob('*') if p.is_file()] + [
         p.relative_to(REPO).as_posix() for p in (REPO / 'larryd' / 'kit').rglob('*') if p.is_file()]
@@ -23,6 +23,13 @@ def said(path):
             if isinstance(first, ast.Expr) and isinstance(first.value, ast.Constant):
                 docs.add(id(first.value))
     return [n for n in ast.walk(tree) if isinstance(n, ast.Constant) and isinstance(n.value, str) and id(n) not in docs]
+
+
+def test_the_package_s_own_words_never_say_hanzo():
+    """pyproject.toml's [project] (the name, the description, what PyPI shows); its build settings may name the runtime's folder."""
+    text = (REPO / 'pyproject.toml').read_text()
+    project = text.split('[project]', 1)[1].split('\n[', 1)[0]
+    assert project.strip() and 'HANZO' not in project.upper()
 
 
 def test_no_developer_facing_file_says_hanzo():

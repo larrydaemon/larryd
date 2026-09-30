@@ -28,6 +28,7 @@ def parser():
     t = sub.add_parser('status', help='what LARRYD records for your agents')
     t.add_argument('--json', action='store_true', help='the result as JSON')
     sub.add_parser('mcp', help='serve the tools to Claude Code (a local tool server on stdin/stdout)')
+    sub.add_parser('help', help='these commands; `larryd` alone starts the daemon (LARRYD\'s runtime on 127.0.0.1)')
     sub.add_parser('skills', help='list the skills an agent may declare, by hash')
     k = sub.add_parser('pack', help='check a knowledge pack and give its hash')
     k.add_argument('folder', help='the pack\'s folder')
@@ -35,6 +36,13 @@ def parser():
 
 
 def main(argv=None):
+    argv = sys.argv[1:] if argv is None else argv
+    if not argv:   # bare `larryd`: the daemon, LARRYD's runtime on this machine
+        from . import daemon
+        return daemon.run()
+    if argv == ['help']:
+        parser().print_help()
+        return 0
     args = parser().parse_args(argv)
     if args.command == 'new':
         try:

@@ -1,3 +1,7 @@
-prune server
+prune server/tests
+prune server/deploy
+prune server/hanzo/instance
+prune server/.venv
 prune listings
 prune proofs
+global-exclude __pycache__ *.pyc *.db
