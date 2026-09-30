@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "larryd"
 version = "0.1.0"
-description = "LARRYD, the daemon: build, test and submit agents for LARRYD with Claude Code."
+description = "Your server has a daemon. Your agents should have one too."
 requires-python = ">=3.11"
 dependencies = []
 

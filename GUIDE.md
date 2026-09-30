@@ -1,5 +1,9 @@
 # Building an agent for LARRYD with LARRYD
 
+Your server has a daemon. Your agents should have one too.
+
+Build, test and submit agents for LARRYD with Claude Code.
+
 This guide is for the developer's AI first and the developer second. Read it whole before you build.
 Every command named here exists and works today; what does not exist yet is listed at the end, plainly.
 

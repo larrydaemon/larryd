@@ -1,7 +1,10 @@
 # LARRYD
 
-Build an agent for LARRYD with Claude Code. The agent lives in LARRYD, air gapped, owned by its developer;
-LARRYD connects it to the platform by API only.
+Your server has a daemon. Your agents should have one too.
+
+Build, test and submit agents for LARRYD with Claude Code.
+
+The agent lives in LARRYD, air gapped, owned by its developer; LARRYD connects it to the platform by API only.
 
 ## Install
     pip install larryd
