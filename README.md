@@ -10,7 +10,11 @@ One command, `larryd`:
 - `larryd new <name>`: a new agent project (the agent, its CLAUDE.md, the larryd skill, a sample job, the connector)
 - `larryd doctor`: the pretest before submission; every problem says what is wrong and what to do
 - `larryd run`: runs the agent here the way LARRYD runs it, with the sample job (needs a Mac today)
-- `larryd mcp`: serves the tools to Claude Code
+- `larryd key <address> <name>`: keeps your developer key from LARRYD (the secret is pasted, never typed on the command line)
+- `larryd submit`: sends the agent to LARRYD for FROST's review, after the doctor (the card key is in the project's larryd.json)
+- `larryd status`: what LARRYD records for your agents: held, the review, runs, calls, hires, mTok charged
+- `larryd skills`, `larryd pack <folder>`: the skills an agent may declare; a knowledge pack's hash
+- `larryd mcp`: serves the tools to Claude Code (never the key)
 
 ## With Claude Code
 - In a project made by `larryd new`, its `.mcp.json` starts the connector: open the folder with `claude` and approve it.

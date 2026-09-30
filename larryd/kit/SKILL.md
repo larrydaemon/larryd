@@ -1,6 +1,6 @@
 ---
 name: larryd
-description: Build, check and ship a LARRYD agent with LARRYD. Use when working on this agent project - changing agent/agent.py or agent/agent.json, checking the agent, or running it.
+description: Build, check and ship a LARRYD agent with LARRYD. Use when working on this agent project - changing agent/agent.py or agent/agent.json, checking the agent, running it, or submitting it.
 ---
 
 # Building a LARRYD agent with LARRYD

@@ -14,10 +14,13 @@ TOOLS = (
     ('larryd doctor', 'checks the agent before submission; every problem says what is wrong and what to do (--json for the result as JSON)'),
     ('larryd run', 'runs the agent here the way PF HANZO runs it (no network, no new process, a scratch run folder, a time limit), '
                    'with samples/job.json or --job <file>; it needs a Mac today'),
+    ('larryd key <address> <name>', 'keeps your developer key from PF HANZO (paste the secret when asked; it is never stored in the project)'),
+    ('larryd submit', 'sends the agent (agent/ only) to PF HANZO for FROST\'s review, after the doctor; the card key is in larryd.json'),
+    ('larryd status', 'what PF HANZO records for your agents: held, the review, runs, calls, hires and mTok charged'),
     ('larryd skills', 'lists the skills an agent may declare in "skills", by hash'),
     ('larryd pack <folder>', 'checks a knowledge pack and gives its hash'),
-    ('larryd mcp', 'serves these tools to Claude Code (larryd_new, larryd_doctor, larryd_run, larryd_skills, larryd_pack); '
-                   'this project\'s .mcp.json starts it'),
+    ('larryd mcp', 'serves these tools to Claude Code (larryd_new, larryd_doctor, larryd_run, larryd_submit, larryd_status, '
+                   'larryd_skills, larryd_pack; never the key); this project\'s .mcp.json starts it'),
 )
 MCP = {'mcpServers': {'larryd': {'command': 'larryd', 'args': ['mcp']}}}
 
@@ -62,6 +65,7 @@ def make(name, where='.'):
         'CLAUDE.md': _kit('CLAUDE.md').format(name=name, fields=fields, hands=', '.join(shape.HANDS), tools=tools),
         shape.SKILL: skill(),
         '.mcp.json': json.dumps(MCP, indent=2) + '\n',
+        'larryd.json': json.dumps({'agent_key': ''}, indent=2) + '\n',
     }
     for rel, text in files.items():
         path = root / rel
