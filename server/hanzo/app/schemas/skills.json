@@ -28,7 +28,7 @@
       "name": "DA-M store",
       "technology": "DA-M",
       "door": "LARRYD stores the files an agent's answer carries in the member's own DA-M (POST /dam/upload) after a DONE run",
-      "does": "keeps each file the answer carries in the member's DA-M, the agent's card key as its source; at most 10 files, 5 MB each",
+      "does": "keeps each file the answer carries in the member's DA-M, the agent's card key as its source; at most 10 files, all within the answer's own limit of 1 MB",
       "agent": "answers \"files\": [{\"name\", \"content_b64\"}] and names \"files\" in gives",
       "after": "files"
     }

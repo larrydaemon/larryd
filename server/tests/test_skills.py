@@ -14,7 +14,7 @@ from core_engine import harness, locker, platform, store
 MTOK = '3c8ad8bf218a8350b26a7fb4b9eb7f6c70073553437aec8d05afee60f9740dcb'       # pinned here and in LARRYD's tests: drift on either side is red
 GREETING = '94686bdeef7ebf3df3e52f1a3086f280ee25b1457336b87f5ab39860f7248fa2'
 IDENTITY = '4db76a92980ff0a3b4cbe584d0b2de4c9821a5cbf7385c0b062c43f276f0ac0f'
-STORE = 'af29573bbc49b9e88e9447208f351804496de573dd25a90533f933784e4e6641'
+STORE = '1d0eb4d13f8a91b4d0cc67f8b5cb157a4b74ec2c937779d49d4bb80beecc670a'
 WHO = {'first_name': 'Ann', 'member_type': 'user', 'account_name': 'Scratch Account'}
 KEY, JOB = 'MAGT_00000000D0B2_0001', 'MJOB_00000000D0B2_0001'
 ACCOUNT, SCOPE, MEMBER = 'ACCT_' + 'A' * 12 + '_0001', 'SCRATCH', 'MCON_' + 'B' * 12 + '_0002'
@@ -176,7 +176,7 @@ class Store(World):
             'a path for a name': ([STORE], {'files': [dict(self.FILE, name='../escape.json')]}, 'plain name'),
             'more than name and content': ([STORE], {'files': [dict(self.FILE, folder='x')]}, 'plain name'),
             'not base64': ([STORE], {'files': [dict(self.FILE, content_b64='not base64!')]}, 'not base64'),
-            'empty': ([STORE], {'files': [dict(self.FILE, content_b64='')]}, 'empty or larger'),
+            'empty': ([STORE], {'files': [dict(self.FILE, content_b64='')]}, 'is empty'),
         }
         for name, (skills, answer, words) in cases.items():
             with self.subTest(name):

@@ -28,7 +28,7 @@ def _skills():
 
 
 SKILLS = _skills()
-MOST_FILES, MOST_FILE_BYTES = 10, 5_000_000   # what the DA-M store keeps from one answer
+MOST_FILES = 10   # what the DA-M store keeps from one answer (all of it inside the sandbox's 1 MB answer)
 FILE_NAME = re.compile(r'^[A-Za-z0-9][A-Za-z0-9 ._-]{0,120}$')
 HANDED = {   # a skill's hand: the platform's door HANZO asks for the RUN's member and account (signed with hanzo_link)
     'greeting': ('lryllm', '/larry/greeting', "the member's greeting", 'LARRY LLM'),
@@ -280,8 +280,8 @@ class Harness:
                 size = len(base64.b64decode(f['content_b64'], validate=True))
             except (binascii.Error, ValueError):
                 raise _Stop('FAILED', f'file {i} is not base64; the delivery is withheld')
-            if not 0 < size <= MOST_FILE_BYTES:
-                raise _Stop('FAILED', f'file {i} is empty or larger than {MOST_FILE_BYTES} bytes; the delivery is withheld')
+            if size == 0:
+                raise _Stop('FAILED', f'file {i} is empty; the delivery is withheld')
         return files
 
     def _skill_hands(self, manifest, account, member):
