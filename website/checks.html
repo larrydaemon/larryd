@@ -60,7 +60,7 @@
     <li><strong><code>inputs</code></strong> The job's inputs reach it only by the names and slots declared.</li>
     <li><strong><code>skills</code></strong> Only declared skills are carried out. An answer that carries files is refused unless the agent declares the DA-M store.</li>
     <li><strong><code>calls</code></strong> Only an agent that declares <code>calls</code> answers on a member's screen.</li>
-    <li><strong><code>gives</code></strong> <code>larryd run</code> refuses an answer that holds anything <code>gives</code> does not name.</li>
+    <li><strong><code>gives</code></strong> An answer that holds anything <code>gives</code> does not name is refused, by <code>larryd run</code> and by LARRYD's runtime: the run fails, nothing is delivered, nothing is charged.</li>
   </ul>
 </section>
 
