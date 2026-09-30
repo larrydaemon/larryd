@@ -72,6 +72,34 @@ class Harness:
             raise Refused(503, 'the marketplace is not in the locker')
         return row[0]
 
+    def developer_status(self, keys):
+        """What HANZO records for a developer's agents: held or not, FROST's word on the exact hashes, and the counts of
+        hanzo_runs (runs by state, calls, hires, unhires, mTok charged). Only agent keys and counts: no account, no member."""
+        status, body = self.client.get('fs', '/agents/approved', {})
+        approved = {(a['agent_key'], a['code_sha256'], a['manifest_sha256']) for a in body['approved']} if status == 200 else None
+        con = sqlite3.connect(self.db)
+        try:
+            out = []
+            for key in keys:
+                row = locker.held(self.db, key)
+                if row is None:
+                    review = 'not submitted'
+                elif approved is None:
+                    review = f"unknown: {body.get('refused') or f'FROST answered {status}'}"
+                else:
+                    review = 'approved' if (key, row['code_sha256'], row['manifest_sha256']) in approved else 'not approved'
+                runs = dict(con.execute("SELECT state, COUNT(*) FROM hanzo_runs WHERE agent_key = ? AND lane = 'job' GROUP BY state", (key,)).fetchall())
+                count = lambda lane, state=None: con.execute(  # noqa: E731
+                    'SELECT COUNT(*) FROM hanzo_runs WHERE agent_key = ? AND lane = ?' + (' AND state = ?' if state else ''),
+                    (key, lane) + ((state,) if state else ())).fetchone()[0]
+                charged = con.execute("SELECT COALESCE(SUM(charged), 0) FROM hanzo_runs WHERE agent_key = ? AND lane = 'job'", (key,)).fetchone()[0]
+                out.append({'agent_key': key, 'held': row is not None, 'code_sha256': row['code_sha256'] if row else '',
+                            'manifest_sha256': row['manifest_sha256'] if row else '', 'review': review, 'runs': runs,
+                            'calls': count('call'), 'hires': count('hire', 'ON'), 'unhires': count('hire', 'OFF'), 'charged': charged})
+            return {'agents': out}
+        finally:
+            con.close()
+
     # ---------------------------------------------------------------- the record
     def _record(self, lane, agent_key, state, reason='', job_key='', run=0, charged=0):
         """One row per call and run: the agent's key, the job's, its state, times, charge and a plain reason; never an
@@ -125,7 +153,9 @@ class Harness:
             raise Refused(404, 'no such agent in the collection')
         if on and not card['hireable']:
             raise Refused(403, card['reason'])
-        return self._ask('wid', 'POST', '/agnt/hire' if on else '/agnt/unhire', {'account': account, 'scope': scope, 'member': member, 'agent_key': agent_key})
+        done = self._ask('wid', 'POST', '/agnt/hire' if on else '/agnt/unhire', {'account': account, 'scope': scope, 'member': member, 'agent_key': agent_key})
+        self._record('hire', agent_key, 'ON' if on else 'OFF')   # the agent's key only: who hired it stays in wid
+        return done
 
     def defaults(self, account, scope, member, board):
         """A board's first visit (the platform asks once): the marketplace is placed on its own screen, when it may be shown."""
@@ -135,6 +165,7 @@ class Harness:
         if card is None or card['screen'] != board or card['hired'] or not card['hireable']:
             return {'placed': []}
         self._ask('wid', 'POST', '/agnt/hire', {'account': account, 'scope': scope, 'member': member, 'agent_key': key})
+        self._record('hire', key, 'ON')
         return {'placed': [key]}
 
     # ---------------------------------------------------------------- the JOB lane: a RUN, pushed by the platform

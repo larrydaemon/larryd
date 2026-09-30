@@ -1,6 +1,6 @@
 """DATA STAYS IN wid, NEVER BACK TO PF HANZO (the owner, 2026-09-28). hanzo.db holds only what HANZO itself needs: the
-locker (key, hashes, manifest's name, folder) and hanzo_runs (lane, the agent's key, job key, run, state, times, charged,
-a plain reason). The inputs of a run live in memory and in its run folder (removed after); its result goes back to wid
+locker (key, hashes, manifest's name, folder), hanzo_runs (lane, the agent's key, job key, run, state, times, charged,
+a plain reason) and hanzo_developers (a developer's HANZO-side name and the card keys they may submit). The inputs of a run live in memory and in its run folder (removed after); its result goes back to wid
 and is not kept. A failed agent's words never reach a reason: only the kind of failure."""
 import json
 import pathlib
@@ -13,7 +13,8 @@ from _here import APP
 from core_engine import harness, locker, sandbox, store
 
 ALLOWED = {'hanzo_locker': ['agent_key', 'name', 'folder', 'code_sha256', 'manifest_sha256', 'registered_at'],
-           'hanzo_runs': ['id', 'lane', 'agent_key', 'job_key', 'run', 'state', 'reason', 'started_at', 'finished_at', 'charged']}
+           'hanzo_runs': ['id', 'lane', 'agent_key', 'job_key', 'run', 'state', 'reason', 'started_at', 'finished_at', 'charged'],
+           'hanzo_developers': ['agent_key', 'developer', 'added_at']}   # a developer's HANZO-side name and the card keys they may submit
 PLANTED = 'Zanzibar-7731-private-pitch'   # a value only the input records carry
 
 

@@ -15,6 +15,7 @@
     "offices": ["wid"]
   },
   "secret": {"name": "hanzo_link", "purpose": "signs every call between the platform and HANZO; each side keeps its own copy in its own instance"},
+  "developers": {"about": "the developer door (/api/developer/...): a developer signs with their own secret, never HANZO's; an upload is plain files, written into the locker's dev/ folder", "secrets": "developers", "folder": "dev", "most_files": 200, "most_bytes": 5000000},
   "signed_window_seconds": 60,
   "run": {"seconds": 20}
 }
