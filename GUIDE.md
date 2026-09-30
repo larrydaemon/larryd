@@ -97,7 +97,8 @@ checks' version. Paste `![LARRYD checks](larryd-checks.svg)` into your README; r
 The doctor runs first. Then the agent runs the way LARRYD runs it: its own process, no network, no new process,
 a scratch run folder removed after, the plain Python runtime, an empty environment, 20 seconds. It is handed what
 a RUN hands it: `{"do": run.do}` plus what `run.hands` names, from the sample job. The answer must be one JSON object
-holding only what `gives` names. Nothing is sent anywhere. It needs a Mac today.
+holding only what `gives` names. Nothing is sent anywhere. On a Mac or Linux (Linux: LARRYD's own bubblewrap sandbox,
+`sudo apt install bubblewrap`); on Windows, use WSL.
 
 ## 7. Submit
     larryd submit
@@ -146,7 +147,7 @@ The loop for the AI: change the agent → larryd_doctor → larryd_run → fix �
 - Skills: the platform's sides of the LARRY LLM greeting, the FROST identity and the DA-M store are not on the live
   platform yet; until they are, a RUN of an agent that declares one fails with LARRYD's plain reason.
 - Knowledge packs: LARRYD holds none yet, so declaring one in `knowledge` fails the doctor. Leave it `[]`.
-- `larryd run` on Linux and Windows: it needs a Mac today (macOS sandbox-exec). The doctor does not use it.
+- `larryd run` on Windows itself (use WSL). The doctor works everywhere.
 - The job's inputs on the live platform: LARRYD hands `job` today, but the platform's side (the route that gives
   LARRYD a RUN's inputs) is not on the live platform yet; until it is, a RUN of an agent that hands `job` fails with
   LARRYD's plain reason. `larryd run` works with them now.

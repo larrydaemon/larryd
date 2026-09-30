@@ -1,10 +1,12 @@
 """`larryd run`: runs the agent on this computer the way PF HANZO runs it, in a scratch world, with a sample job.
 - the doctor first: an agent it refuses is not run;
 - the job handed is what PF HANZO would hand a RUN: {"do": run.do, ...run.hands}, taken from the sample job;
-- its own process under macOS sandbox-exec: no network, no new process, writes only in a scratch run folder (made for
-  the run, removed after), reads nothing under /Users but the agent's own folder, an empty environment, a time limit;
+- its own process, sandboxed by the system as LARRYD sandboxes it: on a Mac, sandbox-exec; on Linux, LARRYD's own
+  bubblewrap command with its seccomp filter (the runtime's sandbox, the very same command): no network, no new process,
+  writes only in a scratch run folder (made for the run, removed after), reads nothing private but the agent's own
+  folder, an empty environment, a time limit;
 - one JSON object out, holding only what "gives" names.
-Scratch only: nothing is sent anywhere, no live record is read or written. It needs a Mac today (sandbox-exec)."""
+Scratch only: nothing is sent anywhere, no live record is read or written. Any other system (Windows) is refused."""
 import base64
 import binascii
 import json
@@ -59,17 +61,45 @@ def profile(agent, run, runtime):
     ])
 
 
+def _linux():
+    """LARRYD's runtime sandbox (larryd_runtime.core_engine.sandbox): its bubblewrap command is the one a RUN gets."""
+    from larryd_runtime.core_engine import sandbox
+    return sandbox
+
+
+def no_sandbox():
+    """-> None when this system can run an agent as LARRYD does, else a REFUSED Result saying why and what to do."""
+    if sys.platform == 'darwin':
+        if os.path.isfile(SANDBOX):
+            return None
+        return Result('REFUSED', reason=f'this Mac has no {SANDBOX}', todo='larryd run needs macOS sandbox-exec; the doctor works everywhere')
+    if sys.platform.startswith('linux'):
+        if os.path.isfile(_linux().BWRAP):
+            return None
+        return Result('REFUSED', reason='this Linux has no bubblewrap (bwrap), which LARRYD sandboxes agents with',
+                      todo='install it (sudo apt install bubblewrap, or your system\'s package), then run again; the doctor works without it')
+    return Result('REFUSED', reason=f'larryd run needs a Mac or Linux; this is {sys.platform}',
+                  todo='run it on a Mac or on Linux (a Linux machine, or WSL on Windows); the doctor works everywhere')
+
+
+def command(agent, run, entry):
+    """The sandboxed command for this system (no_sandbox() said it has one)."""
+    if sys.platform == 'darwin':
+        runtime = python()
+        return [SANDBOX, '-p', profile(agent, run, runtime), runtime, '-I', '-B', os.path.join(agent, entry)]
+    return _linux()._linux_command(agent, run, entry)
+
+
 def sandboxed(agent, entry, given, seconds=SECONDS):
     """Run one agent folder's entry with `given` on stdin. -> Result (DONE with the answer, or FAILED with why)."""
-    if sys.platform != 'darwin' or not os.path.isfile(SANDBOX):
-        return Result('REFUSED', reason='larryd run needs a Mac today (it uses macOS sandbox-exec, as LARRYD does)',
-                      todo='run it on a Mac; the doctor works everywhere')
+    refused = no_sandbox()
+    if refused:
+        return refused
     agent = os.path.realpath(agent)
     run = os.path.realpath(tempfile.mkdtemp(prefix='larryd_run_'))
-    runtime = python()
     try:
         try:
-            done = subprocess.run([SANDBOX, '-p', profile(agent, run, runtime), runtime, '-I', '-B', os.path.join(agent, entry)],
+            done = subprocess.run(command(agent, run, entry),
                                   input=json.dumps(given), capture_output=True, text=True, timeout=seconds, cwd=run,
                                   env={'PATH': '/usr/bin:/bin', 'HOME': run, 'TMPDIR': run, 'LC_CTYPE': 'UTF-8'})
         except subprocess.TimeoutExpired:

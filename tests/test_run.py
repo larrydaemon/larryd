@@ -13,6 +13,18 @@ import pytest
 
 from larryd import cli, new, runner
 
+# what each system says when the sandbox refuses (Linux: bubblewrap hides what the agent may not see, and a mount is
+# read-only, where macOS says "Operation not permitted"; the seccomp filter says "Operation not permitted" too)
+LINUX = sys.platform.startswith('linux')
+SAYS = {
+    'network': ('Network is unreachable', 'Connection refused') if LINUX else ('Operation not permitted',),
+    'read outside': ('No such file or directory',) if LINUX else ('Operation not permitted',),
+    'process': ('not permitted',),
+}
+
+
+def _said(result, what):
+    return result.state == 'FAILED' and any(words in result.said for words in SAYS[what])
 
 
 def _agent(tmp_path, body):
@@ -56,21 +68,21 @@ def test_no_network(tmp_path, listening):
     folder = _agent(tmp_path, 'import socket\ns = socket.create_connection(("127.0.0.1", job["port"]), timeout=3)\nout["connected"] = True')
     assert _outside(folder, {'port': listening}) == {'connected': True}
     result = runner.sandboxed(folder, 'agent.py', {'port': listening})
-    assert result.state == 'FAILED' and 'Operation not permitted' in result.said
+    assert _said(result, 'network')
 
 
 def test_no_new_process(tmp_path):
     folder = _agent(tmp_path, 'import subprocess\nout["said"] = subprocess.run(["/bin/echo", "hi"], capture_output=True, text=True).stdout')
     assert _outside(folder, {}) == {'said': 'hi\n'}
     result = runner.sandboxed(folder, 'agent.py', {})
-    assert result.state == 'FAILED' and 'not permitted' in result.said
+    assert _said(result, 'process')
 
 
 def test_no_fork(tmp_path):
     folder = _agent(tmp_path, 'import os\npid = os.fork()\nif pid == 0:\n    os._exit(0)\nos.waitpid(pid, 0)\nout["forked"] = True')
     assert _outside(folder, {}) == {'forked': True}
     result = runner.sandboxed(folder, 'agent.py', {})
-    assert result.state == 'FAILED' and 'not permitted' in result.said
+    assert _said(result, 'process')
 
 
 def test_no_other_program(tmp_path):
@@ -78,7 +90,7 @@ def test_no_other_program(tmp_path):
     folder = _agent(tmp_path, 'import os\nos.execv("/bin/echo", ["/bin/echo", "{}"])')
     assert _outside(folder, {}) == {}
     result = runner.sandboxed(folder, 'agent.py', {})
-    assert result.state == 'FAILED' and 'not permitted' in result.said
+    assert _said(result, 'process')
 
 
 def test_no_write_outside_the_run_folder(tmp_path):
@@ -103,14 +115,14 @@ def test_writes_in_its_run_folder_and_the_folder_is_gone_after(tmp_path):
     assert not pathlib.Path(result.answer['here']).exists()
 
 
-def test_no_read_under_users_outside_its_folder(tmp_path):
+def test_no_read_in_the_home_folder_outside_its_folder(tmp_path):
     scratch = pathlib.Path(tempfile.mkdtemp(dir=pathlib.Path.home(), prefix='.larryd_test_'))   # a scratch file under /Users, removed after
     try:
         (scratch / 'private.txt').write_text('private')
         folder = _agent(tmp_path, 'out["read"] = open(job["from"]).read()')
         assert _outside(folder, {'from': str(scratch / 'private.txt')}) == {'read': 'private'}
         result = runner.sandboxed(folder, 'agent.py', {'from': str(scratch / 'private.txt')})
-        assert result.state == 'FAILED' and 'not permitted' in result.said
+        assert _said(result, 'read outside')
     finally:
         shutil.rmtree(scratch)
 
@@ -145,6 +157,44 @@ def test_the_time_limit(tmp_path):
 def test_a_bad_answer(tmp_path, body, why):
     result = runner.sandboxed(_agent(tmp_path, body), 'agent.py', {})
     assert result.state == 'FAILED' and why in result.reason and result.todo
+
+
+# ---------------------------------------------------------------- which sandbox, by system
+def test_a_mac_runs_it_under_sandbox_exec(tmp_path, monkeypatch):
+    monkeypatch.setattr(runner.sys, 'platform', 'darwin')
+    real = runner.os.path.isfile
+    monkeypatch.setattr(runner.os.path, 'isfile', lambda p: p == runner.SANDBOX or real(p))
+    assert runner.no_sandbox() is None
+    cmd = runner.command('/a', '/r', 'agent.py')
+    assert cmd[:2] == [runner.SANDBOX, '-p'] and '(deny network*)' in cmd[2] and cmd[-1] == '/a/agent.py'
+
+
+def test_linux_runs_it_in_the_runtimes_own_bubblewrap(monkeypatch):
+    from larryd_runtime.core_engine import sandbox
+    monkeypatch.setattr(sandbox, '_linux_runtime', lambda: [sandbox.PYTHON])   # sysconfig reads the real system, not a pretended one
+    monkeypatch.setattr(runner.sys, 'platform', 'linux')
+    real = runner.os.path.isfile
+    monkeypatch.setattr(runner.os.path, 'isfile', lambda p: p == sandbox.BWRAP or real(p))
+    assert runner.no_sandbox() is None
+    cmd = runner.command('/a', '/r', 'agent.py')
+    assert cmd == sandbox._linux_command('/a', '/r', 'agent.py')   # the very command a RUN on LARRYD gets
+    assert cmd[0] == sandbox.BWRAP and '--unshare-all' in cmd and 'seccomp' in cmd[cmd.index('-c') + 1]
+
+
+def test_linux_without_bubblewrap_is_refused_with_what_to_do(tmp_path, monkeypatch):
+    from larryd_runtime.core_engine import sandbox
+    monkeypatch.setattr(runner.sys, 'platform', 'linux')
+    real = runner.os.path.isfile
+    monkeypatch.setattr(runner.os.path, 'isfile', lambda p: p != sandbox.BWRAP and real(p))
+    result = runner.sandboxed(_agent(tmp_path, 'out["ran"] = True'), 'agent.py', {})
+    assert result.state == 'REFUSED' and 'bubblewrap' in result.reason and 'apt install bubblewrap' in result.todo
+
+
+def test_windows_is_refused_and_nothing_runs(tmp_path, monkeypatch):
+    monkeypatch.setattr(runner.sys, 'platform', 'win32')
+    monkeypatch.setattr(runner.subprocess, 'run', lambda *a, **k: pytest.fail('nothing runs unsandboxed'))
+    result = runner.sandboxed(_agent(tmp_path, 'out["ran"] = True'), 'agent.py', {})
+    assert result.state == 'REFUSED' and 'a Mac or Linux' in result.reason and 'WSL' in result.todo
 
 
 # ---------------------------------------------------------------- the whole `larryd run`
