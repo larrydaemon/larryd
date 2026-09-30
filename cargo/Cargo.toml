@@ -1,0 +1,15 @@
+[package]
+name = "larryd"
+version = "0.1.0"
+edition = "2021"
+description = "Your server has a daemon. Your agents should have one too. Build, test and ship AI agents with Claude Code."
+homepage = "https://github.com/larrydaemon/larryd"
+repository = "https://github.com/larrydaemon/larryd"
+license-file = "NOTICE.txt"
+readme = "README.md"
+keywords = ["ai-agents", "claude-code", "mcp", "cli"]
+categories = ["command-line-utilities", "development-tools"]
+
+[[bin]]
+name = "larryd"
+path = "src/main.rs"
