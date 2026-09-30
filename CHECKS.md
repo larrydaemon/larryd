@@ -26,7 +26,7 @@ The doctor checks what the manifest declares. When the agent runs, the runtime h
 - **`inputs`**: the job's inputs reach it only by the names and slots declared.
 - **`skills`**: only declared skills are carried out. An answer that carries files is refused unless the agent declares the DA-M store.
 - **`calls`**: only an agent that declares `calls` answers on a member's screen.
-- **`gives`**: `larryd run` refuses an answer that holds anything `gives` does not name.
+- **`gives`**: an answer that holds anything `gives` does not name is refused, enforced by `larryd run` and by LARRYD's runtime: the run fails, nothing is delivered, nothing is charged.
 
 ## The walls around every agent
 

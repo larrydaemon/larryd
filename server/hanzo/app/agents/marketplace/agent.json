@@ -19,5 +19,12 @@
     "hands": [
       "cards"
     ]
-  }
+  },
+  "gives": [
+    "cards",
+    "total",
+    "hired",
+    "filters",
+    "delivery"
+  ]
 }

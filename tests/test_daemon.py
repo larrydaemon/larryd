@@ -71,3 +71,22 @@ def test_help_names_the_daemon(capsys):
     from larryd import cli
     assert cli.main(['help']) == 0
     assert '`larryd` alone starts the daemon' in capsys.readouterr().out
+
+
+def test_the_runtimes_own_marketplace_is_placed_fresh_and_nothing_else_is_touched(tmp_path):
+    from larryd import daemon
+    runtime = daemon.runtime_dir()
+    instance = tmp_path / 'instance'
+    old = instance / 'agents' / 'marketplace'
+    old.mkdir(parents=True)
+    (old / 'agent.json').write_text('{"name": "an older release"}')
+    mine = instance / 'agents' / 'mine'
+    mine.mkdir()
+    (mine / 'agent.json').write_text('{"name": "the developer\'s"}')
+    daemon.prepare(instance, runtime)
+    secret = (instance / 'secrets' / 'hanzo_link').read_text()
+    assert (old / 'agent.json').read_text() == (runtime / 'agents' / 'marketplace' / 'agent.json').read_text()
+    assert 'gives' in json.loads((old / 'agent.json').read_text())
+    assert (mine / 'agent.json').read_text() == '{"name": "the developer\'s"}'
+    daemon.prepare(instance, runtime)
+    assert (instance / 'secrets' / 'hanzo_link').read_text() == secret

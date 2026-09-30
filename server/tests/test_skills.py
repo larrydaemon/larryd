@@ -62,10 +62,13 @@ class World(unittest.TestCase):
     def tearDown(self):
         self.tmp.cleanup()
 
-    def agent(self, skills, answer=None):
+    def agent(self, skills, answer=None, gives=('delivery', 'files', 'themes')):
         folder = self.agents / 'echo'
         folder.mkdir(parents=True, exist_ok=True)
-        (folder / 'agent.json').write_text(json.dumps({'name': 'Echo', 'entry': 'agent.py', 'run': {'do': 'answer', 'hands': []}, 'skills': skills}))
+        card = {'name': 'Echo', 'entry': 'agent.py', 'run': {'do': 'answer', 'hands': []}, 'skills': skills}
+        if gives is not None:
+            card['gives'] = list(gives)
+        (folder / 'agent.json').write_text(json.dumps(card))
         if answer is not None:
             (folder / 'agent.py').write_text(f'import json, sys\njson.load(sys.stdin)\nprint(json.dumps({answer!r}))\n')
         else:
@@ -202,3 +205,53 @@ class Store(World):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class Gives(World):
+    """What the manifest's "gives" names is all an answer may hold: anything else is FAILED before anything is charged or
+    delivered (the same words `larryd run` holds an agent to on the developer's computer)."""
+    def test_an_answer_holding_what_gives_does_not_name_is_refused(self):
+        self.agent([STORE], {'delivery': 'x', 'secret_extra': 'y', 'files': [Store.FILE]}, gives=('delivery', 'files'))
+        p = Platform()
+        self.assertEqual(self.run_with(p), 'FAILED')
+        end = self.results(p)[-1]
+        self.assertIn("the answer holds ['secret_extra'], which \"gives\" does not name", end['log'])
+        self.assertFalse(end.get('delivery'))
+        self.assertFalse([r for _o, r, _d in p.said if r in ('/mtok/use', '/dam/upload')])
+
+    def test_an_agent_that_declares_no_gives_delivers_nothing(self):
+        self.agent([], {'delivery': 'x'}, gives=None)
+        p = Platform()
+        self.assertEqual(self.run_with(p), 'FAILED')
+        self.assertIn('"gives"', self.results(p)[-1]['log'])
+        self.assertFalse([r for _o, r, _d in p.said if r == '/mtok/use'])
+
+    def test_what_gives_names_is_delivered(self):
+        self.agent([], {'delivery': 'x'}, gives=('delivery',))
+        p = Platform()
+        self.assertEqual(self.run_with(p), 'DONE')
+
+    def test_the_call_lane_is_held_to_gives_too(self):
+        folder = self.agents / 'echo'
+        self.agent([], {'delivery': 'x', 'secret_extra': 'y'}, gives=('delivery',))
+        card = json.loads((folder / 'agent.json').read_text())
+        card.update(does=['answer'], calls=['answer'])
+        (folder / 'agent.json').write_text(json.dumps(card))
+        con = sqlite3.connect(self.db)
+        con.execute('DELETE FROM hanzo_locker')
+        con.commit()
+        con.close()
+        locker.add(self.db, self.agents, KEY, 'echo')
+        h = harness.Harness(self.db, self.agents, Platform())
+        h.facts = lambda account, scope, member: ([CARD], HIRED, [], lambda key: (True, ''))
+        with self.assertRaises(harness.Refused) as refused:
+            h.answer(ACCOUNT, SCOPE, MEMBER, KEY)
+        self.assertIn("the answer holds ['secret_extra']", refused.exception.reason)
+        card['gives'] = ['delivery', 'secret_extra']
+        (folder / 'agent.json').write_text(json.dumps(card))
+        con = sqlite3.connect(self.db)
+        con.execute('DELETE FROM hanzo_locker')
+        con.commit()
+        con.close()
+        locker.add(self.db, self.agents, KEY, 'echo')
+        self.assertEqual(h.answer(ACCOUNT, SCOPE, MEMBER, KEY)['delivery'], 'x')

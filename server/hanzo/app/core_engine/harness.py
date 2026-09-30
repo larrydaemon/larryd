@@ -36,6 +36,16 @@ HANDED = {   # a skill's hand: the platform's door HANZO asks for the RUN's memb
 }
 
 
+
+def _outside_gives(manifest, answer):
+    """What the manifest's "gives" names is all an answer may hold (as `larryd run` holds it on the developer's computer):
+    -> '' when it holds nothing else, or why not, in the words the member's job log shows."""
+    gives = manifest.get('gives')
+    if not (isinstance(gives, list) and all(isinstance(g, str) for g in gives)):
+        return 'the agent declares no "gives": nothing it answers can be delivered'
+    extra = sorted(set(answer) - set(gives))
+    return f'the answer holds {extra}, which "gives" does not name' if extra else ''
+
 class _Stop(Exception):
     def __init__(self, state, reason):
         super().__init__(reason)
@@ -177,6 +187,9 @@ class Harness:
             raise Refused(403, why)
         state, answer, reason = sandbox.run(self.agents / held['folder'], locker.manifest(self.agents, held['folder'])['entry'],
                                             {'do': calls[0], 'cards': lanes.assemble(cards, hired, groups, verify)}, self.seconds)
+        outside = _outside_gives(locker.manifest(self.agents, held['folder']), answer) if state == 'DONE' else ''
+        if outside:
+            state, reason = 'FAILED', outside
         self._record('call', agent_key, state, reason)
         if state != 'DONE':
             raise Refused(500, reason)
@@ -255,6 +268,9 @@ class Harness:
         state, answer, reason = sandbox.run(self.agents / folder, manifest['entry'], given, self.seconds)
         if state != 'DONE':
             return self._end(account, scope, member, key, job_key, run, 'FAILED', reason)
+        outside = _outside_gives(manifest, answer)
+        if outside:
+            return self._end(account, scope, member, key, job_key, run, 'FAILED', f'{outside}; the delivery is withheld')
         try:
             files = self._files(manifest, answer)
         except _Stop as stop:

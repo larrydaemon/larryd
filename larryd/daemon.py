@@ -49,9 +49,9 @@ def prepare(instance, runtime):
         fd = os.open(addresses, os.O_WRONLY | os.O_CREAT, 0o600)
         with os.fdopen(fd, 'w') as fh:
             json.dump({}, fh)   # no platform address yet: every call to the platform is refused in its own words
-    marketplace = instance / 'agents' / 'marketplace'
-    if not marketplace.is_dir():
-        shutil.copytree(runtime / 'agents' / 'marketplace', marketplace, ignore=shutil.ignore_patterns('__pycache__'))
+    marketplace = instance / 'agents' / 'marketplace'   # the runtime's own agent: placed fresh on every start, as each server release does
+    shutil.rmtree(marketplace, ignore_errors=True)
+    shutil.copytree(runtime / 'agents' / 'marketplace', marketplace, ignore=shutil.ignore_patterns('__pycache__'))
 
 
 def taken(port):

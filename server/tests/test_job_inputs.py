@@ -59,7 +59,7 @@ class JobInputs(unittest.TestCase):
         folder = self.agents / 'echo'
         shutil.rmtree(folder, ignore_errors=True)
         folder.mkdir(parents=True)
-        manifest = {'name': 'Echo', 'entry': 'agent.py', 'run': {'do': 'answer', 'hands': list(hands)}}
+        manifest = {'name': 'Echo', 'entry': 'agent.py', 'run': {'do': 'answer', 'hands': list(hands)}, 'gives': ['delivery']}
         if inputs is not None:
             manifest['inputs'] = inputs
         (folder / 'agent.json').write_text(json.dumps(manifest))

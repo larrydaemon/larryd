@@ -1,4 +1,5 @@
 """THE AGENT MARKETPLACE, run as it really runs: in the sandbox, from its locker folder."""
+import json
 import unittest
 
 from _here import APP
@@ -72,3 +73,14 @@ class RefusesTest(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class Gives(unittest.TestCase):
+    """The marketplace answers only what its manifest's "gives" names (the runtime refuses anything else)."""
+    def test_both_answers_stay_inside_gives(self):
+        gives = set(json.loads((FOLDER / 'agent.json').read_text())['gives'])
+        cards = [{'key': 'MAGT_1', 'name': 'A', 'hired': True, 'product': 'LARRYD', 'module': 'Agents'}]
+        for do in ('collection', 'report'):
+            state, answer, reason = sandbox.run(FOLDER, 'agent.py', {'do': do, 'cards': cards})
+            self.assertEqual(state, 'DONE', reason)
+            self.assertLessEqual(set(answer), gives, do)
