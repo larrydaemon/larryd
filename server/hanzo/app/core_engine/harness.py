@@ -5,7 +5,9 @@ DATA STAYS IN wid (the owner): what a run is handed lives in memory and its run 
 and is not kept; hanzo.db never holds a record value, a delivery, an account or a member.
 An agent counts as verified only when its folder matches the locker AND FROST approved those exact hashes."""
 import datetime
+import hashlib
 import json
+import pathlib
 import re
 import sqlite3
 
@@ -15,6 +17,15 @@ MARKETPLACE = 'marketplace'   # the one agent's locker folder: it answers the co
 HANDS = ('cards', 'job')      # what a RUN can be handed: the cards the member sees; the job's own inputs (read from wid, kept nowhere)
 SLOT = re.compile(r'^0(0[1-9]|1[0-5])$')   # a job's agent input slots, as wid's jobs species holds them: data_job_001 .. data_job_015
 MOST_INPUT = 10_000           # characters in one input
+
+
+def _skills():
+    """{hash: definition}: the skills an agent may declare (schemas/skills.json), each by the sha256 of its definition."""
+    listed = json.loads((pathlib.Path(__file__).resolve().parent.parent / 'schemas' / 'skills.json').read_text())['skills']
+    return {hashlib.sha256(json.dumps(s, sort_keys=True, separators=(',', ':')).encode('utf-8')).hexdigest(): s for s in listed}
+
+
+SKILLS = _skills()
 
 
 class _Stop(Exception):
@@ -206,6 +217,10 @@ class Harness:
         if set(hands) - set(HANDS):
             return self._end(account, scope, member, key, job_key, run, 'FAILED', f"HANZO cannot hand {sorted(set(hands) - set(HANDS))} yet")
         given = {'do': plan.get('do', 'run')}
+        try:
+            given.update(self._skill_hands(manifest, account, member))
+        except _Stop as stop:
+            return self._end(account, scope, member, key, job_key, run, stop.state, stop.reason)
         if 'job' in hands:
             try:
                 given['job'] = self._job_inputs(manifest, account, scope, job_key, run)
@@ -226,6 +241,24 @@ class Harness:
         paid = 'free' if body.get('free') else f"{charged} mTok from the {body.get('paid_from')}"
         delivery = answer.get('delivery') if isinstance(answer.get('delivery'), str) else json.dumps(answer, sort_keys=True)
         return self._end(account, scope, member, key, job_key, run, 'DONE', f'RUN {run} DONE · {paid}', charged=charged, delivery=delivery)
+
+    def _skill_hands(self, manifest, account, member):
+        """The skills the agent declares, carried out before the RUN: -> {hand: what it hands}. A skill HANZO does not have
+        fails the run; a skill with no hand (the mTok charge) hands nothing. What is handed is kept nowhere."""
+        declared = manifest.get('skills') or []
+        if not (isinstance(declared, list) and all(isinstance(h, str) for h in declared)):
+            raise _Stop('FAILED', 'the agent\'s skills are not a list of hashes')
+        unknown = [h for h in declared if h not in SKILLS]
+        if unknown:
+            raise _Stop('FAILED', f'the agent declares a skill HANZO does not have: {unknown[0][:12]}')
+        out = {}
+        for h in declared:
+            if SKILLS[h].get('hand') == 'greeting':
+                status, body = self.client.get('lryllm', '/larry/greeting', {'account': account, 'member': member})
+                if status != 200:
+                    raise _Stop('FAILED', f"HANZO could not read the member's greeting: {body.get('refused') or body.get('error') or f'LARRY LLM answered {status}'}")
+                out['greeting'] = body
+        return out
 
     def _job_inputs(self, manifest, account, scope, job_key, run):
         """The job's own inputs, as the agent declares them ({name: slot}), read from wid for this RUN only: -> {name: value}.

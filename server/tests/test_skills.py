@@ -1,0 +1,120 @@
+"""THE SKILLS HANZO CARRIES OUT: an agent declares skills by hash (schemas/skills.json, the same definitions as LARRYD's);
+a skill with a hand is carried out before the RUN and handed in; a skill HANZO does not have fails the run before
+anything is asked. LARRY LLM here is a Recorder (in this process); what LARRY LLM answers is proven live only."""
+import json
+import pathlib
+import socket
+import sqlite3
+import tempfile
+import unittest
+
+from _here import APP  # noqa: F401
+from core_engine import harness, locker, platform, store
+
+MTOK = '3c8ad8bf218a8350b26a7fb4b9eb7f6c70073553437aec8d05afee60f9740dcb'       # pinned here and in LARRYD's tests: drift on either side is red
+GREETING = '94686bdeef7ebf3df3e52f1a3086f280ee25b1457336b87f5ab39860f7248fa2'
+KEY, JOB = 'MAGT_00000000D0B2_0001', 'MJOB_00000000D0B2_0001'
+ACCOUNT, SCOPE, MEMBER = 'ACCT_' + 'A' * 12 + '_0001', 'SCRATCH', 'MCON_' + 'B' * 12 + '_0002'
+CARD = {'key': KEY, 'name': 'Echo', 'screen': 'larryd/agnt/home', 'product': 'LARRYD', 'product_slug': 'larryd', 'module': 'Agents',
+        'price': '0', 'status': 'LIVE'}
+HIRED = [{'agent_key': KEY, 'board': CARD['screen'], 'shell_id': 1, 'on': True, 'job_key': JOB}]
+SAID = {'date': '2026-09-30', 'lang': 'en', 'greetings': {'morning': 'Up with the sun', 'afternoon': 'Good afternoon', 'evening': 'Good evening', 'night': 'Good night'}}
+
+
+class Platform:
+    def __init__(self, status=200):
+        self.status, self.said = status, []
+
+    def get(self, office, route, data=None):
+        self.said.append((office, route, data))
+        return (self.status, SAID) if self.status == 200 else (self.status, {'refused': 'sign in first'})
+
+    def post(self, office, route, data):
+        self.said.append((office, route, data))
+        return (200, {'charged': 0, 'free': True}) if route == '/mtok/use' else (200, {'saved': True})
+
+
+def _closed_port():
+    s = socket.socket()
+    s.bind(('127.0.0.1', 0))
+    port = s.getsockname()[1]
+    s.close()
+    return port
+
+
+class Skills(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.instance = pathlib.Path(self.tmp.name) / 'instance'
+        self.instance.mkdir()
+        self.agents = pathlib.Path(self.tmp.name) / 'agents'
+        self.db = store.open_store(self.instance)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def agent(self, skills):
+        folder = self.agents / 'echo'
+        folder.mkdir(parents=True, exist_ok=True)
+        (folder / 'agent.json').write_text(json.dumps({'name': 'Echo', 'entry': 'agent.py', 'run': {'do': 'answer', 'hands': []}, 'skills': skills}))
+        (folder / 'agent.py').write_text('import json, sys\njob = json.load(sys.stdin)\nprint(json.dumps({"delivery": json.dumps(job.get("greeting"), sort_keys=True)}))\n')
+        con = sqlite3.connect(self.db)
+        con.execute('DELETE FROM hanzo_locker')
+        con.commit()
+        con.close()
+        locker.add(self.db, self.agents, KEY, 'echo')
+
+    def run_with(self, client):
+        h = harness.Harness(self.db, self.agents, client)
+        h.facts = lambda account, scope, member: ([CARD], HIRED, [], lambda key: (True, ''))
+        return h.run_job(ACCOUNT, SCOPE, MEMBER, JOB, 1)
+
+    @staticmethod
+    def results(p):
+        return [d for _o, route, d in p.said if route == '/jobs/result']
+
+    def test_the_hashes_are_the_definitions(self):
+        self.assertEqual(sorted(harness.SKILLS), sorted([MTOK, GREETING]))
+        self.assertEqual((harness.SKILLS[MTOK]['name'], harness.SKILLS[GREETING]['name']), ('mTok charge', 'LARRY LLM greeting'))
+
+    def test_the_greeting_is_asked_for_the_runs_member_and_handed_in(self):
+        self.agent([GREETING])
+        p = Platform()
+        self.assertEqual(self.run_with(p), 'DONE')
+        self.assertIn(('lryllm', '/larry/greeting', {'account': ACCOUNT, 'member': MEMBER}), p.said)
+        self.assertEqual(json.loads(self.results(p)[-1]['delivery']), SAID)
+        for path in self.instance.rglob('*'):
+            if path.is_file():
+                self.assertNotIn(b'Up with the sun', path.read_bytes())
+
+    def test_a_silent_or_refusing_larry_llm_fails_the_run(self):
+        self.agent([GREETING])
+        p = Platform(status=401)
+        self.assertEqual(self.run_with(p), 'FAILED')
+        self.assertEqual(self.results(p)[-1]['log'], "HANZO could not read the member's greeting: sign in first")
+        silent = platform.Client({'lryllm': f'http://127.0.0.1:{_closed_port()}', 'wid': f'http://127.0.0.1:{_closed_port()}'}, 'scratch', timeout=2)
+        self.assertEqual(self.run_with(silent), 'FAILED')
+
+    def test_a_skill_hanzo_does_not_have_fails_before_anything_is_asked(self):
+        self.agent(['0' * 64])
+        p = Platform()
+        self.assertEqual(self.run_with(p), 'FAILED')
+        self.assertEqual([r for _o, r, _d in p.said if r != '/jobs/result'], [])
+        self.assertEqual(self.results(p)[-1]['log'], 'the agent declares a skill HANZO does not have: 000000000000')
+
+    def test_the_mtok_charge_hands_nothing_and_asks_nothing(self):
+        self.agent([MTOK])
+        p = Platform()
+        self.assertEqual(self.run_with(p), 'DONE')
+        self.assertFalse([r for _o, r, _d in p.said if r == '/larry/greeting'])
+        self.assertEqual(json.loads(self.results(p)[-1]['delivery']), None)
+
+    def test_no_skill_asks_nothing(self):
+        self.agent([])
+        p = Platform()
+        self.assertEqual(self.run_with(p), 'DONE')
+        self.assertFalse([r for _o, r, _d in p.said if r == '/larry/greeting'])
+
+
+if __name__ == '__main__':
+    unittest.main()

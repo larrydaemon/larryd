@@ -8,7 +8,8 @@
     "about": "where HANZO calls the platform, per side (the platform's global_config offices)",
     "wid": {"rnd": "http://127.0.0.1:5004"},
     "cc": {"rnd": "http://127.0.0.1:5007"},
-    "fs": {"rnd": "http://127.0.0.1:5008"}
+    "fs": {"rnd": "http://127.0.0.1:5008"},
+    "lryllm": {"rnd": "http://127.0.0.1:5009"}
   },
   "callers": {
     "about": "the offices that may call HANZO's /api (X-Office), each checked with the secret",
