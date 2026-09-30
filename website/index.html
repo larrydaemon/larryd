@@ -102,6 +102,15 @@
 html, body { background: transparent; }
 html { background: #000; }
 </style>
+<style>
+/* THE OFFICIAL BUTTON (.main-button, read from the LARRYD theme, dark and light) */
+.lx-btns { display: flex; flex-direction: column; align-items: flex-start; margin-top: 30px; }
+.lx-btn { display: block; box-sizing: content-box; width: 300px; max-width: 300px; height: 20px; padding: 18px 15px; margin: 10px 0; font: 400 14.4px/normal "PFC 02", sans-serif; text-transform: uppercase; text-align: center; text-decoration: none; color: #3CFF7A; background: linear-gradient(135deg, rgba(77,255,107,0.18) 0%, rgba(77,255,107,0.05) 45%, transparent 100%); border: 1px solid transparent; border-image: linear-gradient(135deg, rgba(60,255,122,0.65) 0%, #3CFF7A 100%) 1; border-radius: 0; -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); transition: 0.3s; cursor: pointer; }
+.lx-btn:hover { color: #000; background: #66FF8C; border-image: none; border: 1px solid #3CFF7A; box-shadow: 0 0 30px rgba(60,255,122,0.9); -webkit-backdrop-filter: none; backdrop-filter: none; }
+:root[data-theme="light"] .lx-btn { color: #FFB000; background: linear-gradient(135deg, rgba(255,176,0,0.18) 0%, rgba(255,176,0,0.05) 45%, transparent 100%); border-image: linear-gradient(135deg, rgba(255,176,0,0.65) 0%, #FFB000 100%) 1; }
+:root[data-theme="light"] .lx-btn:hover { color: #000; background: #FFC133; border-image: none; border: 1px solid #FFB000; box-shadow: 0 0 30px rgba(255,176,0,0.9); }
+@media (max-width: 760px) { .lx-btns { align-items: stretch; } .lx-btn { width: auto; max-width: none; } }
+</style>
 </head>
 <body>
 <div class="pf-crt-warm pf-anim--crt" aria-hidden="true"></div>
@@ -315,9 +324,9 @@ html { background: #000; }
     <p class="eyebrow">Free · for Mac and Linux · works with Claude Code</p>
     <h1>Your server has a daemon.<br>Your agents should have one too.</h1>
     <p class="lead">LARRYD is a free tool for building AI agents with Claude Code. It gives every agent the right shape, checks it for problems, and runs it in a sealed space where it can't touch anything it shouldn't.</p>
-    <div class="actions">
-      <a class="button" href="#install">Install LARRYD</a>
-      <a class="button button-quiet" href="#what">See how it works</a>
+    <div class="lx-btns">
+      <a class="lx-btn" href="#install">Install LARRYD</a>
+      <a class="lx-btn" href="#what">See how it works</a>
     </div>
   </div>
   <div class="hero-film">
