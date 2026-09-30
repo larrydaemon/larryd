@@ -116,12 +116,17 @@ The loop for the AI: change the agent → larryd_doctor → larryd_run → fix �
 
 ## Skills and knowledge
 - A skill is a definition named by its hash. Declare the hashes in `skills`; `larryd skills` lists them.
+  - The mTok charge: LARRYD charges the member the agent's own rate after a DONE run (every run; declaring it changes nothing).
+  - The LARRY LLM greeting: before the RUN, LARRYD asks LARRY LLM for the greeting it gives the member today and hands it
+    in as `greeting` (`{"date", "lang", "greetings": {time of day: the words}}`). In `samples/job.json`, give a
+    `greeting` of that shape.
 - A knowledge pack is a folder (`pack.json` with `name` and `about`, plus .md .txt .csv .json files) named by its hash;
   `larryd pack <folder>` checks it and gives the hash.
 
 ## Not there yet
-- Skills: only one exists, the mTok charge, and LARRYD applies it to every run. FROST sign-in, DA-M store and
-  LARRY LLM greeting come as skills when LARRYD has a door for them.
+- Skills: the FROST identity (who the agent works for) and the DA-M store (files an agent answers, kept in the
+  member's DA-M) come as skills when their doors exist. The LARRY LLM greeting's platform side is not on the live
+  platform yet; until it is, a RUN of an agent that declares it fails with LARRYD's plain reason.
 - Knowledge packs: LARRYD holds none yet, so declaring one in `knowledge` fails the doctor. Leave it `[]`.
 - `larryd run` on Linux and Windows: it needs a Mac today (macOS sandbox-exec). The doctor does not use it.
 - The job's inputs on the live platform: LARRYD hands `job` today, but the platform's side (the route that gives

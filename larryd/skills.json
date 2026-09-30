@@ -7,6 +7,14 @@
       "door": "LARRYD calls mTok /mtok/use after a DONE run",
       "does": "charges the member's account the agent's own rate in mTok (0 = free); mTok alone decides, and a refused charge withholds the delivery",
       "agent": "nothing to call: LARRYD applies it to every run of the agent"
+    },
+    {
+      "name": "LARRY LLM greeting",
+      "technology": "LARRY LLM",
+      "door": "LARRYD asks LARRY LLM for the member's greeting (GET /larry/greeting) before the RUN",
+      "does": "hands the agent the greeting LARRY LLM gives the member today, for every time of day, in the member's language",
+      "agent": "reads job[\"greeting\"]: {\"date\", \"lang\", \"greetings\": {time of day: the words}}",
+      "hand": "greeting"
     }
   ]
 }

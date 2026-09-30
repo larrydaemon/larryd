@@ -9,15 +9,33 @@ import pytest
 from larryd import cli, doctor, hashes, knowledge, new, skills
 
 
+MTOK = '3c8ad8bf218a8350b26a7fb4b9eb7f6c70073553437aec8d05afee60f9740dcb'       # pinned here and in PF HANZO's tests: drift on either side is red
+GREETING = '94686bdeef7ebf3df3e52f1a3086f280ee25b1457336b87f5ab39860f7248fa2'
+
+
 def test_the_skills_that_exist():
-    """Of the four technologies, only mTok has a door in PF HANZO today (it charges every DONE run through /mtok/use).
-    FROST sign-in, DA-M store and LARRY LLM greeting have no PF HANZO door, so they are no skill yet: a new skill comes
-    only with its door."""
+    """Only a door that exists is a skill. Today: the mTok charge (applied to every run) and the LARRY LLM greeting
+    (LARRYD asks LARRY LLM for the member's greeting and hands it in). FROST identity and DA-M store come with their doors."""
     known = skills.known()
-    assert [s['name'] for s in known.values()] == ['mTok charge']
+    assert {h: s['name'] for h, s in known.items()} == {MTOK: 'mTok charge', GREETING: 'LARRY LLM greeting'}
     for h, s in known.items():
         assert h == hashlib.sha256(json.dumps(s, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
-        assert set(s) == {'name', 'technology', 'door', 'does', 'agent'} and all(s.values())
+        assert {'name', 'technology', 'door', 'does', 'agent'} <= set(s) <= {'name', 'technology', 'door', 'does', 'agent', 'hand'} and all(s.values())
+    assert known[GREETING]['hand'] == 'greeting' and 'hand' not in known[MTOK]
+
+
+def test_run_hands_the_greeting_when_the_skill_is_declared(tmp_path):
+    from larryd import runner
+    root = new.make('greeted', tmp_path)
+    _set(root, skills=[GREETING])
+    code = root / 'agent' / 'agent.py'
+    code.write_text(code.read_text().replace("return {'delivery': 'greeted answered the job.'}", "return {'delivery': job['greeting']['greetings']['morning']}"))
+    assert 'has no [\'greeting\']' in runner.run(root).reason
+    (root / 'samples' / 'job.json').write_text(json.dumps({'do': 'answer', 'greeting': {'date': '2026-09-30', 'greetings': {'morning': 'Up with the sun'}}}))
+    result = runner.run(root)
+    assert result.state == 'DONE' and result.answer == {'delivery': 'Up with the sun'}
+    _set(root, skills=[])
+    assert "holds ['greeting']" in runner.run(root).reason   # not declared: LARRYD would not hand it
 
 
 def test_a_changed_skill_is_a_new_skill():

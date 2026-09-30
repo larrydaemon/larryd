@@ -14,7 +14,7 @@ import sys
 import tempfile
 from dataclasses import dataclass, field
 
-from . import doctor, shape
+from . import doctor, shape, skills
 
 SANDBOX = '/usr/bin/sandbox-exec'
 SECONDS = 20          # PF HANZO's run limit
@@ -100,14 +100,16 @@ def job(root, card, sample):
     if not isinstance(wanted, dict):
         return None, Result('REFUSED', reason='the sample job is not one JSON object', todo=f'write it as {{"do": "{card["run"]["do"]}"}}')
     plan = card['run']
+    known = skills.known()
+    skill_hands = [known[h]['hand'] for h in card.get('skills') or [] if h in known and known[h].get('hand')]
     if wanted.get('do', plan['do']) != plan['do']:
         return None, Result('REFUSED', reason=f'the sample job does "{wanted["do"]}", but a RUN does "{plan["do"]}" (run.do)',
                             todo=f'set "do" in the sample job to "{plan["do"]}"')
-    extra = sorted(set(wanted) - {'do'} - set(plan['hands']))
+    extra = sorted(set(wanted) - {'do'} - set(plan['hands']) - set(skill_hands))
     if extra:
         return None, Result('REFUSED', reason=f'the sample job holds {extra}, which LARRYD would not hand (run.hands is {plan["hands"]})',
                             todo='take them out of the sample job; the agent gets only what run.hands names')
-    missing = [h for h in plan['hands'] if h not in wanted]
+    missing = [h for h in list(plan['hands']) + skill_hands if h not in wanted]
     if missing:
         return None, Result('REFUSED', reason=f'the sample job has no {missing}, which run.hands names',
                             todo=f'add {missing} to the sample job, shaped as LARRYD hands them')
@@ -124,7 +126,7 @@ def job(root, card, sample):
             if not isinstance(value, str) or len(value) > shape.MOST_INPUT:
                 return None, Result('REFUSED', reason=f'the input "{name}" is not text of at most {shape.MOST_INPUT} characters (LARRYD would refuse the run)',
                                     todo='make every input plain text, and shorter')
-    return {'do': plan['do'], **{h: wanted[h] for h in plan['hands']}}, None
+    return {'do': plan['do'], **{h: wanted[h] for h in list(plan['hands']) + skill_hands}}, None
 
 
 def run(root, sample=None, seconds=SECONDS):
