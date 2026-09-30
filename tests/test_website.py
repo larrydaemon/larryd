@@ -46,7 +46,7 @@ def test_the_sections_in_order():
 
 
 def test_the_hero_keeps_its_words():
-    for words in ('Keep your agents from going rogue.', 'Your server has a daemon.<br>Your agents should have one too.',
+    for words in ('LARRYD keeps your agents from going rogue.', 'Your server has a daemon.<br>Your agents should have one too.',
                   'Free · for Mac and Linux · works with Claude Code', '>Install LARRYD</a>', '>See how it works</a>'):
         assert words in PAGE, words
 
