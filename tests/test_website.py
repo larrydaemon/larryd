@@ -72,10 +72,11 @@ def test_the_install_lines_show_in_one_terminal_never_folded():
     assert all(f'<code>{line}</code>' in install for line in LINES)
 
 
-def test_share_is_a_card_opening_soon():
-    card = PAGE[_at(PAGE, 'class="card card-soon"'):]
+def test_share_is_a_card_marked_open():
+    """The owner: "just say open"."""
+    card = PAGE[_at(PAGE, 'class="card card-open"'):]
     card = card[:card.index('</article>')]
-    assert '<h3>Share</h3>' in card and 'Opening soon' in card
+    assert '<h3>Share</h3>' in card and '<em class="soon">Open</em>' in card and 'soon</em>' not in card.replace('class="soon">Open</em>', '')
 
 
 def test_the_nav_has_one_coloured_button():

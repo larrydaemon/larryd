@@ -1,6 +1,6 @@
 /* larryd.ai — the brand catalog's LARRYD row: green on black (dark), amber on black (light); square buttons */
 @font-face { font-family: "PFC 02"; src: url("/assets/fonts/PFC-02.woff2") format("woff2"); font-display: swap; }
-@font-face { font-family: "Europa Grotesk SH"; src: url("/assets/fonts/europa-grotesk-sh-bold.otf") format("opentype"); font-weight: 700; font-display: swap; }
+@font-face { font-family: "Europa Grotesk SH"; src: url("/assets/fonts/europa-grotesk-sh-bold.otf") format("opentype"); font-weight: 700 900; font-display: swap; }
 @font-face { font-family: "Approach Mono"; src: url("/assets/fonts/Approach_Mono_Medium.otf") format("opentype"); font-weight: 500; font-display: swap; }
 
 :root {
@@ -188,10 +188,9 @@ p { margin: 0; }
 .proof pre { font-size: 14px; line-height: 1.7; padding: 16px 20px; }
 .proof-line { margin-top: 16px; font: 700 19px/1.4 var(--head); color: var(--text); }
 .proof-line a { display: inline-block; margin-left: 6px; font: 500 14px/1.4 var(--mono); color: var(--accent); }
-/* Build · Check · Run · Share (opening soon) */
+/* Build · Check · Run · Share */
 .cards { grid-template-columns: repeat(4, 1fr); }
-.card-soon { opacity: 0.86; }
-.card-soon .soon { margin-top: 16px; }
+.card-open .soon { margin-top: 16px; }
 @media (max-width: 1020px) { .cards { grid-template-columns: repeat(2, 1fr); } }
 /* install: the Claude Code line leads; the owner's five lines fold behind "Or install it yourself" */
 .yourself { margin-top: 40px; max-width: 860px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
@@ -215,3 +214,18 @@ p { margin: 0; }
 .badge-sample { margin-top: 24px; }
 .badge-sample img { outline: 1px solid var(--line); }
 .band .terminal.proof { max-width: 900px; }
+
+/* THE BRAND CATALOG'S LARRYD FONT ROLES (theme F13650BD0AC1, read from the live catalog):
+   heading/title = global-02 Europa Grotesk SH Bold, 900, UPPERCASE, 1.5px · body = global-03 Helvetica, 300
+   caption = global-01 PFC 02, 600, UPPERCASE, 1.5px · nav/link = global-01 PFC 02 · label (buttons) = global-03, 500, UPPERCASE
+   callout = global-04 Approach Mono Medium, 500, UPPERCASE */
+body { font-weight: 300; }
+h1, h2, h3 { font-family: var(--head); font-weight: 900; text-transform: uppercase; letter-spacing: 1.5px; line-height: 1.05; }
+h3 { line-height: 1.4; }
+.eyebrow { font-family: "PFC 02", var(--body); font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; }
+.nav-links a, .footer-links a { font-family: "PFC 02", var(--body); font-weight: 400; text-transform: uppercase; letter-spacing: 1.5px; font-size: 13px; }
+.button { font-family: var(--body); font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
+.rogue { font-family: var(--head); font-weight: 900; letter-spacing: 1.5px; }
+.how, .soon { font-family: var(--mono); font-weight: 500; text-transform: uppercase; }
+.faq summary, .proof-line { font-family: var(--head); font-weight: 900; text-transform: uppercase; letter-spacing: 1.5px; }
+.lead, .card p, .note, .explain { font-weight: 300; }
