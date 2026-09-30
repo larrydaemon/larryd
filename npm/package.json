@@ -5,9 +5,9 @@
   "keywords": ["ai-agents", "claude-code", "mcp", "cli"],
   "homepage": "https://larryd.ai",
   "repository": {"type": "git", "url": "git+https://github.com/larrydaemon/larryd.git", "directory": "npm"},
-  "license": "SEE LICENSE IN NOTICE.txt",
+  "license": "Apache-2.0",
   "bin": {"larryd": "bin/larryd.js"},
-  "files": ["bin/", "NOTICE.txt", "README.md"],
+  "files": ["bin/", "LICENSE", "README.md"],
   "engines": {"node": ">=18"},
   "scripts": {"test": "node --test test/"}
 }

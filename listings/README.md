@@ -8,9 +8,8 @@ built with it (THE HIRE GUIDE, THE BRAND CATALOG) fit none of these places: they
 these places list tools and servers that people install and run themselves.
 
 ## Before most of them (the owner's)
-1. **The license** (a question for the owner). Today LARRYD says "© 2026 COTECLAT LLC. All rights reserved." and the
-   PyPI name reservation says "Proprietary". Anthropic's directory needs a LICENSE file or a `license` field (any
-   license). Docker's MCP catalog, Homebrew core and conda-forge need an open license (MIT or Apache 2).
+1. **The license**: Apache-2.0 on this branch (LICENSE at the root, in plugin/, npm/ and cargo/; the `license` field in
+   pyproject.toml, the plugin, package.json and Cargo.toml). It takes effect when the branch is merged (the owner's word).
 2. **The repository public**: github.com/larrydaemon/larryd is private today. Almost every place reads the public repository.
 3. **LARRYD 0.1.0 on PyPI**: `pip install larryd` gives only the 0.0.1 name reservation until then.
 
@@ -43,7 +42,7 @@ Fits today, once the repository is public and 0.1.0 is on PyPI: 1, 2 (with a lic
 14. Waits on time: 16. Not a place for LARRYD: 3, 12.
 
 ## The owner's steps, in order (each one outward; one command or page each)
-1. Decide the license. If open: add `LICENSE` and `license` to pyproject.toml and `plugin/.claude-plugin/plugin.json`.
+1. Merge the Apache-2.0 branch (`license-apache`): the license is already in every package.
 2. Make the repository public: github.com/larrydaemon/larryd → Settings → Change visibility.
 3. Publish 0.1.0 together, one version everywhere: PyPI `cd ~/larryd && python3 -m pip install build twine && python3 -m build && python3 -m twine upload dist/*`,
    npm `cd ~/larryd/npm && npm publish`, crates.io `cd ~/larryd/cargo && cargo publish`.
