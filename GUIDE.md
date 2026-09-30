@@ -40,8 +40,9 @@ Paste the secret when it asks; it is never typed on the command line. It is kept
 readable by you only, never inside a project. The Claude Code tools never see it.
 Each agent also has a card key (four capital letters, 12 and then 4 hex digits, e.g. `MAGT_0123456789AB_CDEF`).
 The way it works today: the SYSTEM owner makes your agent's card on LARRYD's agent add screen and hands you its key,
-with your developer key. LARRYD lets you submit only the card keys it holds for you. Ask for them at https://larryd.ai
-(`larryd key` alone says the same). `larryd key` checks the key with LARRYD as it keeps it.
+with your developer key. LARRYD lets you submit only the card keys it holds for you. Ask for a developer key:
+https://github.com/larrydaemon/larryd/issues/new?template=developer-key.md
+(`larryd key` alone says the same; never paste a secret there). `larryd key` checks the key with LARRYD as it keeps it.
 
 Your own LARRYD: `larryd` alone runs the runtime on this machine (127.0.0.1:5010, its instance in ~/.larryd;
 `LARRYD_PORT` and `LARRYD_INSTANCE` name others). There, `larryd developer add <name> <card key>` makes a developer and

@@ -79,10 +79,19 @@ def test_key_alone_says_where_a_key_comes_from(capsys):
     assert cli.main(['key']) == 0
     said = capsys.readouterr().out
     for words in ("LARRYD's address", 'your developer name', 'your developer secret', 'card key', 'larryd.json',
-                  'https://larryd.ai', 'larryd key <LARRYD\'s address> <your developer name>', 'You need no key to build'):
+                  'Ask for a developer key: https://github.com/larrydaemon/larryd/issues/new?template=developer-key.md',
+                  'never paste a secret there', 'larryd key <LARRYD\'s address> <your developer name>', 'You need no key to build'):
         assert words in said, words
     assert cli.main(['key', 'http://127.0.0.1:5010']) == 1   # half a key: the same words, and a failure
     assert not (hanzo.home() / 'developer.json').exists()
+
+
+def test_the_developer_key_issue_template_asks_no_secret():
+    import pathlib
+    template = (pathlib.Path(__file__).resolve().parent.parent / '.github' / 'ISSUE_TEMPLATE' / 'developer-key.md').read_text()
+    assert 'title: "Developer key: <your name>"' in template and 'Never paste a secret here' in template
+    for asked in ('Your developer name', 'Your agent\'s name', 'What it does, in one line'):
+        assert asked in template, asked
 
 
 def test_a_key_is_checked_when_kept_and_a_silent_larryd_is_said(monkeypatch, capsys):

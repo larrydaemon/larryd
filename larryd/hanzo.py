@@ -31,7 +31,8 @@ WHERE_KEYS_COME_FROM = '''To submit an agent you need a developer key from LARRY
   3. your developer secret (shown to you once; keep it like a password)
 With your key LARRYD also gives each of your agents its card key (four capitals, 12 and 4 hex digits); put it in
 the agent project's larryd.json: {"agent_key": "XXXX_0123456789AB_CDEF"}.
-Ask for them at https://larryd.ai (Get a developer key). Then keep the key here, once:
+Ask for a developer key: https://github.com/larrydaemon/larryd/issues/new?template=developer-key.md
+(never paste a secret there; it is public). Then keep the key here, once:
   larryd key <LARRYD's address> <your developer name>      (it asks for the secret; it never goes on the command line)
 You need no key to build: larryd new, larryd doctor and larryd run work without one.'''
 
@@ -112,7 +113,7 @@ def agent_key(root):
     except (ValueError, AttributeError):
         found = ''
     if not KEY.match(found or ''):
-        raise Refused(f'{PROJECT} holds no card key', f'put the card key LARRYD gave you for this agent in {PROJECT}: {{"agent_key": "XXXX_0123456789AB_CDEF"}} (`larryd key` alone says where it comes from)')
+        raise Refused(f'{PROJECT} holds no card key', f'put the card key LARRYD gave you for this agent in {PROJECT}: {{"agent_key": "XXXX_0123456789AB_CDEF"}} (`larryd key` alone says where to ask)')
     return found
 
 
