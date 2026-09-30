@@ -12,6 +12,8 @@ NAME = re.compile(r'^[A-Za-z][A-Za-z0-9_-]{0,62}$')
 TOOLS = (
     ('larryd new <name>', 'makes a new agent project like this one'),
     ('larryd doctor', 'checks the agent before submission; every problem says what is wrong and what to do (--json for the result as JSON)'),
+    ('larryd run', 'runs the agent here the way PF HANZO runs it (no network, no new process, a scratch run folder, a time limit), '
+                   'with samples/job.json or --job <file>; it needs a Mac today'),
 )
 
 

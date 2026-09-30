@@ -3,7 +3,7 @@ import argparse
 import json
 import sys
 
-from . import doctor, new
+from . import doctor, new, runner
 
 
 def parser():
@@ -14,6 +14,10 @@ def parser():
     d = sub.add_parser('doctor', help='check the agent before submission')
     d.add_argument('path', nargs='?', default='.', help='the agent project (default: here)')
     d.add_argument('--json', action='store_true', help='the result as JSON')
+    r = sub.add_parser('run', help='run the agent here, the way PF HANZO runs it, with a sample job')
+    r.add_argument('path', nargs='?', default='.', help='the agent project (default: here)')
+    r.add_argument('--job', help='the sample job (default: samples/job.json)')
+    r.add_argument('--json', action='store_true', help='the result as JSON')
     return p
 
 
@@ -31,6 +35,10 @@ def main(argv=None):
         problems = doctor.check(args.path)
         print(json.dumps(doctor.as_json(problems), indent=2) if args.json else doctor.report(args.path, problems))
         return 1 if problems else 0
+    if args.command == 'run':
+        result = runner.run(args.path, args.job)
+        print(json.dumps(runner.as_json(result), indent=2) if args.json else runner.report(result))
+        return 0 if result.state == 'DONE' else 1
     return 2
 
 
