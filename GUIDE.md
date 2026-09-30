@@ -50,8 +50,21 @@ LARRYD's sandbox refuses 1, 2 and 3 when the agent runs; the doctor checks all o
 3. No new process: no subprocess, no os.system, no multiprocessing.
 4. The Python standard library only.
 5. No secret in the agent.
-6. Only what it is handed. The inputs are what `run.hands` names; LARRYD hands only `cards` today.
+6. Only what it is handed. The inputs are what `run.hands` names: `cards` (the agent cards the member sees) and `job`
+   (the job's own inputs, by the names the manifest's `inputs` gives them).
 7. Nothing fake. The agent answers from what it is handed, or it says plainly that it cannot.
+
+## The job's inputs
+An agent that needs words from the member (a name, a mood, a date) declares them:
+
+    "run": {"do": "answer", "hands": ["job"]},
+    "inputs": {"name": "001", "mood": "002"}
+
+Each name sits on one of the job's input slots, 001 to 015 (the job's agent fields on the platform). On a RUN, LARRYD
+reads that RUN's inputs from the platform and hands them in as `job`: `{"name": "...", "mood": "..."}`. A slot the member
+left empty is simply not handed. LARRYD refuses the run when the job holds an input the agent does not declare, or a
+value that is not text or is longer than 10,000 characters, and it keeps none of them. In `samples/job.json`, give the
+inputs the same way: `{"do": "answer", "job": {"name": "Harbor", "mood": "calm cool"}}`.
 
 ## 5. The doctor
     larryd doctor            (or --json)
@@ -107,4 +120,6 @@ The loop for the AI: change the agent → larryd_doctor → larryd_run → fix �
   LARRY LLM greeting come as skills when LARRYD has a door for them.
 - Knowledge packs: LARRYD holds none yet, so declaring one in `knowledge` fails the doctor. Leave it `[]`.
 - `larryd run` on Linux and Windows: it needs a Mac today (macOS sandbox-exec). The doctor works everywhere.
-- Inputs: LARRYD hands only `cards` today.
+- The job's inputs on the live platform: LARRYD hands `job` today, but the platform's side (the route that gives PF
+  LARRYD a RUN's inputs) is not on the live platform yet; until it is, a RUN of an agent that hands `job` fails with
+  LARRYD's plain reason. `larryd run` works with them now.

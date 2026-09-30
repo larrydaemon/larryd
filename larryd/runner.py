@@ -111,6 +111,19 @@ def job(root, card, sample):
     if missing:
         return None, Result('REFUSED', reason=f'the sample job has no {missing}, which run.hands names',
                             todo=f'add {missing} to the sample job, shaped as PF HANZO hands them')
+    if 'job' in plan['hands']:
+        inputs, job = card.get('inputs') or {}, wanted['job']
+        if not isinstance(job, dict):
+            return None, Result('REFUSED', reason='the sample job\'s "job" is not {name: value}',
+                                todo=f'write it as {{"job": {{{", ".join(repr(n) + ": ..." for n in inputs)}}}}}')
+        extra = sorted(set(job) - set(inputs))
+        if extra:
+            return None, Result('REFUSED', reason=f'the sample job\'s "job" holds {extra}, which "inputs" does not declare (PF HANZO would refuse the run)',
+                                todo='take them out of the sample job, or declare them in "inputs"')
+        for name, value in sorted(job.items()):
+            if not isinstance(value, str) or len(value) > shape.MOST_INPUT:
+                return None, Result('REFUSED', reason=f'the input "{name}" is not text of at most {shape.MOST_INPUT} characters (PF HANZO would refuse the run)',
+                                    todo='make every input plain text, and shorter')
     return {'do': plan['do'], **{h: wanted[h] for h in plan['hands']}}, None
 
 

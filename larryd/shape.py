@@ -25,11 +25,15 @@ FIELDS = {
     'gives': 'the list of what its answer holds (its outputs); "delivery" is what lands in the member\'s job',
     'skills': 'the list of skill hashes the agent uses (empty when none; `larryd skills` lists the skills that exist)',
     'knowledge': 'the list of knowledge pack hashes the agent needs (empty when none; `larryd pack` gives a pack its hash)',
+    'inputs': 'only with "job" in run.hands: the job\'s inputs by name, each on one of the job\'s slots 001-015, e.g. {"mood": "001"}',
 }
+OPTIONAL = ('inputs',)
 PACK = 'pack.json'   # a knowledge pack: a folder of plain text files with pack.json {"name", "about"}
 PACK_FIELDS = ('name', 'about')
 PACK_KINDS = {'.json', '.txt', '.md', '.csv'}
-NEEDED = tuple(FIELDS)
+NEEDED = tuple(k for k in FIELDS if k not in OPTIONAL)
 
-# what PF HANZO hands a RUN today (its harness hands the cards only). Nothing else exists yet.
-HANDS = ('cards',)
+# what PF HANZO hands a RUN today: the cards the member sees; the job's own inputs (by the names in "inputs")
+HANDS = ('cards', 'job')
+SLOT = r'0(0[1-9]|1[0-5])'   # the job's input slots, 001-015
+MOST_INPUT = 10_000          # characters in one input (PF HANZO refuses more)

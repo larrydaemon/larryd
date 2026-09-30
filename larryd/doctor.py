@@ -124,6 +124,16 @@ def _manifest(root, f):
             elif set(hands) - set(shape.HANDS):
                 f.add(c, where, f'run "hands" asks for {sorted(set(hands) - set(shape.HANDS))}, which PF HANZO does not hand',
                       f'PF HANZO hands today only: {", ".join(shape.HANDS)}. Take the rest out and answer without it')
+    hands = run.get('hands') if isinstance(run, dict) and isinstance(run.get('hands'), list) else []
+    inputs = card.get('inputs')
+    if 'job' in hands:
+        if not (isinstance(inputs, dict) and inputs and all(isinstance(n, str) and n.isidentifier() and isinstance(s, str) and re.fullmatch(shape.SLOT, s)
+                                                            for n, s in inputs.items())):
+            f.add(c, where, 'run "hands" has "job", but "inputs" is not {name: slot}', 'set "inputs" to the names the agent reads, each on a slot 001-015, e.g. {"mood": "001"}')
+        elif len(set(inputs.values())) != len(inputs):
+            f.add(c, where, '"inputs" puts two names on one slot', 'give each name its own slot, 001-015')
+    elif 'inputs' in card:
+        f.add(c, where, '"inputs" is declared, but run "hands" has no "job"', 'add "job" to run "hands", or take "inputs" out')
     for k, what in (('skills', 'skills that exist (`larryd skills`)'), ('knowledge', 'knowledge packs (`larryd pack`)')):
         if k in card and not (isinstance(card[k], list) and all(isinstance(x, str) for x in card[k])):
             f.add(c, where, f'"{k}" is not a list of hashes', f'set "{k}" to [] or to the hashes of {what}')
