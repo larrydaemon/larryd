@@ -21,6 +21,7 @@ ACCOUNT, SCOPE, MEMBER = 'ACCT_' + 'A' * 12 + '_0001', 'SCRATCH', 'MCON_' + 'B' 
 CARD = {'key': KEY, 'name': 'Echo', 'screen': 'larryd/agnt/home', 'product': 'LARRYD', 'product_slug': 'larryd', 'module': 'Agents',
         'price': '0', 'status': 'LIVE'}
 HIRED = [{'agent_key': KEY, 'board': CARD['screen'], 'shell_id': 1, 'on': True, 'job_key': JOB}]
+RUN_OF = {'account': ACCOUNT, 'scope': SCOPE, 'member': MEMBER, 'job_key': JOB, 'run': '1'}
 SAID = {'date': '2026-09-30', 'lang': 'en', 'greetings': {'morning': 'Up with the sun', 'afternoon': 'Good afternoon', 'evening': 'Good evening', 'night': 'Good night'}}
 
 
@@ -93,7 +94,7 @@ class Skills(World):
         self.agent([GREETING])
         p = Platform()
         self.assertEqual(self.run_with(p), 'DONE')
-        self.assertIn(('lryllm', '/larry/greeting', {'account': ACCOUNT, 'member': MEMBER}), p.said)
+        self.assertIn(('lryllm', '/larry/greeting', RUN_OF), p.said)   # the RUN it is for, so the platform answers only for an open RUN
         self.assertEqual(json.loads(self.results(p)[-1]['delivery']), {'greeting': SAID})
         for path in self.instance.rglob('*'):
             if path.is_file():
@@ -103,7 +104,7 @@ class Skills(World):
         self.agent([IDENTITY, GREETING])
         p = Platform()
         self.assertEqual(self.run_with(p), 'DONE')
-        self.assertIn(('fs', '/agents/identity', {'account': ACCOUNT, 'member': MEMBER}), p.said)
+        self.assertIn(('fs', '/agents/identity', RUN_OF), p.said)
         self.assertEqual(json.loads(self.results(p)[-1]['delivery']), {'greeting': SAID, 'identity': WHO})
         for path in self.instance.rglob('*'):
             if path.is_file():
@@ -154,7 +155,7 @@ class Store(World):
         routes = [r for _o, r, _d in p.said if r in ('/mtok/use', '/dam/upload')]
         self.assertEqual(routes, ['/mtok/use', '/dam/upload'])   # paid first: files are part of the delivery
         stored = next(d for o, r, d in p.said if r == '/dam/upload')
-        self.assertEqual(stored, {'account': ACCOUNT, 'member': MEMBER, 'source_key': KEY, **self.FILE})
+        self.assertEqual(stored, {**RUN_OF, 'source_key': KEY, **self.FILE})
         self.assertIn(('so', '/dam/upload', stored), p.said)
         end = self.results(p)[-1]
         self.assertEqual((end['log'], end['delivery']), ('RUN 1 DONE · free · 1 file in DA-M', 'one theme'))

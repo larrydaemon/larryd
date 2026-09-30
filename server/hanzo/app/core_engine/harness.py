@@ -241,7 +241,7 @@ class Harness:
             return self._end(account, scope, member, key, job_key, run, 'FAILED', f"HANZO cannot hand {sorted(set(hands) - set(HANDS))} yet")
         given = {'do': plan.get('do', 'run')}
         try:
-            given.update(self._skill_hands(manifest, account, member))
+            given.update(self._skill_hands(manifest, account, scope, member, job_key, run))
         except _Stop as stop:
             return self._end(account, scope, member, key, job_key, run, stop.state, stop.reason)
         if 'job' in hands:
@@ -267,8 +267,8 @@ class Harness:
         charged = int(body.get('charged') or 0)
         paid = 'free' if body.get('free') else f"{charged} mTok from the {body.get('paid_from')}"
         for f in files:
-            status, stored = self.client.post('so', '/dam/upload', {'account': account, 'member': member, 'name': f['name'],
-                                                                   'content_b64': f['content_b64'], 'source_key': key})
+            status, stored = self.client.post('so', '/dam/upload', {'account': account, 'scope': scope, 'member': member, 'job_key': job_key,
+                                                                   'run': str(run), 'name': f['name'], 'content_b64': f['content_b64'], 'source_key': key})
             if status != 200:
                 return self._end(account, scope, member, key, job_key, run, 'FAILED',
                                  f"{paid}, but DA-M did not store the files: {stored.get('refused') or stored.get('error') or f'DA-M answered {status}'}", charged=charged)
@@ -299,9 +299,10 @@ class Harness:
                 raise _Stop('FAILED', f'file {i} is empty; the delivery is withheld')
         return files
 
-    def _skill_hands(self, manifest, account, member):
+    def _skill_hands(self, manifest, account, scope, member, job_key, run):
         """The skills the agent declares, carried out before the RUN: -> {hand: what it hands}. A skill HANZO does not have
-        fails the run; a skill with no hand (the mTok charge) hands nothing. What is handed is kept nowhere."""
+        fails the run; a skill with no hand (the mTok charge) hands nothing. What is handed is kept nowhere. Each call names
+        the RUN it is for (scope, job_key, run): the platform answers only for a member of a RUN that is open now."""
         declared = manifest.get('skills') or []
         if not (isinstance(declared, list) and all(isinstance(h, str) for h in declared)):
             raise _Stop('FAILED', 'the agent\'s skills are not a list of hashes')
@@ -314,7 +315,7 @@ class Harness:
             if hand not in HANDED:
                 continue
             office, route, what, who = HANDED[hand]
-            status, body = self.client.get(office, route, {'account': account, 'member': member})
+            status, body = self.client.get(office, route, {'account': account, 'scope': scope, 'member': member, 'job_key': job_key, 'run': str(run)})
             if status != 200:
                 raise _Stop('FAILED', f"HANZO could not read {what}: {body.get('refused') or body.get('error') or f'{who} answered {status}'}")
             out[hand] = body
