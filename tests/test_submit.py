@@ -152,3 +152,11 @@ def test_a_card_key_frost_would_refuse_is_refused_here(project):
     (project / 'larryd.json').write_text('{"agent_key": "MAGT_SCRATCH00001_0001"}')   # capitals, not hex: not a minted key
     with pytest.raises(hanzo.Refused, match='holds no card key'):
         hanzo.submit(project)
+
+
+def test_status_says_frosts_word_and_its_reason():
+    said = cli._said('status', {'ok': True, 'agents': [
+        {'agent_key': KEY, 'held': True, 'review': 'rejected', 'note': 'the manifest names no screen', 'runs': {}, 'calls': 0, 'hires': 0, 'unhires': 0, 'charged': 0},
+        {'agent_key': KEY, 'held': True, 'review': 'waiting', 'note': '', 'runs': {'DONE': 2}, 'calls': 1, 'hires': 1, 'unhires': 0, 'charged': 3}]})
+    assert 'review: rejected (the manifest names no screen) · no runs' in said
+    assert 'review: waiting · 2 DONE · 1 calls · hired 1, unhired 0 · 3 mTok charged' in said

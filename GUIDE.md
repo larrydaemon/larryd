@@ -103,8 +103,8 @@ unhires, and mTok charged. It holds only your agents' keys and counts: who hired
 - It holds `agent/` in its locker with the hash of the code and of the manifest, and checks them on every call and run.
   Any change is refused as tampered.
 - FROST's review: a SYSTEM owner approves or rejects those exact hashes. LARRYD shows, hires and runs an agent only
-  when FROST approved the hashes it holds. `larryd status` says "approved" or "not approved" (waiting and rejected
-  both read "not approved"; FROST's screen says which).
+  when FROST approved the hashes it holds. `larryd status` says FROST's word on the hashes it holds: waiting,
+  approved, or rejected with FROST's reason (a platform before that door says only "approved" or "not approved").
 - A member hires the agent in the agent marketplace with a toggle. A RUN is a request; LARRYD runs the agent in its
   sandbox, and mTok charges the agent's own rate (0 = free).
 
