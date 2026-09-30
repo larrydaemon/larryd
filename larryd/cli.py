@@ -101,7 +101,8 @@ def _said(command, out):
     lines = ['larryd status:']
     for a in out['agents']:
         runs = ', '.join(f'{n} {s}' for s, n in sorted(a['runs'].items())) or 'no runs'
-        lines.append(f'{a["agent_key"]} · {"held" if a["held"] else "not held"} · review: {a["review"]}{f" ({a['note']})" if a.get("note") else ""} · {runs} · {a["calls"]} calls · '
+        note = f' ({a["note"]})' if a.get('note') else ''
+        lines.append(f'{a["agent_key"]} · {"held" if a["held"] else "not held"} · review: {a["review"]}{note} · {runs} · {a["calls"]} calls · '
                      f'hired {a["hires"]}, unhired {a["unhires"]} · {a["charged"]} mTok charged')
     return '\n'.join(lines if out['agents'] else lines + ['no agent is yours yet'])
 
