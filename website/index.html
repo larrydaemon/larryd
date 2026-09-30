@@ -115,41 +115,20 @@ the agent passes every check</pre>
 <section id="install" class="band">
   <div class="section-head">
     <p class="eyebrow">Install</p>
-    <h2>Open Claude Code and type: Install LARRYD for me</h2>
-    <p class="lead">That's all. Claude Code picks the right way for your computer, installs LARRYD, and checks it works.</p>
-  </div>
-  <div class="terminal" role="group" aria-label="Ask Claude Code">
-    <div class="terminal-bar"><span></span><span></span><span></span></div>
-    <ul class="commands">
-      <li class="start"><span class="how">claude</span><code>Install LARRYD for me</code><button class="copy" type="button" data-copy="Install LARRYD for me">Copy</button></li>
-    </ul>
-  </div>
-
-  <details class="yourself">
-  <summary>Or install it yourself</summary>
-  <div class="section-head">
-    <p class="lead">Each line installs the same LARRYD. You only need one, the one that matches a tool your computer already has. Type it in the Terminal app and press Return. LARRYD needs Python 3.11 or newer.</p>
+    <h2>One line. Pick the one you already have.</h2>
+    <p class="lead">Every line installs the same LARRYD. You need Python 3.11 or newer on your computer.</p>
   </div>
   <div class="terminal" role="group" aria-label="Install commands">
     <div class="terminal-bar"><span></span><span></span><span></span></div>
     <ul class="commands">
-      <li><span class="how">npm</span><code>npm install -g larryd</code><button class="copy" type="button" data-copy="npm install -g larryd">Copy</button><p class="explain">If you've installed Node.js (common for web developers), use this one.</p></li>
-      <li><span class="how">pip</span><code>pip install larryd</code><button class="copy" type="button" data-copy="pip install larryd">Copy</button><p class="explain">The standard way for Python. If it says "externally managed environment", use the pipx line instead.</p></li>
-      <li><span class="how">pipx</span><code>pipx install larryd</code><button class="copy" type="button" data-copy="pipx install larryd">Copy</button><p class="explain">The safest Python way: it keeps LARRYD in its own space. No pipx yet? On a Mac: <code>brew install pipx</code>.</p></li>
-      <li><span class="how">cargo</span><code>cargo install larryd</code><button class="copy" type="button" data-copy="cargo install larryd">Copy</button><p class="explain">If you've installed Rust, use this one.</p></li>
+      <li><span class="how">npm</span><code>npm install -g larryd</code><button class="copy" type="button" data-copy="npm install -g larryd">Copy</button></li>
+      <li><span class="how">pip</span><code>pip install larryd</code><button class="copy" type="button" data-copy="pip install larryd">Copy</button></li>
+      <li><span class="how">pipx</span><code>pipx install larryd</code><button class="copy" type="button" data-copy="pipx install larryd">Copy</button></li>
+      <li><span class="how">cargo</span><code>cargo install larryd</code><button class="copy" type="button" data-copy="cargo install larryd">Copy</button></li>
+      <li class="start"><span class="how">start</span><code>sudo larryd &amp;</code><button class="copy" type="button" data-copy="sudo larryd &">Copy</button></li>
     </ul>
   </div>
-
-  <div class="section-head section-head-second">
-    <h3>Then start it.</h3>
-  </div>
-  <div class="terminal" role="group" aria-label="Start LARRYD">
-    <div class="terminal-bar"><span></span><span></span><span></span></div>
-    <ul class="commands">
-      <li class="start"><span class="how">start</span><code>sudo larryd &amp;</code><button class="copy" type="button" data-copy="sudo larryd &">Copy</button><p class="explain">Starts LARRYD's daemon, the part that runs your agents safely, in the background. It asks for your computer's password once, then tells you where it's running and how to stop it. Type <code>larryd help</code> any time to see everything it can do.</p></li>
-    </ul>
-  </div>
-  </details>
+  <p class="note">The last line starts LARRYD's daemon on your computer. It tells you where it is listening and how to stop it. Type <code>larryd help</code> any time to see everything it can do. In Claude Code, just say "Install LARRYD for me".</p>
 </section>
 
 <section class="band price">

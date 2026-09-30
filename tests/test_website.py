@@ -65,13 +65,11 @@ def test_what_your_agent_cant_do():
     assert len(re.findall(r'<li><strong>It ', cant)) == 5
 
 
-def test_the_claude_code_line_leads_and_the_five_lines_fold():
+def test_the_install_lines_show_in_one_terminal_never_folded():
+    """The owner: the install is one terminal wall with every line showing, for developers; nothing folded away."""
     install = PAGE[_at(PAGE, 'id="install"'):_at(PAGE, 'class="band price"')]
-    assert install.index('Install LARRYD for me') < install.index('<details class="yourself">')
-    folded = install[install.index('<details class="yourself">'):install.index('</details>')]
-    assert '<details class="yourself" open' not in install
-    assert all(f'<code>{line}</code>' in folded for line in LINES)
-    assert 'Then start it.' in folded
+    assert '<details' not in install
+    assert all(f'<code>{line}</code>' in install for line in LINES)
 
 
 def test_share_is_a_card_opening_soon():
