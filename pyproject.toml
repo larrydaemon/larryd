@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -7,6 +7,8 @@ name = "larryd"
 version = "0.1.0"
 description = "Your server has a daemon. Your agents should have one too. Build, test and ship AI agents with Claude Code."
 keywords = ["ai-agents", "claude-code", "mcp", "cli", "sandbox"]
+license = "Apache-2.0"
+license-files = ["LICENSE"]
 requires-python = ">=3.11"
 dependencies = ["flask>=3"]   # the daemon (LARRYD's runtime) serves over Flask; the tool itself is the standard library only
 

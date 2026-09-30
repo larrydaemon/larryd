@@ -45,4 +45,4 @@ One command, `larryd` (`larryd help` lists them, `larryd --version` says which; 
     python3 -m venv .venv && .venv/bin/pip install -e . pytest && .venv/bin/python -m pytest -q
 `proofs/claude_code_fixes_an_agent.sh` shows Claude Code fixing a planted agent with the tools (it uses the claude command).
 
-© 2026 COTECLAT LLC. All rights reserved.
+© 2026 COTECLAT LLC. Licensed under the Apache License, Version 2.0 (see LICENSE).
