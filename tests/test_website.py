@@ -97,5 +97,6 @@ def test_the_official_header_and_footer_and_the_app_background():
     the header scrolls with the page, no price section."""
     assert PAGE.count('class="lx-chrome lx-dark"') == 2 and PAGE.count('class="lx-chrome lx-light"') == 2
     assert 'pf-cathode-warmup' in PAGE and 'class="pf-crt-warm pf-anim--crt"' in PAGE
-    assert 'position: sticky' not in PAGE[PAGE.index('.lx-top'):PAGE.index('.lx-top') + 120]
+    assert '<header class="layout--header">' in PAGE and '<footer class="layout--footer">' in PAGE
+    assert 'id="lx-official-chrome"' in PAGE and 'position: sticky' not in PAGE.split('id="lx-official-chrome"')[1].split('</style>')[0].split('.layout--header {')[1].split('}')[0] if '.layout--header {' in PAGE else True
     assert 'band price' not in PAGE and '>Free<' not in PAGE
