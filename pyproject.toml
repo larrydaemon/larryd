@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "larryd"
+version = "0.1.0"
+description = "LARRYD: build an agent for LARRYD with Claude Code. new · doctor · run · submit · status · mcp"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.scripts]
+larryd = "larryd.cli:main"
+
+[tool.setuptools]
+packages = ["larryd"]
+
+[tool.setuptools.package-data]
+larryd = ["kit/*", "kit/**/*"]
