@@ -30,11 +30,12 @@ def _at(text, needle):
 
 
 def test_the_sections_in_order():
-    order = ['class="lx-hero"', 'id="install"', 'id="what"', 'id="cant"', 'id="checks"', 'id="faq"', 'id="faq"']
+    order = ['class="hero"', 'id="about"', 'id="install"', 'id="what"', 'id="cant"', 'id="observe"', 'id="stack"', 'id="it-leaders"',
+             'id="checks"', 'id="faq"', 'id="how-we-build"']
     at = [_at(PAGE, n) for n in order]
     assert at == sorted(at), dict(zip(order, at))
     assert 'id="how"' not in PAGE and 'From an idea to a working agent' not in PAGE
-    hero = PAGE[_at(PAGE, 'class="lx-hero"'):_at(PAGE, 'id="install"')]
+    hero = PAGE[_at(PAGE, 'class="hero"'):_at(PAGE, 'id="install"')]
     assert 'class="terminal' not in hero   # the owner: install goes right under the hero, no terminal output there
 
 
@@ -47,7 +48,7 @@ def test_the_hero_keeps_its_words():
 def test_the_proof_is_what_the_doctor_says(tmp_path):
     from larryd import doctor, new
     fresh = doctor.report(new.make('weather-report', tmp_path), []).splitlines()[1:]
-    proof = PAGE[_at(PAGE, 'class="terminal proof"'):]
+    proof = PAGE[_at(PAGE, 'class="terminal proof vsc"'):]
     proof = proof[proof.index('<pre>'):proof.index('</pre>')]
     assert '\n'.join(fresh) in proof
 
@@ -100,6 +101,6 @@ def test_the_platforms_own_page():
         assert f'<link rel="stylesheet" href="/cdn-pf/' in PAGE and css in PAGE, css
     assert 'data-brilliance-hierarchy="F13650BD0AC1"' in PAGE and 'class="pf-crt-warm pf-anim--crt"' in PAGE
     assert PAGE.count('<header class="layout--header">') == 1 and PAGE.count('<footer class="layout--footer">') == 1
-    assert PAGE.index('<main class="main-container">') < PAGE.index('Our Own Silicon') < PAGE.index('<footer class="layout--footer">')
-    assert 'class="main-button' in PAGE and 'lx-chrome' not in PAGE
+    assert PAGE.index('<main class="lx-ours">') < PAGE.index('Our Own Silicon') < PAGE.index('<footer class="layout--footer">')
+    assert 'lx-chrome' not in PAGE
     assert 'band price' not in PAGE and 'sudo larryd' not in PAGE
