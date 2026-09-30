@@ -134,7 +134,7 @@ def test_claude_code_validates_them(what):
 
 def test_skills_and_packs_through_the_connector(client, tmp_path):
     listed = client.call('larryd_skills')['structuredContent']['skills']
-    assert [s['name'] for s in listed] == ['mTok charge', 'LARRY LLM greeting'] and all(len(s['hash']) == 64 for s in listed)
+    assert [s['name'] for s in listed] == ['mTok charge', 'LARRY LLM greeting', 'FROST identity'] and all(len(s['hash']) == 64 for s in listed)
     (tmp_path / 'p').mkdir()
     (tmp_path / 'p' / 'pack.json').write_text('{"name": "N", "about": "A"}')
     assert client.call('larryd_pack', folder='p')['structuredContent']['ok'] is True

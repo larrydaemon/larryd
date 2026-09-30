@@ -120,13 +120,15 @@ The loop for the AI: change the agent → larryd_doctor → larryd_run → fix �
   - The LARRY LLM greeting: before the RUN, LARRYD asks LARRY LLM for the greeting it gives the member today and hands it
     in as `greeting` (`{"date", "lang", "greetings": {time of day: the words}}`). In `samples/job.json`, give a
     `greeting` of that shape.
+  - The FROST identity: before the RUN, LARRYD asks FROST who the agent works for and hands it in as `identity`:
+    `{"first_name", "member_type", "account_name"}`, nothing else (no email, no address, no key).
 - A knowledge pack is a folder (`pack.json` with `name` and `about`, plus .md .txt .csv .json files) named by its hash;
   `larryd pack <folder>` checks it and gives the hash.
 
 ## Not there yet
-- Skills: the FROST identity (who the agent works for) and the DA-M store (files an agent answers, kept in the
-  member's DA-M) come as skills when their doors exist. The LARRY LLM greeting's platform side is not on the live
-  platform yet; until it is, a RUN of an agent that declares it fails with LARRYD's plain reason.
+- Skills: the DA-M store (files an agent answers, kept in the member's DA-M) comes as a skill when its door exists.
+  The LARRY LLM greeting's and the FROST identity's platform sides are not on the live platform yet; until they are, a
+  RUN of an agent that declares one fails with LARRYD's plain reason.
 - Knowledge packs: LARRYD holds none yet, so declaring one in `knowledge` fails the doctor. Leave it `[]`.
 - `larryd run` on Linux and Windows: it needs a Mac today (macOS sandbox-exec). The doctor does not use it.
 - The job's inputs on the live platform: LARRYD hands `job` today, but the platform's side (the route that gives

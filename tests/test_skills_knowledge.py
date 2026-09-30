@@ -11,17 +11,19 @@ from larryd import cli, doctor, hashes, knowledge, new, skills
 
 MTOK = '3c8ad8bf218a8350b26a7fb4b9eb7f6c70073553437aec8d05afee60f9740dcb'       # pinned here and in PF HANZO's tests: drift on either side is red
 GREETING = '94686bdeef7ebf3df3e52f1a3086f280ee25b1457336b87f5ab39860f7248fa2'
+IDENTITY = '4db76a92980ff0a3b4cbe584d0b2de4c9821a5cbf7385c0b062c43f276f0ac0f'
 
 
 def test_the_skills_that_exist():
     """Only a door that exists is a skill. Today: the mTok charge (applied to every run) and the LARRY LLM greeting
-    (LARRYD asks LARRY LLM for the member's greeting and hands it in). FROST identity and DA-M store come with their doors."""
+    (LARRYD asks LARRY LLM for the member's greeting and hands it in) and the FROST identity (who the agent works for: first
+    name, member type, account name). The DA-M store comes with its door."""
     known = skills.known()
-    assert {h: s['name'] for h, s in known.items()} == {MTOK: 'mTok charge', GREETING: 'LARRY LLM greeting'}
+    assert {h: s['name'] for h, s in known.items()} == {MTOK: 'mTok charge', GREETING: 'LARRY LLM greeting', IDENTITY: 'FROST identity'}
     for h, s in known.items():
         assert h == hashlib.sha256(json.dumps(s, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
         assert {'name', 'technology', 'door', 'does', 'agent'} <= set(s) <= {'name', 'technology', 'door', 'does', 'agent', 'hand'} and all(s.values())
-    assert known[GREETING]['hand'] == 'greeting' and 'hand' not in known[MTOK]
+    assert known[GREETING]['hand'] == 'greeting' and known[IDENTITY]['hand'] == 'identity' and 'hand' not in known[MTOK]
 
 
 def test_run_hands_the_greeting_when_the_skill_is_declared(tmp_path):
