@@ -4,7 +4,9 @@ Build an agent for LARRYD with Claude Code. The agent lives in LARRYD, air gappe
 LARRYD connects it to the platform by API only.
 
 ## Install
-    pip install git+<this repository>
+    pip install git+https://github.com/<owner>/larryd.git
+
+(`<owner>` is set when the owner makes the repository on GitHub; until then, `pip install git+file:///<path to this repository>`.)
 
 One command, `larryd`:
 - `larryd new <name>`: a new agent project (the agent, its CLAUDE.md, the larryd skill, a sample job, the connector)
@@ -24,3 +26,5 @@ One command, `larryd`:
 ## Tests
     python3 -m venv .venv && .venv/bin/pip install -e . pytest && .venv/bin/python -m pytest -q
 `proofs/claude_code_fixes_an_agent.sh` shows Claude Code fixing a planted agent with the tools (it uses the claude command).
+
+© 2026 COTECLAT LLC. All rights reserved.
