@@ -18,7 +18,10 @@ what is wrong and what to do), `larryd run` runs it on your computer the way LAR
 for review, and `larryd status` says where it stands. Your agent runs on LARRYD, air gapped, and stays yours.
 
 ## Install
+    npm install -g larryd
     pip install larryd
+    cargo install larryd
+    sudo larryd &
 
 In Claude Code, one line: `claude mcp add larryd -- larryd mcp`, or the plugin:
 `claude plugin marketplace add larrydaemon/larryd` then `claude plugin install larryd@larryd`.

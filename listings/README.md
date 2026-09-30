@@ -35,17 +35,18 @@ these places list tools and servers that people install and run themselves.
 | 16 | awesome-claude-code (hesreallyhim) | Claude Code tools, plugins, skills | a form filled by a person; the repository 14+ days old with ongoing work | Later (the repository's age) | text.md | yes |
 | 17 | Agent Skills sites (agent-skills.md; skillsmp.com; skills.sh) | SKILL.md skills | a GitHub link to the skills folder | Yes: `plugin/skills/larryd/SKILL.md` has name and description | - | partly |
 | 18 | Plugin indexes (claudemarketplaces.com, claude-plugins.dev) | Claude Code marketplaces | find public repositories themselves | Yes, once public | - | partly |
-| 19 | PyPI · Docker Hub · npm | packages, images | an upload; an image push; an npm package | PyPI yes (the name is ours). Docker Hub yes (the image is proven). npm no: LARRYD is not a Node package | pyproject.toml; docker/Dockerfile | PyPI yes; others partly |
+| 19 | PyPI · npm · crates.io · Docker Hub | packages, images | an upload each; an image push | Yes: the names are ours on all three registries (0.0.1 reservations); npm and cargo carry a thin launcher (npm/, cargo/, built and proven) | pyproject.toml; npm/; cargo/; docker/Dockerfile | yes |
 | 20 | Homebrew (own tap) · conda-forge · Product Hunt | CLI tools; conda packages; launches | an open license and fame (Homebrew core); a recipe from the PyPI source + a license (conda-forge); a maker account (Product Hunt) | Own tap and Product Hunt yes; Homebrew core and conda-forge wait on the license and time | text.md | yes |
 
 Fits today, once the repository is public and 0.1.0 is on PyPI: 1, 2 (with a license), 4, 6, 7, 8, 9, 10, 11, 17, 18, 19
 (PyPI, Docker Hub), 20 (Product Hunt, own tap). Waits on the license: 13, conda-forge, Homebrew core. Waits on a logo:
-14. Waits on time: 16. Not a place for LARRYD: 3, 12, npm.
+14. Waits on time: 16. Not a place for LARRYD: 3, 12.
 
 ## The owner's steps, in order (each one outward; one command or page each)
 1. Decide the license. If open: add `LICENSE` and `license` to pyproject.toml and `plugin/.claude-plugin/plugin.json`.
 2. Make the repository public: github.com/larrydaemon/larryd → Settings → Change visibility.
-3. Publish 0.1.0 to PyPI: `cd ~/larryd && python3 -m pip install build twine && python3 -m build && python3 -m twine upload dist/*`
+3. Publish 0.1.0 together, one version everywhere: PyPI `cd ~/larryd && python3 -m pip install build twine && python3 -m build && python3 -m twine upload dist/*`,
+   npm `cd ~/larryd/npm && npm publish`, crates.io `cd ~/larryd/cargo && cargo publish`.
 4. Official MCP Registry: `brew install mcp-publisher && cd ~/larryd/listings/mcp-registry && mcp-publisher login github && mcp-publisher publish`
    (PulseMCP and GitHub's MCP Registry fill themselves from it.)
 5. Docker Hub: `cd ~/larryd && docker build -f listings/docker/Dockerfile -t larrydaemon/larryd:0.1.0 . && docker push larrydaemon/larryd:0.1.0`

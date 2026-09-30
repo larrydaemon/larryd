@@ -16,12 +16,17 @@ The whole contract: LARRYD runs the agent's entry file as its own process. One J
 one JSON object goes out on stdout. `delivery` in the answer (plain text) is what lands in the member's job.
 
 ## 1. Install
+    npm install -g larryd
     pip install larryd
+    cargo install larryd
+    sudo larryd &
 
-or `pip install git+https://github.com/larrydaemon/larryd.git`. (Until version 0.1.0 is published, PyPI holds only the
-name's reservation, 0.0.1.)
-
-This gives one command, `larryd`. It is proven on Python 3.14 on a Mac.
+Any one of the first three gives one command, `larryd` (`larryd help` lists what it does). The fourth starts the
+daemon, LARRYD's runtime on this computer (on 127.0.0.1; as root its instance is /var/lib/larryd, otherwise ~/.larryd),
+where you can try what you build. npm and cargo keep LARRYD in its own place and need Python 3.11 or newer; a system
+that manages its own Python (Debian, Ubuntu, Homebrew) refuses a plain `pip install`, so there use npm, cargo or a
+venv. It is proven on Python 3.14 (a Mac) and 3.11 (Debian 12). (Until 0.1.0 is published, the three registries
+hold only the name's reservation, 0.0.1.)
 
 ## 2. Your developer key
 LARRYD makes your developer key: a name and a secret. The secret is shown once. Keep it on your computer:
