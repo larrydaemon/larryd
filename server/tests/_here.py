@@ -1,4 +1,4 @@
-"""The tests' one link to HANZO's code: its own app folder, found from this file (never a path outside ~/pfhanzo)."""
+"""The tests' one link to HANZO's code: its own app folder, found from this file (never a path outside server/)."""
 import pathlib
 import sys
 

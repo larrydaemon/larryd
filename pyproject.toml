@@ -17,3 +17,6 @@ packages = ["larryd"]
 
 [tool.setuptools.package-data]
 larryd = ["kit/*", "kit/**/*", "skills.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]   # the tool's tests; the runtime (server/) runs its own suite with its own venv
