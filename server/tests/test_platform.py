@@ -61,7 +61,7 @@ class ClientTest(unittest.TestCase):
 
     def test_addresses_come_from_config(self):
         cfg = json.loads((APP / 'schemas' / 'hanzo.json').read_text())
-        self.assertEqual(platform.addresses(cfg, 'rnd', None), {'wid': 'http://127.0.0.1:5004', 'cc': 'http://127.0.0.1:5007', 'fs': 'http://127.0.0.1:5008', 'lryllm': 'http://127.0.0.1:5009'})
+        self.assertEqual(platform.addresses(cfg, 'rnd', None), {'wid': 'http://127.0.0.1:5004', 'cc': 'http://127.0.0.1:5007', 'fs': 'http://127.0.0.1:5008', 'lryllm': 'http://127.0.0.1:5009', 'so': 'http://127.0.0.1:5006'})
 
     def test_scratch_addresses_replace_them(self):
         cfg = json.loads((APP / 'schemas' / 'hanzo.json').read_text())

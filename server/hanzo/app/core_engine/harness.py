@@ -4,6 +4,8 @@ runs in the sandbox; every call and run is a hanzo_runs row. Nothing is assumed 
 DATA STAYS IN wid (the owner): what a run is handed lives in memory and its run folder only; its result goes back to wid
 and is not kept; hanzo.db never holds a record value, a delivery, an account or a member.
 An agent counts as verified only when its folder matches the locker AND FROST approved those exact hashes."""
+import base64
+import binascii
 import datetime
 import hashlib
 import json
@@ -26,6 +28,8 @@ def _skills():
 
 
 SKILLS = _skills()
+MOST_FILES, MOST_FILE_BYTES = 10, 5_000_000   # what the DA-M store keeps from one answer
+FILE_NAME = re.compile(r'^[A-Za-z0-9][A-Za-z0-9 ._-]{0,120}$')
 HANDED = {   # a skill's hand: the platform's door HANZO asks for the RUN's member and account (signed with hanzo_link)
     'greeting': ('lryllm', '/larry/greeting', "the member's greeting", 'LARRY LLM'),
     'identity': ('fs', '/agents/identity', 'who the agent works for', 'FROST'),
@@ -236,6 +240,10 @@ class Harness:
         state, answer, reason = sandbox.run(self.agents / folder, manifest['entry'], given, self.seconds)
         if state != 'DONE':
             return self._end(account, scope, member, key, job_key, run, 'FAILED', reason)
+        try:
+            files = self._files(manifest, answer)
+        except _Stop as stop:
+            return self._end(account, scope, member, key, job_key, run, stop.state, stop.reason)
         status, body = self.client.post('cc', '/mtok/use', {'account': account, 'member': member, 'agent_key': key,
                                                             'job_key': f'{job_key}#{run}', 'agent_group': card['product_slug'], 'rate': str(gate.rate(card))})
         if status != 200:
@@ -243,8 +251,38 @@ class Harness:
                              f"not charged: {body.get('refused') or f'mTok answered {status}'}; the delivery is withheld")
         charged = int(body.get('charged') or 0)
         paid = 'free' if body.get('free') else f"{charged} mTok from the {body.get('paid_from')}"
-        delivery = answer.get('delivery') if isinstance(answer.get('delivery'), str) else json.dumps(answer, sort_keys=True)
-        return self._end(account, scope, member, key, job_key, run, 'DONE', f'RUN {run} DONE · {paid}', charged=charged, delivery=delivery)
+        for f in files:
+            status, stored = self.client.post('so', '/dam/upload', {'account': account, 'member': member, 'name': f['name'],
+                                                                   'content_b64': f['content_b64'], 'source_key': key})
+            if status != 200:
+                return self._end(account, scope, member, key, job_key, run, 'FAILED',
+                                 f"{paid}, but DA-M did not store the files: {stored.get('refused') or stored.get('error') or f'DA-M answered {status}'}", charged=charged)
+        kept = {k: v for k, v in answer.items() if k != 'files'}
+        delivery = answer.get('delivery') if isinstance(answer.get('delivery'), str) else json.dumps(kept, sort_keys=True)
+        stored_note = f" · {len(files)} file{'' if len(files) == 1 else 's'} in DA-M" if files else ''
+        return self._end(account, scope, member, key, job_key, run, 'DONE', f'RUN {run} DONE · {paid}{stored_note}', charged=charged, delivery=delivery)
+
+    def _files(self, manifest, answer):
+        """The files an answer carries, checked before anything is charged: [] when none; refused when the agent does not
+        declare the DA-M store, or they are not [{name, content_b64}] within the limits."""
+        files = answer.get('files')
+        if files is None:
+            return []
+        if not any(SKILLS.get(h, {}).get('after') == 'files' for h in manifest.get('skills') or [] if isinstance(h, str)):
+            raise _Stop('FAILED', 'the answer carries files, but the agent does not declare the DA-M store; the delivery is withheld')
+        if not isinstance(files, list) or len(files) > MOST_FILES:
+            raise _Stop('FAILED', f'the answer\'s files are not a list of at most {MOST_FILES}; the delivery is withheld')
+        for i, f in enumerate(files, 1):
+            if not (isinstance(f, dict) and set(f) == {'name', 'content_b64'} and isinstance(f['name'], str) and FILE_NAME.match(f['name'])
+                    and isinstance(f['content_b64'], str)):
+                raise _Stop('FAILED', f'file {i} is not {{name, content_b64}} with a plain name; the delivery is withheld')
+            try:
+                size = len(base64.b64decode(f['content_b64'], validate=True))
+            except (binascii.Error, ValueError):
+                raise _Stop('FAILED', f'file {i} is not base64; the delivery is withheld')
+            if not 0 < size <= MOST_FILE_BYTES:
+                raise _Stop('FAILED', f'file {i} is empty or larger than {MOST_FILE_BYTES} bytes; the delivery is withheld')
+        return files
 
     def _skill_hands(self, manifest, account, member):
         """The skills the agent declares, carried out before the RUN: -> {hand: what it hands}. A skill HANZO does not have

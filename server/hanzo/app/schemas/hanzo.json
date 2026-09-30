@@ -9,7 +9,8 @@
     "wid": {"rnd": "http://127.0.0.1:5004"},
     "cc": {"rnd": "http://127.0.0.1:5007"},
     "fs": {"rnd": "http://127.0.0.1:5008"},
-    "lryllm": {"rnd": "http://127.0.0.1:5009"}
+    "lryllm": {"rnd": "http://127.0.0.1:5009"},
+    "so": {"rnd": "http://127.0.0.1:5006"}
   },
   "callers": {
     "about": "the offices that may call HANZO's /api (X-Office), each checked with the secret",

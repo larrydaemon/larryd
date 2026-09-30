@@ -14,6 +14,7 @@ from core_engine import harness, locker, platform, store
 MTOK = '3c8ad8bf218a8350b26a7fb4b9eb7f6c70073553437aec8d05afee60f9740dcb'       # pinned here and in LARRYD's tests: drift on either side is red
 GREETING = '94686bdeef7ebf3df3e52f1a3086f280ee25b1457336b87f5ab39860f7248fa2'
 IDENTITY = '4db76a92980ff0a3b4cbe584d0b2de4c9821a5cbf7385c0b062c43f276f0ac0f'
+STORE = 'af29573bbc49b9e88e9447208f351804496de573dd25a90533f933784e4e6641'
 WHO = {'first_name': 'Ann', 'member_type': 'user', 'account_name': 'Scratch Account'}
 KEY, JOB = 'MAGT_00000000D0B2_0001', 'MJOB_00000000D0B2_0001'
 ACCOUNT, SCOPE, MEMBER = 'ACCT_' + 'A' * 12 + '_0001', 'SCRATCH', 'MCON_' + 'B' * 12 + '_0002'
@@ -24,8 +25,8 @@ SAID = {'date': '2026-09-30', 'lang': 'en', 'greetings': {'morning': 'Up with th
 
 
 class Platform:
-    def __init__(self, status=200):
-        self.status, self.said = status, []
+    def __init__(self, status=200, store_status=200):
+        self.status, self.store_status, self.said = status, store_status, []
 
     def get(self, office, route, data=None):
         self.said.append((office, route, data))
@@ -35,6 +36,8 @@ class Platform:
 
     def post(self, office, route, data):
         self.said.append((office, route, data))
+        if route == '/dam/upload':
+            return (200, {'dam_key': 'DA-M_' + '0' * 12 + '_0001', 'repeat': False}) if self.store_status == 200 else (self.store_status, {'error': 'the zone does not take it'})
         return (200, {'charged': 0, 'free': True}) if route == '/mtok/use' else (200, {'saved': True})
 
 
@@ -46,7 +49,8 @@ def _closed_port():
     return port
 
 
-class Skills(unittest.TestCase):
+class World(unittest.TestCase):
+    """A scratch HANZO: its store, a locker with one agent, the platform's facts as it would answer them."""
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.instance = pathlib.Path(self.tmp.name) / 'instance'
@@ -57,11 +61,14 @@ class Skills(unittest.TestCase):
     def tearDown(self):
         self.tmp.cleanup()
 
-    def agent(self, skills):
+    def agent(self, skills, answer=None):
         folder = self.agents / 'echo'
         folder.mkdir(parents=True, exist_ok=True)
         (folder / 'agent.json').write_text(json.dumps({'name': 'Echo', 'entry': 'agent.py', 'run': {'do': 'answer', 'hands': []}, 'skills': skills}))
-        (folder / 'agent.py').write_text('import json, sys\njob = json.load(sys.stdin)\nprint(json.dumps({"delivery": json.dumps({k: job.get(k) for k in ("greeting", "identity") if k in job} or None, sort_keys=True)}))\n')
+        if answer is not None:
+            (folder / 'agent.py').write_text(f'import json, sys\njson.load(sys.stdin)\nprint(json.dumps({answer!r}))\n')
+        else:
+            (folder / 'agent.py').write_text('import json, sys\njob = json.load(sys.stdin)\nprint(json.dumps({"delivery": json.dumps({k: job.get(k) for k in ("greeting", "identity") if k in job} or None, sort_keys=True)}))\n')
         con = sqlite3.connect(self.db)
         con.execute('DELETE FROM hanzo_locker')
         con.commit()
@@ -77,8 +84,10 @@ class Skills(unittest.TestCase):
     def results(p):
         return [d for _o, route, d in p.said if route == '/jobs/result']
 
+
+class Skills(World):
     def test_the_hashes_are_the_definitions(self):
-        self.assertEqual({h: s['name'] for h, s in harness.SKILLS.items()}, {MTOK: 'mTok charge', GREETING: 'LARRY LLM greeting', IDENTITY: 'FROST identity'})
+        self.assertEqual({h: s['name'] for h, s in harness.SKILLS.items()}, {MTOK: 'mTok charge', GREETING: 'LARRY LLM greeting', IDENTITY: 'FROST identity', STORE: 'DA-M store'})
 
     def test_the_greeting_is_asked_for_the_runs_member_and_handed_in(self):
         self.agent([GREETING])
@@ -133,6 +142,61 @@ class Skills(unittest.TestCase):
         p = Platform()
         self.assertEqual(self.run_with(p), 'DONE')
         self.assertFalse([r for _o, r, _d in p.said if r == '/larry/greeting'])
+
+
+class Store(World):
+    FILE = {'name': 'Harbor theme.json', 'content_b64': 'eyJ0aGVtZSI6IDF9'}   # {"theme": 1}
+
+    def test_the_files_are_stored_after_the_charge_for_the_runs_member(self):
+        self.agent([STORE], {'delivery': 'one theme', 'files': [self.FILE]})
+        p = Platform()
+        self.assertEqual(self.run_with(p), 'DONE')
+        routes = [r for _o, r, _d in p.said if r in ('/mtok/use', '/dam/upload')]
+        self.assertEqual(routes, ['/mtok/use', '/dam/upload'])   # paid first: files are part of the delivery
+        stored = next(d for o, r, d in p.said if r == '/dam/upload')
+        self.assertEqual(stored, {'account': ACCOUNT, 'member': MEMBER, 'source_key': KEY, **self.FILE})
+        self.assertIn(('so', '/dam/upload', stored), p.said)
+        end = self.results(p)[-1]
+        self.assertEqual((end['log'], end['delivery']), ('RUN 1 DONE · free · 1 file in DA-M', 'one theme'))
+        for path in self.instance.rglob('*'):
+            if path.is_file():
+                self.assertNotIn(b'eyJ0aGVtZSI6IDF9', path.read_bytes())
+
+    def test_a_delivery_that_is_not_text_never_carries_the_files(self):
+        self.agent([STORE], {'themes': ['Harbor'], 'files': [self.FILE]})
+        p = Platform()
+        self.assertEqual(self.run_with(p), 'DONE')
+        self.assertEqual(json.loads(self.results(p)[-1]['delivery']), {'themes': ['Harbor']})
+
+    def test_refused_before_anything_is_charged(self):
+        cases = {
+            'files without the skill': ([], {'delivery': 'x', 'files': [self.FILE]}, 'does not declare the DA-M store'),
+            'not a list': ([STORE], {'files': 'x'}, 'not a list of at most 10'),
+            'eleven files': ([STORE], {'files': [dict(self.FILE, name=f'f{i}.json') for i in range(11)]}, 'not a list of at most 10'),
+            'a path for a name': ([STORE], {'files': [dict(self.FILE, name='../escape.json')]}, 'plain name'),
+            'more than name and content': ([STORE], {'files': [dict(self.FILE, folder='x')]}, 'plain name'),
+            'not base64': ([STORE], {'files': [dict(self.FILE, content_b64='not base64!')]}, 'not base64'),
+            'empty': ([STORE], {'files': [dict(self.FILE, content_b64='')]}, 'empty or larger'),
+        }
+        for name, (skills, answer, words) in cases.items():
+            with self.subTest(name):
+                self.agent(skills, answer)
+                p = Platform()
+                self.assertEqual(self.run_with(p), 'FAILED')
+                self.assertIn(words, self.results(p)[-1]['log'])
+                self.assertFalse([r for _o, r, _d in p.said if r in ('/mtok/use', '/dam/upload')])
+
+    def test_a_refusing_da_m_fails_the_run_and_says_it_was_charged(self):
+        self.agent([STORE], {'delivery': 'x', 'files': [self.FILE]})
+        p = Platform(store_status=400)
+        self.assertEqual(self.run_with(p), 'FAILED')
+        self.assertEqual(self.results(p)[-1]['log'], 'free, but DA-M did not store the files: the zone does not take it')
+
+    def test_no_files_no_store(self):
+        self.agent([STORE], {'delivery': 'nothing to keep'})
+        p = Platform()
+        self.assertEqual(self.run_with(p), 'DONE')
+        self.assertFalse([r for _o, r, _d in p.said if r == '/dam/upload'])
 
 
 if __name__ == '__main__':
