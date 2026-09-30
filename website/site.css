@@ -183,3 +183,35 @@ p { margin: 0; }
 
 .rogue { font: 800 clamp(26px, 3.4vw, 44px)/1.08 var(--display, inherit); letter-spacing: -0.02em; color: var(--accent); text-transform: uppercase; margin: 0 0 22px; max-width: 16ch; }
 @media (max-width: 760px) { .rogue { font-size: 28px; max-width: none; } }
+/* the proof under the hero's buttons: a real `larryd doctor` run */
+.proof { margin-top: 36px; max-width: 560px; }
+.proof pre { font-size: 14px; line-height: 1.7; padding: 16px 20px; }
+.proof-line { margin-top: 16px; font: 700 19px/1.4 var(--head); color: var(--text); }
+.proof-line a { display: inline-block; margin-left: 6px; font: 500 14px/1.4 var(--mono); color: var(--accent); }
+/* Build · Check · Run · Share (opening soon) */
+.cards { grid-template-columns: repeat(4, 1fr); }
+.card-soon { opacity: 0.86; }
+.card-soon .soon { margin-top: 16px; }
+@media (max-width: 1020px) { .cards { grid-template-columns: repeat(2, 1fr); } }
+/* install: the Claude Code line leads; the owner's five lines fold behind "Or install it yourself" */
+.yourself { margin-top: 40px; max-width: 860px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.yourself > summary { cursor: pointer; list-style: none; position: relative; padding: 22px 40px 22px 0; font: 700 20px/1.3 var(--head); color: var(--text); }
+.yourself > summary::-webkit-details-marker { display: none; }
+.yourself > summary::after { content: "+"; position: absolute; right: 4px; top: 18px; font: 500 26px/1 var(--mono); color: var(--accent); transition: transform 0.3s ease; }
+.yourself[open] > summary::after { transform: rotate(45deg); }
+.yourself .terminal { margin-top: 24px; }
+.yourself .section-head .lead { margin-top: 0; }
+.yourself h3 { color: var(--text); }
+.yourself[open] { padding-bottom: 32px; }
+@media (max-width: 760px) { .cards { grid-template-columns: 1fr; } .proof pre { font-size: 12.5px; } }
+/* the checks page */
+.spec-top h1 { font-size: clamp(38px, 5vw, 64px); }
+.spec { list-style: none; margin: 48px 0 0; padding: 0; max-width: 900px; }
+.spec-row { display: grid; grid-template-columns: 56px 1fr; gap: 18px; padding: 26px 0; border-top: 1px solid var(--line); }
+.spec-row h3 { margin-bottom: 10px; }
+.spec-row p { color: var(--muted); font-size: 17px; margin-top: 6px; }
+.spec-row strong { color: var(--text); }
+.band .checks { max-width: 900px; }
+.badge-sample { margin-top: 24px; }
+.badge-sample img { outline: 1px solid var(--line); }
+.band .terminal.proof { max-width: 900px; }

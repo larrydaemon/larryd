@@ -23,7 +23,86 @@ def test_larryd_only():
 
 
 def test_every_local_file_it_points_at_is_there():
-    wanted = set(re.findall(r'(?:src|href|srcset|poster)="/([^"#?]+)"', PAGE)) | set(re.findall(r'url\("/([^")]+)"\)', (SITE / 'site.css').read_text()))
+    pages = PAGE + (SITE / 'checks.html').read_text()
+    wanted = set(re.findall(r'(?:src|href|srcset|poster)="/([^"#?]+)"', pages)) | set(re.findall(r'url\("/([^")]+)"\)', (SITE / 'site.css').read_text()))
     assert wanted
     missing = sorted(p for p in wanted if not (SITE / p).is_file())
     assert not missing, missing
+
+
+# ---------------------------------------------------------------- the page's one spine (the owner's review, 2026-09-30)
+def _at(text, needle):
+    i = PAGE.find(needle)
+    assert i >= 0, needle
+    return i
+
+
+def test_the_sections_in_order():
+    order = ['class="hero"', 'class="terminal proof"', 'Most agent tools trust the agent. LARRYD doesn\'t.', 'id="what"',
+             'id="cant"', 'id="install"', 'class="band price"', 'id="faq"']
+    at = [_at(PAGE, n) for n in order]
+    assert at == sorted(at), dict(zip(order, at))
+    assert 'id="how"' not in PAGE and 'From an idea to a working agent' not in PAGE
+
+
+def test_the_hero_keeps_its_words():
+    for words in ('Keep your agents from going rogue.', 'Your server has a daemon.<br>Your agents should have one too.',
+                  'Free · for Mac and Linux · works with Claude Code', '>Install LARRYD</a>', '>See how it works</a>'):
+        assert words in PAGE, words
+
+
+def test_the_proof_is_what_the_doctor_says(tmp_path):
+    from larryd import doctor, new
+    fresh = doctor.report(new.make('weather-report', tmp_path), []).splitlines()[1:]
+    proof = PAGE[_at(PAGE, 'class="terminal proof"'):]
+    proof = proof[proof.index('<pre>'):proof.index('</pre>')]
+    assert '\n'.join(fresh) in proof
+
+
+def test_what_your_agent_cant_do():
+    cant = PAGE[_at(PAGE, 'id="cant"'):_at(PAGE, 'id="install"')]
+    assert 'What your agent can\'t do.' in cant
+    assert len(re.findall(r'<li><strong>It ', cant)) == 5
+
+
+def test_the_claude_code_line_leads_and_the_five_lines_fold():
+    install = PAGE[_at(PAGE, 'id="install"'):_at(PAGE, 'class="band price"')]
+    assert install.index('Install LARRYD for me') < install.index('<details class="yourself">')
+    folded = install[install.index('<details class="yourself">'):install.index('</details>')]
+    assert '<details class="yourself" open' not in install
+    assert all(f'<code>{line}</code>' in folded for line in LINES)
+    assert 'Then start it.' in folded
+
+
+def test_share_is_a_card_opening_soon():
+    card = PAGE[_at(PAGE, 'class="card card-soon"'):]
+    card = card[:card.index('</article>')]
+    assert '<h3>Share</h3>' in card and 'Opening soon' in card
+
+
+def test_the_nav_has_one_coloured_button():
+    nav = PAGE[_at(PAGE, '<header class="nav">'):_at(PAGE, '</header>')]
+    assert re.findall(r'class="button[^"]*"', nav) == ['class="button button-small"'] and 'Get LARRYD — free' in nav
+
+
+def test_no_heading_without_a_body():
+    for page in (PAGE, (SITE / 'checks.html').read_text()):
+        for m in re.finditer(r'<h2>(.*?)</h2>\s*(</div>\s*)?(<section|</main>|$)', page):
+            raise AssertionError(f'a heading with nothing under it: {m.group(1)}')
+
+
+def test_every_image_speaks_or_is_silent():
+    for alt in re.findall(r'<img [^>]*alt="([^"]*)"', PAGE):
+        assert alt in ('', 'LARRYD checks v1: PASS'), alt
+
+
+# ---------------------------------------------------------------- THE LARRYD CHECKS
+def test_the_checks_page_and_spec_name_the_doctors_checks():
+    from larryd import doctor
+    page = (SITE / 'checks.html').read_text()
+    spec = (REPO / 'CHECKS.md').read_text()
+    assert f'# THE LARRYD CHECKS · version {doctor.CHECKS_VERSION}' in spec
+    assert f'Version {doctor.CHECKS_VERSION}' in page
+    assert re.findall(r'<h3>([^<]+)</h3>', page) == list(doctor.CHECKS)
+    assert re.findall(r'^\| \d \| \*\*([^*]+)\*\*', spec, re.M) == list(doctor.CHECKS)
+    assert 'Declared in the manifest, enforced when it runs.' in page

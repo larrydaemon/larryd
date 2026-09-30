@@ -1,7 +1,9 @@
 """The one command: `larryd`."""
 import argparse
+import datetime
 import getpass
 import json
+import pathlib
 import sys
 
 from . import doctor, hanzo, knowledge, mcp, new, runner, skills
@@ -15,6 +17,7 @@ def parser():
     d = sub.add_parser('doctor', help='check the agent before submission')
     d.add_argument('path', nargs='?', default='.', help='the agent project (default: here)')
     d.add_argument('--json', action='store_true', help='the result as JSON')
+    d.add_argument('--badge', action='store_true', help=f'also write {doctor.BADGE} beside agent/: PASS or FAIL, the day, the checks\' version, for your README')
     r = sub.add_parser('run', help='run the agent here, the way LARRYD runs it, with a sample job')
     r.add_argument('path', nargs='?', default='.', help='the agent project (default: here)')
     r.add_argument('--job', help='the sample job (default: samples/job.json)')
@@ -55,6 +58,11 @@ def main(argv=None):
     if args.command == 'doctor':
         problems = doctor.check(args.path)
         print(json.dumps(doctor.as_json(problems), indent=2) if args.json else doctor.report(args.path, problems))
+        if args.badge:
+            root = pathlib.Path(args.path).resolve()
+            if root.is_dir():
+                (root / doctor.BADGE).write_text(doctor.badge(problems, datetime.date.today().isoformat()))
+                print(f'wrote {root / doctor.BADGE}: paste ![LARRYD checks]({doctor.BADGE}) into your README', file=sys.stderr if args.json else sys.stdout)
         return 1 if problems else 0
     if args.command == 'run':
         result = runner.run(args.path, args.job)

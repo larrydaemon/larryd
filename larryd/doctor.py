@@ -11,6 +11,9 @@ from dataclasses import asdict, dataclass
 from . import knowledge, shape, skills
 
 CHECKS = ('the project', 'the manifest', 'the entry', 'the air gap', 'no secret', 'the shape', 'the skills', 'the knowledge')
+CHECKS_VERSION = '1'   # THE LARRYD CHECKS (CHECKS.md, larryd.ai/checks.html): a new or changed check raises it
+BADGE = 'larryd-checks.svg'   # `larryd doctor --badge` writes it beside agent/, never inside it (the shape keeps agent/ to its own kinds)
+GOLD, RED = '#FFB000', '#910E0D'   # the brand's gold (PASS) and red (FAIL)
 
 # the air gap: an agent never reaches out (PF HANZO's sandbox denies all network) and never starts a process
 NETWORK = {'socket', 'ssl', 'http', 'urllib', 'ftplib', 'smtplib', 'poplib', 'imaplib', 'nntplib', 'telnetlib', 'xmlrpc',
@@ -328,6 +331,21 @@ def report(root, problems):
     return '\n'.join(lines)
 
 
+def badge(problems, day):
+    """The doctor's result as a small SVG for a README: -> the SVG text. PASS in the brand's gold, FAIL in red, with the
+    day it was checked and the checks' version."""
+    word, colour = ('PASS', GOLD) if not problems else ('FAIL', RED)
+    left = f'LARRYD checks v{CHECKS_VERSION}'
+    right = f'{word} {day}'
+    lw, rw = 8 + 7 * len(left), 8 + 7 * len(right)
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" width="{lw + rw}" height="22" role="img" aria-label="{left}: {right}">'
+            f'<title>{left}: {right}</title>'
+            f'<rect width="{lw}" height="22" fill="#000000"/><rect x="{lw}" width="{rw}" height="22" fill="{colour}"/>'
+            f'<g font-family="Menlo,Consolas,monospace" font-size="12" text-anchor="middle">'
+            f'<text x="{lw / 2}" y="15" fill="{GOLD}">{left}</text>'
+            f'<text x="{lw + rw / 2}" y="15" fill="{"#000000" if not problems else "#FFFFFF"}">{right}</text></g></svg>\n')
+
+
 def as_json(problems):
-    return {'ok': not problems, 'checks': [{'check': n, 'ok': not any(p.check == n for p in problems),
+    return {'ok': not problems, 'checks_version': CHECKS_VERSION, 'checks': [{'check': n, 'ok': not any(p.check == n for p in problems),
                                             'problems': [asdict(p) for p in problems if p.check == n]} for n in CHECKS]}

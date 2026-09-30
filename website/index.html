@@ -21,8 +21,8 @@
   </a>
   <nav class="nav-links" aria-label="Main">
     <a href="#what">What it is</a>
-    <a href="#how">How it works</a>
-    <a href="#safe">Safety</a>
+    <a href="#cant">What it can't do</a>
+    <a href="/checks.html">The checks</a>
     <a href="#faq">Questions</a>
   </nav>
   <a class="button button-small" href="#install">Get LARRYD — free</a>
@@ -38,8 +38,23 @@
     <p class="lead">LARRYD is a free tool for building AI agents with Claude Code. It gives every agent the right shape, checks it for problems, and runs it in a sealed space where it can't touch anything it shouldn't.</p>
     <div class="actions">
       <a class="button" href="#install">Install LARRYD</a>
-      <a class="button button-quiet" href="#how">See how it works</a>
+      <a class="button button-quiet" href="#what">See how it works</a>
     </div>
+    <div class="terminal proof" role="group" aria-label="A real larryd doctor run">
+      <div class="terminal-bar"><span></span><span></span><span></span></div>
+      <pre><span class="dim">$</span> larryd doctor weather-report
+larryd doctor: /Users/Shared/weather-report
+PASS the project
+PASS the manifest
+PASS the entry
+PASS the air gap
+PASS no secret
+PASS the shape
+PASS the skills
+PASS the knowledge
+the agent passes every check</pre>
+    </div>
+    <p class="proof-line">Most agent tools trust the agent. LARRYD doesn't. <a href="/checks.html">What the doctor checks</a></p>
   </div>
   <div class="hero-film">
     <video autoplay muted loop playsinline preload="metadata" poster="/assets/video/larryd-poster.jpg" aria-label="LARRYD film">
@@ -70,38 +85,49 @@
       <h3>Run</h3>
       <p><code>larryd run</code> tries your agent on your own computer, sealed off the same way it will run for real: no internet, no private files, one job in and one answer out.</p>
     </article>
+    <article class="card card-soon">
+      <picture><source media="(prefers-color-scheme: light)" srcset="/assets/img/pulse-amber.png"><img src="/assets/img/pulse-green.png" alt="" width="56" height="28"></picture>
+      <h3>Share</h3>
+      <p><code>larryd submit</code> sends your agent for review. Once it is approved, people add it with one switch.</p>
+      <em class="soon">Opening soon</em>
+    </article>
   </div>
 </section>
 
-<section id="how" class="band band-image">
-  <img class="band-bg" src="/assets/img/screens-row.jpg" alt="" loading="lazy">
-  <div class="section-head">
-    <p class="eyebrow">How it works</p>
-    <h2>From an idea to a working agent in four steps</h2>
+<section id="cant" class="band split">
+  <div class="split-words">
+    <p class="eyebrow">Safe by design</p>
+    <h2>What your agent can't do.</h2>
+    <p class="lead">Every agent runs sealed off, on your computer and on LARRYD. These hold for every agent, every run.</p>
+    <ul class="checks">
+      <li><strong>It can't reach the internet.</strong> No network at all. What it needs is handed to it.</li>
+      <li><strong>It can't open your files.</strong> It reads its own folder and writes only to a scratch folder that is deleted after every run.</li>
+      <li><strong>It can't start other programs.</strong> No new process, nothing else on your machine.</li>
+      <li><strong>It can't carry secrets.</strong> The doctor refuses an agent with a password or key inside, before it ever runs.</li>
+      <li><strong>It answers only what it's handed.</strong> One job in, one answer out, with nothing else around it and a time limit.</li>
+    </ul>
   </div>
-  <ol class="steps">
-    <li><span class="step-n">1</span><div><h3>Install</h3><p>One line in your terminal. LARRYD sets itself up in its own place and stays out of your way.</p></div></li>
-    <li><span class="step-n">2</span><div><h3>Describe</h3><p>Open your new project in Claude Code and say what the agent should do. LARRYD's instructions keep it on the right path.</p></div></li>
-    <li><span class="step-n">3</span><div><h3>Check and try</h3><p>The doctor finds problems and says how to fix them. Then run it with a sample job and see the answer.</p></div></li>
-    <li><span class="step-n">4</span><div><h3>Share</h3><p>Send your agent for review with <code>larryd submit</code>. Once approved, people can add it with one switch. <em class="soon">Opening soon</em></p></div></li>
-  </ol>
+  <div class="split-art">
+    <img src="/assets/img/heartbeat-square.webp" alt="" width="1088" height="1088" loading="lazy">
+  </div>
 </section>
 
 <section id="install" class="band">
   <div class="section-head">
     <p class="eyebrow">Install</p>
-    <h2>New to this? Let Claude Code do it.</h2>
-    <p class="lead">If you use Claude Code, you don't need to know any of the lines below. Open Claude Code and type this:</p>
+    <h2>Open Claude Code and type: Install LARRYD for me</h2>
+    <p class="lead">That's all. Claude Code picks the right way for your computer, installs LARRYD, and checks it works.</p>
   </div>
   <div class="terminal" role="group" aria-label="Ask Claude Code">
     <div class="terminal-bar"><span></span><span></span><span></span></div>
     <ul class="commands">
-      <li class="start"><span class="how">claude</span><code>Install LARRYD for me</code><button class="copy" type="button" data-copy="Install LARRYD for me">Copy</button><p class="explain">Claude Code picks the right way for your computer, installs it, and checks it works. That's all you need.</p></li>
+      <li class="start"><span class="how">claude</span><code>Install LARRYD for me</code><button class="copy" type="button" data-copy="Install LARRYD for me">Copy</button></li>
     </ul>
   </div>
 
-  <div class="section-head section-head-second">
-    <h2>Or install it yourself. Pick one.</h2>
+  <details class="yourself">
+  <summary>Or install it yourself</summary>
+  <div class="section-head">
     <p class="lead">Each line installs the same LARRYD. You only need one, the one that matches a tool your computer already has. Type it in the Terminal app and press Return. LARRYD needs Python 3.11 or newer.</p>
   </div>
   <div class="terminal" role="group" aria-label="Install commands">
@@ -115,7 +141,7 @@
   </div>
 
   <div class="section-head section-head-second">
-    <h2>Then start it.</h2>
+    <h3>Then start it.</h3>
   </div>
   <div class="terminal" role="group" aria-label="Start LARRYD">
     <div class="terminal-bar"><span></span><span></span><span></span></div>
@@ -123,46 +149,7 @@
       <li class="start"><span class="how">start</span><code>sudo larryd &amp;</code><button class="copy" type="button" data-copy="sudo larryd &">Copy</button><p class="explain">Starts LARRYD's daemon, the part that runs your agents safely, in the background. It asks for your computer's password once, then tells you where it's running and how to stop it. Type <code>larryd help</code> any time to see everything it can do.</p></li>
     </ul>
   </div>
-</section>
-
-<section id="safe" class="band split">
-  <div class="split-words">
-    <p class="eyebrow">Safe by design</p>
-    <h2>Your agent gets one job, and nothing else</h2>
-    <ul class="checks">
-      <li><strong>No internet.</strong> An agent can't call out to anywhere. What it needs is handed to it.</li>
-      <li><strong>No private files.</strong> It sees its own folder and a scratch space that is wiped after every run.</li>
-      <li><strong>No other programs.</strong> It can't start anything else on your machine.</li>
-      <li><strong>No secrets inside.</strong> The doctor refuses an agent with a password or key in it.</li>
-      <li><strong>Yours.</strong> The agent you build belongs to you.</li>
-    </ul>
-  </div>
-  <div class="split-art">
-    <img src="/assets/img/heartbeat-square.webp" alt="A heartbeat on a green screen" width="1088" height="1088" loading="lazy">
-  </div>
-</section>
-
-<section class="band">
-  <div class="section-head">
-    <p class="eyebrow">Made for Claude Code</p>
-    <h2>Claude Code does the typing. LARRYD keeps it right.</h2>
-    <p class="lead">Every LARRYD project tells Claude Code what an agent is, what it may and may not do, and which tools to use. Claude Code can check and run your agent itself, read what the doctor says, and fix the problem — then check again.</p>
-  </div>
-  <div class="terminal terminal-slim">
-    <div class="terminal-bar"><span></span><span></span><span></span></div>
-    <pre><span class="dim">$</span> larryd new weather-report
-made weather-report/ · open it with Claude Code: cd weather-report &amp;&amp; claude
-<span class="dim">$</span> larryd doctor weather-report
-PASS the project
-PASS the manifest
-PASS the entry
-PASS the air gap
-PASS no secret
-PASS the shape
-PASS the skills
-PASS the knowledge
-the agent passes every check</pre>
-  </div>
+  </details>
 </section>
 
 <section class="band price">
@@ -201,6 +188,7 @@ the agent passes every check</pre>
     <a href="https://pypi.org/project/larryd/">PyPI</a>
     <a href="https://www.npmjs.com/package/larryd">npm</a>
     <a href="https://crates.io/crates/larryd">crates.io</a>
+    <a href="/checks.html">The LARRYD checks</a>
   </nav>
   <p class="legal">© 2026 COTECLAT LLC</p>
 </footer>

@@ -81,7 +81,13 @@ inputs the same way: `{"do": "answer", "job": {"name": "Harbor", "mood": "calm c
 
 It checks the project, the manifest, the entry, the air gap, no secret, the shape, the skills and the knowledge.
 Every problem names the file and line, what is wrong and what to do. Do what it says, then run it again.
-Never silence a check to make it pass.
+Never silence a check to make it pass. What each check proves, and why: THE LARRYD CHECKS ([CHECKS.md](CHECKS.md),
+larryd.ai/checks.html).
+
+    larryd doctor --badge
+
+also writes `larryd-checks.svg` beside `agent/` (never inside it): PASS in gold or FAIL in red, with the day and the
+checks' version. Paste `![LARRYD checks](larryd-checks.svg)` into your README; run it again after each change.
 
 ## 6. Run it here
     larryd run               (or --job <file>, --json)
