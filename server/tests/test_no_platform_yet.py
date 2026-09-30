@@ -1,6 +1,7 @@
 """A RUNTIME WITH NO PLATFORM YET (the LARRYD server before the platform has one): no address is declared, so HANZO's
 own door answers, and every call that needs the platform is refused in its own plain words; nothing crashes."""
 import datetime
+import pathlib
 import tempfile
 import unittest
 
@@ -37,6 +38,14 @@ class NoPlatformYet(unittest.TestCase):
 
     def test_the_start_up_catch_up_does_not_crash(self):
         self.assertEqual(host.catch_up(self.app), 0)
+
+
+class TheLocker(unittest.TestCase):
+    def test_a_server_keeps_its_agents_in_its_instance_the_laptop_in_the_code(self):
+        with tempfile.TemporaryDirectory() as d:
+            self.assertEqual(host.locker_root(d), host.APP / 'agents')
+            (pathlib.Path(d) / 'agents').mkdir()
+            self.assertEqual(host.locker_root(d), pathlib.Path(d) / 'agents')
 
 
 if __name__ == '__main__':

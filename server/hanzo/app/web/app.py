@@ -153,6 +153,13 @@ def catch_up(app):
     return status
 
 
+def locker_root(instance):
+    """Where the agents are kept: the instance's own agents/ folder when there is one (a server: it outlives every release
+    of the code), else the code's (the laptop)."""
+    held = pathlib.Path(instance) / 'agents'
+    return held if held.is_dir() else APP / 'agents'
+
+
 def main(argv):
     """python hanzo/app/web/app.py                                   the host
     python hanzo/app/web/app.py submit <key>                        an agent HANZO holds, to FROST's review (its key, its exact hashes, its manifest)
@@ -169,7 +176,7 @@ def main(argv):
     side = os.environ.get(CONFIG['environment_variable'], 'localhost.rnd').split('.')[-1]
     secret_file = INSTANCE / 'secrets' / CONFIG['secret']['name']
     secret = secret_file.read_text().strip() if secret_file.is_file() else ''
-    app = create_app(INSTANCE, secret, addresses=platform.addresses(CONFIG, side, INSTANCE))
+    app = create_app(INSTANCE, secret, addresses=platform.addresses(CONFIG, side, INSTANCE), agents=locker_root(INSTANCE))
     if argv[1:2] == ['submit'] and len(argv) == 3:
         try:
             print(json.dumps(app.config['harness'].submit(argv[2])))

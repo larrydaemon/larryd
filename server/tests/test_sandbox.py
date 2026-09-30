@@ -1,5 +1,7 @@
-"""THE SANDBOX, proven on the real machine: each plant is also run WITHOUT the sandbox (the control), so a green test
-means the sandbox stopped it, not that the plant never worked."""
+"""THE SANDBOX, proven on the real machine, whichever it is (macOS sandbox-exec, or Linux bubblewrap + seccomp): each plant
+is also run WITHOUT the sandbox (the control), so a green test means the sandbox stopped it, not that the plant never
+worked. The same tests run on both systems; only the words of a refusal differ (a path the Linux sandbox never mounts is
+"No such file", a read-only mount is "Read-only file system", where macOS says "Operation not permitted")."""
 import json
 import os
 import pathlib
@@ -14,6 +16,18 @@ from _here import APP
 from core_engine import sandbox
 
 ECHO = 'import sys, json\nprint(json.dumps({"got": json.load(sys.stdin)}))\n'
+LINUX = sys.platform.startswith('linux')
+REFUSED = {   # the system's own words for each refusal, by system
+    'network': ('Network is unreachable', 'Connection refused') if LINUX else ('Operation not permitted',),
+    'write outside': ('No such file or directory', 'Read-only file system') if LINUX else ('Operation not permitted',),
+    'write own folder': ('Read-only file system',) if LINUX else ('Operation not permitted',),
+    'read outside': ('No such file or directory',) if LINUX else ('Operation not permitted',),
+    'process': ('Operation not permitted',),
+}
+
+
+def said(reason, kind):
+    return any(words in reason for words in REFUSED[kind])
 
 
 class SandboxTest(unittest.TestCase):
@@ -62,7 +76,7 @@ class SandboxTest(unittest.TestCase):
         try:
             state, answer, reason = sandbox.run(folder, 'agent.py', {})
             self.assertEqual((state, answer), ('FAILED', None))
-            self.assertIn('Operation not permitted', reason)
+            self.assertTrue(said(reason, 'network'), reason)
             self.assertEqual(seen, [], 'the sandboxed agent reached the listener')
             self.assertEqual(self._control(folder).returncode, 0)   # the control connects
             t.join(1)
@@ -76,27 +90,29 @@ class SandboxTest(unittest.TestCase):
         folder = self._agent(f'open({str(target)!r}, "w").write("x")\nprint("{{}}")\n')
         state, _answer, reason = sandbox.run(folder, 'agent.py', {})
         self.assertEqual(state, 'FAILED')
-        self.assertIn('Operation not permitted', reason)
+        self.assertTrue(said(reason, 'write outside'), reason)
         self.assertFalse(target.exists())
         self.assertEqual(self._control(folder).returncode, 0)
         self.assertTrue(target.exists(), 'the control never wrote: the plant is dead')
 
     def test_no_write_into_its_own_locker_folder(self):
         folder = self._agent('open(__file__ + ".new", "w").write("x")\nprint("{}")\n')
-        self.assertEqual(sandbox.run(folder, 'agent.py', {})[0], 'FAILED')
+        state, _answer, reason = sandbox.run(folder, 'agent.py', {})
+        self.assertEqual(state, 'FAILED')
+        self.assertTrue(said(reason, 'write own folder'), reason)
         self.assertFalse((folder / 'agent.py.new').exists())
 
     def test_writes_inside_its_run_folder(self):
         folder = self._agent('import os, json\nopen("scratch.txt", "w").write("x")\nprint(json.dumps({"cwd_files": os.listdir(".")}))\n')
         self.assertEqual(sandbox.run(folder, 'agent.py', {}), ('DONE', {'cwd_files': ['scratch.txt']}, ''))
 
-    def test_reads_nothing_under_users(self):
-        with tempfile.NamedTemporaryFile(dir=pathlib.Path.home(), prefix='.hanzo_probe_') as probe:   # under /Users
-            self.assertTrue(os.path.realpath(probe.name).startswith('/Users/'))
+    def test_reads_nothing_private(self):
+        """A file in the home folder of whoever runs the runtime (on macOS under /Users; on Linux, never mounted)."""
+        with tempfile.NamedTemporaryFile(dir=pathlib.Path.home(), prefix='.hanzo_probe_') as probe:
             folder = self._agent(f'open({probe.name!r}).read()\nprint("{{}}")\n')
             state, _answer, reason = sandbox.run(folder, 'agent.py', {})
             self.assertEqual(state, 'FAILED')
-            self.assertIn('Operation not permitted', reason)
+            self.assertTrue(said(reason, 'read outside'), reason)
             self.assertEqual(self._control(folder).returncode, 0)
 
     def test_reads_its_own_folder(self):
@@ -107,8 +123,29 @@ class SandboxTest(unittest.TestCase):
         folder = self._agent('import subprocess\nsubprocess.run(["/bin/echo", "hi"], stdout=subprocess.DEVNULL)\nprint("{}")\n')
         state, _answer, reason = sandbox.run(folder, 'agent.py', {})
         self.assertEqual(state, 'FAILED')
-        self.assertIn('Operation not permitted', reason)
+        self.assertTrue(said(reason, 'process'), reason)
         self.assertEqual(self._control(folder).returncode, 0)
+
+    def test_no_fork(self):
+        folder = self._agent('import os\npid = os.fork()\nif pid == 0:\n    os._exit(0)\nos.waitpid(pid, 0)\nprint("{}")\n')
+        state, _answer, reason = sandbox.run(folder, 'agent.py', {})
+        self.assertEqual(state, 'FAILED')
+        self.assertTrue(said(reason, 'process'), reason)
+        self.assertEqual(self._control(folder).returncode, 0)
+
+    def test_no_other_program(self):
+        """exec without a fork: the agent's own process tries to become another program (it would answer "{}" if it did).
+        (macOS lets the process become the Python runtime itself again, which a framework Python needs; Linux refuses
+        every exec.)"""
+        folder = self._agent('import os\nos.execv("/bin/echo", ["/bin/echo", "{}"])\n')
+        state, _answer, reason = sandbox.run(folder, 'agent.py', {})
+        self.assertEqual(state, 'FAILED')
+        self.assertTrue(said(reason, 'process'), reason)
+        self.assertEqual(self._control(folder).returncode, 0)
+
+    def test_threads_still_work(self):
+        folder = self._agent('import threading, json\nout = []\nt = threading.Thread(target=lambda: out.append(1))\nt.start(); t.join()\nprint(json.dumps({"n": len(out)}))\n')
+        self.assertEqual(sandbox.run(folder, 'agent.py', {}), ('DONE', {'n': 1}, ''))
 
     def test_time_limit(self):
         folder = self._agent('import time\ntime.sleep(30)\n')
@@ -125,6 +162,12 @@ class SandboxTest(unittest.TestCase):
         state, answer, _ = sandbox.run(folder, 'agent.py', {})
         self.assertEqual(state, 'DONE')
         self.assertEqual(answer, {'env': ['HOME', 'LC_CTYPE', 'PATH', 'TMPDIR']})
+
+    def test_nothing_runs_without_a_sandbox(self):
+        import unittest.mock
+        with unittest.mock.patch.object(sandbox.sys, 'platform', 'plan9'):
+            folder = self._agent(ECHO)
+            self.assertEqual(sandbox.run(folder, 'agent.py', {}), ('FAILED', None, 'no sandbox on this system: nothing runs unsandboxed'))
 
 
 if __name__ == '__main__':
