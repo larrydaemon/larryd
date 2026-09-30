@@ -122,13 +122,15 @@ The loop for the AI: change the agent → larryd_doctor → larryd_run → fix �
     `greeting` of that shape.
   - The FROST identity: before the RUN, LARRYD asks FROST who the agent works for and hands it in as `identity`:
     `{"first_name", "member_type", "account_name"}`, nothing else (no email, no address, no key).
+  - The DA-M store: the answer may carry `"files": [{"name", "content_b64"}]` (name `files` in `gives`); after the
+    charge, LARRYD keeps each in the member's own DA-M, the agent's card key as its source. At most 10 files, plain
+    names, all inside the answer's own limit of 1 MB.
 - A knowledge pack is a folder (`pack.json` with `name` and `about`, plus .md .txt .csv .json files) named by its hash;
   `larryd pack <folder>` checks it and gives the hash.
 
 ## Not there yet
-- Skills: the DA-M store (files an agent answers, kept in the member's DA-M) comes as a skill when its door exists.
-  The LARRY LLM greeting's and the FROST identity's platform sides are not on the live platform yet; until they are, a
-  RUN of an agent that declares one fails with LARRYD's plain reason.
+- Skills: the platform's sides of the LARRY LLM greeting, the FROST identity and the DA-M store are not on the live
+  platform yet; until they are, a RUN of an agent that declares one fails with LARRYD's plain reason.
 - Knowledge packs: LARRYD holds none yet, so declaring one in `knowledge` fails the doctor. Leave it `[]`.
 - `larryd run` on Linux and Windows: it needs a Mac today (macOS sandbox-exec). The doctor does not use it.
 - The job's inputs on the live platform: LARRYD hands `job` today, but the platform's side (the route that gives

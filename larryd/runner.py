@@ -5,8 +5,11 @@
   the run, removed after), reads nothing under /Users but the agent's own folder, an empty environment, a time limit;
 - one JSON object out, holding only what "gives" names.
 Scratch only: nothing is sent anywhere, no live record is read or written. It needs a Mac today (sandbox-exec)."""
+import base64
+import binascii
 import json
 import os
+import re
 import pathlib
 import shutil
 import subprocess
@@ -145,7 +148,38 @@ def run(root, sample=None, seconds=SECONDS):
         if extra:
             return Result('FAILED', answer=result.answer, said=result.said, reason=f'the answer holds {extra}, which "gives" does not name',
                           todo='name them in "gives" in agent.json, or take them out of the answer')
+        wrong = _files(card, result.answer)
+        if wrong:
+            return Result('FAILED', answer=result.answer, said=result.said, reason=wrong[0], todo=wrong[1])
     return result
+
+
+FILE_NAME = re.compile(r'^[A-Za-z0-9][A-Za-z0-9 ._-]{0,120}$')
+MOST_FILES = 10
+
+
+def _files(card, answer):
+    """The files an answer carries, checked as LARRYD checks them before it stores them in the member's DA-M: -> None, or
+    (what is wrong, what to do)."""
+    files = answer.get('files')
+    if files is None:
+        return None
+    known = skills.known()
+    if not any(known.get(h, {}).get('after') == 'files' for h in card.get('skills') or []):
+        return ('the answer carries files, but the agent does not declare the DA-M store', 'declare the DA-M store in "skills" (`larryd skills` gives its hash)')
+    if not isinstance(files, list) or len(files) > MOST_FILES:
+        return (f'"files" is not a list of at most {MOST_FILES}', f'answer at most {MOST_FILES} files, as a list')
+    for i, f in enumerate(files, 1):
+        if not (isinstance(f, dict) and set(f) == {'name', 'content_b64'} and isinstance(f['name'], str) and FILE_NAME.match(f['name'])
+                and isinstance(f['content_b64'], str)):
+            return (f'file {i} is not {{"name", "content_b64"}} with a plain name', 'give each file a plain name (no folder) and its bytes as base64, nothing else')
+        try:
+            raw = base64.b64decode(f['content_b64'], validate=True)
+        except (binascii.Error, ValueError):
+            return (f'file {i} is not base64', 'put each file\'s bytes in content_b64 as base64')
+        if not raw:
+            return (f'file {i} is empty', 'answer only files that hold something')
+    return None
 
 
 def report(result):

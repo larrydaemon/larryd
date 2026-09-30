@@ -12,18 +12,20 @@ from larryd import cli, doctor, hashes, knowledge, new, skills
 MTOK = '3c8ad8bf218a8350b26a7fb4b9eb7f6c70073553437aec8d05afee60f9740dcb'       # pinned here and in PF HANZO's tests: drift on either side is red
 GREETING = '94686bdeef7ebf3df3e52f1a3086f280ee25b1457336b87f5ab39860f7248fa2'
 IDENTITY = '4db76a92980ff0a3b4cbe584d0b2de4c9821a5cbf7385c0b062c43f276f0ac0f'
+STORE = '1d0eb4d13f8a91b4d0cc67f8b5cb157a4b74ec2c937779d49d4bb80beecc670a'
 
 
 def test_the_skills_that_exist():
     """Only a door that exists is a skill. Today: the mTok charge (applied to every run) and the LARRY LLM greeting
     (LARRYD asks LARRY LLM for the member's greeting and hands it in) and the FROST identity (who the agent works for: first
-    name, member type, account name). The DA-M store comes with its door."""
+    name, member type, account name) and the DA-M store (files an agent answers, kept in the member's DA-M)."""
     known = skills.known()
-    assert {h: s['name'] for h, s in known.items()} == {MTOK: 'mTok charge', GREETING: 'LARRY LLM greeting', IDENTITY: 'FROST identity'}
+    assert {h: s['name'] for h, s in known.items()} == {MTOK: 'mTok charge', GREETING: 'LARRY LLM greeting', IDENTITY: 'FROST identity', STORE: 'DA-M store'}
     for h, s in known.items():
         assert h == hashlib.sha256(json.dumps(s, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
-        assert {'name', 'technology', 'door', 'does', 'agent'} <= set(s) <= {'name', 'technology', 'door', 'does', 'agent', 'hand'} and all(s.values())
+        assert {'name', 'technology', 'door', 'does', 'agent'} <= set(s) <= {'name', 'technology', 'door', 'does', 'agent', 'hand', 'after'} and all(s.values())
     assert known[GREETING]['hand'] == 'greeting' and known[IDENTITY]['hand'] == 'identity' and 'hand' not in known[MTOK]
+    assert known[STORE]['after'] == 'files' and 'hand' not in known[STORE]
 
 
 def test_run_hands_the_greeting_when_the_skill_is_declared(tmp_path):
@@ -38,6 +40,31 @@ def test_run_hands_the_greeting_when_the_skill_is_declared(tmp_path):
     assert result.state == 'DONE' and result.answer == {'delivery': 'Up with the sun'}
     _set(root, skills=[])
     assert "holds ['greeting']" in runner.run(root).reason   # not declared: LARRYD would not hand it
+
+
+def test_run_checks_the_files_an_answer_carries(tmp_path):
+    import base64
+    from larryd import runner
+    root = new.make('keeper', tmp_path)
+    _set(root, skills=[STORE], gives=['delivery', 'files'])
+    code = root / 'agent' / 'agent.py'
+
+    def answering(files):
+        text = code.read_text()
+        start = text.index('    return {')
+        end = text.index('\n', start)
+        code.write_text(text[:start] + f"    return {{'delivery': 'kept', 'files': {files!r}}}" + text[end:])
+        return runner.run(root)
+
+    good = {'name': 'theme.json', 'content_b64': base64.b64encode(b'{"theme": 1}').decode()}
+    assert answering([good]).state == 'DONE'
+    for files, words in (([dict(good, name='sub/x.json')], 'plain name'), ([dict(good, content_b64='no!')], 'not base64'),
+                         ([dict(good, content_b64='')], 'is empty'), ([good] * 11, 'at most 10'), ('x', 'at most 10')):
+        result = answering(files)
+        assert result.state == 'FAILED' and words in result.reason, (files, result.reason)
+    _set(root, skills=[])
+    result = answering([good])
+    assert result.state == 'FAILED' and 'does not declare the DA-M store' in result.reason
 
 
 def test_a_changed_skill_is_a_new_skill():
