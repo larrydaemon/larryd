@@ -15,6 +15,14 @@
       "does": "hands the agent the greeting LARRY LLM gives the member today, for every time of day, in the member's language",
       "agent": "reads job[\"greeting\"]: {\"date\", \"lang\", \"greetings\": {time of day: the words}}",
       "hand": "greeting"
+    },
+    {
+      "name": "FROST identity",
+      "technology": "FROST",
+      "door": "LARRYD asks FROST who the agent works for on this RUN (GET /agents/identity) before the RUN",
+      "does": "hands the agent the member's first name, member type and account name, nothing else (no email, no address, no key)",
+      "agent": "reads job[\"identity\"]: {\"first_name\", \"member_type\", \"account_name\"}",
+      "hand": "identity"
     }
   ]
 }

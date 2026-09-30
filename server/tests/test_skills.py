@@ -13,6 +13,8 @@ from core_engine import harness, locker, platform, store
 
 MTOK = '3c8ad8bf218a8350b26a7fb4b9eb7f6c70073553437aec8d05afee60f9740dcb'       # pinned here and in LARRYD's tests: drift on either side is red
 GREETING = '94686bdeef7ebf3df3e52f1a3086f280ee25b1457336b87f5ab39860f7248fa2'
+IDENTITY = '4db76a92980ff0a3b4cbe584d0b2de4c9821a5cbf7385c0b062c43f276f0ac0f'
+WHO = {'first_name': 'Ann', 'member_type': 'user', 'account_name': 'Scratch Account'}
 KEY, JOB = 'MAGT_00000000D0B2_0001', 'MJOB_00000000D0B2_0001'
 ACCOUNT, SCOPE, MEMBER = 'ACCT_' + 'A' * 12 + '_0001', 'SCRATCH', 'MCON_' + 'B' * 12 + '_0002'
 CARD = {'key': KEY, 'name': 'Echo', 'screen': 'larryd/agnt/home', 'product': 'LARRYD', 'product_slug': 'larryd', 'module': 'Agents',
@@ -27,7 +29,9 @@ class Platform:
 
     def get(self, office, route, data=None):
         self.said.append((office, route, data))
-        return (self.status, SAID) if self.status == 200 else (self.status, {'refused': 'sign in first'})
+        if self.status != 200:
+            return self.status, {'refused': 'sign in first'}
+        return 200, {'/larry/greeting': SAID, '/agents/identity': WHO}[route]
 
     def post(self, office, route, data):
         self.said.append((office, route, data))
@@ -57,7 +61,7 @@ class Skills(unittest.TestCase):
         folder = self.agents / 'echo'
         folder.mkdir(parents=True, exist_ok=True)
         (folder / 'agent.json').write_text(json.dumps({'name': 'Echo', 'entry': 'agent.py', 'run': {'do': 'answer', 'hands': []}, 'skills': skills}))
-        (folder / 'agent.py').write_text('import json, sys\njob = json.load(sys.stdin)\nprint(json.dumps({"delivery": json.dumps(job.get("greeting"), sort_keys=True)}))\n')
+        (folder / 'agent.py').write_text('import json, sys\njob = json.load(sys.stdin)\nprint(json.dumps({"delivery": json.dumps({k: job.get(k) for k in ("greeting", "identity") if k in job} or None, sort_keys=True)}))\n')
         con = sqlite3.connect(self.db)
         con.execute('DELETE FROM hanzo_locker')
         con.commit()
@@ -74,18 +78,33 @@ class Skills(unittest.TestCase):
         return [d for _o, route, d in p.said if route == '/jobs/result']
 
     def test_the_hashes_are_the_definitions(self):
-        self.assertEqual(sorted(harness.SKILLS), sorted([MTOK, GREETING]))
-        self.assertEqual((harness.SKILLS[MTOK]['name'], harness.SKILLS[GREETING]['name']), ('mTok charge', 'LARRY LLM greeting'))
+        self.assertEqual({h: s['name'] for h, s in harness.SKILLS.items()}, {MTOK: 'mTok charge', GREETING: 'LARRY LLM greeting', IDENTITY: 'FROST identity'})
 
     def test_the_greeting_is_asked_for_the_runs_member_and_handed_in(self):
         self.agent([GREETING])
         p = Platform()
         self.assertEqual(self.run_with(p), 'DONE')
         self.assertIn(('lryllm', '/larry/greeting', {'account': ACCOUNT, 'member': MEMBER}), p.said)
-        self.assertEqual(json.loads(self.results(p)[-1]['delivery']), SAID)
+        self.assertEqual(json.loads(self.results(p)[-1]['delivery']), {'greeting': SAID})
         for path in self.instance.rglob('*'):
             if path.is_file():
                 self.assertNotIn(b'Up with the sun', path.read_bytes())
+
+    def test_who_the_agent_works_for_is_asked_of_frost_and_handed_in(self):
+        self.agent([IDENTITY, GREETING])
+        p = Platform()
+        self.assertEqual(self.run_with(p), 'DONE')
+        self.assertIn(('fs', '/agents/identity', {'account': ACCOUNT, 'member': MEMBER}), p.said)
+        self.assertEqual(json.loads(self.results(p)[-1]['delivery']), {'greeting': SAID, 'identity': WHO})
+        for path in self.instance.rglob('*'):
+            if path.is_file():
+                self.assertNotIn(b'Scratch Account', path.read_bytes())
+
+    def test_a_refusing_frost_fails_the_run(self):
+        self.agent([IDENTITY])
+        p = Platform(status=401)
+        self.assertEqual(self.run_with(p), 'FAILED')
+        self.assertEqual(self.results(p)[-1]['log'], 'HANZO could not read who the agent works for: sign in first')
 
     def test_a_silent_or_refusing_larry_llm_fails_the_run(self):
         self.agent([GREETING])

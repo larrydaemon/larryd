@@ -26,6 +26,10 @@ def _skills():
 
 
 SKILLS = _skills()
+HANDED = {   # a skill's hand: the platform's door HANZO asks for the RUN's member and account (signed with hanzo_link)
+    'greeting': ('lryllm', '/larry/greeting', "the member's greeting", 'LARRY LLM'),
+    'identity': ('fs', '/agents/identity', 'who the agent works for', 'FROST'),
+}
 
 
 class _Stop(Exception):
@@ -253,11 +257,14 @@ class Harness:
             raise _Stop('FAILED', f'the agent declares a skill HANZO does not have: {unknown[0][:12]}')
         out = {}
         for h in declared:
-            if SKILLS[h].get('hand') == 'greeting':
-                status, body = self.client.get('lryllm', '/larry/greeting', {'account': account, 'member': member})
-                if status != 200:
-                    raise _Stop('FAILED', f"HANZO could not read the member's greeting: {body.get('refused') or body.get('error') or f'LARRY LLM answered {status}'}")
-                out['greeting'] = body
+            hand = SKILLS[h].get('hand')
+            if hand not in HANDED:
+                continue
+            office, route, what, who = HANDED[hand]
+            status, body = self.client.get(office, route, {'account': account, 'member': member})
+            if status != 200:
+                raise _Stop('FAILED', f"HANZO could not read {what}: {body.get('refused') or body.get('error') or f'{who} answered {status}'}")
+            out[hand] = body
         return out
 
     def _job_inputs(self, manifest, account, scope, job_key, run):
