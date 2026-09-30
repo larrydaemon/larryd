@@ -120,10 +120,10 @@ def _manifest(root, f):
                 f.add(c, where, f'run "do" is "{run["do"]}", not one of "does"', f'set run "do" to one of {sorted(does) or "the names in does"}')
             hands = run['hands']
             if not (isinstance(hands, list) and all(isinstance(x, str) for x in hands)):
-                f.add(c, where, 'run "hands" is not a list of names', 'set run "hands" to [] or to what PF HANZO hands: ' + ', '.join(shape.HANDS))
+                f.add(c, where, 'run "hands" is not a list of names', 'set run "hands" to [] or to what LARRYD hands: ' + ', '.join(shape.HANDS))
             elif set(hands) - set(shape.HANDS):
-                f.add(c, where, f'run "hands" asks for {sorted(set(hands) - set(shape.HANDS))}, which PF HANZO does not hand',
-                      f'PF HANZO hands today only: {", ".join(shape.HANDS)}. Take the rest out and answer without it')
+                f.add(c, where, f'run "hands" asks for {sorted(set(hands) - set(shape.HANDS))}, which LARRYD does not hand',
+                      f'LARRYD hands today only: {", ".join(shape.HANDS)}. Take the rest out and answer without it')
     hands = run.get('hands') if isinstance(run, dict) and isinstance(run.get('hands'), list) else []
     inputs = card.get('inputs')
     if 'job' in hands:
@@ -194,7 +194,7 @@ def _air_gap(root, trees, f):
                 top = mod.split('.')[0]
                 if top in NETWORK:
                     f.add(c, where, f'it imports {mod}, a network module; an agent never reaches out',
-                          'remove it. PF HANZO fetches what the agent needs and hands it in (run.hands); the agent only answers', n.lineno)
+                          'remove it. LARRYD fetches what the agent needs and hands it in (run.hands); the agent only answers', n.lineno)
                 elif top in PROCESS:
                     f.add(c, where, f'it imports {mod}, which starts processes or reaches outside Python',
                           'remove it and do the work inside this one process', n.lineno)
@@ -205,7 +205,7 @@ def _air_gap(root, trees, f):
                           'remove it and do the work inside this one process', n.lineno)
                 elif top not in sys.stdlib_module_names and top not in local:
                     f.add(c, where, f'it imports {mod}, which is not the Python standard library',
-                          'use the standard library only (PF HANZO runs the plain Python runtime), or put the code in agent/ yourself', n.lineno)
+                          'use the standard library only (LARRYD runs the plain Python runtime), or put the code in agent/ yourself', n.lineno)
             if isinstance(n, ast.Attribute) and isinstance(n.value, ast.Name) and n.value.id == 'os' and OS_PROCESS.match(n.attr):
                 f.add(c, where, f'it calls os.{n.attr}, which starts or stops processes', 'remove it and do the work inside this one process', n.lineno)
             if isinstance(n, ast.Name) and n.id == '__import__':
@@ -220,8 +220,8 @@ def _air_gap(root, trees, f):
         where = _rel(root, path)
         for i, line in enumerate(text.splitlines(), 1):
             if PLATFORM.search(line):
-                f.add(c, where, 'it names the platform\'s or PF HANZO\'s folder; the agent is air gapped from both',
-                      'remove it. The agent reaches nothing; PF HANZO hands it what it needs', i)
+                f.add(c, where, 'it names the platform\'s or LARRYD\'s folder; the agent is air gapped from both',
+                      'remove it. The agent reaches nothing; LARRYD hands it what it needs', i)
             elif PATHS.search(line):
                 f.add(c, where, 'it names a path outside the agent\'s own folder', 'remove it. The agent reads only what it is handed and writes only in the folder it is run in', i)
 
@@ -244,7 +244,7 @@ def _secrets(root, f):
             for pattern, what in SECRET_TEXT:
                 if pattern.search(line):
                     f.add('no secret', where, f'it holds what looks like {what}',
-                          'take it out and revoke it if it was real. An agent holds no secret; PF HANZO hands it what it needs', i)
+                          'take it out and revoke it if it was real. An agent holds no secret; LARRYD hands it what it needs', i)
                     break
 
 
@@ -288,8 +288,8 @@ def _knowledge(root, card, f):
     held = knowledge.held()
     for k in card['knowledge']:
         if isinstance(k, str) and k not in held:
-            f.add('the knowledge', _rel(root, root / shape.AGENT / shape.MANIFEST), f'the knowledge pack "{k}" is not held by PF HANZO',
-                  'take it out: PF HANZO holds no knowledge pack yet' if not held else 'declare only packs PF HANZO holds, by their hash')
+            f.add('the knowledge', _rel(root, root / shape.AGENT / shape.MANIFEST), f'the knowledge pack "{k}" is not held by LARRYD',
+                  'take it out: LARRYD holds no knowledge pack yet' if not held else 'declare only packs LARRYD holds, by their hash')
 
 
 def check(root):

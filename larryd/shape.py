@@ -16,12 +16,12 @@ SKILL = '.claude/skills/larryd/SKILL.md'
 # the manifest: every field, what it holds (the words the doctor uses when one is wrong)
 FIELDS = {
     'name': 'the agent\'s name, as its card shows it',
-    'entry': 'the file PF HANZO runs, inside agent/ (agent.py)',
+    'entry': 'the file LARRYD runs, inside agent/ (agent.py)',
     'about': 'one plain sentence: what the agent answers',
     'does': 'the list of what the agent does; each one is a function of that name in the entry',
     'calls': 'what it answers at once on the member\'s screen (the CALL lane); a list, most agents leave it empty',
     'reads': 'the list of what the agent reads, in plain words',
-    'run': 'what a RUN hands it: {"do": one of does, "hands": the inputs, from what PF HANZO hands}',
+    'run': 'what a RUN hands it: {"do": one of does, "hands": the inputs, from what LARRYD hands}',
     'gives': 'the list of what its answer holds (its outputs); "delivery" is what lands in the member\'s job',
     'skills': 'the list of skill hashes the agent uses (empty when none; `larryd skills` lists the skills that exist)',
     'knowledge': 'the list of knowledge pack hashes the agent needs (empty when none; `larryd pack` gives a pack its hash)',

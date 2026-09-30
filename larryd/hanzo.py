@@ -42,18 +42,18 @@ def save_key(address, developer, secret):
     """Keep the developer's key (0600, in a 0700 folder). The secret comes from stdin, never the command line."""
     parts = urllib.parse.urlsplit(address or '')
     if parts.scheme not in ('http', 'https') or not parts.netloc or parts.path not in ('', '/') or parts.query:
-        raise Refused(f'"{address}" is not PF HANZO\'s address', 'give the address exactly as PF HANZO gave it, e.g. https://hanzo.example')
+        raise Refused(f'"{address}" is not LARRYD\'s address', 'give the address exactly as LARRYD gave it, e.g. https://larryd.example')
     if not NAME.match(developer or ''):
-        raise Refused(f'"{developer}" is not a developer name', 'give the name PF HANZO made for you')
+        raise Refused(f'"{developer}" is not a developer name', 'give the name LARRYD made for you')
     if not re.fullmatch(r'[0-9a-f]{64}', secret or ''):
-        raise Refused('that is not a developer secret', 'paste the 64-character secret PF HANZO showed you once')
+        raise Refused('that is not a developer secret', 'paste the 64-character secret LARRYD showed you once')
     folder = home()
     folder.mkdir(parents=True, exist_ok=True)
     os.chmod(folder, 0o700)
     path = folder / 'developer.json'
     fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
     with os.fdopen(fd, 'w') as f:
-        json.dump({'hanzo': address.rstrip('/'), 'developer': developer, 'secret': secret}, f)
+        json.dump({'address': address.rstrip('/'), 'developer': developer, 'secret': secret}, f)
     os.chmod(path, 0o600)
     return path
 
@@ -61,7 +61,7 @@ def save_key(address, developer, secret):
 def key():
     path = home() / 'developer.json'
     if not path.is_file():
-        raise Refused('there is no developer key here', 'run `larryd key <PF HANZO address> <your developer name>` and paste your secret')
+        raise Refused('there is no developer key here', 'run `larryd key <LARRYD address> <your developer name>` and paste your secret')
     if stat.S_IMODE(os.stat(path).st_mode) & 0o077:
         raise Refused(f'{path} can be read by others', f'make it yours only (chmod 600 {path}), or save the key again with `larryd key`')
     return json.loads(path.read_text())
@@ -80,7 +80,7 @@ def call(k, method, route, data, timeout=30):
     if method == 'POST':
         body = json.dumps(data).encode('utf-8')
         headers['Content-Type'] = 'application/json'
-    request = urllib.request.Request(k['hanzo'] + '/api' + route, data=body, headers=headers, method=method)
+    request = urllib.request.Request(k['address'] + '/api' + route, data=body, headers=headers, method=method)
     try:
         with urllib.request.urlopen(request, timeout=timeout) as r:
             return r.status, json.load(r)
@@ -89,9 +89,9 @@ def call(k, method, route, data, timeout=30):
             try:
                 return e.code, json.load(e)
             except ValueError:
-                return e.code, {'refused': f'PF HANZO answered {e.code}'}
+                return e.code, {'refused': f'LARRYD answered {e.code}'}
     except (urllib.error.URLError, OSError):
-        return 0, {'refused': 'PF HANZO does not answer'}
+        return 0, {'refused': 'LARRYD does not answer'}
 
 
 def agent_key(root):
@@ -101,7 +101,7 @@ def agent_key(root):
     except (ValueError, AttributeError):
         found = ''
     if not KEY.match(found or ''):
-        raise Refused(f'{PROJECT} holds no card key', f'put the card key PF HANZO gave you for this agent in {PROJECT}: {{"agent_key": "XXXX_0123456789AB_CDEF"}}')
+        raise Refused(f'{PROJECT} holds no card key', f'put the card key LARRYD gave you for this agent in {PROJECT}: {{"agent_key": "XXXX_0123456789AB_CDEF"}}')
     return found
 
 
@@ -117,29 +117,29 @@ def submit(root):
     root = pathlib.Path(root).resolve()
     problems = doctor.check(root)
     if problems:
-        raise Refused('the doctor found problems; PF HANZO would not take this agent', 'fix each one (`larryd doctor`), then submit again',
+        raise Refused('the doctor found problems; LARRYD would not take this agent', 'fix each one (`larryd doctor`), then submit again',
                       problems=[doctor.asdict(p) for p in problems])
     k, card_key = key(), agent_key(root)
     files, code, manifest = package(root)
     status, answer = call(k, 'POST', '/developer/submit', {'agent_key': card_key, 'files': files})
     if status != 200:
-        raise Refused(f"PF HANZO refused it: {answer.get('refused', status)}", _todo(status), status=status)
+        raise Refused(f"LARRYD refused it: {answer.get('refused', status)}", _todo(status), status=status)
     if (answer.get('code_sha256'), answer.get('manifest_sha256')) != (code, manifest):
-        raise Refused('PF HANZO holds other bytes than the ones sent', 'submit again; if it repeats, tell PF HANZO',
+        raise Refused('LARRYD holds other bytes than the ones sent', 'submit again; if it repeats, tell LARRYD',
                       sent={'code_sha256': code, 'manifest_sha256': manifest}, held=answer)
     return {'ok': True, 'agent_key': card_key, 'code_sha256': code, 'manifest_sha256': manifest, 'review': answer.get('review')}
 
 
 def _todo(status):
-    return {0: 'check PF HANZO\'s address in your developer key (`larryd key`), then submit again',
+    return {0: 'check LARRYD\'s address in your developer key (`larryd key`), then submit again',
             401: 'your developer key was refused: save it again with `larryd key` (and check this computer\'s clock)',
             403: 'this agent\'s card key is not yours: check larryd.json',
             413: 'the agent is too big: keep it under 200 files and 5 MB',
-            502: 'PF HANZO holds it, but FROST did not take it: submit again later'}.get(status, 'read what PF HANZO said, fix it, then submit again')
+            502: 'LARRYD holds it, but FROST did not take it: submit again later'}.get(status, 'read what LARRYD said, fix it, then submit again')
 
 
 def status():
     code, answer = call(key(), 'GET', '/developer/status', {})
     if code != 200:
-        raise Refused(f"PF HANZO refused it: {answer.get('refused', code)}", _todo(code), status=code)
+        raise Refused(f"LARRYD refused it: {answer.get('refused', code)}", _todo(code), status=code)
     return {'ok': True, **answer}

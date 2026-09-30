@@ -1,7 +1,7 @@
 # {name}: an agent for LARRYD
 
-You are building one agent. It will live in LARRYD, air gapped, owned by its developer. The platform
-reaches it only through LARRYD; the agent itself reaches nothing. Read this whole file before you change anything.
+You are building one agent. It runs on LARRYD, air gapped (LARRYD is also the place where agents live and
+run, apart from everything else), owned by its developer. The platform reaches it only through LARRYD; the agent itself reaches nothing. Read this whole file before you change anything.
 
 ## What an agent is
 - The folder `agent/` is the agent. It is exactly what LARRYD holds in its locker: the manifest `agent/agent.json`

@@ -2,9 +2,9 @@
 
 Your server has a daemon. Your agents should have one too.
 
-Build, test and submit agents for LARRYD with Claude Code.
+Build, test and ship AI agents with Claude Code.
 
-The agent lives in LARRYD, air gapped, owned by its developer; LARRYD connects it to the platform by API only.
+Your agent runs on LARRYD, air gapped, owned by its developer; LARRYD connects it to the platform by API only.
 
 ## Install
     pip install larryd

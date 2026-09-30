@@ -1,15 +1,15 @@
-# Building an agent for LARRYD with LARRYD
+# Building an agent with LARRYD
 
 Your server has a daemon. Your agents should have one too.
 
-Build, test and submit agents for LARRYD with Claude Code.
+Build, test and ship AI agents with Claude Code.
 
 This guide is for the developer's AI first and the developer second. Read it whole before you build.
 Every command named here exists and works today; what does not exist yet is listed at the end, plainly.
 
 ## What you are building
-An agent is a small program that answers a job. It lives in LARRYD, air gapped, and it belongs to its
-developer. LARRYD connects it to the platform: it reads what the agent needs, hands it in, and carries the answer back.
+An agent is a small program that answers a job. Your agent runs on LARRYD, air gapped: LARRYD is also the place where
+agents live and run, apart from everything else. The agent belongs to its developer. LARRYD connects it to the platform: it reads what the agent needs, hands it in, and carries the answer back.
 The agent itself reaches nothing.
 
 The whole contract: LARRYD runs the agent's entry file as its own process. One JSON object comes in on stdin,
@@ -123,7 +123,7 @@ The loop for the AI: change the agent → larryd_doctor → larryd_run → fix �
 - Skills: only one exists, the mTok charge, and LARRYD applies it to every run. FROST sign-in, DA-M store and
   LARRY LLM greeting come as skills when LARRYD has a door for them.
 - Knowledge packs: LARRYD holds none yet, so declaring one in `knowledge` fails the doctor. Leave it `[]`.
-- `larryd run` on Linux and Windows: it needs a Mac today (macOS sandbox-exec). The doctor works everywhere.
-- The job's inputs on the live platform: LARRYD hands `job` today, but the platform's side (the route that gives PF
+- `larryd run` on Linux and Windows: it needs a Mac today (macOS sandbox-exec). The doctor does not use it.
+- The job's inputs on the live platform: LARRYD hands `job` today, but the platform's side (the route that gives
   LARRYD a RUN's inputs) is not on the live platform yet; until it is, a RUN of an agent that hands `job` fails with
   LARRYD's plain reason. `larryd run` works with them now.

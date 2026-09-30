@@ -42,7 +42,7 @@ def project(tmp_path):
 def test_the_key_is_kept_yours_only(tmp_path):
     path = hanzo.save_key('http://127.0.0.1:5010/', 'ada', SECRET)
     assert stat.S_IMODE(os.stat(path).st_mode) == 0o600 and stat.S_IMODE(os.stat(path.parent).st_mode) == 0o700
-    assert hanzo.key() == {'hanzo': 'http://127.0.0.1:5010', 'developer': 'ada', 'secret': SECRET}
+    assert hanzo.key() == {'address': 'http://127.0.0.1:5010', 'developer': 'ada', 'secret': SECRET}
 
 
 def test_a_key_others_can_read_is_refused():
@@ -138,7 +138,7 @@ def test_other_bytes_held_are_caught(project, monkeypatch):
 def test_the_commands_say_it(project, capsys):
     hanzo.save_key(f'http://127.0.0.1:{_closed_port()}', 'ada', SECRET)
     assert cli.main(['submit', str(project)]) == 1
-    assert 'larryd submit: PF HANZO refused it: PF HANZO does not answer. What to do:' in capsys.readouterr().out
+    assert 'larryd submit: LARRYD refused it: LARRYD does not answer. What to do:' in capsys.readouterr().out
     assert cli.main(['status', '--json']) == 1
     assert json.loads(capsys.readouterr().out)['ok'] is False
 

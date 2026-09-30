@@ -45,7 +45,7 @@ def _pack(args):
 
 PATH = {'type': 'string', 'description': 'the agent project\'s folder (default: the folder Claude Code runs in)'}
 TOOLS = {
-    'larryd_new': (_new, 'Make a new PF HANZO agent project: agent/ (the manifest and one entry that answers a job), CLAUDE.md with the '
+    'larryd_new': (_new, 'Make a new LARRYD agent project: agent/ (the manifest and one entry that answers a job), CLAUDE.md with the '
                          'spec and the rules, the larryd skill and a sample job.',
                    {'type': 'object', 'properties': {'name': {'type': 'string', 'description': 'the agent\'s name, also its folder'},
                                                      'where': {'type': 'string', 'description': 'the folder to make it in (default: here)'}},
@@ -53,16 +53,16 @@ TOOLS = {
     'larryd_doctor': (_doctor, 'Check the agent before submission: the manifest, the entry, the air gap, no secret, the shape, the skills. '
                                'Every problem names the file and line, what is wrong and what to do; fix each one and check again.',
                       {'type': 'object', 'properties': {'path': PATH}, 'additionalProperties': False}),
-    'larryd_run': (_run, 'Run the agent here the way PF HANZO runs it (no network, no new process, a scratch run folder, a time limit) '
+    'larryd_run': (_run, 'Run the agent here the way LARRYD runs it (no network, no new process, a scratch run folder, a time limit) '
                          'with the sample job, and see its answer or why it failed. Needs a Mac today.',
                    {'type': 'object', 'properties': {'path': PATH, 'job': {'type': 'string', 'description': 'a sample job file (default: samples/job.json)'}},
                     'additionalProperties': False}),
     'larryd_submit': (_hanzo(lambda a: hanzo.submit(a.get('path') or '.')),
-                      'Send the agent (agent/ only) to PF HANZO for FROST\'s review, after the doctor. Needs the developer\'s key '
+                      'Send the agent (agent/ only) to LARRYD for FROST\'s review, after the doctor. Needs the developer\'s key '
                       '(the developer saves it with `larryd key`, never through this tool) and the card key in larryd.json.',
                       {'type': 'object', 'properties': {'path': PATH}, 'additionalProperties': False}),
     'larryd_status': (_hanzo(lambda a: hanzo.status()),
-                      'What PF HANZO records for the developer\'s agents: held, FROST\'s review, runs, calls, hires and mTok charged.',
+                      'What LARRYD records for the developer\'s agents: held, FROST\'s review, runs, calls, hires and mTok charged.',
                       {'type': 'object', 'properties': {}, 'additionalProperties': False}),
     'larryd_skills': (_skills, 'List the skills an agent may declare in its manifest ("skills"), by hash, with what each does.',
                       {'type': 'object', 'properties': {}, 'additionalProperties': False}),
@@ -103,7 +103,7 @@ def answer(message):
             asked = (message.get('params') or {}).get('protocolVersion')
             result = {'protocolVersion': asked if asked in VERSIONS else VERSIONS[0], 'capabilities': {'tools': {}},
                       'serverInfo': {'name': 'larryd', 'version': __version__},
-                      'instructions': 'LARRYD builds agents for PF HANZO. In an agent project, read CLAUDE.md first; '
+                      'instructions': 'LARRYD builds agents for LARRYD. In an agent project, read CLAUDE.md first; '
                                       'check with larryd_doctor and try with larryd_run after every change.'}
         elif method == 'ping':
             result = {}

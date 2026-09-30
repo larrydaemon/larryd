@@ -59,7 +59,7 @@ def profile(agent, run, runtime):
 def sandboxed(agent, entry, given, seconds=SECONDS):
     """Run one agent folder's entry with `given` on stdin. -> Result (DONE with the answer, or FAILED with why)."""
     if sys.platform != 'darwin' or not os.path.isfile(SANDBOX):
-        return Result('REFUSED', reason='larryd run needs a Mac today (it uses macOS sandbox-exec, as PF HANZO does)',
+        return Result('REFUSED', reason='larryd run needs a Mac today (it uses macOS sandbox-exec, as LARRYD does)',
                       todo='run it on a Mac; the doctor works everywhere')
     agent = os.path.realpath(agent)
     run = os.path.realpath(tempfile.mkdtemp(prefix='larryd_run_'))
@@ -105,12 +105,12 @@ def job(root, card, sample):
                             todo=f'set "do" in the sample job to "{plan["do"]}"')
     extra = sorted(set(wanted) - {'do'} - set(plan['hands']))
     if extra:
-        return None, Result('REFUSED', reason=f'the sample job holds {extra}, which PF HANZO would not hand (run.hands is {plan["hands"]})',
+        return None, Result('REFUSED', reason=f'the sample job holds {extra}, which LARRYD would not hand (run.hands is {plan["hands"]})',
                             todo='take them out of the sample job; the agent gets only what run.hands names')
     missing = [h for h in plan['hands'] if h not in wanted]
     if missing:
         return None, Result('REFUSED', reason=f'the sample job has no {missing}, which run.hands names',
-                            todo=f'add {missing} to the sample job, shaped as PF HANZO hands them')
+                            todo=f'add {missing} to the sample job, shaped as LARRYD hands them')
     if 'job' in plan['hands']:
         inputs, job = card.get('inputs') or {}, wanted['job']
         if not isinstance(job, dict):
@@ -118,11 +118,11 @@ def job(root, card, sample):
                                 todo=f'write it as {{"job": {{{", ".join(repr(n) + ": ..." for n in inputs)}}}}}')
         extra = sorted(set(job) - set(inputs))
         if extra:
-            return None, Result('REFUSED', reason=f'the sample job\'s "job" holds {extra}, which "inputs" does not declare (PF HANZO would refuse the run)',
+            return None, Result('REFUSED', reason=f'the sample job\'s "job" holds {extra}, which "inputs" does not declare (LARRYD would refuse the run)',
                                 todo='take them out of the sample job, or declare them in "inputs"')
         for name, value in sorted(job.items()):
             if not isinstance(value, str) or len(value) > shape.MOST_INPUT:
-                return None, Result('REFUSED', reason=f'the input "{name}" is not text of at most {shape.MOST_INPUT} characters (PF HANZO would refuse the run)',
+                return None, Result('REFUSED', reason=f'the input "{name}" is not text of at most {shape.MOST_INPUT} characters (LARRYD would refuse the run)',
                                     todo='make every input plain text, and shorter')
     return {'do': plan['do'], **{h: wanted[h] for h in plan['hands']}}, None
 
@@ -131,7 +131,7 @@ def run(root, sample=None, seconds=SECONDS):
     root = pathlib.Path(root).resolve()
     problems = doctor.check(root)
     if problems:
-        return Result('REFUSED', reason='the doctor found problems; PF HANZO would not take this agent',
+        return Result('REFUSED', reason='the doctor found problems; LARRYD would not take this agent',
                       todo='fix each problem below, then run `larryd run` again', problems=problems)
     card = json.loads((root / shape.AGENT / shape.MANIFEST).read_text())
     given, refused = job(root, card, sample or root / shape.SAMPLE)
