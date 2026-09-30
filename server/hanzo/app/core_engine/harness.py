@@ -6,11 +6,21 @@ and is not kept; hanzo.db never holds a record value, a delivery, an account or 
 An agent counts as verified only when its folder matches the locker AND FROST approved those exact hashes."""
 import datetime
 import json
+import re
 import sqlite3
 
 from . import gate, lanes, locker, sandbox
 
 MARKETPLACE = 'marketplace'   # the one agent's locker folder: it answers the collection, hires, and places defaults
+HANDS = ('cards', 'job')      # what a RUN can be handed: the cards the member sees; the job's own inputs (read from wid, kept nowhere)
+SLOT = re.compile(r'^0(0[1-9]|1[0-5])$')   # a job's agent input slots, as wid's jobs species holds them: data_job_001 .. data_job_015
+MOST_INPUT = 10_000           # characters in one input
+
+
+class _Stop(Exception):
+    def __init__(self, state, reason):
+        super().__init__(reason)
+        self.state, self.reason = state, reason
 
 
 class Refused(Exception):
@@ -193,10 +203,15 @@ class Harness:
         manifest = locker.manifest(self.agents, folder)
         plan = manifest.get('run') or {}
         hands = plan.get('hands') or []
-        if set(hands) - {'cards'}:
-            return self._end(account, scope, member, key, job_key, run, 'FAILED', f"HANZO cannot hand {sorted(set(hands) - {'cards'})} yet")
-        self._result(account, scope, job_key, run, 'RUNNING', f'RUN {run} RUNNING')
+        if set(hands) - set(HANDS):
+            return self._end(account, scope, member, key, job_key, run, 'FAILED', f"HANZO cannot hand {sorted(set(hands) - set(HANDS))} yet")
         given = {'do': plan.get('do', 'run')}
+        if 'job' in hands:
+            try:
+                given['job'] = self._job_inputs(manifest, account, scope, job_key, run)
+            except _Stop as stop:
+                return self._end(account, scope, member, key, job_key, run, stop.state, stop.reason)
+        self._result(account, scope, job_key, run, 'RUNNING', f'RUN {run} RUNNING')
         if 'cards' in hands:
             given['cards'] = lanes.assemble(cards, hired, groups, verify)
         state, answer, reason = sandbox.run(self.agents / folder, manifest['entry'], given, self.seconds)
@@ -211,6 +226,29 @@ class Harness:
         paid = 'free' if body.get('free') else f"{charged} mTok from the {body.get('paid_from')}"
         delivery = answer.get('delivery') if isinstance(answer.get('delivery'), str) else json.dumps(answer, sort_keys=True)
         return self._end(account, scope, member, key, job_key, run, 'DONE', f'RUN {run} DONE · {paid}', charged=charged, delivery=delivery)
+
+    def _job_inputs(self, manifest, account, scope, job_key, run):
+        """The job's own inputs, as the agent declares them ({name: slot}), read from wid for this RUN only: -> {name: value}.
+        Held in memory for the run, never kept (data stays in wid); a reason names slots, never a value."""
+        declared = manifest.get('inputs')
+        if not (isinstance(declared, dict) and declared and all(isinstance(n, str) and n.isidentifier() and isinstance(s, str) and SLOT.match(s)
+                                                                for n, s in declared.items()) and len(set(declared.values())) == len(declared)):
+            raise _Stop('FAILED', 'the agent hands "job" but its inputs are not {name: slot 001-015}, one slot each')
+        status, body = self.client.get('wid', '/jobs/inputs', {'account': account, 'scope': scope, 'job_key': job_key, 'run': str(run)})
+        if status != 200:
+            raise _Stop('FAILED', f"HANZO could not read the job's inputs: {body.get('refused') or body.get('error') or f'wid answered {status}'}")
+        held = body.get('inputs')
+        if not isinstance(held, dict):
+            raise _Stop('FAILED', "HANZO could not read the job's inputs: not {slot: value}")
+        extra = sorted(set(held) - set(declared.values()))
+        if extra:
+            raise _Stop('REFUSED', f"the job holds input {', '.join(extra)}, which the agent does not declare")
+        for slot, value in sorted(held.items()):
+            if not isinstance(value, str):
+                raise _Stop('REFUSED', f'input {slot} is not text')
+            if len(value) > MOST_INPUT:
+                raise _Stop('REFUSED', f'input {slot} is larger than {MOST_INPUT} characters')
+        return {name: held[slot] for name, slot in declared.items() if slot in held}
 
     def _end(self, account, scope, member, key, job_key, run, state, log, charged=0, delivery=''):
         reason = '' if state == 'DONE' else log
