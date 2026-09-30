@@ -1,0 +1,12 @@
+{
+  "about": "The skills an agent may declare, each by its hash (the sha256 of its definition). Only what a LARRYD door really does today is here; a technology with no door in LARRYD has no skill yet.",
+  "skills": [
+    {
+      "name": "mTok charge",
+      "technology": "mTok",
+      "door": "LARRYD calls mTok /mtok/use after a DONE run",
+      "does": "charges the member's account the agent's own rate in mTok (0 = free); mTok alone decides, and a refused charge withholds the delivery",
+      "agent": "nothing to call: LARRYD applies it to every run of the agent"
+    }
+  ]
+}

@@ -51,7 +51,7 @@ def client(tmp_path):
 
 def test_the_tools_are_listed(client):
     tools = client.ask('tools/list')['result']['tools']
-    assert [t['name'] for t in tools] == ['larryd_new', 'larryd_doctor', 'larryd_run']
+    assert [t['name'] for t in tools] == ['larryd_new', 'larryd_doctor', 'larryd_run', 'larryd_skills', 'larryd_pack']
     assert all(t['description'] and t['inputSchema']['type'] == 'object' for t in tools)
 
 
@@ -130,3 +130,12 @@ def test_claude_code_validates_them(what):
     assert claude, 'Claude Code (the claude command) is needed to validate the plugin'
     done = subprocess.run([claude, 'plugin', 'validate', '--strict', str(REPO / what)], capture_output=True, text=True)
     assert done.returncode == 0, done.stdout + done.stderr
+
+
+def test_skills_and_packs_through_the_connector(client, tmp_path):
+    listed = client.call('larryd_skills')['structuredContent']['skills']
+    assert [s['name'] for s in listed] == ['mTok charge'] and len(listed[0]['hash']) == 64
+    (tmp_path / 'p').mkdir()
+    (tmp_path / 'p' / 'pack.json').write_text('{"name": "N", "about": "A"}')
+    assert client.call('larryd_pack', folder='p')['structuredContent']['ok'] is True
+    assert client.call('larryd_pack', folder='nowhere')['structuredContent']['ok'] is False

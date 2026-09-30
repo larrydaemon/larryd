@@ -16,4 +16,4 @@ larryd = "larryd.cli:main"
 packages = ["larryd"]
 
 [tool.setuptools.package-data]
-larryd = ["kit/*", "kit/**/*"]
+larryd = ["kit/*", "kit/**/*", "skills.json"]

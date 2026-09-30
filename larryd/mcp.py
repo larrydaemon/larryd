@@ -4,7 +4,7 @@ nothing itself; each tool is the same code as the command of the same name."""
 import json
 import sys
 
-from . import __version__, doctor, new, runner
+from . import __version__, doctor, knowledge, new, runner, skills
 
 VERSIONS = ('2025-11-25', '2025-06-18', '2025-03-26', '2024-11-05')   # the protocol versions this server speaks, newest first
 
@@ -24,6 +24,15 @@ def _run(args):
     return runner.as_json(result), False
 
 
+def _skills(args):
+    return {'skills': [{'hash': h, **s} for h, s in skills.known().items()]}, False
+
+
+def _pack(args):
+    digest, wrong = knowledge.check(args['folder'])
+    return {'hash': digest, 'ok': not wrong, 'problems': wrong}, False
+
+
 PATH = {'type': 'string', 'description': 'the agent project\'s folder (default: the folder Claude Code runs in)'}
 TOOLS = {
     'larryd_new': (_new, 'Make a new PF HANZO agent project: agent/ (the manifest and one entry that answers a job), CLAUDE.md with the '
@@ -38,6 +47,11 @@ TOOLS = {
                          'with the sample job, and see its answer or why it failed. Needs a Mac today.',
                    {'type': 'object', 'properties': {'path': PATH, 'job': {'type': 'string', 'description': 'a sample job file (default: samples/job.json)'}},
                     'additionalProperties': False}),
+    'larryd_skills': (_skills, 'List the skills an agent may declare in its manifest ("skills"), by hash, with what each does.',
+                      {'type': 'object', 'properties': {}, 'additionalProperties': False}),
+    'larryd_pack': (_pack, 'Check a knowledge pack (a folder with pack.json and plain text files) and give its hash.',
+                    {'type': 'object', 'properties': {'folder': {'type': 'string', 'description': 'the pack\'s folder'}},
+                     'required': ['folder'], 'additionalProperties': False}),
 }
 
 

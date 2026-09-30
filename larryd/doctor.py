@@ -1,6 +1,6 @@
 """`larryd doctor`: the pretest before submission. It checks the agent the way PF HANZO will hold and run it, and says
 for every problem what is wrong and what to do, in words an AI can act on without asking.
-The checks, in order: the project · the manifest · the entry · the air gap · no secret · the shape · the skills."""
+The checks, in order: the project · the manifest · the entry · the air gap · no secret · the shape · the skills · the knowledge."""
 import ast
 import json
 import pathlib
@@ -8,9 +8,9 @@ import re
 import sys
 from dataclasses import asdict, dataclass
 
-from . import shape, skills
+from . import knowledge, shape, skills
 
-CHECKS = ('the project', 'the manifest', 'the entry', 'the air gap', 'no secret', 'the shape', 'the skills')
+CHECKS = ('the project', 'the manifest', 'the entry', 'the air gap', 'no secret', 'the shape', 'the skills', 'the knowledge')
 
 # the air gap: an agent never reaches out (PF HANZO's sandbox denies all network) and never starts a process
 NETWORK = {'socket', 'ssl', 'http', 'urllib', 'ftplib', 'smtplib', 'poplib', 'imaplib', 'nntplib', 'telnetlib', 'xmlrpc',
@@ -124,8 +124,9 @@ def _manifest(root, f):
             elif set(hands) - set(shape.HANDS):
                 f.add(c, where, f'run "hands" asks for {sorted(set(hands) - set(shape.HANDS))}, which PF HANZO does not hand',
                       f'PF HANZO hands today only: {", ".join(shape.HANDS)}. Take the rest out and answer without it')
-    if 'skills' in card and not (isinstance(card['skills'], list) and all(isinstance(x, str) for x in card['skills'])):
-        f.add(c, where, '"skills" is not a list', 'set "skills" to [] or to the hashes of skills that exist')
+    for k, what in (('skills', 'skills that exist (`larryd skills`)'), ('knowledge', 'knowledge packs (`larryd pack`)')):
+        if k in card and not (isinstance(card[k], list) and all(isinstance(x, str) for x in card[k])):
+            f.add(c, where, f'"{k}" is not a list of hashes', f'set "{k}" to [] or to the hashes of {what}')
     return card
 
 
@@ -267,7 +268,18 @@ def _skills(root, card, f):
     for s in card['skills']:
         if isinstance(s, str) and s not in known:
             f.add('the skills', _rel(root, root / shape.AGENT / shape.MANIFEST), f'the skill "{s}" does not exist',
-                  'declare only skills that exist, by their hash, or take it out' + ('' if known else '; no skill exists yet, so set "skills" to []'))
+                  'declare only skills that exist, by their hash: ' + '; '.join(f'{h} ({k["name"]})' for h, k in known.items()) +
+                  ' (`larryd skills` lists them), or take it out')
+
+
+def _knowledge(root, card, f):
+    if not card or not isinstance(card.get('knowledge'), list):
+        return
+    held = knowledge.held()
+    for k in card['knowledge']:
+        if isinstance(k, str) and k not in held:
+            f.add('the knowledge', _rel(root, root / shape.AGENT / shape.MANIFEST), f'the knowledge pack "{k}" is not held by PF HANZO',
+                  'take it out: PF HANZO holds no knowledge pack yet' if not held else 'declare only packs PF HANZO holds, by their hash')
 
 
 def check(root):
@@ -291,6 +303,7 @@ def check(root):
     _secrets(root, f)
     _shape(root, f)
     _skills(root, card, f)
+    _knowledge(root, card, f)
     return f.problems
 
 

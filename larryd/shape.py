@@ -23,8 +23,12 @@ FIELDS = {
     'reads': 'the list of what the agent reads, in plain words',
     'run': 'what a RUN hands it: {"do": one of does, "hands": the inputs, from what PF HANZO hands}',
     'gives': 'the list of what its answer holds (its outputs); "delivery" is what lands in the member\'s job',
-    'skills': 'the list of skill hashes the agent uses (empty when none)',
+    'skills': 'the list of skill hashes the agent uses (empty when none; `larryd skills` lists the skills that exist)',
+    'knowledge': 'the list of knowledge pack hashes the agent needs (empty when none; `larryd pack` gives a pack its hash)',
 }
+PACK = 'pack.json'   # a knowledge pack: a folder of plain text files with pack.json {"name", "about"}
+PACK_FIELDS = ('name', 'about')
+PACK_KINDS = {'.json', '.txt', '.md', '.csv'}
 NEEDED = tuple(FIELDS)
 
 # what PF HANZO hands a RUN today (its harness hands the cards only). Nothing else exists yet.
