@@ -104,30 +104,45 @@ class Harness:
     def developer_status(self, keys):
         """What HANZO records for a developer's agents: held or not, FROST's word on the exact hashes, and the counts of
         hanzo_runs (runs by state, calls, hires, unhires, mTok charged). Only agent keys and counts: no account, no member."""
-        status, body = self.client.get('fs', '/agents/approved', {})
-        approved = {(a['agent_key'], a['code_sha256'], a['manifest_sha256']) for a in body['approved']} if status == 200 else None
+        approved = None   # FROST's approved list, asked only when FROST has no review_state door (a FROST before it)
         con = sqlite3.connect(self.db)
         try:
             out = []
             for key in keys:
                 row = locker.held(self.db, key)
+                note = ''
                 if row is None:
                     review = 'not submitted'
-                elif approved is None:
-                    review = f"unknown: {body.get('refused') or f'FROST answered {status}'}"
                 else:
-                    review = 'approved' if (key, row['code_sha256'], row['manifest_sha256']) in approved else 'not approved'
+                    review, note, approved = self._review(key, row, approved)
                 runs = dict(con.execute("SELECT state, COUNT(*) FROM hanzo_runs WHERE agent_key = ? AND lane = 'job' GROUP BY state", (key,)).fetchall())
                 count = lambda lane, state=None: con.execute(  # noqa: E731
                     'SELECT COUNT(*) FROM hanzo_runs WHERE agent_key = ? AND lane = ?' + (' AND state = ?' if state else ''),
                     (key, lane) + ((state,) if state else ())).fetchone()[0]
                 charged = con.execute("SELECT COALESCE(SUM(charged), 0) FROM hanzo_runs WHERE agent_key = ? AND lane = 'job'", (key,)).fetchone()[0]
                 out.append({'agent_key': key, 'held': row is not None, 'code_sha256': row['code_sha256'] if row else '',
-                            'manifest_sha256': row['manifest_sha256'] if row else '', 'review': review, 'runs': runs,
+                            'manifest_sha256': row['manifest_sha256'] if row else '', 'review': review, 'note': note, 'runs': runs,
                             'calls': count('call'), 'hires': count('hire', 'ON'), 'unhires': count('hire', 'OFF'), 'charged': charged})
             return {'agents': out}
         finally:
             con.close()
+
+    def _review(self, key, row, approved):
+        """FROST's word on these exact hashes: -> (review, note, approved). waiting · approved · rejected (with FROST's
+        reason) · not submitted, from FROST's review_state door; a FROST without that door (404) is read the older way,
+        its approved list (approved · not approved); a silent FROST is said as unknown."""
+        status, body = self.client.get('fs', '/agents/review_state', {'agent_key': key, 'code_sha256': row['code_sha256'],
+                                                                       'manifest_sha256': row['manifest_sha256']})
+        if status == 200:
+            return body.get('state', 'unknown'), body.get('note', '') if body.get('state') == 'rejected' else '', approved
+        if status == 404:
+            if approved is None:
+                s, listed = self.client.get('fs', '/agents/approved', {})
+                if s != 200:
+                    return f"unknown: {listed.get('refused') or f'FROST answered {s}'}", '', None
+                approved = {(a['agent_key'], a['code_sha256'], a['manifest_sha256']) for a in listed['approved']}
+            return ('approved' if (key, row['code_sha256'], row['manifest_sha256']) in approved else 'not approved'), '', approved
+        return f"unknown: {body.get('refused') or body.get('error') or f'FROST answered {status}'}", '', approved
 
     # ---------------------------------------------------------------- the record
     def _record(self, lane, agent_key, state, reason='', job_key='', run=0, charged=0):

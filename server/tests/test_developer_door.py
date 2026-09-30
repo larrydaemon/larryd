@@ -32,15 +32,23 @@ def _closed_port():
 
 
 class Frost:
-    """FROST as a receipt: it records what HANZO sends and answers a waiting review. Nothing else answers for the platform."""
-    def __init__(self, approved=()):
-        self.said, self.approved = [], list(approved)
+    """FROST as a receipt: it records what HANZO sends and answers a waiting review, and each review's word as the test
+    sets it (states: {(key, code, manifest): (state, note)}); older=True is a FROST before its review_state door (404).
+    Nothing else answers for the platform."""
+    def __init__(self, approved=(), states=None, older=False):
+        self.said, self.approved, self.states, self.older = [], list(approved), dict(states or {}), older
 
     def post(self, office, route, data):
         self.said.append((office, route, data))
         return 200, {'id': 1, 'state': 'waiting'}
 
     def get(self, office, route, data=None):
+        self.said.append((office, route, data))
+        if route == '/agents/review_state':
+            if self.older:
+                return 404, {'error': 'no route GET /agents/review_state'}
+            state, note = self.states.get((data['agent_key'], data['code_sha256'], data['manifest_sha256']), ('not submitted', ''))
+            return 200, {'state': state, 'note': note}
         return 200, {'approved': self.approved}
 
 
@@ -221,17 +229,28 @@ class DeveloperDoor(unittest.TestCase):
                                      ('hire', 'ON', 0), ('hire', 'ON', 0), ('hire', 'OFF', 0)):
             self.h._record(lane, KEY, state, charged=charged)
         self.h._record('job', 'MAGT_00000000D003_0003', 'DONE', charged=99)   # bob's, never in ada's status
-        self.frost.approved = [{'agent_key': KEY, 'code_sha256': held['code_sha256'], 'manifest_sha256': held['manifest_sha256']}]
+        self.frost.states = {(KEY, held['code_sha256'], held['manifest_sha256']): ('approved', '')}
         agents = self.status().get_json()['agents']
         self.assertEqual([a['agent_key'] for a in agents], [KEY, OTHER])
         mine = agents[0]
         self.assertEqual({k: mine[k] for k in ('held', 'review', 'runs', 'calls', 'hires', 'unhires', 'charged')},
                          {'held': True, 'review': 'approved', 'runs': {'DONE': 2, 'FAILED': 1}, 'calls': 1, 'hires': 2, 'unhires': 1, 'charged': 5})
         self.assertEqual(agents[1]['review'], 'not submitted')
-        self.frost.approved = []
-        self.assertEqual(self.status().get_json()['agents'][0]['review'], 'not approved')
+        self.frost.states = {(KEY, held['code_sha256'], held['manifest_sha256']): ('waiting', '')}
+        self.assertEqual(self.status().get_json()['agents'][0]['review'], 'waiting')
+        self.frost.states = {(KEY, held['code_sha256'], held['manifest_sha256']): ('rejected', 'the manifest names no screen')}
+        mine = self.status().get_json()['agents'][0]
+        self.assertEqual((mine['review'], mine['note']), ('rejected', 'the manifest names no screen'))
         self.h.client = host.platform.Client({'fs': f'http://127.0.0.1:{_closed_port()}'}, SECRET, timeout=2)
         self.assertEqual(self.status().get_json()['agents'][0]['review'], 'unknown: fs does not answer')
+
+    def test_a_frost_before_its_review_state_door_is_read_the_older_way(self):
+        held = self.submit(_agent_files()).get_json()
+        self.h.client = Frost(older=True, approved=[{'agent_key': KEY, 'code_sha256': held['code_sha256'], 'manifest_sha256': held['manifest_sha256']}])
+        mine = self.status().get_json()['agents'][0]
+        self.assertEqual((mine['review'], mine['note']), ('approved', ''))
+        self.h.client = Frost(older=True)
+        self.assertEqual(self.status().get_json()['agents'][0]['review'], 'not approved')
 
     def test_a_hire_is_a_row_with_the_agents_key_only(self):
         class Hires(harness.Harness):
