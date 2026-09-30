@@ -19,8 +19,8 @@ from core_engine import developers, harness, locker, signing, store
 from web import app as host
 
 SECRET = 'scratch-secret-for-the-developer-door'
-KEY = 'MAGT_SCRATCH00001_0001'
-OTHER = 'MAGT_SCRATCH00002_0002'
+KEY = 'MAGT_00000000D001_0001'
+OTHER = 'MAGT_00000000D002_0002'
 
 
 def _closed_port():
@@ -101,7 +101,7 @@ class DeveloperDoor(unittest.TestCase):
         self.assertEqual(developers.theirs(self.db, 'bob'), [])
 
     def test_plain_names_and_card_keys_only(self):
-        for name, key in (('../x', KEY), ('Ada', KEY), ('ada', 'not-a-key'), ('ada', '../../etc')):
+        for name, key in (('../x', KEY), ('Ada', KEY), ('ada', 'not-a-key'), ('ada', '../../etc'), ('ada', 'MAGT_SCRATCH00001_0001')):   # not hex: FROST would refuse it
             with self.assertRaises(developers.Refused):
                 developers.add(self.db, self.secrets, name, key)
         self.assertEqual(sorted(p.name for p in self.secrets.iterdir()), ['ada'])
@@ -157,7 +157,7 @@ class DeveloperDoor(unittest.TestCase):
 
     def test_not_yours_is_refused(self):
         developers.add(self.db, self.secrets, 'ada', OTHER)
-        bob = developers.add(self.db, self.secrets, 'bob', 'MAGT_SCRATCH00003_0003')
+        bob = developers.add(self.db, self.secrets, 'bob', 'MAGT_00000000D003_0003')
         r = self.submit(_agent_files(), key=KEY, developer='bob', secret=bob)
         self.assertEqual((r.status_code, r.get_json()), (403, {'refused': 'that agent is not yours'}))
         self.assertIsNone(locker.held(self.db, KEY))
@@ -215,12 +215,12 @@ class DeveloperDoor(unittest.TestCase):
     # ---------------------------------------------------------------- the status
     def test_the_status_is_counted_from_hanzo_runs(self):
         developers.add(self.db, self.secrets, 'ada', OTHER)
-        developers.add(self.db, self.secrets, 'bob', 'MAGT_SCRATCH00003_0003')
+        developers.add(self.db, self.secrets, 'bob', 'MAGT_00000000D003_0003')
         held = self.submit(_agent_files()).get_json()
         for lane, state, charged in (('job', 'DONE', 3), ('job', 'DONE', 2), ('job', 'FAILED', 0), ('call', 'DONE', 0),
                                      ('hire', 'ON', 0), ('hire', 'ON', 0), ('hire', 'OFF', 0)):
             self.h._record(lane, KEY, state, charged=charged)
-        self.h._record('job', 'MAGT_SCRATCH00003_0003', 'DONE', charged=99)   # bob's, never in ada's status
+        self.h._record('job', 'MAGT_00000000D003_0003', 'DONE', charged=99)   # bob's, never in ada's status
         self.frost.approved = [{'agent_key': KEY, 'code_sha256': held['code_sha256'], 'manifest_sha256': held['manifest_sha256']}]
         agents = self.status().get_json()['agents']
         self.assertEqual([a['agent_key'] for a in agents], [KEY, OTHER])

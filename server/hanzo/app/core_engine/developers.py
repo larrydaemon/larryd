@@ -16,7 +16,7 @@ import sqlite3
 from . import locker
 
 NAME = re.compile(r'^[a-z][a-z0-9-]{1,39}$')
-KEY = re.compile(r'^[A-Z]{4}_[0-9A-Z]{12}_[0-9A-Z]{4}$')   # a card's key, as the platform mints it
+KEY = re.compile(r'^[A-Z]{4}_[0-9A-F]{12}_[0-9A-F]{4}$')   # a card's key, as the platform mints it (FROST's review takes only this)
 PART = re.compile(r'^[A-Za-z0-9_][A-Za-z0-9_.-]*$')        # one part of an uploaded path: no hidden part, no '..'
 
 
