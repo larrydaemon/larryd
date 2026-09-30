@@ -1,518 +1,259 @@
-
-<!DOCTYPE html>
-<html lang="en" data-theme="dark" data-brilliance-hierarchy="F13650BD0AC1" data-brilliance-lang="en" data-brilliance-role="" data-brilliance-page="larryd">
+<!doctype html>
+<html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="format-detection" content="telephone=no">
-<title>LARRYD &#8212; keeps your agents from going rogue</title>
-<meta name="description" content="LARRYD is a free tool for building AI agents with Claude Code. It checks each agent and runs it sealed off. Your server has a daemon. Your agents should have one too.">
-
-
-
-
-
-<link rel="icon" type="image/png" href="/cdn-pf/ACCT_BE3126443D41_40AF/sites/73f08382/static/images/DA-M_A144498DE421_02E0.png">
-<link rel="shortcut icon" type="image/png" href="/cdn-pf/ACCT_BE3126443D41_40AF/sites/73f08382/static/images/DA-M_A144498DE421_02E0.png">
-<script>(function(){var h=document.documentElement;var hr=new Date().getHours();h.setAttribute('data-brilliance-time',hr<6?'night':hr<12?'morning':hr<18?'afternoon':hr<22?'evening':'night');h.setAttribute('data-brilliance-tz',Intl.DateTimeFormat().resolvedOptions().timeZone);if(location.search.indexOf('_auth=')>-1){var u=new URL(location);u.searchParams.delete('_auth');history.replaceState(null,'',u.pathname+u.search);}})();</script>
-<style>html:not([data-bg-ready]) body{background-image:none!important}</style><script>(function(){function go(){document.documentElement.setAttribute('data-bg-ready','1');}
-/* THE DEFERRED BACKGROUND (owner doctrine, restored 2026-08-04): the page
-   paints instantly on the CSS color (near-identical to the image); the
-   background image loads AFTER the load event — content never waits. */
-if(document.readyState==='complete'){setTimeout(go,50);}else{window.addEventListener('load',function(){setTimeout(go,50);});}
-setTimeout(go,12000);})();</script>
-<link rel="stylesheet" href="/cdn-pf/ACCT_31DEF7E78AF8_A1A8/sites/faf51f39/static/css/core.css?v=34-1790715668905985192-18546688-1790009270">
-
-
-<link rel="stylesheet" href="/cdn-pf/ACCT_31DEF7E78AF8_A1A8/sites/faf51f39/static/css/faf51f39.css?v=34-1790715668905985192-18546688-1790009270">
-
-<link rel="stylesheet" href="/cdn-pf/ACCT_BE3126443D41_40AF/sites/def9f8bf/static/css/def9f8bf.css?v=34-1790715668905985192-18546688-1790009270">
-
-
-
-
-
-
-
-
-
-
-
-
-<style>/* UPPERCASE MEANS EVERYTHING (owner order 2026-09-05: "I have uppercase selected but the menu has mixed case"): the member's LETTER CASE = Uppercase shouts every string on the page — prose, descriptions, rows — whatever a role's own case token says (the phone applies the same pick to every role). VERBATIM survives: keys, credentials, emails, code, inputs. */html:not([data-case="mixed"]) .main-container, html:not([data-case="mixed"]) .main-container *, html:not([data-case="mixed"]) .layout--footer, html:not([data-case="mixed"]) .layout--footer *, html:not([data-case="mixed"]) .layout--header *, html:not([data-case="mixed"]) .pf-dock *, html:not([data-case="mixed"]) .debugger-container, html:not([data-case="mixed"]) .debugger-container * { text-transform: uppercase; }html:not([data-case="mixed"]) .tt-verbatim, html:not([data-case="mixed"]) .tt-verbatim *, html:not([data-case="mixed"]) .vpp-acc-mono, html:not([data-case="mixed"]) .vpp-acc-mono *, html:not([data-case="mixed"]) input, html:not([data-case="mixed"]) textarea, html:not([data-case="mixed"]) select, html:not([data-case="mixed"]) option, html:not([data-case="mixed"]) code, html:not([data-case="mixed"]) pre, html:not([data-case="mixed"]) [data-verbatim], html:not([data-case="mixed"]) [data-verbatim] * { text-transform: none !important; }</style>
-<script>/* THE ONE upper, IN JS (owner order 2026-09-05): a label built in script shouts through this — the member's LETTER CASE pick (data-case="mixed") turns it off */window.pfUpper=function(s){return document.documentElement.getAttribute("data-case")==="mixed"?String(s):String(s).toUpperCase();};</script>
-
-
-<style>
-.lryd-scope { color: var(--active-color-01); }
-body { background: var(--active-color-09); }
-.lryd-col { max-width: 680px; margin: 0 auto; font-family: var(--font-annotation); }
-.lryd-mast { border: 2px solid currentColor; padding: 30px 24px 24px; margin: 48px 0 10px; position: relative; }
-.lryd-mast .cap { font-size: var(--font-size-xxl); letter-spacing: var(--font-caption-ls); opacity: .6; }
-.lryd-mast .t { font-size: var(--font-heading-sz); font-weight: var(--font-heading-wt); letter-spacing: var(--font-heading-ls); line-height: 1; margin: 10px 0 6px;
-  text-shadow: 0 0 18px color-mix(in srgb, currentColor 45%, transparent); }
-.lryd-mast .s { font-size: var(--font-caption-sz); letter-spacing: var(--font-caption-ls); opacity: .75; }
-.lryd-pulse { width: 200px; margin: 18px 0 4px; }
-.lryd-pulse svg { display: block; width: 100%; filter: drop-shadow(0 0 6px color-mix(in srgb, currentColor 60%, transparent)); }
-.lryd-rule { height: 14px; display: flex; align-items: flex-end; gap: 5px; overflow: hidden; margin: 0 0 30px; opacity: .7; }
-.lryd-rule i { width: 1.4px; background: currentColor; }
-.lryd-sec { font-size: var(--font-caption-sz); letter-spacing: var(--font-caption-ls); font-weight: var(--font-caption-wt); opacity: .55; margin: 34px 0 10px 4px; }
-.lryd-hero { border: 1px solid color-mix(in srgb, currentColor 30%, transparent); position: relative; overflow: hidden; }
-.lryd-hero img { display: block; width: 100%; height: auto; }
-.lryd-hero::after { content: ""; position: absolute; inset: 0; pointer-events: none;
-  background: repeating-linear-gradient(0deg, transparent 0 2px, rgba(0,0,0,.14) 2px 3px); }
-[data-theme="light"] .lryd-hero::after { background: none; }
-.lryd-herocap { font-size: var(--font-annotation-sz); letter-spacing: var(--font-annotation-ls); opacity: .5; margin: 8px 4px 0; }
-.lryd-grid { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid color-mix(in srgb, currentColor 25%, transparent); }
-.lryd-cell { padding: 16px 12px 18px; border-right: 1px solid color-mix(in srgb, currentColor 14%, transparent); }
-.lryd-cell:last-child { border-right: 0; }
-.lryd-cell .k { font-size: var(--font-caption-sz); letter-spacing: var(--font-caption-ls); font-weight: var(--font-caption-wt); margin-bottom: 8px; }
-.lryd-cell .v { font-size: var(--font-caption-sz); line-height: 1.7; opacity: .7; }
-.lryd-term { border: 1px solid color-mix(in srgb, currentColor 30%, transparent); padding: 18px 20px; font-size: var(--font-body-sz); line-height: 2;
-  background: color-mix(in srgb, currentColor 4%, transparent); overflow-x: auto; white-space: nowrap; }
-.lryd-term .ps { opacity: .45; }
-.lryd-term b { font-weight: var(--font-caption-wt); text-shadow: 0 0 10px color-mix(in srgb, currentColor 50%, transparent); }
-.lryd-rails { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
-.lryd-rails a { font-size: var(--font-annotation-sz); letter-spacing: var(--font-annotation-ls); border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
-  padding: 8px 14px; opacity: .8; }
-.lryd-rails a:hover { background: currentColor; color: var(--active-color-09); opacity: 1; }
-.lryd-story { font-size: var(--font-size-xxxs); line-height: 1.9; opacity: .85; max-width: 560px; }
-.lryd-foot { font-size: var(--font-annotation-sz); letter-spacing: var(--font-annotation-ls); opacity: .45; margin: 40px 4px 60px; }
-@media (max-width: 700px) { .lryd-grid { grid-template-columns: 1fr 1fr; }
- .lryd-cell:nth-child(2) { border-right: 0; } .lryd-mast .t { font-size: var(--font-title-sz); } }
-</style>
-
-<style>
-.lryd-mast .cap { font-family:var(--font-caption); font-size:var(--font-caption-sz); font-weight:var(--font-caption-wt); letter-spacing:var(--font-caption-ls); text-transform:uppercase; }
-.lx-buttons { display:flex; flex-direction:column; align-items:center; gap:14px; margin:34px 0 10px; }
-.lx-lead { text-align:center; margin:0 0 18px; }
-.lx-line { display:flex; align-items:center; gap:10px; }
-.lx-line b { flex:1; }
-.lx-copy { background:transparent; color:inherit; border:1px solid currentColor; padding:4px 10px; cursor:pointer; font:inherit; font-size:0.7rem; }
-.lx-why { opacity:0.75; margin:2px 0 14px 22px; font-size:0.85em; text-transform:none; }
-.lx-grid-1 { grid-template-columns:1fr !important; }
-.lx-faq details { border-bottom:1px solid color-mix(in srgb, var(--active-color-01) 25%, transparent); padding:14px 0; }
-.lx-faq summary { cursor:pointer; }
-.lx-faq details div { padding-top:10px; opacity:0.8; }
-</style>
-<script>
-(function(){try{var m=localStorage.getItem("larryd-mode");if(m==="light"||m==="dark")document.documentElement.setAttribute("data-theme",m);}catch(e){}})();
-var LX_IMG={"DA-M_223B12F2B07F_949C.png":"DA-M_39F6E2C41F77_19F6.png","DA-M_618FDD62F1AB_5BFD.webp":"DA-M_EA716523C931_102C.png"};
-function lxImages(m){document.querySelectorAll("img").forEach(function(i){var src=i.getAttribute("src")||"";Object.keys(LX_IMG).forEach(function(d){var l=LX_IMG[d];if(m==="light"&&src.indexOf(d)>-1)i.setAttribute("src",src.replace(d,l));if(m==="dark"&&src.indexOf(l)>-1)i.setAttribute("src",src.replace(l,d));});});}
-function lxMode(m){document.documentElement.setAttribute("data-theme",m);lxImages(m);try{localStorage.setItem("larryd-mode",m);}catch(e){}}
-document.addEventListener("DOMContentLoaded",function(){lxImages(document.documentElement.getAttribute("data-theme"));});
-document.addEventListener("click",function(ev){var b=ev.target.closest&&ev.target.closest(".lx-copy");if(!b)return;var t=b.getAttribute("data-copy");if(navigator.clipboard){navigator.clipboard.writeText(t).then(function(){b.textContent="COPIED";setTimeout(function(){b.textContent="COPY";},1400);});}});
-</script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LARRYD — Your agents should have a daemon too</title>
+  <meta name="description" content="LARRYD is a free tool for building AI agents with Claude Code. It checks each agent, runs it in a sealed space, and gets it ready to share. Install it with one line.">
+  <meta property="og:title" content="LARRYD — Your server has a daemon. Your agents should have one too.">
+  <meta property="og:description" content="A free tool for building, checking and running AI agents with Claude Code.">
+  <meta property="og:image" content="/assets/video/larryd-poster.jpg">
+  <meta name="theme-color" content="#000000">
+  <link rel="icon" href="/assets/img/favicon.png">
+  <link rel="stylesheet" href="/site.css">
+<script>(function(){try{var m=localStorage.getItem("larryd-mode");}catch(e){}if(m!=="light"&&m!=="dark"){m=matchMedia("(prefers-color-scheme: light)").matches?"light":"dark";}document.documentElement.setAttribute("data-theme",m);})();</script>
 </head>
-<body class="layout--body gp-body">
+<body>
 
-
-<div class="pf-crt-warm pf-anim--crt" aria-hidden="true"></div>
-<div class="pf-crt-fx pf-anim--crt" aria-hidden="true"></div>
-
-<script src="/cdn-pf/ACCT_31DEF7E78AF8_A1A8/sites/faf51f39/static/js/crtfx.js?v=20260804w" defer></script>
-
-
-
-<script src="/cdn-pf/ACCT_31DEF7E78AF8_A1A8/sites/faf51f39/static/js/pf_sound.js?v=20260904" defer
-        data-kit="sine"
-        data-base="/cdn-pf/ACCT_31DEF7E78AF8_A1A8/sites/faf51f39/static/sounds"></script>
-
-
-
-<!-- Authorized: Show full page -->
-
-
-<style>
-.announce-text {
- font-size: var(--ui-announce-text-size);
- font-weight: var(--ui-announce-text-weight);
- text-transform: var(--ui-announce-text-transform);
- letter-spacing: var(--ui-announce-text-spacing);
-}
-</style>
-
-<style>
-.layout--header a { color: inherit; text-decoration: none; }
-.layout--header a:hover { color: var(--active-color-05); }
-.hdr-text {
- font-family: var(--font-nav);
- font-size: var(--font-nav-sz);
- font-weight: var(--font-nav-wt);
- text-transform: var(--font-nav-tt);
- letter-spacing: var(--font-nav-ls);
-}
-.hdr-icon-btn {
- border: none;
- cursor: pointer;
- padding: 2px 0;
- background: transparent;
- color: inherit;
-}
-/* MOBILE: the globe moves to the MORE page (owner order 2026-07-17) */
-@media (max-width: 768px) { .hdr-lang-wrap { display: none !important; } }
-.hdr-lang-btn {
- padding: 3px 8px;
- border: 1px solid currentColor;
- cursor: pointer;
- background: transparent;
- color: inherit;
-}
-</style>
-<header class="layout--header">
- <!-- Navigation: Menu Link -->
-
- <a href="/pf/en/menu?site=def9f8bf&amp;mode=dark&amp;theme=F13650BD0AC1&amp;agentlayer=pf" class="nav-icon-link" style="margin-left:20px">
- <div class="layout--header__nav">
- <svg viewBox="0 0 24 24" style="width:24px;height:24px"><line x1="3" y1="6" x2="21" y2="6" stroke="currentColor" stroke-width="2"/><line x1="3" y1="12" x2="21" y2="12" stroke="currentColor" stroke-width="2"/><line x1="3" y1="18" x2="21" y2="18" stroke="currentColor" stroke-width="2"/></svg>
- <span class="layout--hide-mobile hdr-text">MENU</span>
- </div>
- </a>
-
-
- <!-- Logo: Centered — driven by Brilliance -->
- <a href="/pf/en/app?site=def9f8bf&amp;mode=dark&amp;theme=F13650BD0AC1&amp;agentlayer=pf" class="layout--header__logo-link" >
-
- <img alt="Logo" class="layout--header__logo" src="/cdn-pf/ACCT_BE3126443D41_40AF/sites/73f08382/static/images/DA-M_223B12F2B07F_949C.png" style="">
-
- </a>
-
- <!-- Actions: Icons + Logout (stacked) -->
- <div class="layout--header__actions">
- <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;padding-right:40px">
- <!-- Logout text — hidden by default, only shown when explicitly set -->
- 
- <!-- ONE MODE SETTING (owner order 2026-09-01: "light and dark mode =
-      whatever the last selection was at the top right icons or the more page
-      setting — they need to work together as one"). The header icons used to
-      only rewrite ?mode= in the URL, so a click here was forgotten the moment
-      the member opened a page without the param, and the MORE page still read
-      whatever it had saved. Both now write the SAME field (profile.color_mode
-      via /account/mode) — last selection wins, wherever it was made. sendBeacon
-      so the save survives the navigation the link is already performing. -->
- <script>
- function pfSaveMode(m){
-   try{
-     document.cookie='pf_mode_pick='+m+';path=/;max-age=90;SameSite=Lax';   // the newest pick, read by every gate until the pin lands (ONE MODE, 2026-09-05)
-     var u='/en/account/mode', b=new FormData(); b.append('mode',m);
-     if(navigator.sendBeacon){navigator.sendBeacon(u,b);}
-     else{fetch(u,{method:'POST',body:b,keepalive:true});}
-   }catch(e){}
- }
- </script>
- <!-- Icons row -->
- 
- 
- <div style="display:flex;align-items:center;gap:14px">
-
- <span id="pf-net" class="hdr-icon-btn" title="Online" style="display:none;align-items:center;transition:opacity .3s" aria-live="polite">
-  <svg id="pf-net-on" viewBox="0 0 24 24" style="width:18px;height:18px;stroke:currentColor;stroke-width:1.4;fill:none;stroke-linecap:round"><path d="M2.5 9a14 14 0 0 1 19 0"/><path d="M5.8 12.4a9.5 9.5 0 0 1 12.4 0"/><path d="M9.1 15.8a5 5 0 0 1 5.8 0"/><circle cx="12" cy="19" r="1" fill="currentColor" stroke="none"/></svg>
-  <svg id="pf-net-off" viewBox="0 0 24 24" style="width:18px;height:18px;stroke:currentColor;stroke-width:1.4;fill:none;stroke-linecap:round;display:none"><path d="M2.5 9a14 14 0 0 1 19 0"/><path d="M5.8 12.4a9.5 9.5 0 0 1 12.4 0"/><path d="M9.1 15.8a5 5 0 0 1 5.8 0"/><circle cx="12" cy="19" r="1" fill="currentColor" stroke="none"/><line x1="4" y1="4" x2="20" y2="20"/></svg>
-  <svg id="pf-net-sync" viewBox="0 0 24 24" style="width:18px;height:18px;stroke:currentColor;stroke-width:1.4;fill:none;stroke-linecap:round;stroke-linejoin:round;display:none"><path d="M20 12a8 8 0 0 1-13.7 5.6"/><path d="M4 12a8 8 0 0 1 13.7-5.6"/><polyline points="17.7 2.8 17.7 6.4 14.1 6.4"/><polyline points="6.3 21.2 6.3 17.6 9.9 17.6"/></svg>
- </span>
- <script>
- (function(){
-   var on=document.getElementById('pf-net-on'), off=document.getElementById('pf-net-off'), sy=document.getElementById('pf-net-sync'), w=document.getElementById('pf-net');
-   var wasOffline=false;
-   function show(k){ on.style.display=k==='on'?'':'none'; off.style.display=k==='off'?'':'none'; sy.style.display=k==='sync'?'':'none';
-     w.title = k==='on' ? 'Online' : (k==='off' ? 'Offline mode' : 'Syncing'); w.style.opacity = k==='off' ? '.75' : '1'; }
-   /* ONLY ON A CHANGE (owner order 2026-09-05): the glyph appears for a moment when the
-      network state CHANGES — the slash going offline, the sync circle then Wi-Fi coming
-      back — and hides again; never a permanent icon (the phone and the OS already have one). */
-   var hideT=null;
-   function flash(k, ms){ show(k); w.style.display='flex'; w.style.opacity='1'; clearTimeout(hideT); hideT=setTimeout(function(){ w.style.opacity='0'; setTimeout(function(){ w.style.display='none'; }, 320); }, ms); }
-   function paint(ev){ if(!ev){ wasOffline = !navigator.onLine; return; }
-     if(navigator.onLine){ if(wasOffline){ wasOffline=false; flash('sync', 1200); setTimeout(function(){ location.reload(); }, 1100); } else { flash('on', 3000); } }
-     else { wasOffline=true; flash('off', 4000); } }
-   window.addEventListener('online', paint); window.addEventListener('offline', paint); paint();
- })();
- </script>
-
-
- <a href="#" title="Light Mode" class="hdr-icon-btn" style="display:flex;align-items:center" onclick="lxMode('light');return false;">
-
- <svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:currentColor;stroke-width:1.2;fill:none"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
- </a>
-
-
-
- <a href="#" title="Dark Mode" class="hdr-icon-btn" style="display:flex;align-items:center" onclick="lxMode('dark');return false;">
-
- <svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:currentColor;stroke-width:1.2;fill:none"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
- </a>
-
-
- <div class="hdr-lang-wrap" style="position:relative;display:inline-block">
- <button onclick="var d=this.parentElement.querySelector('.hdr-lang-dd');d.style.display=d.style.display==='block'?'none':'block';" title="Language" class="hdr-icon-btn">
- <svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:currentColor;stroke-width:1.2;fill:none"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
- </button>
- <div class="hdr-lang-dd" style="display:none;position:absolute;top:28px;right:0;padding:10px;z-index:100;min-width:140px">
- <div style="margin-bottom:6px">LANGUAGE</div>
- <div style="display:flex;gap:4px;flex-wrap:wrap">
- 
- <button type="button" onclick="switchLang('en')" class="hdr-lang-btn">en</button>
- 
- <button type="button" onclick="switchLang('es')" class="hdr-lang-btn">es</button>
- 
- <button type="button" onclick="switchLang('fr')" class="hdr-lang-btn">fr</button>
- 
- <button type="button" onclick="switchLang('it')" class="hdr-lang-btn">it</button>
- 
- <button type="button" onclick="switchLang('ja')" class="hdr-lang-btn">ja</button>
- 
- <button type="button" onclick="switchLang('zh')" class="hdr-lang-btn">zh</button>
- 
- <button type="button" onclick="switchLang('ru')" class="hdr-lang-btn">ru</button>
- 
- </div>
- </div>
- </div>
-
-
-
- <a href="/en/custom_settings?page=larryd&amp;site=def9f8bf&amp;mode=dark&amp;theme=F13650BD0AC1&amp;agentlayer=pf" title="Settings" class="hdr-icon-btn" style="display:flex;align-items:center">
- <svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:currentColor;stroke-width:1.2;fill:none"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
- </a>
-
-
- <a href="/fs/auth/logout?single_sign_on=def9f8bf&amp;mode=dark&amp;theme=F13650BD0AC1&amp;agentlayer=pf" title="Logout" style="display:flex;align-items:center">
- <svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:currentColor;stroke-width:1.2;fill:none"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
- </a>
-
- </div>
- </div>
- </div>
- <script>function switchLang(c){var b='';var p=window.location.pathname.substring(b.length);var s=p.split('/').filter(Boolean);var l=['en','es','fr','it','ja','zh','ru'];if(s.length&&l.indexOf(s[0])!==-1)s.shift();window.location.href=b+'/'+c+'/'+s.join('/')+window.location.search;}</script>
+<header class="nav">
+  <button class="menu-btn" type="button" aria-expanded="false" aria-controls="menu-panel">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg><span>Menu</span>
+  </button>
+  <a class="brand" href="/" aria-label="LARRYD home"><img class="brand-mark only-dark" src="/assets/img/pulse-green.png" alt="LARRYD" width="64" height="32"><img class="brand-mark only-light" src="/assets/img/pulse-amber.png" alt="LARRYD" width="64" height="32"></a>
+  <div class="mode">
+    <button class="mode-btn" type="button" data-mode="light" aria-label="Light mode" title="Light mode"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></svg></button>
+    <button class="mode-btn" type="button" data-mode="dark" aria-label="Dark mode" title="Dark mode"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5z"/></svg></button>
+  </div>
+  <nav id="menu-panel" class="menu-panel" aria-label="Main" hidden>
+    <a href="#install">Install</a>
+    <a href="#what">What it is</a>
+    <a href="#cant">What it can't do</a>
+    <a href="#checks">The checks</a>
+    <a href="#faq">Questions</a>
+  </nav>
 </header>
 
+<main>
+
+<section class="hero">
+  <div class="hero-words">
+    <p class="rogue">LARRYD keeps your agents from going rogue.</p>
+    <p class="eyebrow">Free · for Mac and Linux · works with Claude Code</p>
+    <h1>Your server has a daemon.<br>Your agents should have one too.</h1>
+    <p class="lead">LARRYD is a free tool for building AI agents with Claude Code. It gives every agent the right shape, checks it for problems, and runs it in a sealed space where it can't touch anything it shouldn't.</p>
+    <div class="actions">
+      <a class="button" href="#install">Install LARRYD</a>
+      <a class="button button-quiet" href="#what">See how it works</a>
+    </div>
+  </div>
+  <div class="hero-film">
+    <video autoplay muted loop playsinline preload="metadata" poster="/assets/video/larryd-poster.jpg" aria-label="LARRYD film">
+      <source src="/assets/video/larryd.mp4" type="video/mp4">
+    </video>
+  </div>
+</section>
+
+<section id="install" class="band">
+  <div class="section-head">
+    <p class="eyebrow">Install</p>
+    <h2>One line. Pick the one you already have.</h2>
+    <p class="lead">Every line installs the same LARRYD. You need Python 3.11 or newer on your computer.</p>
+  </div>
+  <div class="terminal" role="group" aria-label="Install commands">
+    <div class="terminal-bar"><span></span><span></span><span></span></div>
+    <ul class="commands">
+      <li><span class="how">npm</span><code>npm install -g larryd</code><button class="copy" type="button" data-copy="npm install -g larryd">Copy</button><p class="explain">If you've installed Node.js, use this one.</p></li>
+      <li><span class="how">pip</span><code>pip install larryd</code><button class="copy" type="button" data-copy="pip install larryd">Copy</button><p class="explain">The standard way for Python. If it says "externally managed environment", use pipx instead.</p></li>
+      <li><span class="how">pipx</span><code>pipx install larryd</code><button class="copy" type="button" data-copy="pipx install larryd">Copy</button><p class="explain">The safest Python way: LARRYD gets its own space. No pipx yet? On a Mac: <code>brew install pipx</code>.</p></li>
+      <li><span class="how">cargo</span><code>cargo install larryd</code><button class="copy" type="button" data-copy="cargo install larryd">Copy</button><p class="explain">If you've installed Rust, use this one.</p></li>
+      <li class="start"><span class="how">start</span><code>sudo larryd &amp;</code><button class="copy" type="button" data-copy="sudo larryd &">Copy</button><p class="explain">Starts LARRYD's daemon in the background: it asks for your password once, then tells you where it's running and how to stop it.</p></li>
+    </ul>
+  </div>
+  <p class="note">Type <code>larryd help</code> any time to see everything it can do. In Claude Code, just say "Install LARRYD for me".</p>
+</section>
+
+<section id="what" class="band">
+  <div class="section-head">
+    <p class="eyebrow">What it is</p>
+    <h2>A home for the agents you build</h2>
+    <p class="lead">An AI agent is a small program that does one job for you: answers a question, writes a report, makes a set of colours. LARRYD is the daemon that looks after them, from the first idea to the day someone uses them.</p>
+  </div>
+  <div class="cards">
+    <article class="card">
+      <img class="only-dark" src="/assets/img/pulse-green.png" alt="" width="56" height="28"><img class="only-light" src="/assets/img/pulse-amber.png" alt="" width="56" height="28">
+      <h3>Build</h3>
+      <p>Type <code>larryd new</code> and a name. You get a ready project with clear instructions that Claude Code reads first, so you can describe what you want in plain words.</p>
+    </article>
+    <article class="card">
+      <img class="only-dark" src="/assets/img/pulse-green.png" alt="" width="56" height="28"><img class="only-light" src="/assets/img/pulse-amber.png" alt="" width="56" height="28">
+      <h3>Check</h3>
+      <p><code>larryd doctor</code> looks over your agent before anyone else does. Every problem comes with the file, the line, what is wrong and what to do — words Claude Code can act on by itself.</p>
+    </article>
+    <article class="card">
+      <img class="only-dark" src="/assets/img/pulse-green.png" alt="" width="56" height="28"><img class="only-light" src="/assets/img/pulse-amber.png" alt="" width="56" height="28">
+      <h3>Run</h3>
+      <p><code>larryd run</code> tries your agent on your own computer, sealed off the same way it will run for real: no internet, no private files, one job in and one answer out.</p>
+    </article>
+    <article class="card card-open">
+      <img class="only-dark" src="/assets/img/pulse-green.png" alt="" width="56" height="28"><img class="only-light" src="/assets/img/pulse-amber.png" alt="" width="56" height="28">
+      <h3>Share</h3>
+      <p><code>larryd submit</code> sends your agent for review. Once it is approved, people add it with one switch.</p>
+      <em class="soon">Open</em>
+    </article>
+  </div>
+</section>
+
+<section id="cant" class="band split">
+  <div class="split-words">
+    <p class="eyebrow">Safe by design</p>
+    <h2>What your agent can't do.</h2>
+    <p class="lead">Every agent runs sealed off, on your computer and on LARRYD. These hold for every agent, every run.</p>
+    <ul class="checks">
+      <li><strong>It can't reach the internet.</strong> No network at all. What it needs is handed to it.</li>
+      <li><strong>It can't open your files.</strong> It reads its own folder and writes only to a scratch folder that is deleted after every run.</li>
+      <li><strong>It can't start other programs.</strong> No new process, nothing else on your machine.</li>
+      <li><strong>It can't carry secrets.</strong> The doctor refuses an agent with a password or key inside, before it ever runs.</li>
+      <li><strong>It answers only what it's handed.</strong> One job in, one answer out, with nothing else around it and a time limit.</li>
+    </ul>
+  </div>
+  <div class="split-art">
+    <img src="/assets/img/heartbeat-square.webp" alt="" width="1088" height="1088" loading="lazy">
+  </div>
+</section>
+
+<section id="checks" class="band spec-top">
+  <div class="section-head">
+    <p class="eyebrow">Version 1</p>
+    <h2>The LARRYD checks</h2>
+    <p class="lead"><code>larryd doctor</code> runs these eight checks on an agent, in this order, before it runs and before it is sent anywhere. Its output names them the same way. Every failure says the file, the line, what is wrong and what to do.</p>
+  </div>
+  <ol class="spec">
+    <li class="spec-row"><span class="step-n">1</span><div><h3>the project</h3><p><strong>Proves:</strong> There is an agent here: a real <code>agent/</code> folder (not a link) holding <code>agent.json</code>.</p><p><strong>Why:</strong> Everything else is checked inside <code>agent/</code>, and only <code>agent/</code> is ever sent or run.</p></div></li>
+    <li class="spec-row"><span class="step-n">2</span><div><h3>the manifest</h3><p><strong>Proves:</strong> <code>agent.json</code> is one JSON object with every field and no others. <code>run.do</code> is one of <code>does</code>; <code>calls</code> only names what is in <code>does</code>; <code>run.hands</code> asks only for what LARRYD hands (<code>cards</code>, <code>job</code>); each input has its own slot.</p><p><strong>Why:</strong> The manifest is the agent's promise: what it does, what it is handed, what it answers. The runtime holds the agent to it.</p></div></li>
+    <li class="spec-row"><span class="step-n">3</span><div><h3>the entry</h3><p><strong>Proves:</strong> The entry file exists, compiles, has a function for every name in <code>does</code>, and runs as a program.</p><p><strong>Why:</strong> An agent that cannot start, or that promises a function it does not have, fails in front of a person.</p></div></li>
+    <li class="spec-row"><span class="step-n">4</span><div><h3>the air gap</h3><p><strong>Proves:</strong> No network module, no module that starts processes, no hidden imports, nothing outside the Python standard library and the agent's own files, no path outside its own folder.</p><p><strong>Why:</strong> An agent never reaches out. What it needs is handed to it.</p></div></li>
+    <li class="spec-row"><span class="step-n">5</span><div><h3>no secret</h3><p><strong>Proves:</strong> No file named like a secret (<code>.env</code>, <code>.pem</code>, <code>id_rsa</code>, …) and no text that looks like a key, token or password.</p><p><strong>Why:</strong> An agent holds no secret. Keys belong to the developer, never to the agent.</p></div></li>
+    <li class="spec-row"><span class="step-n">6</span><div><h3>the shape</h3><p><strong>Proves:</strong> <code>agent/</code> holds only plain, visible UTF-8 files of the kinds an agent holds (<code>.py</code>, <code>.json</code>, <code>.txt</code>, <code>.md</code>, <code>.csv</code>), and no links.</p><p><strong>Why:</strong> What is checked is exactly what runs: nothing hidden, nothing that points elsewhere.</p></div></li>
+    <li class="spec-row"><span class="step-n">7</span><div><h3>the skills</h3><p><strong>Proves:</strong> Every skill the agent declares exists (<code>larryd skills</code> lists them by hash).</p><p><strong>Why:</strong> The runtime carries out declared skills for the agent; a skill that does not exist would fail the run.</p></div></li>
+    <li class="spec-row"><span class="step-n">8</span><div><h3>the knowledge</h3><p><strong>Proves:</strong> Every knowledge pack the agent declares is one LARRYD holds.</p><p><strong>Why:</strong> An agent may only lean on knowledge LARRYD can hand it. LARRYD holds none yet, so this is <code>[]</code> today.</p></div></li>
+  </ol>
+</section>
+
+<section class="band">
+  <div class="section-head">
+    <p class="eyebrow">The manifest</p>
+    <h2>Declared in the manifest, enforced when it runs.</h2>
+    <p class="lead">The doctor checks what the manifest declares. When the agent runs, the runtime holds it to the same words.</p>
+  </div>
+  <ul class="checks">
+    <li><strong><code>run.do</code></strong> The agent is asked to do exactly that one thing.</li>
+    <li><strong><code>run.hands</code></strong> It is handed only what it names. A hand LARRYD does not have fails the run.</li>
+    <li><strong><code>inputs</code></strong> The job's inputs reach it only by the names and slots declared.</li>
+    <li><strong><code>skills</code></strong> Only declared skills are carried out. An answer that carries files is refused unless the agent declares the DA-M store.</li>
+    <li><strong><code>calls</code></strong> Only an agent that declares <code>calls</code> answers on a member's screen.</li>
+    <li><strong><code>gives</code></strong> An answer that holds anything <code>gives</code> does not name is refused, by <code>larryd run</code> and by LARRYD's runtime: the run fails, nothing is delivered, nothing is charged.</li>
+  </ul>
+</section>
+
+<section class="band">
+  <div class="section-head">
+    <p class="eyebrow">Every agent, every run</p>
+    <h2>The walls around every agent</h2>
+    <p class="lead">These hold whatever the manifest says. On a Mac they are macOS sandbox-exec; on Linux, bubblewrap with a seccomp filter. Where neither is present, nothing runs.</p>
+  </div>
+  <ul class="checks">
+    <li><strong>No network at all.</strong> What it needs is handed to it.</li>
+    <li><strong>No other programs.</strong> It cannot start a process.</li>
+    <li><strong>None of your files.</strong> On a Mac it reads nothing in the home folders but its own folder; on Linux, nothing but its own folder and the Python runtime. It writes only to a scratch folder, deleted after the run.</li>
+    <li><strong>One job in, one answer out.</strong> One JSON object each way, in an empty environment, inside a time limit.</li>
+  </ul>
+</section>
+
+<section class="band">
+  <div class="section-head">
+    <p class="eyebrow">The badge</p>
+    <h2>Show that your agent passes</h2>
+    <p class="lead">Run the doctor with <code>--badge</code>. It writes <code>larryd-checks.svg</code> beside <code>agent/</code>: PASS in gold or FAIL in red, with the day and the checks' version. Paste the line it prints into your README.</p>
+  </div>
+  <div class="terminal proof">
+    <div class="terminal-bar"><span></span><span></span><span></span></div>
+    <pre><span class="dim">$</span> larryd doctor weather-report --badge
+larryd doctor: /Users/Shared/weather-report
+PASS the project
+PASS the manifest
+PASS the entry
+PASS the air gap
+PASS no secret
+PASS the shape
+PASS the skills
+PASS the knowledge
+the agent passes every check
+wrote /Users/Shared/weather-report/larryd-checks.svg: paste ![LARRYD checks](larryd-checks.svg) into your README</pre>
+  </div>
+  <p class="badge-sample"><img src="/assets/img/larryd-checks.svg" alt="LARRYD checks v1: PASS" width="233" height="22"></p>
+</section>
 
 
 
+<section class="band price">
+  <div class="section-head">
+    <p class="eyebrow">Price</p>
+    <h2>Free</h2>
+    <p class="lead">LARRYD is free to install and free to use on your own computer. No account, no card, no trial that runs out.</p>
+    <a class="button" href="#install">Install LARRYD</a>
+  </div>
+</section>
 
+<section id="faq" class="band">
+  <div class="section-head">
+    <p class="eyebrow">Questions</p>
+    <h2>Good questions, short answers</h2>
+  </div>
+  <div class="faq">
+    <details><summary>What is an AI agent?</summary><p>A small program that does one job well — for example, turning a few words into a set of brand colours, or writing a short report from a list. You ask, it answers.</p></details>
+    <details><summary>Do I need to know how to code?</summary><p>It helps, but Claude Code writes most of it with you. LARRYD's instructions and its doctor make sure what gets written is safe and in the right shape.</p></details>
+    <details><summary>What does "daemon" mean?</summary><p>A helper that runs quietly in the background. Your computer has many. LARRYD's daemon is the one that runs your agents — safely, one job at a time.</p></details>
+    <details><summary>Which computers does it work on?</summary><p>Mac and Linux, with Python 3.11 or newer. Trying an agent on your own computer (<code>larryd run</code>) works on a Mac today; Linux and Windows come next.</p></details>
+    <details><summary>Where does my agent run when others use it?</summary><p>On LARRYD, sealed off from the internet and from everything else.</p></details>
+    <details><summary>Is it really free?</summary><p>Yes. Installing and using LARRYD on your own computer costs nothing.</p></details>
+  </div>
+</section>
 
-
-
-
-
-
-
-
-
-<main class="main-container">
- 
- 
-<style>
-/* ── GLOBAL PAGE CONTENT — page-level styles only; chrome is tpl_main's ── */
-/* .gp-btn = the generator's own .main-button:not(:hover) recipe: the glass
-   sheen is the ROW's button fill (--ui-btn-bg = slot 25) mixed at 18%/5% —
-   the white rgba literal it used to type is gone (release sweep 2026-09-04, S2). */
-a { text-decoration:none; color:inherit; }
-.gp-page { max-width:800px; margin:0 auto; padding:60px 40px; }
-.gp-form input[type="text"], .gp-form input[type="email"], .gp-form input[type="tel"], .gp-form input[type="date"], .gp-form select, .gp-form textarea {
- width:100%; padding:12px 16px; box-sizing:border-box; margin-bottom:16px;
- background:color-mix(in srgb, var(--active-color-03) 5%, transparent);
- border:1px solid color-mix(in srgb, var(--active-color-03) 30%, transparent);
- color:var(--active-color-01); font-family:inherit; font-size:inherit; transition:border-color 0.2s;
-}
-.gp-form input:focus, .gp-form select:focus, .gp-form textarea:focus { outline:none; border-color:color-mix(in srgb, var(--active-color-03) 60%, transparent); }
-.gp-form input::placeholder, .gp-form textarea::placeholder { color:var(--active-color-06); }
-.gp-form textarea { resize:vertical; min-height:120px; }
-.gp-btn { display:inline-block; padding:14px 48px; cursor:pointer; color:var(--active-color-01); font-family:inherit; font-size:inherit; background:linear-gradient(135deg, color-mix(in srgb, var(--ui-btn-bg) 18%, transparent) 0%, color-mix(in srgb, var(--ui-btn-bg) 5%, transparent) 45%, transparent 100%); -webkit-backdrop-filter:blur(16px); backdrop-filter:blur(16px); border:1px solid transparent; border-image:linear-gradient(135deg, color-mix(in srgb, var(--active-color-01) 65%, transparent) 0%, var(--active-color-01) 100%) 1; transition:all 0.3s ease; }
-.gp-btn:hover { background:var(--active-color-01); color:var(--active-color-09); border-image:none; border-color:var(--active-color-01); box-shadow:0 0 30px color-mix(in srgb, var(--active-color-01) 80%, transparent); transform:translateY(-2px); }
-.flash-success { color:var(--active-color-02); margin-bottom:20px; }
-.flash-error { color:var(--active-color-02); margin-bottom:20px; }
-.legal-body { line-height:1.7; }
-.legal-body .subtitle { display:block; margin:32px 0 10px; }
-@media(max-width:768px) { .gp-page{padding:30px 20px;}
-}
-</style>
-
-<div class="gp-page">
-
-<div class="lryd-scope"><div class="lryd-col">
-
-<div style="display:flex;justify-content:center;margin:26px 0 8px"><img src="/cdn-pf/ACCT_BE3126443D41_40AF/sites/73f08382/static/images/DA-M_3E191CB72A89_6F8E.webp" alt="LARRYD" style="width:min(64vw,420px);height:auto;display:block"></div>
-<div class="lryd-mast">
- <div class="cap">FREE &middot; FOR MAC AND LINUX &middot; WORKS WITH CLAUDE CODE</div>
- <div class="t">LARRYD</div>
- <div class="lryd-pulse"><svg viewBox="0 0 40 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="39.4 12 26 12 23 21 17 3 14 12 0.6 12"/></svg></div>
- <div class="s"><b>LARRYD KEEPS YOUR AGENTS FROM GOING ROGUE.</b></div>
-</div>
-
-<div class="lryd-story">
-Your server has a daemon. Your agents should have one too. LARRYD is a free tool for building AI agents with Claude Code. It gives every agent the right shape, checks it for problems, and runs it in a sealed space where it can't touch anything it shouldn't.
-</div>
-
-<div class="main-button-container lx-buttons">
- <a class="main-button" href="#install">INSTALL LARRYD</a>
- <a class="main-button" href="#what">SEE HOW IT WORKS</a>
-</div>
-
-<div class="lryd-sec" id="install">INSTALL &middot; ONE LINE. PICK THE ONE YOU ALREADY HAVE.</div>
-<div class="lx-lead">Every line installs the same LARRYD. You need Python 3.11 or newer on your computer. In Claude Code, just say &ldquo;Install LARRYD for me&rdquo;.</div>
-<div class="lryd-term">
- <div class="lx-line"><span class="ps">$</span> <b>npm install -g larryd</b><button class="lx-copy" type="button" data-copy="npm install -g larryd">COPY</button></div>
- <div class="lx-why">If you&#x27;ve installed Node.js, use this one.</div>
- <div class="lx-line"><span class="ps">$</span> <b>pip install larryd</b><button class="lx-copy" type="button" data-copy="pip install larryd">COPY</button></div>
- <div class="lx-why">The standard way for Python. If it says &quot;externally managed environment&quot;, use pipx instead.</div>
- <div class="lx-line"><span class="ps">$</span> <b>pipx install larryd</b><button class="lx-copy" type="button" data-copy="pipx install larryd">COPY</button></div>
- <div class="lx-why">The safest Python way: LARRYD gets its own space. No pipx yet? On a Mac: brew install pipx.</div>
- <div class="lx-line"><span class="ps">$</span> <b>cargo install larryd</b><button class="lx-copy" type="button" data-copy="cargo install larryd">COPY</button></div>
- <div class="lx-why">If you&#x27;ve installed Rust, use this one.</div>
- <div class="lx-line"><span class="ps">$</span> <b>sudo larryd &amp;</b><button class="lx-copy" type="button" data-copy="sudo larryd &amp;">COPY</button></div>
- <div class="lx-why">Starts LARRYD&#x27;s daemon in the background: it asks for your password once, then tells you where it&#x27;s running and how to stop it.</div>
-</div>
-
-<div class="lryd-sec" id="what">WHAT IT IS</div>
-<div class="lryd-grid">
- <div class="lryd-cell"><div class="k">BUILD</div><div class="v"><code>larryd new</code> and a name: a ready project with clear instructions Claude Code reads first.</div></div>
- <div class="lryd-cell"><div class="k">CHECK</div><div class="v"><code>larryd doctor</code> looks over your agent before anyone else does, and says exactly what to fix.</div></div>
- <div class="lryd-cell"><div class="k">RUN</div><div class="v"><code>larryd run</code> tries your agent on your own computer, sealed off the same way it will run for real.</div></div>
- <div class="lryd-cell"><div class="k">SHARE &amp;middot; OPEN</div><div class="v"><code>larryd submit</code> sends your agent for review. Once it is approved, people add it with one switch.</div></div>
-</div>
-
-<div class="lryd-sec" id="cant">WHAT YOUR AGENT CAN'T DO</div>
-<div class="lryd-grid lx-grid-1">
- <div class="lryd-cell"><div class="k">IT CAN&#x27;T REACH THE INTERNET.</div><div class="v">No network at all. What it needs is handed to it.</div></div>
- <div class="lryd-cell"><div class="k">IT CAN&#x27;T OPEN YOUR FILES.</div><div class="v">It reads its own folder and writes only to a scratch folder that is deleted after every run.</div></div>
- <div class="lryd-cell"><div class="k">IT CAN&#x27;T START OTHER PROGRAMS.</div><div class="v">No new process, nothing else on your machine.</div></div>
- <div class="lryd-cell"><div class="k">IT CAN&#x27;T CARRY SECRETS.</div><div class="v">The doctor refuses an agent with a password or key inside, before it ever runs.</div></div>
- <div class="lryd-cell"><div class="k">IT ANSWERS ONLY WHAT IT&#x27;S HANDED.</div><div class="v">One job in, one answer out, with nothing else around it and a time limit.</div></div>
-</div>
-
-<div class="lryd-sec" id="checks">THE LARRYD CHECKS &middot; VERSION 1</div>
-<div class="lryd-grid">
- <div class="lryd-cell"><div class="k">1. THE PROJECT</div><div class="v">There is an agent here: a real agent/ folder (not a link) holding agent.json.</div></div>
- <div class="lryd-cell"><div class="k">2. THE MANIFEST</div><div class="v">agent.json is one JSON object with every field and no others. run.do is one of does; calls only names what is in does; run.hands asks only for what LARRYD hands (cards, job); each input has its own slot.</div></div>
- <div class="lryd-cell"><div class="k">3. THE ENTRY</div><div class="v">The entry file exists, compiles, has a function for every name in does, and runs as a program.</div></div>
- <div class="lryd-cell"><div class="k">4. THE AIR GAP</div><div class="v">No network module, no module that starts processes, no hidden imports, nothing outside the Python standard library and the agent&#x27;s own files, no path outside its own folder.</div></div>
- <div class="lryd-cell"><div class="k">5. NO SECRET</div><div class="v">No file named like a secret (.env, .pem, id_rsa, …) and no text that looks like a key, token or password.</div></div>
- <div class="lryd-cell"><div class="k">6. THE SHAPE</div><div class="v">agent/ holds only plain, visible UTF-8 files of the kinds an agent holds (.py, .json, .txt, .md, .csv), and no links.</div></div>
- <div class="lryd-cell"><div class="k">7. THE SKILLS</div><div class="v">Every skill the agent declares exists (larryd skills lists them by hash).</div></div>
- <div class="lryd-cell"><div class="k">8. THE KNOWLEDGE</div><div class="v">Every knowledge pack the agent declares is one LARRYD holds.</div></div>
-</div>
-
-<div class="lryd-sec">THE MOOD</div>
-<div class="lryd-hero">
- <video autoplay muted loop playsinline preload="metadata" style="display:block;width:100%;height:auto"
-        poster="/vdn-pf/ACCT_BE3126443D41_40AF/sites/def9f8bf/static/videos/DA-M_D9296BFB6235_FB28_poster.jpg"
-        src="/vdn-pf/ACCT_BE3126443D41_40AF/sites/def9f8bf/static/videos/DA-M_D9296BFB6235_FB28.mp4"></video>
-</div>
-
-<div class="lryd-sec">PRICE</div>
-<div class="lryd-mast"><div class="t">FREE</div><div class="s">FREE TO INSTALL AND FREE TO USE ON YOUR OWN COMPUTER. NO ACCOUNT, NO CARD.</div></div>
-
-<div class="lryd-sec" id="faq">QUESTIONS</div>
-<div class="lx-faq">
- <details><summary>What is an AI agent?</summary><div>A small program that does one job well — for example, turning a few words into a set of brand colours, or writing a short report from a list. You ask, it answers.</div></details>
- <details><summary>Do I need to know how to code?</summary><div>It helps, but Claude Code writes most of it with you. LARRYD's instructions and its doctor make sure what gets written is safe and in the right shape.</div></details>
- <details><summary>What does &quot;daemon&quot; mean?</summary><div>A helper that runs quietly in the background. Your computer has many. LARRYD's daemon is the one that runs your agents — safely, one job at a time.</div></details>
- <details><summary>Which computers does it work on?</summary><div>Mac and Linux, with Python 3.11 or newer. Trying an agent on your own computer (<code>larryd run</code>) works on a Mac today; Linux and Windows come next.</div></details>
- <details><summary>Where does my agent run when others use it?</summary><div>On LARRYD, sealed off from the internet and from everything else.</div></details>
- <details><summary>Is it really free?</summary><div>Yes. Installing and using LARRYD on your own computer costs nothing.</div></details>
-</div>
-
-</div></div>
-
-</div>
-
-
- 
- 
- <div class="main-button-container">
-
-
-
-</div>
- 
- 
 </main>
 
-
-<style>
-  /* footer type recipes as classes — inline visual props are HADES T-rule
-     violations; the scanner skips <style> blocks (the inc_widget_add idiom) */
-  .pfft-tm{font-size: var(--font-annotation-sz);vertical-align:super}
-  .pfft-lnk{color:inherit;text-decoration:none}
-  /* THE COMMITMENT LINE KEEPS ITS OWN TRACKING (owner report 2026-09-09: "this font is
-     smashed together"): the font sweep re-tokenized letter-spacing to the LABEL role,
-     which resolves `normal` on the live brands — an all-caps grotesk with no tracking.
-     The line's documented treatment is 0.04em (the login page + the public-site footer
-     carry it verbatim, owner order 2026-08-05) — pinned here, never the role token. */
-  .pfft-resp{font-family:var(--font-global-02);font-size: var(--font-label-sz);text-transform: var(--font-label-tt);letter-spacing:0.04em;color:var(--active-color-01);white-space:normal;overflow-wrap:break-word;max-width:340px;line-height:1.8;margin-bottom:24px}
-</style>
-<!-- Footer -->
-<footer class="layout--footer">
- <!-- Footer Logo -->
- <div class="layout--footer__logo-container">
- 
- <a href="/pf/en/app?site=def9f8bf&amp;mode=dark&amp;theme=F13650BD0AC1&amp;agentlayer=pf">
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
- <img src="/cdn-pf/ACCT_BE3126443D41_40AF/sites/73f08382/static/images/DA-M_618FDD62F1AB_5BFD.webp" alt="LARRYD" class="layout--footer__corelogic-img layout--resize-mobile">
- 
- </a>
- </div>
- <div class="layout--footer__content">
- <div class="layout--footer__grid-4">
- <div class="footer-spacer"></div>
- <div><a href="/pf/en/app?site=def9f8bf&amp;mode=dark&amp;theme=F13650BD0AC1&amp;agentlayer=pf" class="subnav">HOME</a></div>
- <div class="footer-spacer"></div>
- <div><a href="/pf/en/menu?site=def9f8bf&amp;mode=dark&amp;theme=F13650BD0AC1&amp;agentlayer=pf" class="subnav">MENU</a></div>
- <div class="footer-spacer"></div>
- <div>
- 
- <a href="/pf/en/contact?site=def9f8bf&amp;mode=dark&amp;theme=F13650BD0AC1&amp;agentlayer=pf" class="subnav">CONTACT SUPPORT</a>
- <div class="footer-spacer" style="height:40px;margin-top:8px;"></div>
- </div>
- <div class="footer-spacer"></div>
- <div style="justify-self:end;white-space:nowrap;">
- 
- 
- 
- <div class="title" style="margin-bottom:4px">POSITIVE FEEDBACK<span class="pfft-tm">™</span></div>
-
-
-<div class="annotation" style="color:var(--active-color-01);font-size:var(--font-subtitle-sz);margin-bottom:48px"><a href="/en/app?site=335614bc&amp;mode=dark&amp;theme=24D48DF57CAD&amp;agentlayer=pf" class="nav">ORGANIZE.</a> <a href="/en/app?site=621351ba&amp;mode=dark&amp;theme=A5F4A6195233&amp;agentlayer=pf" class="nav">MANAGE.</a> <a href="/en/app?site=622a5e4f&amp;mode=dark&amp;theme=888A596DADD1&amp;agentlayer=pf" class="nav">CREATE.</a> <a href="/en/app?site=def9f8bf&amp;mode=dark&amp;theme=F13650BD0AC1&amp;agentlayer=pf" class="nav">OBSERVE.</a> </div>
-<div class="heading" style="margin-bottom:4px">PERFECTLY<br>CONNECTED</div>
- 
- 
- <div class="body" style="margin-bottom:28px"><a href="https://frostidentity.ai" class="pfft-lnk">FROST Identity</a> | <a href="https://da-m.ai" class="pfft-lnk">DA-M</a> | <a href="https://mtok.ai" class="pfft-lnk">MTOK</a> | <a href="https://larryllm.ai" class="pfft-lnk">LARRY LLM</a></div>
- <div class="body" style="margin-bottom:4px">+1 (707) 569-6528</div>
- <div class="body" style="margin-bottom:28px">LARRY@POSITIVEFEEDBACK.AI</div>
- 
- <div class="pfft-resp">COMMITMENT TO RESPONSIBLE AI. OUR SERVERS USE ZERO WATER FOR COOLING, FULLY SUSTAINABLE</div>
-<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:4px">
- 
- 
- 
- 
-<a href="/pf/en/privacy?site=def9f8bf&amp;mode=dark&amp;theme=F13650BD0AC1&amp;agentlayer=pf" class="nav">PRIVACY POLICY</a>
- <a href="/pf/en/terms?site=def9f8bf&amp;mode=dark&amp;theme=F13650BD0AC1&amp;agentlayer=pf" class="nav">TERMS OF SERVICE</a>
- <a href="/pf/en/security?site=def9f8bf&amp;mode=dark&amp;theme=F13650BD0AC1&amp;agentlayer=pf" class="nav">SECURITY</a>
- </div>
- 
- <div class="nav" style="margin:10px 0 6px;font-size:var(--font-subtitle-sz);color:var(--active-color-04)">COTECLAT LLC</div>
- <div class="annotation" style="color:var(--active-color-01)">POSITIVE FEEDBACK&trade; IS A TRADEMARK OF COTECLAT LLC.</div>
- <div class="annotation" style="color:var(--active-color-01)">&copy; 2026 COTECLAT LLC. ALL RIGHTS RESERVED.</div>
- <div class="annotation" id="cdn-info" style="margin-top:4px"></div>
- </div>
- <div class="footer-spacer"></div>
- </div>
- </div>
+<footer class="footer">
+  <div class="footer-brand">
+    <img class="only-dark" src="/assets/img/pulse-green.png" alt="" width="48" height="24"><img class="only-light" src="/assets/img/pulse-amber.png" alt="" width="48" height="24">
+    <p><strong>LARRYD</strong><br>Your server has a daemon. Your agents should have one too.</p>
+  </div>
+  <nav class="footer-links" aria-label="Elsewhere">
+    <a href="https://github.com/larrydaemon/larryd">GitHub</a>
+    <a href="https://pypi.org/project/larryd/">PyPI</a>
+    <a href="https://www.npmjs.com/package/larryd">npm</a>
+    <a href="https://crates.io/crates/larryd">crates.io</a>
+    <a href="#checks">The LARRYD checks</a>
+  </nav>
+  <p class="legal">© 2026 COTECLAT LLC</p>
 </footer>
 
-
-<script>(function(){var tz=Intl.DateTimeFormat().resolvedOptions().timeZone;var el=document.getElementById('cdn-info');if(el)el.textContent='CDN: origin (us-central) | '+tz;})();</script>
-
-
+<script>
+document.querySelectorAll('.copy').forEach(function (b) {
+  b.addEventListener('click', function () {
+    var text = b.getAttribute('data-copy');
+    var done = function () { b.textContent = 'Copied'; setTimeout(function () { b.textContent = 'Copy'; }, 1600); };
+    if (navigator.clipboard) { navigator.clipboard.writeText(text).then(done, function () {}); }
+  });
+});
+</script>
+<script>
+(function () {
+  var root = document.documentElement, btn = document.querySelector('.menu-btn'), panel = document.getElementById('menu-panel');
+  btn.addEventListener('click', function () { var open = panel.hidden; panel.hidden = !open; btn.setAttribute('aria-expanded', String(open)); });
+  panel.addEventListener('click', function (e) { if (e.target.tagName === 'A') { panel.hidden = true; btn.setAttribute('aria-expanded', 'false'); } });
+  document.querySelectorAll('.mode-btn').forEach(function (b) {
+    b.addEventListener('click', function () { var m = b.getAttribute('data-mode'); root.setAttribute('data-theme', m); try { localStorage.setItem('larryd-mode', m); } catch (e) {} });
+  });
+})();
+</script>
 </body>
 </html>
