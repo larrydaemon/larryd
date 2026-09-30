@@ -25,7 +25,7 @@ run, apart from everything else), owned by its developer. The platform reaches i
    `agent/`, never stored in it.
 6. Only what it is handed. The inputs are what run.hands names, from what LARRYD hands today: {hands}.
 7. Nothing fake. The agent answers from what it is handed, or it says plainly that it cannot.
-8. Plain words. Names as they are: LARRYD, FROST, mTok, DA-M, LARRY LLM, LARRYD.
+8. Plain words. Names as they are: LARRYD, FROST, mTok, DA-M, LARRY LLM.
 
 ## The tools
 {tools}
