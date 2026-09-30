@@ -19,7 +19,7 @@ for review, and `larryd status` says where it stands. Your agent runs on LARRYD,
 
 ## Install
     pipx install larryd
-    uv tool install larryd
+    uv tool install --python 3.12 larryd
     npm install -g larryd
     cargo install larryd
     larryd

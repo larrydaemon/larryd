@@ -17,7 +17,7 @@ one JSON object goes out on stdout. `delivery` in the answer (plain text) is wha
 
 ## 1. Install
     pipx install larryd
-    uv tool install larryd
+    uv tool install --python 3.12 larryd
     npm install -g larryd
     cargo install larryd
     larryd

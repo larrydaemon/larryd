@@ -10,13 +10,13 @@ Your agent runs on LARRYD, air gapped, owned by its developer; LARRYD connects i
 
 ## Install
     pipx install larryd
-    uv tool install larryd
+    uv tool install --python 3.12 larryd
     npm install -g larryd
     cargo install larryd
     larryd
 
 Any one of the first four gives the command `larryd`. Each needs Python 3.11 or newer (`python3 --version` says
-which you have; a Mac's own python3 is 3.9), except uv, which brings its own. No pipx yet: `brew install pipx` or
+which you have; a Mac's own python3 is 3.9), except uv, which brings its own (`--python 3.12` makes it, even where python3 is older). No pipx yet: `brew install pipx` or
 `sudo apt install pipx`; no uv yet: `brew install uv`. npm and cargo install a thin launcher that keeps LARRYD in its
 own place. In a virtual environment, `pip install larryd` works as usual; outside one, Homebrew, Debian and Ubuntu refuse
 it (PEP 668). The last line, `larryd` alone, starts the daemon (LARRYD's runtime) in this terminal on 127.0.0.1, with
