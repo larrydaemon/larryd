@@ -24,6 +24,23 @@ fn no_python_one_plain_line() {
 }
 
 #[test]
+fn an_older_python_says_which_one_it_found() {
+    let dir = scratch("old");
+    std::fs::create_dir_all(&dir).unwrap();
+    let fake = dir.join("python3");
+    std::fs::write(&fake, "#!/bin/sh\necho \"False 3.9.6\"\n").unwrap();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(&fake, std::fs::Permissions::from_mode(0o755)).unwrap();
+    }
+    let out = launcher().arg("help").env("LARRYD_PYTHON", &fake).env("LARRYD_VENV", dir.join("venv")).output().unwrap();
+    let _ = std::fs::remove_dir_all(&dir);
+    assert_eq!(out.status.code(), Some(1));
+    assert!(String::from_utf8_lossy(&out.stderr).contains("LARRYD needs Python 3.11 or newer, and python3 here is 3.9.6; install a newer Python"));
+}
+
+#[test]
 fn installs_once_then_hands_every_argument_through() {
     let venv = scratch("venv");
     let repo = PathBuf::from(env!("CARGO_MANIFEST_DIR")).parent().unwrap().to_path_buf();

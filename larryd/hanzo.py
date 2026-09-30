@@ -25,6 +25,17 @@ KEY = re.compile(r'^[A-Z]{4}_[0-9A-F]{12}_[0-9A-F]{4}$')   # as the platform min
 NAME = re.compile(r'^[a-z][a-z0-9-]{1,39}$')
 
 
+WHERE_KEYS_COME_FROM = '''To submit an agent you need a developer key from LARRYD. It has three parts, all made for you by LARRYD:
+  1. LARRYD's address (where your agents go)
+  2. your developer name
+  3. your developer secret (shown to you once; keep it like a password)
+With your key LARRYD also gives each of your agents its card key (four capitals, 12 and 4 hex digits); put it in
+the agent project's larryd.json: {"agent_key": "XXXX_0123456789AB_CDEF"}.
+Ask for them at https://larryd.ai (Get a developer key). Then keep the key here, once:
+  larryd key <LARRYD's address> <your developer name>      (it asks for the secret; it never goes on the command line)
+You need no key to build: larryd new, larryd doctor and larryd run work without one.'''
+
+
 class Refused(Exception):
     def __init__(self, wrong, todo, **more):
         super().__init__(wrong)
@@ -61,7 +72,7 @@ def save_key(address, developer, secret):
 def key():
     path = home() / 'developer.json'
     if not path.is_file():
-        raise Refused('there is no developer key here', 'run `larryd key <LARRYD address> <your developer name>` and paste your secret')
+        raise Refused('there is no developer key here', 'run `larryd key <LARRYD address> <your developer name>` and paste your secret; `larryd key` alone says where a key comes from')
     if stat.S_IMODE(os.stat(path).st_mode) & 0o077:
         raise Refused(f'{path} can be read by others', f'make it yours only (chmod 600 {path}), or save the key again with `larryd key`')
     return json.loads(path.read_text())
@@ -101,7 +112,7 @@ def agent_key(root):
     except (ValueError, AttributeError):
         found = ''
     if not KEY.match(found or ''):
-        raise Refused(f'{PROJECT} holds no card key', f'put the card key LARRYD gave you for this agent in {PROJECT}: {{"agent_key": "XXXX_0123456789AB_CDEF"}}')
+        raise Refused(f'{PROJECT} holds no card key', f'put the card key LARRYD gave you for this agent in {PROJECT}: {{"agent_key": "XXXX_0123456789AB_CDEF"}} (`larryd key` alone says where it comes from)')
     return found
 
 
@@ -123,16 +134,17 @@ def submit(root):
     files, code, manifest = package(root)
     status, answer = call(k, 'POST', '/developer/submit', {'agent_key': card_key, 'files': files})
     if status != 200:
-        raise Refused(f"LARRYD refused it: {answer.get('refused', status)}", _todo(status), status=status)
+        raise Refused(f"LARRYD refused it: {answer.get('refused', status)}", todo(status), status=status)
     if (answer.get('code_sha256'), answer.get('manifest_sha256')) != (code, manifest):
         raise Refused('LARRYD holds other bytes than the ones sent', 'submit again; if it repeats, tell LARRYD',
                       sent={'code_sha256': code, 'manifest_sha256': manifest}, held=answer)
     return {'ok': True, 'agent_key': card_key, 'code_sha256': code, 'manifest_sha256': manifest, 'review': answer.get('review')}
 
 
-def _todo(status):
+def todo(status):
     return {0: 'check LARRYD\'s address in your developer key (`larryd key`), then submit again',
-            401: 'your developer key was refused: save it again with `larryd key` (and check this computer\'s clock)',
+            401: 'LARRYD does not know that developer name and secret together: check both, and save them again with `larryd key` '
+                 '(if they are right, this computer\'s clock is over a minute off)',
             403: 'this agent\'s card key is not yours: check larryd.json',
             413: 'the agent is too big: keep it under 200 files and 5 MB',
             502: 'LARRYD holds it, but FROST did not take it: submit again later'}.get(status, 'read what LARRYD said, fix it, then submit again')
@@ -141,5 +153,5 @@ def _todo(status):
 def status():
     code, answer = call(key(), 'GET', '/developer/status', {})
     if code != 200:
-        raise Refused(f"LARRYD refused it: {answer.get('refused', code)}", _todo(code), status=code)
+        raise Refused(f"LARRYD refused it: {answer.get('refused', code)}", todo(code), status=code)
     return {'ok': True, **answer}

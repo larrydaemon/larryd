@@ -6,11 +6,12 @@ import json
 import pathlib
 import sys
 
-from . import doctor, hanzo, knowledge, mcp, new, runner, skills
+from . import __version__, doctor, hanzo, knowledge, mcp, new, runner, skills
 
 
 def parser():
     p = argparse.ArgumentParser(prog='larryd', description='LARRYD. Your server has a daemon. Your agents should have one too. Build, test and ship AI agents with Claude Code.')
+    p.add_argument('--version', action='version', version=f'larryd {__version__}')
     sub = p.add_subparsers(dest='command', required=True)
     n = sub.add_parser('new', help='make a new agent project')
     n.add_argument('name', help='the agent\'s name, also its folder')
@@ -22,14 +23,18 @@ def parser():
     r.add_argument('path', nargs='?', default='.', help='the agent project (default: here)')
     r.add_argument('--job', help='the sample job (default: samples/job.json)')
     r.add_argument('--json', action='store_true', help='the result as JSON')
-    y = sub.add_parser('key', help='keep your developer key (the secret is read from stdin, never the command line)')
-    y.add_argument('address', help='LARRYD\'s address, as LARRYD gave it')
-    y.add_argument('developer', help='your developer name, as LARRYD made it')
+    y = sub.add_parser('key', help='keep your developer key (the secret is read from stdin, never the command line); alone: where a key comes from')
+    y.add_argument('address', nargs='?', help='LARRYD\'s address, as LARRYD gave it')
+    y.add_argument('developer', nargs='?', help='your developer name, as LARRYD made it')
     s = sub.add_parser('submit', help='send the agent to LARRYD, for FROST\'s review')
     s.add_argument('path', nargs='?', default='.', help='the agent project (default: here)')
     s.add_argument('--json', action='store_true', help='the result as JSON')
     t = sub.add_parser('status', help='what LARRYD records for your agents')
     t.add_argument('--json', action='store_true', help='the result as JSON')
+    v = sub.add_parser('developer', help='on your own LARRYD (the daemon on this machine): make a developer who may submit an agent')
+    v.add_argument('action', choices=['add'])
+    v.add_argument('name', help='the developer\'s name (small letters, digits, dashes)')
+    v.add_argument('agent_key', help='the agent\'s card key the developer may submit')
     sub.add_parser('mcp', help='serve the tools to Claude Code (a local tool server on stdin/stdout)')
     sub.add_parser('help', help='these commands; `larryd` alone starts the daemon (LARRYD\'s runtime on 127.0.0.1)')
     sub.add_parser('skills', help='list the skills an agent may declare, by hash')
@@ -77,14 +82,24 @@ def main(argv=None):
         print('\n'.join(f'FAIL {w}' for w in wrong) if wrong else digest)
         return 1 if wrong else 0
     if args.command == 'key':
+        if not args.address or not args.developer:
+            print(hanzo.WHERE_KEYS_COME_FROM)
+            return 0 if not args.address else 1
         secret = getpass.getpass('your developer secret: ') if sys.stdin.isatty() else sys.stdin.readline()
         try:
             path = hanzo.save_key(args.address, args.developer, secret.strip())
         except hanzo.Refused as no:
             print(f'larryd key: {no.wrong}. What to do: {no.todo}', file=sys.stderr)
             return 1
-        print(f'kept in {path} (yours only)')
-        return 0
+        code, answer = hanzo.call(hanzo.key(), 'GET', '/developer/status', {})
+        if code == 200:
+            print(f'kept in {path} (yours only) · LARRYD knows you: {len(answer.get("agents", []))} agent(s) yours')
+            return 0
+        if code == 0:
+            print(f'kept in {path} (yours only) · not checked: LARRYD does not answer at {args.address.rstrip("/")}')
+            return 0
+        print(f'larryd key: kept in {path}, but LARRYD refused it ({code}). What to do: {hanzo.todo(code)}', file=sys.stderr)
+        return 1
     if args.command in ('submit', 'status'):
         try:
             out = hanzo.submit(args.path) if args.command == 'submit' else hanzo.status()
@@ -92,6 +107,9 @@ def main(argv=None):
             out = no.as_json()
         print(json.dumps(out, indent=2) if args.json else _said(args.command, out))
         return 0 if out['ok'] else 1
+    if args.command == 'developer':
+        from . import daemon
+        return daemon.developer_add(args.name, args.agent_key)
     if args.command == 'mcp':
         mcp.serve()
         return 0

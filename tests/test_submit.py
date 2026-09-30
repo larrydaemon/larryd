@@ -70,9 +70,37 @@ def test_no_key_says_what_to_do():
 
 def test_the_secret_comes_from_stdin_never_the_command_line(monkeypatch, capsys):
     monkeypatch.setattr('sys.stdin', io.StringIO(SECRET + '\n'))
-    assert cli.main(['key', 'http://127.0.0.1:5010', 'ada']) == 0
+    assert cli.main(['key', f'http://127.0.0.1:{_closed_port()}', 'ada']) == 0
     assert hanzo.key()['secret'] == SECRET
     assert SECRET not in capsys.readouterr().out
+
+
+def test_key_alone_says_where_a_key_comes_from(capsys):
+    assert cli.main(['key']) == 0
+    said = capsys.readouterr().out
+    for words in ("LARRYD's address", 'your developer name', 'your developer secret', 'card key', 'larryd.json',
+                  'https://larryd.ai', 'larryd key <LARRYD\'s address> <your developer name>', 'You need no key to build'):
+        assert words in said, words
+    assert cli.main(['key', 'http://127.0.0.1:5010']) == 1   # half a key: the same words, and a failure
+    assert not (hanzo.home() / 'developer.json').exists()
+
+
+def test_a_key_is_checked_when_kept_and_a_silent_larryd_is_said(monkeypatch, capsys):
+    monkeypatch.setattr('sys.stdin', io.StringIO(SECRET + '\n'))
+    port = _closed_port()
+    assert cli.main(['key', f'http://127.0.0.1:{port}', 'ada']) == 0
+    assert f'not checked: LARRYD does not answer at http://127.0.0.1:{port}' in capsys.readouterr().out
+
+
+def test_a_refused_key_says_name_and_secret_first():
+    assert 'developer name and secret' in hanzo.todo(401) and hanzo.todo(401).index('name') < hanzo.todo(401).index('clock')
+
+
+def test_version(capsys):
+    from larryd import __version__
+    with pytest.raises(SystemExit) as done:
+        cli.main(['--version'])
+    assert done.value.code == 0 and capsys.readouterr().out == f'larryd {__version__}\n'
 
 
 def test_the_key_never_lands_in_the_project(project):

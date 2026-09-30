@@ -54,6 +54,19 @@ def prepare(instance, runtime):
     shutil.copytree(runtime / 'agents' / 'marketplace', marketplace, ignore=shutil.ignore_patterns('__pycache__'))
 
 
+def developer_add(name, agent_key):
+    """`larryd developer add <name> <agent_key>`: on this machine's own runtime (its instance, as the daemon finds it), the
+    developer may submit that agent; a new developer's secret is printed once. The runtime's own command does it."""
+    instance = instance_dir()
+    if not (instance / 'secrets').is_dir():
+        print(f'larryd developer: there is no LARRYD instance at {instance} yet; start the daemon once (`larryd`), then try again', file=sys.stderr)
+        return 1
+    import subprocess
+    done = subprocess.run([sys.executable, str(runtime_dir() / 'web' / 'app.py'), 'developer', 'add', name, agent_key],
+                          env={**os.environ, 'LARRYD_INSTANCE': str(instance)})
+    return done.returncode
+
+
 def taken(port):
     with socket.socket() as s:
         try:

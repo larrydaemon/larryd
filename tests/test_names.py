@@ -2,6 +2,7 @@
 agent runs is LARRYD. No developer-facing file or message says "HANZO" (the internal name stays in the code's comments
 and docstrings, the tests and the handoff). The public lines never name it either."""
 import ast
+import json
 import pathlib
 
 from larryd import new
@@ -57,4 +58,15 @@ def test_the_public_lines():
     summary = 'Your server has a daemon. Your agents should have one too.'
     assert readme[2] == summary and guide[2] == summary
     assert readme[4] == guide[4] == 'Build, test and ship AI agents with Claude Code.'
-    assert f'description = "{summary}"' in (REPO / 'pyproject.toml').read_text()
+    both = f'{summary} Build, test and ship AI agents with Claude Code.'   # one description on every registry: the hook, then what it is
+    assert f'description = "{both}"' in (REPO / 'pyproject.toml').read_text() and f'description = "{both}"' in (REPO / 'cargo' / 'Cargo.toml').read_text()
+    assert json.loads((REPO / 'npm' / 'package.json').read_text())['description'] == both
+
+
+def test_every_registry_points_at_larryd_ai_never_elsewhere():
+    py = (REPO / 'pyproject.toml').read_text()
+    assert 'Homepage = "https://larryd.ai"' in py
+    assert 'homepage = "https://larryd.ai"' in (REPO / 'cargo' / 'Cargo.toml').read_text()
+    assert json.loads((REPO / 'npm' / 'package.json').read_text())['homepage'] == 'https://larryd.ai'
+    for path in ('pyproject.toml', 'cargo/Cargo.toml', 'npm/package.json', 'README.md', 'GUIDE.md', 'larryd/hanzo.py'):
+        assert 'larryllm' not in (REPO / path).read_text().lower(), path

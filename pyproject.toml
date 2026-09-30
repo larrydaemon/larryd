@@ -5,9 +5,15 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "larryd"
 version = "0.1.0"
-description = "Your server has a daemon. Your agents should have one too."
+description = "Your server has a daemon. Your agents should have one too. Build, test and ship AI agents with Claude Code."
+keywords = ["ai-agents", "claude-code", "mcp", "cli", "sandbox"]
 requires-python = ">=3.11"
 dependencies = ["flask>=3"]   # the daemon (LARRYD's runtime) serves over Flask; the tool itself is the standard library only
+
+[project.urls]
+Homepage = "https://larryd.ai"
+Repository = "https://github.com/larrydaemon/larryd"
+Documentation = "https://github.com/larrydaemon/larryd/blob/main/GUIDE.md"
 
 [project.scripts]
 larryd = "larryd.cli:main"
