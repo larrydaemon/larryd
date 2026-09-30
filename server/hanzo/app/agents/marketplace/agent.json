@@ -1,0 +1,23 @@
+{
+  "name": "THE AGENT MARKETPLACE",
+  "entry": "agent.py",
+  "about": "The collection: every card the harness shows (LIVE, a screen, a whole mTok rate, in the locker and verified), laid out as the original's cards, with the member's hired state; its RUN delivers the collection report.",
+  "does": [
+    "collection",
+    "report"
+  ],
+  "reads": [
+    "the LIVE agent cards (wid /api/agnt/cards)",
+    "the member's hired agents (wid /api/agnt/hired)",
+    "the account's subscriptions (mTok /mtok/balance)"
+  ],
+  "calls": [
+    "collection"
+  ],
+  "run": {
+    "do": "report",
+    "hands": [
+      "cards"
+    ]
+  }
+}

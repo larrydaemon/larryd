@@ -1,0 +1,97 @@
+{
+  "about": "hanzo.db: HANZO's only database, and only what HANZO itself needs (the owner 2026-09-28: \"data stays in wid, never back to pfhanzo\"): no record value, no delivery, no member or account. Tables are created from here and nowhere else; a table that differs is refused, never kept.",
+  "database": "hanzo.db",
+  "tables": {
+    "hanzo_locker": {
+      "about": "an agent HANZO holds: its folder and the sha256 of its code and manifest, checked on every call and run",
+      "columns": [
+        [
+          "agent_key",
+          "TEXT PRIMARY KEY"
+        ],
+        [
+          "name",
+          "TEXT NOT NULL"
+        ],
+        [
+          "folder",
+          "TEXT NOT NULL"
+        ],
+        [
+          "code_sha256",
+          "TEXT NOT NULL"
+        ],
+        [
+          "manifest_sha256",
+          "TEXT NOT NULL"
+        ],
+        [
+          "registered_at",
+          "TEXT NOT NULL"
+        ]
+      ]
+    },
+    "hanzo_runs": {
+      "about": "every call and job run, refused ones too, by the agent's key and the job's: its state, its times, what was charged, a plain reason (never an agent's words); every count HANZO shows is counted here",
+      "columns": [
+        [
+          "id",
+          "INTEGER PRIMARY KEY AUTOINCREMENT"
+        ],
+        [
+          "lane",
+          "TEXT NOT NULL"
+        ],
+        [
+          "agent_key",
+          "TEXT NOT NULL"
+        ],
+        [
+          "job_key",
+          "TEXT NOT NULL DEFAULT ''"
+        ],
+        [
+          "run",
+          "INTEGER NOT NULL DEFAULT 0"
+        ],
+        [
+          "state",
+          "TEXT NOT NULL"
+        ],
+        [
+          "reason",
+          "TEXT NOT NULL DEFAULT ''"
+        ],
+        [
+          "started_at",
+          "TEXT NOT NULL"
+        ],
+        [
+          "finished_at",
+          "TEXT NOT NULL DEFAULT ''"
+        ],
+        [
+          "charged",
+          "INTEGER NOT NULL DEFAULT 0"
+        ]
+      ]
+    },
+    "hanzo_developers": {
+      "about": "a developer and the agent keys they may submit: a HANZO-side name and a card's key, never a platform account or member; the developer's secret is a file in HANZO's instance (secrets/developers/), printed once when made",
+      "columns": [
+        [
+          "agent_key",
+          "TEXT PRIMARY KEY"
+        ],
+        [
+          "developer",
+          "TEXT NOT NULL"
+        ],
+        [
+          "added_at",
+          "TEXT NOT NULL"
+        ]
+      ]
+    }
+  }
+}

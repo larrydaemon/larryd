@@ -1,0 +1,36 @@
+{
+  "about": "The skills an agent may declare, each by its hash (the sha256 of its definition as compact sorted JSON), the same definitions as LARRYD's skills.json. Only a door that exists is a skill; a skill with a hand is carried out by HANZO before the RUN.",
+  "skills": [
+    {
+      "name": "mTok charge",
+      "technology": "mTok",
+      "door": "LARRYD calls mTok /mtok/use after a DONE run",
+      "does": "charges the member's account the agent's own rate in mTok (0 = free); mTok alone decides, and a refused charge withholds the delivery",
+      "agent": "nothing to call: LARRYD applies it to every run of the agent"
+    },
+    {
+      "name": "LARRY LLM greeting",
+      "technology": "LARRY LLM",
+      "door": "LARRYD asks LARRY LLM for the member's greeting (GET /larry/greeting) before the RUN",
+      "does": "hands the agent the greeting LARRY LLM gives the member today, for every time of day, in the member's language",
+      "agent": "reads job[\"greeting\"]: {\"date\", \"lang\", \"greetings\": {time of day: the words}}",
+      "hand": "greeting"
+    },
+    {
+      "name": "FROST identity",
+      "technology": "FROST",
+      "door": "LARRYD asks FROST who the agent works for on this RUN (GET /agents/identity) before the RUN",
+      "does": "hands the agent the member's first name, member type and account name, nothing else (no email, no address, no key)",
+      "agent": "reads job[\"identity\"]: {\"first_name\", \"member_type\", \"account_name\"}",
+      "hand": "identity"
+    },
+    {
+      "name": "DA-M store",
+      "technology": "DA-M",
+      "door": "LARRYD stores the files an agent's answer carries in the member's own DA-M (POST /dam/upload) after a DONE run",
+      "does": "keeps each file the answer carries in the member's DA-M, the agent's card key as its source; at most 10 files, all within the answer's own limit of 1 MB",
+      "agent": "answers \"files\": [{\"name\", \"content_b64\"}] and names \"files\" in gives",
+      "after": "files"
+    }
+  ]
+}
