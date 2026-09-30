@@ -38,6 +38,6 @@ def test_the_three_install_lines_name_the_same_package():
 
 
 def test_the_four_install_lines_in_the_owners_order():
-    lines = '    npm install -g larryd\n    pip install larryd\n    cargo install larryd\n    sudo larryd &\n'
+    lines = '    npm install -g larryd\n    pip install larryd\n    pipx install larryd\n    cargo install larryd\n    sudo larryd &\n'
     for doc in ('README.md', 'GUIDE.md', 'listings/text.md'):
         assert lines in (REPO / doc).read_text(), doc

@@ -11,13 +11,15 @@ Your agent runs on LARRYD, air gapped, owned by its developer; LARRYD connects i
 ## Install
     npm install -g larryd
     pip install larryd
+    pipx install larryd
     cargo install larryd
     sudo larryd &
 
-Any one of the first three gives the command `larryd`; the fourth starts the daemon: LARRYD's runtime on this machine,
+Any one of the first four gives the command `larryd`; the last starts the daemon: LARRYD's runtime on this machine,
 on 127.0.0.1 (as root its instance is /var/lib/larryd; as anyone else, ~/.larryd). npm and cargo install a thin
 launcher that keeps LARRYD in its own place and needs Python 3.11 or newer. A system that manages its own Python
-(Debian, Ubuntu, Homebrew) refuses a plain `pip install`: there use npm or cargo, or a venv. `sudo larryd &` needs
+(Debian, Ubuntu, Homebrew) refuses a plain `pip install`: there use pipx (`brew install pipx` or
+`sudo apt install pipx` first), npm, cargo, or a venv. `sudo larryd &` needs
 `larryd` on root's PATH. From the repository: `pip install git+https://github.com/larrydaemon/larryd.git`.
 (Until 0.1.0 is published, PyPI, npm and crates.io hold only the name's reservation, 0.0.1.)
 

@@ -20,6 +20,7 @@ for review, and `larryd status` says where it stands. Your agent runs on LARRYD,
 ## Install
     npm install -g larryd
     pip install larryd
+    pipx install larryd
     cargo install larryd
     sudo larryd &
 

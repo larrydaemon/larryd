@@ -18,14 +18,15 @@ one JSON object goes out on stdout. `delivery` in the answer (plain text) is wha
 ## 1. Install
     npm install -g larryd
     pip install larryd
+    pipx install larryd
     cargo install larryd
     sudo larryd &
 
-Any one of the first three gives one command, `larryd` (`larryd help` lists what it does). The fourth starts the
+Any one of the first four gives one command, `larryd` (`larryd help` lists what it does). The last starts the
 daemon, LARRYD's runtime on this computer (on 127.0.0.1; as root its instance is /var/lib/larryd, otherwise ~/.larryd),
 where you can try what you build. npm and cargo keep LARRYD in its own place and need Python 3.11 or newer; a system
-that manages its own Python (Debian, Ubuntu, Homebrew) refuses a plain `pip install`, so there use npm, cargo or a
-venv. It is proven on Python 3.14 (a Mac) and 3.11 (Debian 12). (Until 0.1.0 is published, the three registries
+that manages its own Python (Debian, Ubuntu, Homebrew) refuses a plain `pip install`, so there use pipx (install
+pipx first: `brew install pipx` or `sudo apt install pipx`), npm, cargo or a venv. It is proven on Python 3.14 (a Mac) and 3.11 (Debian 12). (Until 0.1.0 is published, the three registries
 hold only the name's reservation, 0.0.1.)
 
 ## 2. Your developer key
