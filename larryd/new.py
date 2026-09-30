@@ -11,6 +11,7 @@ NAME = re.compile(r'^[A-Za-z][A-Za-z0-9_-]{0,62}$')
 # the LARRYD tools that exist, in the order a developer uses them; the project's documents name only these
 TOOLS = (
     ('larryd new <name>', 'makes a new agent project like this one'),
+    ('larryd doctor', 'checks the agent before submission; every problem says what is wrong and what to do (--json for the result as JSON)'),
 )
 
 

@@ -1,8 +1,9 @@
 """The one command: `larryd`."""
 import argparse
+import json
 import sys
 
-from . import new
+from . import doctor, new
 
 
 def parser():
@@ -10,6 +11,9 @@ def parser():
     sub = p.add_subparsers(dest='command', required=True)
     n = sub.add_parser('new', help='make a new agent project')
     n.add_argument('name', help='the agent\'s name, also its folder')
+    d = sub.add_parser('doctor', help='check the agent before submission')
+    d.add_argument('path', nargs='?', default='.', help='the agent project (default: here)')
+    d.add_argument('--json', action='store_true', help='the result as JSON')
     return p
 
 
@@ -23,6 +27,10 @@ def main(argv=None):
             return 1
         print(f'made {root}/ · open it with Claude Code: cd {root} && claude')
         return 0
+    if args.command == 'doctor':
+        problems = doctor.check(args.path)
+        print(json.dumps(doctor.as_json(problems), indent=2) if args.json else doctor.report(args.path, problems))
+        return 1 if problems else 0
     return 2
 
 
