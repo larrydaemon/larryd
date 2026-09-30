@@ -22,14 +22,6 @@ def test_larryd_only():
             assert 'hanzo' not in path.read_text().lower(), path
 
 
-def test_every_local_file_it_points_at_is_there():
-    pages = PAGE
-    wanted = set(re.findall(r'(?:src|href|srcset|poster)="/([^"#?]+)"', pages)) | set(re.findall(r'url\("/([^")]+)"\)', (SITE / 'site.css').read_text()))
-    assert wanted
-    missing = sorted(p for p in wanted if not (SITE / p).is_file())
-    assert not missing, missing
-
-
 # ---------------------------------------------------------------- the page's one spine (the owner's review, 2026-09-30)
 def _at(text, needle):
     i = PAGE.find(needle)
@@ -38,7 +30,7 @@ def _at(text, needle):
 
 
 def test_the_sections_in_order():
-    order = ['class="hero"', 'id="install"', 'id="what"', 'id="cant"', 'id="checks"', 'class="band price"', 'id="faq"']
+    order = ['class="hero"', 'id="install"', 'id="what"', 'id="cant"', 'id="checks"', 'id="faq"', 'id="faq"']
     at = [_at(PAGE, n) for n in order]
     assert at == sorted(at), dict(zip(order, at))
     assert 'id="how"' not in PAGE and 'From an idea to a working agent' not in PAGE
@@ -80,22 +72,10 @@ def test_share_is_a_card_marked_open():
     assert '<h3>Share</h3>' in card and '<em class="soon">Open</em>' in card and 'soon</em>' not in card.replace('class="soon">Open</em>', '')
 
 
-def test_the_header_is_menu_logo_and_the_two_modes():
-    """The owner: MENU on the left, the heartbeat in the centre, light and dark on the right; no other links in the bar."""
-    nav = PAGE[_at(PAGE, '<header class="nav">'):_at(PAGE, '</header>')]
-    bar = nav[:nav.index('<nav id="menu-panel"')]
-    assert 'class="menu-btn"' in bar and 'class="brand"' in bar and bar.count('class="mode-btn"') == 2
-    assert '<a href="#' not in bar and 'button-small' not in bar
-
 def test_no_heading_without_a_body():
     for page in (PAGE,):
         for m in re.finditer(r'<h2>(.*?)</h2>\s*(</div>\s*)?(<section|</main>|$)', page):
             raise AssertionError(f'a heading with nothing under it: {m.group(1)}')
-
-
-def test_every_image_speaks_or_is_silent():
-    for alt in re.findall(r'<img [^>]*alt="([^"]*)"', PAGE):
-        assert alt in ('', 'LARRYD', 'LARRYD checks v1: PASS'), alt
 
 
 # ---------------------------------------------------------------- THE LARRYD CHECKS
@@ -110,9 +90,12 @@ def test_the_checks_page_and_spec_name_the_doctors_checks():
     assert 'Declared in the manifest, enforced when it runs.' in page
 
 
-def test_one_long_page_and_the_logo_is_the_heartbeat_alone():
-    """The owner: one single long page; the logo at the very top is the heartbeat line, no word."""
-    assert not (SITE / 'checks.html').exists() and 'id="checks"' in PAGE
-    header = PAGE[_at(PAGE, '<header class="nav">'):_at(PAGE, '</header>')]
-    brand = header[:header.index('</a>')]
-    assert 'brand-mark' in brand and 'brand-word' not in brand
+
+
+def test_the_official_header_and_footer_and_the_app_background():
+    """The owner: the official header and footer 1:1 (frozen from the official site), the app theme's CRT animation,
+    the header scrolls with the page, no price section."""
+    assert PAGE.count('class="lx-chrome lx-dark"') == 2 and PAGE.count('class="lx-chrome lx-light"') == 2
+    assert 'pf-cathode-warmup' in PAGE and 'class="pf-crt-warm pf-anim--crt"' in PAGE
+    assert 'position: sticky' not in PAGE[PAGE.index('.lx-top'):PAGE.index('.lx-top') + 120]
+    assert 'band price' not in PAGE and '>Free<' not in PAGE

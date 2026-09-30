@@ -246,3 +246,11 @@ h3 { line-height: 1.4; }
 :root[data-theme="light"] .only-light { display: inline; }
 :root[data-theme="light"] .only-dark { display: none; }
 .brand-mark.only-light, .brand-mark.only-dark { width: 64px; height: auto; }
+
+/* NO FRAMES (the owner): our sites are frameless: no boxes around cards, terminals or lists */
+.card, .terminal, .cant-list li, .spec-row, .commands li + li, .terminal-bar { border: 0 !important; box-shadow: none !important; }
+.card, .terminal { background: transparent !important; }
+.terminal-bar { display: none !important; }
+.commands .start { background: transparent !important; }
+.band, .checks li, .faq details, .spec-row, .yourself { border: 0 !important; }
+.copy { border: 0 !important; padding: 8px 0 !important; }
