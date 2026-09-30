@@ -4,9 +4,14 @@ Build an agent for LARRYD with Claude Code. The agent lives in LARRYD, air gappe
 LARRYD connects it to the platform by API only.
 
 ## Install
-    pip install git+https://github.com/<owner>/larryd.git
+    pip install larryd
 
-(`<owner>` is set when the owner makes the repository on GitHub; until then, `pip install git+file:///<path to this repository>`.)
+or, from the repository:
+
+    pip install git+https://github.com/larrydaemon/larryd.git
+
+(Until version 0.1.0 is published, PyPI holds only the name's reservation, 0.0.1, and the repository is not pushed yet;
+from this computer: `pip install git+file:///<path to this repository>`.)
 
 One command, `larryd`:
 - `larryd new <name>`: a new agent project (the agent, its CLAUDE.md, the larryd skill, a sample job, the connector)

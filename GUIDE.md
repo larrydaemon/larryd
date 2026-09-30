@@ -12,7 +12,10 @@ The whole contract: LARRYD runs the agent's entry file as its own process. One J
 one JSON object goes out on stdout. `delivery` in the answer (plain text) is what lands in the member's job.
 
 ## 1. Install
-    pip install git+<the LARRYD repository>
+    pip install larryd
+
+or `pip install git+https://github.com/larrydaemon/larryd.git`. (Until version 0.1.0 is published, PyPI holds only the
+name's reservation, 0.0.1.)
 
 This gives one command, `larryd`. It is proven on Python 3.14 on a Mac.
 
