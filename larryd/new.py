@@ -14,11 +14,18 @@ TOOLS = (
     ('larryd doctor', 'checks the agent before submission; every problem says what is wrong and what to do (--json for the result as JSON)'),
     ('larryd run', 'runs the agent here the way PF HANZO runs it (no network, no new process, a scratch run folder, a time limit), '
                    'with samples/job.json or --job <file>; it needs a Mac today'),
+    ('larryd mcp', 'serves these tools to Claude Code (larryd_new, larryd_doctor, larryd_run); this project\'s .mcp.json starts it'),
 )
+MCP = {'mcpServers': {'larryd': {'command': 'larryd', 'args': ['mcp']}}}
 
 
 def _kit(name):
     return resources.files('larryd').joinpath('kit', name).read_text()
+
+
+def skill():
+    """The larryd skill, the same text in every project and in the Claude Code plugin."""
+    return _kit('SKILL.md').format(loop='\n'.join(f'{n}. `{cmd}`: {what}' for n, (cmd, what) in enumerate(TOOLS, 1)))
 
 
 def manifest(name):
@@ -49,7 +56,8 @@ def make(name, where='.'):
         f'{shape.AGENT}/agent.py': _kit('agent.py').format(name=name),
         shape.SAMPLE: _kit('job.json').format(),
         'CLAUDE.md': _kit('CLAUDE.md').format(name=name, fields=fields, hands=', '.join(shape.HANDS), tools=tools),
-        shape.SKILL: _kit('SKILL.md').format(loop='\n'.join(f'{n}. `{cmd}`: {what}' for n, (cmd, what) in enumerate(TOOLS, 1))),
+        shape.SKILL: skill(),
+        '.mcp.json': json.dumps(MCP, indent=2) + '\n',
     }
     for rel, text in files.items():
         path = root / rel

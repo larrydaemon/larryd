@@ -1,0 +1,102 @@
+"""`larryd mcp`: the Claude Code connector. A local tool server on stdin/stdout (the Model Context Protocol: JSON-RPC 2.0,
+one message per line) that serves LARRYD's tools to Claude Code. It runs on the developer's computer and reaches
+nothing itself; each tool is the same code as the command of the same name."""
+import json
+import sys
+
+from . import __version__, doctor, new, runner
+
+VERSIONS = ('2025-11-25', '2025-06-18', '2025-03-26', '2024-11-05')   # the protocol versions this server speaks, newest first
+
+
+def _new(args):
+    root = new.make(args['name'], args.get('where') or '.')
+    return {'made': str(root), 'next': f'work in {root}: read its CLAUDE.md, change agent/agent.py and agent/agent.json, then larryd_doctor'}, False
+
+
+def _doctor(args):
+    problems = doctor.check(args.get('path') or '.')
+    return doctor.as_json(problems), False
+
+
+def _run(args):
+    result = runner.run(args.get('path') or '.', args.get('job'))
+    return runner.as_json(result), False
+
+
+PATH = {'type': 'string', 'description': 'the agent project\'s folder (default: the folder Claude Code runs in)'}
+TOOLS = {
+    'larryd_new': (_new, 'Make a new PF HANZO agent project: agent/ (the manifest and one entry that answers a job), CLAUDE.md with the '
+                         'spec and the rules, the larryd skill and a sample job.',
+                   {'type': 'object', 'properties': {'name': {'type': 'string', 'description': 'the agent\'s name, also its folder'},
+                                                     'where': {'type': 'string', 'description': 'the folder to make it in (default: here)'}},
+                    'required': ['name'], 'additionalProperties': False}),
+    'larryd_doctor': (_doctor, 'Check the agent before submission: the manifest, the entry, the air gap, no secret, the shape, the skills. '
+                               'Every problem names the file and line, what is wrong and what to do; fix each one and check again.',
+                      {'type': 'object', 'properties': {'path': PATH}, 'additionalProperties': False}),
+    'larryd_run': (_run, 'Run the agent here the way PF HANZO runs it (no network, no new process, a scratch run folder, a time limit) '
+                         'with the sample job, and see its answer or why it failed. Needs a Mac today.',
+                   {'type': 'object', 'properties': {'path': PATH, 'job': {'type': 'string', 'description': 'a sample job file (default: samples/job.json)'}},
+                    'additionalProperties': False}),
+}
+
+
+def _tools():
+    return [{'name': n, 'description': d, 'inputSchema': s} for n, (_, d, s) in TOOLS.items()]
+
+
+def _call(params):
+    name, args = params.get('name'), params.get('arguments') or {}
+    if name not in TOOLS:
+        raise LookupError(f'no tool {name}; the tools are {", ".join(TOOLS)}')
+    work, _, schema = TOOLS[name]
+    unknown = set(args) - set(schema['properties'])
+    missing = [k for k in schema.get('required', []) if not str(args.get(k) or '').strip()]
+    if unknown or missing:
+        text = f'{name} takes {", ".join(schema["properties"])}' + (f'; {", ".join(missing)} is needed' if missing else '')
+        return {'content': [{'type': 'text', 'text': text}], 'isError': True}
+    try:
+        out, failed = work(args)
+    except ValueError as no:
+        return {'content': [{'type': 'text', 'text': str(no)}], 'isError': True}
+    return {'content': [{'type': 'text', 'text': json.dumps(out, indent=2)}], 'structuredContent': out, 'isError': failed}
+
+
+def answer(message):
+    """One JSON-RPC message in -> the reply (None for a notification)."""
+    method, mid = message.get('method'), message.get('id')
+    if mid is None:
+        return None   # a notification (e.g. notifications/initialized): no reply
+    try:
+        if method == 'initialize':
+            asked = (message.get('params') or {}).get('protocolVersion')
+            result = {'protocolVersion': asked if asked in VERSIONS else VERSIONS[0], 'capabilities': {'tools': {}},
+                      'serverInfo': {'name': 'larryd', 'version': __version__},
+                      'instructions': 'LARRYD builds agents for PF HANZO. In an agent project, read CLAUDE.md first; '
+                                      'check with larryd_doctor and try with larryd_run after every change.'}
+        elif method == 'ping':
+            result = {}
+        elif method == 'tools/list':
+            result = {'tools': _tools()}
+        elif method == 'tools/call':
+            result = _call(message.get('params') or {})
+        else:
+            return {'jsonrpc': '2.0', 'id': mid, 'error': {'code': -32601, 'message': f'no method {method}'}}
+    except LookupError as no:
+        return {'jsonrpc': '2.0', 'id': mid, 'error': {'code': -32602, 'message': str(no)}}
+    return {'jsonrpc': '2.0', 'id': mid, 'result': result}
+
+
+def serve(stdin=sys.stdin, stdout=sys.stdout):
+    for line in stdin:
+        if not line.strip():
+            continue
+        try:
+            message = json.loads(line)
+        except ValueError:
+            reply = {'jsonrpc': '2.0', 'id': None, 'error': {'code': -32700, 'message': 'not JSON'}}
+        else:
+            reply = answer(message) if isinstance(message, dict) else {'jsonrpc': '2.0', 'id': None, 'error': {'code': -32600, 'message': 'not a request'}}
+        if reply is not None:
+            stdout.write(json.dumps(reply) + '\n')
+            stdout.flush()

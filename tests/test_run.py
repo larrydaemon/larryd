@@ -13,7 +13,6 @@ import pytest
 
 from larryd import cli, new, runner
 
-pytestmark = pytest.mark.skipif(sys.platform != 'darwin', reason='larryd run needs a Mac today')
 
 
 def _agent(tmp_path, body):

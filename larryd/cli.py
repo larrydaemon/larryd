@@ -3,7 +3,7 @@ import argparse
 import json
 import sys
 
-from . import doctor, new, runner
+from . import doctor, mcp, new, runner
 
 
 def parser():
@@ -18,6 +18,7 @@ def parser():
     r.add_argument('path', nargs='?', default='.', help='the agent project (default: here)')
     r.add_argument('--job', help='the sample job (default: samples/job.json)')
     r.add_argument('--json', action='store_true', help='the result as JSON')
+    sub.add_parser('mcp', help='serve the tools to Claude Code (a local tool server on stdin/stdout)')
     return p
 
 
@@ -39,6 +40,9 @@ def main(argv=None):
         result = runner.run(args.path, args.job)
         print(json.dumps(runner.as_json(result), indent=2) if args.json else runner.report(result))
         return 0 if result.state == 'DONE' else 1
+    if args.command == 'mcp':
+        mcp.serve()
+        return 0
     return 2
 
 

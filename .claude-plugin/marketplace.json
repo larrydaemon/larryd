@@ -1,0 +1,14 @@
+{
+  "name": "larryd",
+  "owner": {
+    "name": "LARRYD"
+  },
+  "description": "LARRYD: the tools and the skill for building LARRYD agents with Claude Code.",
+  "plugins": [
+    {
+      "name": "larryd",
+      "source": "./plugin",
+      "description": "LARRYD: build an agent for LARRYD with Claude Code."
+    }
+  ]
+}

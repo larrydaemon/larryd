@@ -1,0 +1,5 @@
+{
+  "mcpServers": {
+    "larryd": {"command": "larryd", "args": ["mcp"]}
+  }
+}
