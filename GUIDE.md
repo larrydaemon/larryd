@@ -16,18 +16,20 @@ The whole contract: LARRYD runs the agent's entry file as its own process. One J
 one JSON object goes out on stdout. `delivery` in the answer (plain text) is what lands in the member's job.
 
 ## 1. Install
-    npm install -g larryd
-    pip install larryd
     pipx install larryd
+    uv tool install larryd
+    npm install -g larryd
     cargo install larryd
-    sudo larryd &
+    larryd
 
-Any one of the first four gives one command, `larryd` (`larryd help` lists what it does). The last starts the
-daemon, LARRYD's runtime on this computer (on 127.0.0.1; as root its instance is /var/lib/larryd, otherwise ~/.larryd),
-where you can try what you build. npm and cargo keep LARRYD in its own place and need Python 3.11 or newer; a system
-that manages its own Python (Debian, Ubuntu, Homebrew) refuses a plain `pip install`, so there use pipx (install
-pipx first: `brew install pipx` or `sudo apt install pipx`), npm, cargo or a venv. It is proven on Python 3.14 (a Mac) and 3.11 (Debian 12). (Until 0.1.0 is published, the three registries
-hold only the name's reservation, 0.0.1.)
+Any one of the first four gives one command, `larryd` (`larryd help` lists what it does). Each needs Python 3.11 or
+newer (`python3 --version`; a Mac's own python3 is 3.9), except uv, which brings its own (`brew install uv`); pipx:
+`brew install pipx` or `sudo apt install pipx`. npm and cargo keep LARRYD in its own place. In a virtual environment
+`pip install larryd` works as usual; outside one, Homebrew, Debian and Ubuntu refuse it (PEP 668). The last line starts
+the daemon, LARRYD's runtime on this computer, in this terminal (on 127.0.0.1, its instance in ~/.larryd; Ctrl-C stops
+it), where you can try what you build. No sudo; as root its instance is /var/lib/larryd, for a server. It is proven on
+Python 3.14 (a Mac) and 3.11 (Debian 12). (Until 0.1.0 is published, the three registries hold only the name's
+reservation, 0.0.1, which prints one line and does nothing.)
 
 ## 2. Your developer key
 LARRYD makes your developer key: a name and a secret. The secret is shown once. Keep it on your computer:

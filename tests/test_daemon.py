@@ -45,7 +45,7 @@ def test_the_daemon(tmp_path):
     try:
         line = daemon.stdout.readline()
         assert line.startswith(f"LARRYD's runtime listens on http://127.0.0.1:{port} (pid {daemon.pid})"), line
-        assert f'its instance: {instance}' in line and f'stop it: kill {daemon.pid}' in line
+        assert f'its instance: {instance}' in line and f'stop it: Ctrl-C (or kill {daemon.pid})' in line
         for _ in range(60):
             try:
                 status, body = get(port)
@@ -65,6 +65,30 @@ def test_the_daemon(tmp_path):
         daemon.wait(timeout=10)
     with socket.socket() as s:
         s.bind(('127.0.0.1', port))   # free again: the kill stopped it
+
+
+def test_ctrl_c_stops_it_without_sudo(tmp_path):
+    """The docs' line: `larryd` alone, no sudo, in this terminal; Ctrl-C (SIGINT) stops it and frees the port."""
+    port = free_port()
+    env = {**os.environ, 'LARRYD_INSTANCE': str(tmp_path / 'instance'), 'LARRYD_PORT': str(port)}
+    daemon = subprocess.Popen([str(LARRYD)], env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    try:
+        assert daemon.stdout.readline().startswith("LARRYD's runtime listens")
+        for _ in range(60):
+            try:
+                get(port)
+                break
+            except OSError:
+                time.sleep(0.25)
+        daemon.send_signal(signal.SIGINT)
+        daemon.wait(timeout=10)
+    finally:
+        if daemon.poll() is None:
+            daemon.kill()
+            daemon.wait()
+            raise AssertionError('Ctrl-C did not stop the daemon')
+    with socket.socket() as s:
+        s.bind(('127.0.0.1', port))
 
 
 def test_help_names_the_daemon(capsys):

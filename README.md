@@ -9,24 +9,25 @@ Build, test and ship AI agents with Claude Code.
 Your agent runs on LARRYD, air gapped, owned by its developer; LARRYD connects it to the platform by API only.
 
 ## Install
-    npm install -g larryd
-    pip install larryd
     pipx install larryd
+    uv tool install larryd
+    npm install -g larryd
     cargo install larryd
-    sudo larryd &
+    larryd
 
-Any one of the first four gives the command `larryd`; the last starts the daemon: LARRYD's runtime on this machine,
-on 127.0.0.1 (as root its instance is /var/lib/larryd; as anyone else, ~/.larryd). npm and cargo install a thin
-launcher that keeps LARRYD in its own place and needs Python 3.11 or newer. A system that manages its own Python
-(Debian, Ubuntu, Homebrew) refuses a plain `pip install`: there use pipx (`brew install pipx` or
-`sudo apt install pipx` first), npm, cargo, or a venv. `sudo larryd &` needs
-`larryd` on root's PATH. From the repository: `pip install git+https://github.com/larrydaemon/larryd.git`.
+Any one of the first four gives the command `larryd`. Each needs Python 3.11 or newer (`python3 --version` says
+which you have; a Mac's own python3 is 3.9), except uv, which brings its own. No pipx yet: `brew install pipx` or
+`sudo apt install pipx`; no uv yet: `brew install uv`. npm and cargo install a thin launcher that keeps LARRYD in its
+own place. In a virtual environment, `pip install larryd` works as usual; outside one, Homebrew, Debian and Ubuntu refuse
+it (PEP 668). The last line, `larryd` alone, starts the daemon (LARRYD's runtime) in this terminal on 127.0.0.1, with
+its instance in ~/.larryd; Ctrl-C stops it. No sudo: as root its instance is /var/lib/larryd, for a server.
+From the repository: `pipx install git+https://github.com/larrydaemon/larryd.git`.
 (Until 0.1.0 is published, PyPI, npm and crates.io hold only the name's reservation, 0.0.1.)
 
 One command, `larryd` (`larryd help` lists them; `larryd` alone starts the daemon):
 - `larryd new <name>`: a new agent project (the agent, its CLAUDE.md, the larryd skill, a sample job, the connector)
 - `larryd doctor`: the pretest before submission; every problem says what is wrong and what to do
-- `larryd run`: runs the agent here the way LARRYD runs it, with the sample job (needs a Mac today)
+- `larryd run`: runs the agent here the way LARRYD runs it, with the sample job
 - `larryd key <address> <name>`: keeps your developer key from LARRYD (the secret is pasted, never typed on the command line)
 - `larryd submit`: sends the agent to LARRYD for FROST's review, after the doctor (the card key is in the project's larryd.json)
 - `larryd status`: what LARRYD records for your agents: held, the review, runs, calls, hires, mTok charged

@@ -73,13 +73,13 @@ def run():
     try:
         prepare(instance, runtime)
     except PermissionError:
-        print(f'larryd: cannot make its instance at {instance}: run it as root (sudo larryd &) or set LARRYD_INSTANCE', file=sys.stderr)
+        print(f'larryd: cannot make its instance at {instance}: set LARRYD_INSTANCE to a folder you can write', file=sys.stderr)
         return 1
     if sys.platform.startswith('linux') and not shutil.which('bwrap'):
         print('larryd: agents need bubblewrap on Linux (sudo apt install bubblewrap); until then nothing runs unsandboxed', file=sys.stderr)
     os.environ['LARRYD_INSTANCE'] = str(instance)
     os.environ['LARRYD_PORT'] = str(port)
-    print(f"LARRYD's runtime listens on http://127.0.0.1:{port} (pid {os.getpid()}) · its instance: {instance} · stop it: kill {os.getpid()}", flush=True)
+    print(f"LARRYD's runtime listens on http://127.0.0.1:{port} (pid {os.getpid()}) · its instance: {instance} · stop it: Ctrl-C (or kill {os.getpid()})", flush=True)
     import flask.cli
     flask.cli.show_server_banner = lambda *a, **k: None   # the one line above says it all
     sys.argv = ['larryd']
