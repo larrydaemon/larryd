@@ -139,3 +139,14 @@ def test_skills_and_packs_through_the_connector(client, tmp_path):
     (tmp_path / 'p' / 'pack.json').write_text('{"name": "N", "about": "A"}')
     assert client.call('larryd_pack', folder='p')['structuredContent']['ok'] is True
     assert client.call('larryd_pack', folder='nowhere')['structuredContent']['ok'] is False
+
+
+def test_the_guide_and_the_readme_name_only_what_exists():
+    import re
+    from larryd import cli
+    real = set(cli.parser()._subparsers._group_actions[0].choices)
+    for doc in ('GUIDE.md', 'README.md'):
+        text = (REPO / doc).read_text()
+        named = set(re.findall(r'larryd ([a-z]+)', text)) - {'repository', 'tools', 'skill', 'the'}
+        assert named <= real, (doc, named - real)
+        assert set(re.findall(r'\blarryd_[a-z]+', text)) <= set(mcp.TOOLS), doc
