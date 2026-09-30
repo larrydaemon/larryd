@@ -97,7 +97,10 @@ body { background: var(--active-color-09); }
 </style>
 <script>
 (function(){try{var m=localStorage.getItem("larryd-mode");if(m==="light"||m==="dark")document.documentElement.setAttribute("data-theme",m);}catch(e){}})();
-function lxMode(m){document.documentElement.setAttribute("data-theme",m);try{localStorage.setItem("larryd-mode",m);}catch(e){}}
+var LX_IMG={"DA-M_223B12F2B07F_949C.png":"DA-M_39F6E2C41F77_19F6.png","DA-M_618FDD62F1AB_5BFD.webp":"DA-M_EA716523C931_102C.png"};
+function lxImages(m){document.querySelectorAll("img").forEach(function(i){var src=i.getAttribute("src")||"";Object.keys(LX_IMG).forEach(function(d){var l=LX_IMG[d];if(m==="light"&&src.indexOf(d)>-1)i.setAttribute("src",src.replace(d,l));if(m==="dark"&&src.indexOf(l)>-1)i.setAttribute("src",src.replace(l,d));});});}
+function lxMode(m){document.documentElement.setAttribute("data-theme",m);lxImages(m);try{localStorage.setItem("larryd-mode",m);}catch(e){}}
+document.addEventListener("DOMContentLoaded",function(){lxImages(document.documentElement.getAttribute("data-theme"));});
 document.addEventListener("click",function(ev){var b=ev.target.closest&&ev.target.closest(".lx-copy");if(!b)return;var t=b.getAttribute("data-copy");if(navigator.clipboard){navigator.clipboard.writeText(t).then(function(){b.textContent="COPIED";setTimeout(function(){b.textContent="COPY";},1400);});}});
 </script>
 </head>
