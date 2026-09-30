@@ -1,12 +1,11 @@
 """The one command: `larryd`."""
 import argparse
 import datetime
-import getpass
 import json
 import pathlib
 import sys
 
-from . import __version__, doctor, hanzo, knowledge, mcp, new, runner, skills
+from . import __version__, doctor, knowledge, mcp, new, runner, skills, submit
 
 
 def parser():
@@ -23,18 +22,10 @@ def parser():
     r.add_argument('path', nargs='?', default='.', help='the agent project (default: here)')
     r.add_argument('--job', help='the sample job (default: samples/job.json)')
     r.add_argument('--json', action='store_true', help='the result as JSON')
-    y = sub.add_parser('key', help='keep your developer key (the secret is read from stdin, never the command line); alone: where a key comes from')
-    y.add_argument('address', nargs='?', help='LARRYD\'s address, as LARRYD gave it')
-    y.add_argument('developer', nargs='?', help='your developer name, as LARRYD made it')
-    s = sub.add_parser('submit', help='send the agent to LARRYD, for FROST\'s review')
+    s = sub.add_parser('submit', help='send the agent to LARRYD for review: the doctor, one file, then sign in with Google or Apple in the browser')
     s.add_argument('path', nargs='?', default='.', help='the agent project (default: here)')
     s.add_argument('--json', action='store_true', help='the result as JSON')
-    t = sub.add_parser('status', help='what LARRYD records for your agents')
-    t.add_argument('--json', action='store_true', help='the result as JSON')
-    v = sub.add_parser('developer', help='on your own LARRYD (the daemon on this machine): make a developer who may submit an agent')
-    v.add_argument('action', choices=['add'])
-    v.add_argument('name', help='the developer\'s name (small letters, digits, dashes)')
-    v.add_argument('agent_key', help='the agent\'s card key the developer may submit')
+    s.add_argument('--no-browser', action='store_true', help='print the claim page instead of opening it')
     sub.add_parser('mcp', help='serve the tools to Claude Code (a local tool server on stdin/stdout)')
     sub.add_parser('help', help='these commands; `larryd` alone starts the daemon (LARRYD\'s runtime on 127.0.0.1)')
     sub.add_parser('skills', help='list the skills an agent may declare, by hash')
@@ -81,56 +72,26 @@ def main(argv=None):
         digest, wrong = knowledge.check(args.folder)
         print('\n'.join(f'FAIL {w}' for w in wrong) if wrong else digest)
         return 1 if wrong else 0
-    if args.command == 'key':
-        if not args.address or not args.developer:
-            print(hanzo.WHERE_KEYS_COME_FROM)
-            return 0 if not args.address else 1
-        secret = getpass.getpass('your developer secret: ') if sys.stdin.isatty() else sys.stdin.readline()
+    if args.command == 'submit':
         try:
-            path = hanzo.save_key(args.address, args.developer, secret.strip())
-        except hanzo.Refused as no:
-            print(f'larryd key: {no.wrong}. What to do: {no.todo}', file=sys.stderr)
-            return 1
-        code, answer = hanzo.call(hanzo.key(), 'GET', '/developer/status', {})
-        if code == 200:
-            print(f'kept in {path} (yours only) · LARRYD knows you: {len(answer.get("agents", []))} agent(s) yours')
-            return 0
-        if code == 0:
-            print(f'kept in {path} (yours only) · not checked: LARRYD does not answer at {args.address.rstrip("/")}')
-            return 0
-        print(f'larryd key: kept in {path}, but LARRYD refused it ({code}). What to do: {hanzo.todo(code)}', file=sys.stderr)
-        return 1
-    if args.command in ('submit', 'status'):
-        try:
-            out = hanzo.submit(args.path) if args.command == 'submit' else hanzo.status()
-        except hanzo.Refused as no:
+            out = submit.submit(args.path, open_browser=not args.no_browser)
+        except submit.Refused as no:
             out = no.as_json()
-        print(json.dumps(out, indent=2) if args.json else _said(args.command, out))
+        print(json.dumps(out, indent=2) if args.json else _said(out))
         return 0 if out['ok'] else 1
-    if args.command == 'developer':
-        from . import daemon
-        return daemon.developer_add(args.name, args.agent_key)
     if args.command == 'mcp':
         mcp.serve()
         return 0
     return 2
 
 
-def _said(command, out):
+def _said(out):
     if not out['ok']:
-        lines = [f'larryd {command}: {out["wrong"]}. What to do: {out["todo"]}']
+        lines = [f'larryd submit: {out["wrong"]}. What to do: {out["todo"]}']
         return '\n'.join(lines + [doctor.Problem(**p).text() for p in out.get('problems', [])])
-    if command == 'submit':
-        review = out['review'] or {}
-        return (f'larryd submit: {out["agent_key"]} is held by LARRYD\ncode {out["code_sha256"]}\nmanifest {out["manifest_sha256"]}\n'
-                f'FROST\'s review: {review.get("state", "unknown")}')
-    lines = ['larryd status:']
-    for a in out['agents']:
-        runs = ', '.join(f'{n} {s}' for s, n in sorted(a['runs'].items())) or 'no runs'
-        note = f' ({a["note"]})' if a.get('note') else ''
-        lines.append(f'{a["agent_key"]} · {"held" if a["held"] else "not held"} · review: {a["review"]}{note} · {runs} · {a["calls"]} calls · '
-                     f'hired {a["hires"]}, unhired {a["unhires"]} · {a["charged"]} mTok charged')
-    return '\n'.join(lines if out['agents'] else lines + ['no agent is yours yet'])
+    where = 'opened in your browser' if out['opened'] else 'open it in your browser'
+    return (f'larryd submit: sent ({out["sha256"][:16]}). Sign in with Google or Apple to submit it, within {out["minutes"]} minutes:\n'
+            f'{out["claim"]}   ({where})')
 
 
 if __name__ == '__main__':

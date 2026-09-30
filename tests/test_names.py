@@ -68,5 +68,5 @@ def test_every_registry_points_at_larryd_ai_never_elsewhere():
     assert 'Homepage = "https://larryd.ai"' in py
     assert 'homepage = "https://larryd.ai"' in (REPO / 'cargo' / 'Cargo.toml').read_text()
     assert json.loads((REPO / 'npm' / 'package.json').read_text())['homepage'] == 'https://larryd.ai'
-    for path in ('pyproject.toml', 'cargo/Cargo.toml', 'npm/package.json', 'README.md', 'GUIDE.md', 'larryd/hanzo.py'):
+    for path in ('pyproject.toml', 'cargo/Cargo.toml', 'npm/package.json', 'README.md', 'GUIDE.md', 'larryd/submit.py'):
         assert 'larryllm' not in (REPO / path).read_text().lower(), path

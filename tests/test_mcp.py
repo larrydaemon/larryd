@@ -51,7 +51,7 @@ def client(tmp_path):
 
 def test_the_tools_are_listed(client):
     tools = client.ask('tools/list')['result']['tools']
-    assert [t['name'] for t in tools] == ['larryd_new', 'larryd_doctor', 'larryd_run', 'larryd_submit', 'larryd_status', 'larryd_skills', 'larryd_pack']
+    assert [t['name'] for t in tools] == ['larryd_new', 'larryd_doctor', 'larryd_run', 'larryd_submit', 'larryd_skills', 'larryd_pack']
     assert all(t['description'] and t['inputSchema']['type'] == 'object' for t in tools)
 
 

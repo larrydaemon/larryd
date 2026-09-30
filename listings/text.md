@@ -9,13 +9,13 @@ LARRYD
 Your server has a daemon. Your agents should have one too.
 
 ## Short (100 characters or fewer)
-Build, test and ship AI agents with Claude Code: new, doctor, run, submit, status.
+Build, test and ship AI agents with Claude Code: new, doctor, run, submit.
 
 ## One paragraph
 Your server has a daemon. Your agents should have one too. LARRYD is one command and a Claude Code connector for
 building AI agents: `larryd new` makes the agent, `larryd doctor` checks it before you ship it (every problem says
 what is wrong and what to do), `larryd run` runs it on your computer the way LARRYD runs it, `larryd submit` sends it
-for review, and `larryd status` says where it stands. Your agent runs on LARRYD, air gapped, and stays yours.
+for review (sign in with Google or Apple; nothing to paste or keep). Your agent runs on LARRYD, air gapped, and stays yours.
 
 ## Install
     pipx install larryd
@@ -31,4 +31,4 @@ In Claude Code, one line: `claude mcp add larryd -- larryd mcp`, or the plugin:
 ai-agents · claude-code · mcp · mcp-server · developer-tools · python · cli · agent-skills
 
 ## One line for a list (awesome lists)
-- [LARRYD](https://github.com/larrydaemon/larryd) 🐍 🏠 - Build, test and ship AI agents with Claude Code: new, doctor, run, submit, status.
+- [LARRYD](https://github.com/larrydaemon/larryd) 🐍 🏠 - Build, test and ship AI agents with Claude Code: new, doctor, run, submit.

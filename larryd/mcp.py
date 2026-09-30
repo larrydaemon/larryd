@@ -4,7 +4,7 @@ nothing itself; each tool is the same code as the command of the same name."""
 import json
 import sys
 
-from . import __version__, doctor, hanzo, knowledge, new, runner, skills
+from . import __version__, doctor, knowledge, new, runner, skills, submit
 
 VERSIONS = ('2025-11-25', '2025-06-18', '2025-03-26', '2024-11-05')   # the protocol versions this server speaks, newest first
 
@@ -24,14 +24,12 @@ def _run(args):
     return runner.as_json(result), False
 
 
-def _hanzo(work):
-    def tool(args):
-        try:
-            out = work(args)
-        except hanzo.Refused as no:
-            out = no.as_json()
-        return out, False
-    return tool
+def _submit(args):
+    try:
+        out = submit.submit(args.get('path') or '.')
+    except submit.Refused as no:
+        out = no.as_json()
+    return out, False
 
 
 def _skills(args):
@@ -54,16 +52,12 @@ TOOLS = {
                                'Every problem names the file and line, what is wrong and what to do; fix each one and check again.',
                       {'type': 'object', 'properties': {'path': PATH}, 'additionalProperties': False}),
     'larryd_run': (_run, 'Run the agent here the way LARRYD runs it (no network, no new process, a scratch run folder, a time limit) '
-                         'with the sample job, and see its answer or why it failed. Needs a Mac today.',
+                         'with the sample job, and see its answer or why it failed. On a Mac or Linux.',
                    {'type': 'object', 'properties': {'path': PATH, 'job': {'type': 'string', 'description': 'a sample job file (default: samples/job.json)'}},
                     'additionalProperties': False}),
-    'larryd_submit': (_hanzo(lambda a: hanzo.submit(a.get('path') or '.')),
-                      'Send the agent (agent/ only) to LARRYD for FROST\'s review, after the doctor. Needs the developer\'s key '
-                      '(the developer saves it with `larryd key`, never through this tool) and the card key in larryd.json.',
+    'larryd_submit': (_submit, 'Send the agent (agent/ only, as one file) to LARRYD for review, after the doctor, and open the claim page in '
+                               'the browser: the developer signs in there with Google or Apple within 10 minutes. Nothing to paste or keep.',
                       {'type': 'object', 'properties': {'path': PATH}, 'additionalProperties': False}),
-    'larryd_status': (_hanzo(lambda a: hanzo.status()),
-                      'What LARRYD records for the developer\'s agents: held, FROST\'s review, runs, calls, hires and mTok charged.',
-                      {'type': 'object', 'properties': {}, 'additionalProperties': False}),
     'larryd_skills': (_skills, 'List the skills an agent may declare in its manifest ("skills"), by hash, with what each does.',
                       {'type': 'object', 'properties': {}, 'additionalProperties': False}),
     'larryd_pack': (_pack, 'Check a knowledge pack (a folder with pack.json and plain text files) and give its hash.',

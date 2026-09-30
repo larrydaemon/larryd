@@ -114,37 +114,3 @@ def test_the_runtimes_own_marketplace_is_placed_fresh_and_nothing_else_is_touche
     assert (mine / 'agent.json').read_text() == '{"name": "the developer\'s"}'
     daemon.prepare(instance, runtime)
     assert (instance / 'secrets' / 'hanzo_link').read_text() == secret
-
-
-def test_larryd_key_is_checked_against_a_real_runtime(tmp_path):
-    """`larryd key` against the daemon itself (scratch instance and port): a developer it does not know is refused with
-    name-and-secret words; a developer made with `larryd developer add` is known."""
-    port, instance = free_port(), tmp_path / 'instance'
-    env = {**os.environ, 'LARRYD_INSTANCE': str(instance), 'LARRYD_PORT': str(port), 'LARRYD_HOME': str(tmp_path / 'home')}
-    runtime = subprocess.Popen([str(LARRYD)], env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-    try:
-        assert runtime.stdout.readline().startswith("LARRYD's runtime listens")
-        for _ in range(60):
-            try:
-                get(port)
-                break
-            except OSError:
-                time.sleep(0.25)
-        key = lambda name, secret: subprocess.run([str(LARRYD), 'key', f'http://127.0.0.1:{port}', name], input=secret + '\n',  # noqa: E731
-                                                  env=env, capture_output=True, text=True, timeout=30)
-        unknown = key('ada', 'b' * 64)
-        assert unknown.returncode == 1 and 'LARRYD refused it (401)' in unknown.stderr and 'developer name and secret' in unknown.stderr
-        made = subprocess.run([str(LARRYD), 'developer', 'add', 'ada', 'MAGT_00000000D001_0001'], env=env, capture_output=True, text=True, timeout=30)
-        secret = made.stdout.strip().rsplit(' ', 1)[-1]
-        assert made.returncode == 0 and len(secret) == 64, made.stderr
-        known = key('ada', secret)
-        assert known.returncode == 0 and 'LARRYD knows you: 1 agent(s) yours' in known.stdout, known.stderr
-    finally:
-        runtime.send_signal(signal.SIGTERM)
-        runtime.wait(timeout=10)
-
-
-def test_developer_add_needs_the_daemon_started_once(tmp_path):
-    env = {**os.environ, 'LARRYD_INSTANCE': str(tmp_path / 'never-started')}
-    done = subprocess.run([str(LARRYD), 'developer', 'add', 'ada', 'MAGT_00000000D001_0001'], env=env, capture_output=True, text=True, timeout=30)
-    assert done.returncode == 1 and 'start the daemon once' in done.stderr and not (tmp_path / 'never-started').exists()

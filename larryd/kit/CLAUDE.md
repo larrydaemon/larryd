@@ -21,8 +21,7 @@ run, apart from everything else), owned by its developer. The platform reaches i
    only in the folder it is run in (it is made for the run and removed after).
 3. No new process. No subprocess, no os.system, no multiprocessing.
 4. The Python standard library only. LARRYD runs the plain Python runtime: no installed packages.
-5. No secret in the agent. No key, token, password or private key in any file. The developer's key is kept outside
-   `agent/`, never stored in it.
+5. No secret in the agent. No key, token, password or private key in any file.
 6. Only what it is handed. The inputs are what run.hands names, from what LARRYD hands today: {hands}.
 7. Nothing fake. The agent answers from what it is handed, or it says plainly that it cannot.
 8. Plain words. Names as they are: LARRYD, FROST, mTok, DA-M, LARRY LLM.

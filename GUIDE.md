@@ -31,25 +31,10 @@ it), where you can try what you build. No sudo; as root its instance is /var/lib
 Python 3.14 (a Mac) and 3.11 (Debian 12). (Until 0.1.0 is published, the three registries hold only the name's
 reservation, 0.0.1, which prints one line and does nothing.)
 
-## 2. Your developer key
-LARRYD makes your developer key: a name and a secret. The secret is shown once. Keep it on your computer:
-
-    larryd key <LARRYD's address> <your developer name>
-
-Paste the secret when it asks; it is never typed on the command line. It is kept in `~/.larryd/developer.json`,
-readable by you only, never inside a project. The Claude Code tools never see it.
-Each agent also has a card key (four capital letters, 12 and then 4 hex digits, e.g. `MAGT_0123456789AB_CDEF`).
-The way it works today: the SYSTEM owner makes your agent's card on LARRYD's agent add screen and hands you its key,
-with your developer key. LARRYD lets you submit only the card keys it holds for you. Ask for a developer key:
-https://github.com/larrydaemon/larryd/issues/new?template=developer-key.md
-(`larryd key` alone says the same; never paste a secret there). `larryd key` checks the key with LARRYD as it keeps it.
-
 Your own LARRYD: `larryd` alone runs the runtime on this machine (127.0.0.1:5010, its instance in ~/.larryd;
-`LARRYD_PORT` and `LARRYD_INSTANCE` name others). There, `larryd developer add <name> <card key>` makes a developer and
-shows the secret once; `larryd key http://127.0.0.1:5010 <name>` keeps it. Your own runtime holds what you submit, but
-it is joined to no platform, so the review step says so: the review is on the platform's LARRYD.
+`LARRYD_PORT` and `LARRYD_INSTANCE` name others), where you can try what you build.
 
-## 3. A new agent
+## 2. A new agent
     larryd new <name>
 
 This makes the folder `<name>/`:
@@ -60,9 +45,8 @@ This makes the folder `<name>/`:
 - `.claude/skills/larryd/SKILL.md`: the larryd skill Claude Code loads
 - `samples/job.json`: a sample job for `larryd run`
 - `.mcp.json`: starts the LARRYD tools in Claude Code when you open the folder with `claude`
-- `larryd.json`: put the agent's card key here: `{"agent_key": "MAGT_0123456789AB_CDEF"}` (with your real key)
 
-## 4. The rules
+## 3. The rules
 LARRYD's sandbox refuses 1, 2 and 3 when the agent runs; the doctor checks all of them before that.
 1. No network, ever. No network module, no address.
 2. Nothing outside its own folder: no path elsewhere, no link. It writes only in the folder it is run in.
@@ -85,7 +69,7 @@ left empty is simply not handed. LARRYD refuses the run when the job holds an in
 value that is not text or is longer than 10,000 characters, and it keeps none of them. In `samples/job.json`, give the
 inputs the same way: `{"do": "answer", "job": {"name": "Harbor", "mood": "calm cool"}}`.
 
-## 5. The doctor
+## 4. The doctor
     larryd doctor            (or --json)
 
 It checks the project, the manifest, the entry, the air gap, no secret, the shape, the skills and the knowledge.
@@ -98,7 +82,7 @@ larryd.ai/checks.html).
 also writes `larryd-checks.svg` beside `agent/` (never inside it): PASS in gold or FAIL in red, with the day and the
 checks' version. Paste `![LARRYD checks](larryd-checks.svg)` into your README; run it again after each change.
 
-## 6. Run it here
+## 5. Run it here
     larryd run               (or --job <file>, --json)
 
 The doctor runs first. Then the agent runs the way LARRYD runs it: its own process, no network, no new process,
@@ -107,32 +91,27 @@ a RUN hands it: `{"do": run.do}` plus what `run.hands` names, from the sample jo
 holding only what `gives` names. Nothing is sent anywhere. On a Mac or Linux (Linux: LARRYD's own bubblewrap sandbox,
 `sudo apt install bubblewrap`); on Windows, use WSL.
 
-## 7. Submit
+## 6. Submit
     larryd submit
 
-The doctor runs first. Then `agent/` (nothing else) goes to LARRYD, signed with your developer key, for the card
-key in `larryd.json`. LARRYD writes it into its locker and sends it to FROST's review. LARRYD checks that LARRYD
-holds exactly the bytes you sent (the code's hash and the manifest's hash), then prints the review's state.
-A changed agent is a new submission with new hashes, reviewed again.
-
-## 8. Status
-    larryd status            (or --json)
-
-What LARRYD records for each of your agents: held or not, FROST's review, runs by state, calls, hires and
-unhires, and mTok charged. It holds only your agents' keys and counts: who hired them stays on the platform.
+Three steps, one gate, nothing to carry. The doctor runs first. Then `agent/` (nothing else) is packed into one file
+and sent to LARRYD, and your browser opens its claim page. Sign in there with Google or Apple within 10 minutes, and
+it waits in the review queue; the page says what happens next. No account to make, no key or secret to paste or keep.
+LARRYD reads what it receives and runs none of it: it re-runs the doctor itself, and refuses a file that is too big
+(5 MB), unsafe, or one of too many from one network in an hour. Unclaimed files are deleted after 10 minutes.
+`--no-browser` prints the claim page instead of opening it. A changed agent is a new submission, reviewed again.
 
 ## What LARRYD does with your agent
 - It holds `agent/` in its locker with the hash of the code and of the manifest, and checks them on every call and run.
   Any change is refused as tampered.
 - FROST's review: a SYSTEM owner approves or rejects those exact hashes. LARRYD shows, hires and runs an agent only
-  when FROST approved the hashes it holds. `larryd status` says FROST's word on the hashes it holds: waiting,
-  approved, or rejected with FROST's reason (a platform before that door says only "approved" or "not approved").
+  when FROST approved the hashes it holds.
 - A member hires the agent in the agent marketplace with a toggle. A RUN is a request; LARRYD runs the agent in its
   sandbox, and mTok charges the agent's own rate (0 = free).
 
 ## In Claude Code
 In a project made by `larryd new`, open the folder with `claude` and approve the LARRYD tools:
-larryd_new, larryd_doctor, larryd_run, larryd_submit, larryd_status, larryd_skills, larryd_pack.
+larryd_new, larryd_doctor, larryd_run, larryd_submit, larryd_skills, larryd_pack.
 Elsewhere, one line: `claude mcp add larryd -- larryd mcp`. The repository is also a Claude Code plugin marketplace.
 The loop for the AI: change the agent → larryd_doctor → larryd_run → fix → again → larryd_submit.
 
