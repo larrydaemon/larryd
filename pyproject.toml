@@ -13,6 +13,9 @@ license-files = ["LICENSE"]
 requires-python = ">=3.11"
 dependencies = ["flask>=3"]   # the daemon (LARRYD's runtime) serves over Flask; the tool itself is the standard library only
 
+[project.optional-dependencies]
+door = ["cryptography>=42"]   # the submit door on the larryd machine only (it checks the SSO proxy's signed hand-off)
+
 [project.urls]
 Homepage = "https://larryd.ai"
 Repository = "https://github.com/larrydaemon/larryd"
@@ -30,7 +33,7 @@ larryd = "larryd"
 larryd_runtime = "server/hanzo/app"
 
 [tool.setuptools.package-data]
-larryd = ["kit/*", "kit/**/*", "skills.json"]
+larryd = ["kit/*", "kit/**/*", "skills.json", "submit_door.json"]
 larryd_runtime = ["schemas/*.json", "agents/marketplace/agent.json", "agents/marketplace/agent.py"]
 
 [tool.pytest.ini_options]

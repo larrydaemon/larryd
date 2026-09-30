@@ -1,0 +1,12 @@
+{
+  "about": "LARRYD's submit door (/submit/ on the larryd machine's one name): an agent file comes in unsigned, is held 10 minutes, and is claimed by a Google or Apple sign-in through the SSO proxy; then it waits in the review queue. No secret here.",
+  "origin": "https://login.positivefeedback.ai",
+  "proxy": {
+    "start": "https://login.positivefeedback.ai/sso/start",
+    "issuer": "login.positivefeedback.ai",
+    "public_key": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEA5RsTPSX92VPKtZ0mIYAFN6c4e0ayGUJYH9f2V62Ch2s=\n-----END PUBLIC KEY-----\n"
+  },
+  "hold_seconds": 600,
+  "uploads_per_address_per_hour": 10,
+  "database": "larryd_submit.db"
+}
