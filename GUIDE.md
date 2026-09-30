@@ -23,7 +23,9 @@ LARRYD makes your developer key: a name and a secret. The secret is shown once. 
 
 Paste the secret when it asks; it is never typed on the command line. It is kept in `~/.larryd/developer.json`,
 readable by you only, never inside a project. The Claude Code tools never see it.
-LARRYD also gives you the card key of each agent you may submit (four capital letters, 12 and then 4 hex digits, e.g. `MAGT_0123456789AB_CDEF`).
+Each agent also has a card key (four capital letters, 12 and then 4 hex digits, e.g. `MAGT_0123456789AB_CDEF`).
+The way it works today: the SYSTEM owner makes your agent's card on LARRYD's agent add screen and hands you its key,
+with your developer key. LARRYD lets you submit only the card keys it holds for you.
 
 ## 3. A new agent
     larryd new <name>
