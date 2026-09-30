@@ -38,11 +38,12 @@ def _at(text, needle):
 
 
 def test_the_sections_in_order():
-    order = ['class="hero"', 'class="terminal proof"', 'Most agent tools trust the agent. LARRYD doesn\'t.', 'id="what"',
-             'id="cant"', 'id="install"', 'class="band price"', 'id="faq"']
+    order = ['class="hero"', 'id="install"', 'id="what"', 'id="cant"', 'id="checks"', 'class="band price"', 'id="faq"']
     at = [_at(PAGE, n) for n in order]
     assert at == sorted(at), dict(zip(order, at))
     assert 'id="how"' not in PAGE and 'From an idea to a working agent' not in PAGE
+    hero = PAGE[_at(PAGE, 'class="hero"'):_at(PAGE, 'id="install"')]
+    assert 'class="terminal' not in hero   # the owner: install goes right under the hero, no terminal output there
 
 
 def test_the_hero_keeps_its_words():
@@ -60,14 +61,14 @@ def test_the_proof_is_what_the_doctor_says(tmp_path):
 
 
 def test_what_your_agent_cant_do():
-    cant = PAGE[_at(PAGE, 'id="cant"'):_at(PAGE, 'id="install"')]
+    cant = PAGE[_at(PAGE, 'id="cant"'):_at(PAGE, 'id="checks"')]
     assert 'What your agent can\'t do.' in cant
     assert len(re.findall(r'<li><strong>It ', cant)) == 5
 
 
 def test_the_install_lines_show_in_one_terminal_never_folded():
     """The owner: the install is one terminal wall with every line showing, for developers; nothing folded away."""
-    install = PAGE[_at(PAGE, 'id="install"'):_at(PAGE, 'class="band price"')]
+    install = PAGE[_at(PAGE, 'id="install"'):_at(PAGE, 'id="what"')]
     assert '<details' not in install
     assert all(f'<code>{line}</code>' in install for line in LINES)
 

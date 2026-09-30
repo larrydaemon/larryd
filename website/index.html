@@ -39,27 +39,31 @@
       <a class="button" href="#install">Install LARRYD</a>
       <a class="button button-quiet" href="#what">See how it works</a>
     </div>
-    <div class="terminal proof" role="group" aria-label="A real larryd doctor run">
-      <div class="terminal-bar"><span></span><span></span><span></span></div>
-      <pre><span class="dim">$</span> larryd doctor weather-report
-larryd doctor: /Users/Shared/weather-report
-PASS the project
-PASS the manifest
-PASS the entry
-PASS the air gap
-PASS no secret
-PASS the shape
-PASS the skills
-PASS the knowledge
-the agent passes every check</pre>
-    </div>
-    <p class="proof-line">Most agent tools trust the agent. LARRYD doesn't. <a href="#checks">What the doctor checks</a></p>
   </div>
   <div class="hero-film">
     <video autoplay muted loop playsinline preload="metadata" poster="/assets/video/larryd-poster.jpg" aria-label="LARRYD film">
       <source src="/assets/video/larryd.mp4" type="video/mp4">
     </video>
   </div>
+</section>
+
+<section id="install" class="band">
+  <div class="section-head">
+    <p class="eyebrow">Install</p>
+    <h2>One line. Pick the one you already have.</h2>
+    <p class="lead">Every line installs the same LARRYD. You need Python 3.11 or newer on your computer.</p>
+  </div>
+  <div class="terminal" role="group" aria-label="Install commands">
+    <div class="terminal-bar"><span></span><span></span><span></span></div>
+    <ul class="commands">
+      <li><span class="how">npm</span><code>npm install -g larryd</code><button class="copy" type="button" data-copy="npm install -g larryd">Copy</button><p class="explain">If you've installed Node.js, use this one.</p></li>
+      <li><span class="how">pip</span><code>pip install larryd</code><button class="copy" type="button" data-copy="pip install larryd">Copy</button><p class="explain">The standard way for Python. If it says "externally managed environment", use pipx instead.</p></li>
+      <li><span class="how">pipx</span><code>pipx install larryd</code><button class="copy" type="button" data-copy="pipx install larryd">Copy</button><p class="explain">The safest Python way: LARRYD gets its own space. No pipx yet? On a Mac: <code>brew install pipx</code>.</p></li>
+      <li><span class="how">cargo</span><code>cargo install larryd</code><button class="copy" type="button" data-copy="cargo install larryd">Copy</button><p class="explain">If you've installed Rust, use this one.</p></li>
+      <li class="start"><span class="how">start</span><code>sudo larryd &amp;</code><button class="copy" type="button" data-copy="sudo larryd &">Copy</button><p class="explain">Starts LARRYD's daemon in the background: it asks for your password once, then tells you where it's running and how to stop it.</p></li>
+    </ul>
+  </div>
+  <p class="note">Type <code>larryd help</code> any time to see everything it can do. In Claude Code, just say "Install LARRYD for me".</p>
 </section>
 
 <section id="what" class="band">
@@ -183,24 +187,7 @@ wrote /Users/Shared/weather-report/larryd-checks.svg: paste ![LARRYD checks](lar
   <p class="badge-sample"><img src="/assets/img/larryd-checks.svg" alt="LARRYD checks v1: PASS" width="233" height="22"></p>
 </section>
 
-<section id="install" class="band">
-  <div class="section-head">
-    <p class="eyebrow">Install</p>
-    <h2>One line. Pick the one you already have.</h2>
-    <p class="lead">Every line installs the same LARRYD. You need Python 3.11 or newer on your computer.</p>
-  </div>
-  <div class="terminal" role="group" aria-label="Install commands">
-    <div class="terminal-bar"><span></span><span></span><span></span></div>
-    <ul class="commands">
-      <li><span class="how">npm</span><code>npm install -g larryd</code><button class="copy" type="button" data-copy="npm install -g larryd">Copy</button><p class="explain">If you've installed Node.js, use this one.</p></li>
-      <li><span class="how">pip</span><code>pip install larryd</code><button class="copy" type="button" data-copy="pip install larryd">Copy</button><p class="explain">The standard way for Python. If it says "externally managed environment", use pipx instead.</p></li>
-      <li><span class="how">pipx</span><code>pipx install larryd</code><button class="copy" type="button" data-copy="pipx install larryd">Copy</button><p class="explain">The safest Python way: LARRYD gets its own space. No pipx yet? On a Mac: <code>brew install pipx</code>.</p></li>
-      <li><span class="how">cargo</span><code>cargo install larryd</code><button class="copy" type="button" data-copy="cargo install larryd">Copy</button><p class="explain">If you've installed Rust, use this one.</p></li>
-      <li class="start"><span class="how">start</span><code>sudo larryd &amp;</code><button class="copy" type="button" data-copy="sudo larryd &">Copy</button><p class="explain">Starts LARRYD's daemon in the background: it asks for your password once, then tells you where it's running and how to stop it.</p></li>
-    </ul>
-  </div>
-  <p class="note">Type <code>larryd help</code> any time to see everything it can do. In Claude Code, just say "Install LARRYD for me".</p>
-</section>
+
 
 <section class="band price">
   <div class="section-head">
