@@ -5,3 +5,4 @@ prune server/.venv
 prune listings
 prune proofs
 global-exclude __pycache__ *.pyc *.db
+prune website

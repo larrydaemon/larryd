@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LARRYD — Your agents should have a daemon too</title>
+  <meta name="description" content="LARRYD is a free tool for building AI agents with Claude Code. It checks each agent, runs it in a sealed space, and gets it ready to share. Install it with one line.">
+  <meta property="og:title" content="LARRYD — Your server has a daemon. Your agents should have one too.">
+  <meta property="og:description" content="A free tool for building, checking and running AI agents with Claude Code.">
+  <meta property="og:image" content="/assets/video/larryd-poster.jpg">
+  <meta name="theme-color" content="#000000">
+  <link rel="icon" href="/assets/img/favicon.png">
+  <link rel="stylesheet" href="/site.css">
+</head>
+<body>
+
+<header class="nav">
+  <a class="brand" href="/" aria-label="LARRYD home">
+    <picture><source media="(prefers-color-scheme: light)" srcset="/assets/img/pulse-amber.png"><img class="brand-mark" src="/assets/img/pulse-green.png" alt="" width="40" height="20"></picture>
+    <span class="brand-word">LARRYD</span>
+  </a>
+  <nav class="nav-links" aria-label="Main">
+    <a href="#what">What it is</a>
+    <a href="#how">How it works</a>
+    <a href="#safe">Safety</a>
+    <a href="#faq">Questions</a>
+  </nav>
+  <a class="button button-small" href="#install">Get LARRYD — free</a>
+</header>
+
+<main>
+
+<section class="hero">
+  <div class="hero-words">
+    <p class="rogue">Designed to stop AI agents from going rogue.</p>
+    <p class="eyebrow">Free · for Mac and Linux · works with Claude Code</p>
+    <h1>Your server has a daemon.<br>Your agents should have one too.</h1>
+    <p class="lead">LARRYD is a free tool for building AI agents with Claude Code. It gives every agent the right shape, checks it for problems, and runs it in a sealed space where it can't touch anything it shouldn't.</p>
+    <div class="actions">
+      <a class="button" href="#install">Install LARRYD</a>
+      <a class="button button-quiet" href="#how">See how it works</a>
+    </div>
+  </div>
+  <div class="hero-film">
+    <video autoplay muted loop playsinline preload="metadata" poster="/assets/video/larryd-poster.jpg" aria-label="LARRYD film">
+      <source src="/assets/video/larryd.mp4" type="video/mp4">
+    </video>
+  </div>
+</section>
+
+<section id="what" class="band">
+  <div class="section-head">
+    <p class="eyebrow">What it is</p>
+    <h2>A home for the agents you build</h2>
+    <p class="lead">An AI agent is a small program that does one job for you: answers a question, writes a report, makes a set of colours. LARRYD is the daemon that looks after them, from the first idea to the day someone uses them.</p>
+  </div>
+  <div class="cards">
+    <article class="card">
+      <picture><source media="(prefers-color-scheme: light)" srcset="/assets/img/pulse-amber.png"><img src="/assets/img/pulse-green.png" alt="" width="56" height="28"></picture>
+      <h3>Build</h3>
+      <p>Type <code>larryd new</code> and a name. You get a ready project with clear instructions that Claude Code reads first, so you can describe what you want in plain words.</p>
+    </article>
+    <article class="card">
+      <picture><source media="(prefers-color-scheme: light)" srcset="/assets/img/pulse-amber.png"><img src="/assets/img/pulse-green.png" alt="" width="56" height="28"></picture>
+      <h3>Check</h3>
+      <p><code>larryd doctor</code> looks over your agent before anyone else does. Every problem comes with the file, the line, what is wrong and what to do — words Claude Code can act on by itself.</p>
+    </article>
+    <article class="card">
+      <picture><source media="(prefers-color-scheme: light)" srcset="/assets/img/pulse-amber.png"><img src="/assets/img/pulse-green.png" alt="" width="56" height="28"></picture>
+      <h3>Run</h3>
+      <p><code>larryd run</code> tries your agent on your own computer, sealed off the same way it will run for real: no internet, no private files, one job in and one answer out.</p>
+    </article>
+  </div>
+</section>
+
+<section id="how" class="band band-image">
+  <img class="band-bg" src="/assets/img/screens-row.jpg" alt="" loading="lazy">
+  <div class="section-head">
+    <p class="eyebrow">How it works</p>
+    <h2>From an idea to a working agent in four steps</h2>
+  </div>
+  <ol class="steps">
+    <li><span class="step-n">1</span><div><h3>Install</h3><p>One line in your terminal. LARRYD sets itself up in its own place and stays out of your way.</p></div></li>
+    <li><span class="step-n">2</span><div><h3>Describe</h3><p>Open your new project in Claude Code and say what the agent should do. LARRYD's instructions keep it on the right path.</p></div></li>
+    <li><span class="step-n">3</span><div><h3>Check and try</h3><p>The doctor finds problems and says how to fix them. Then run it with a sample job and see the answer.</p></div></li>
+    <li><span class="step-n">4</span><div><h3>Share</h3><p>Send your agent for review with <code>larryd submit</code>. Once approved, people can add it with one switch. <em class="soon">Opening soon</em></p></div></li>
+  </ol>
+</section>
+
+<section id="install" class="band">
+  <div class="section-head">
+    <p class="eyebrow">Install</p>
+    <h2>New to this? Let Claude Code do it.</h2>
+    <p class="lead">If you use Claude Code, you don't need to know any of the lines below. Open Claude Code and type this:</p>
+  </div>
+  <div class="terminal" role="group" aria-label="Ask Claude Code">
+    <div class="terminal-bar"><span></span><span></span><span></span></div>
+    <ul class="commands">
+      <li class="start"><span class="how">claude</span><code>Install LARRYD for me</code><button class="copy" type="button" data-copy="Install LARRYD for me">Copy</button><p class="explain">Claude Code picks the right way for your computer, installs it, and checks it works. That's all you need.</p></li>
+    </ul>
+  </div>
+
+  <div class="section-head section-head-second">
+    <h2>Or install it yourself. Pick one.</h2>
+    <p class="lead">Each line installs the same LARRYD. You only need one, the one that matches a tool your computer already has. Type it in the Terminal app and press Return. LARRYD needs Python 3.11 or newer.</p>
+  </div>
+  <div class="terminal" role="group" aria-label="Install commands">
+    <div class="terminal-bar"><span></span><span></span><span></span></div>
+    <ul class="commands">
+      <li><span class="how">npm</span><code>npm install -g larryd</code><button class="copy" type="button" data-copy="npm install -g larryd">Copy</button><p class="explain">If you've installed Node.js (common for web developers), use this one.</p></li>
+      <li><span class="how">pip</span><code>pip install larryd</code><button class="copy" type="button" data-copy="pip install larryd">Copy</button><p class="explain">The standard way for Python. If it says "externally managed environment", use the pipx line instead.</p></li>
+      <li><span class="how">pipx</span><code>pipx install larryd</code><button class="copy" type="button" data-copy="pipx install larryd">Copy</button><p class="explain">The safest Python way: it keeps LARRYD in its own space. No pipx yet? On a Mac: <code>brew install pipx</code>.</p></li>
+      <li><span class="how">cargo</span><code>cargo install larryd</code><button class="copy" type="button" data-copy="cargo install larryd">Copy</button><p class="explain">If you've installed Rust, use this one.</p></li>
+    </ul>
+  </div>
+
+  <div class="section-head section-head-second">
+    <h2>Then start it.</h2>
+  </div>
+  <div class="terminal" role="group" aria-label="Start LARRYD">
+    <div class="terminal-bar"><span></span><span></span><span></span></div>
+    <ul class="commands">
+      <li class="start"><span class="how">start</span><code>sudo larryd &amp;</code><button class="copy" type="button" data-copy="sudo larryd &">Copy</button><p class="explain">Starts LARRYD's daemon, the part that runs your agents safely, in the background. It asks for your computer's password once, then tells you where it's running and how to stop it. Type <code>larryd help</code> any time to see everything it can do.</p></li>
+    </ul>
+  </div>
+</section>
+
+<section id="safe" class="band split">
+  <div class="split-words">
+    <p class="eyebrow">Safe by design</p>
+    <h2>Your agent gets one job, and nothing else</h2>
+    <ul class="checks">
+      <li><strong>No internet.</strong> An agent can't call out to anywhere. What it needs is handed to it.</li>
+      <li><strong>No private files.</strong> It sees its own folder and a scratch space that is wiped after every run.</li>
+      <li><strong>No other programs.</strong> It can't start anything else on your machine.</li>
+      <li><strong>No secrets inside.</strong> The doctor refuses an agent with a password or key in it.</li>
+      <li><strong>Yours.</strong> The agent you build belongs to you.</li>
+    </ul>
+  </div>
+  <div class="split-art">
+    <img src="/assets/img/heartbeat-square.webp" alt="A heartbeat on a green screen" width="1088" height="1088" loading="lazy">
+  </div>
+</section>
+
+<section class="band">
+  <div class="section-head">
+    <p class="eyebrow">Made for Claude Code</p>
+    <h2>Claude Code does the typing. LARRYD keeps it right.</h2>
+    <p class="lead">Every LARRYD project tells Claude Code what an agent is, what it may and may not do, and which tools to use. Claude Code can check and run your agent itself, read what the doctor says, and fix the problem — then check again.</p>
+  </div>
+  <div class="terminal terminal-slim">
+    <div class="terminal-bar"><span></span><span></span><span></span></div>
+    <pre><span class="dim">$</span> larryd new weather-report
+made weather-report/ · open it with Claude Code: cd weather-report &amp;&amp; claude
+<span class="dim">$</span> larryd doctor weather-report
+PASS the project
+PASS the manifest
+PASS the entry
+PASS the air gap
+PASS no secret
+PASS the shape
+PASS the skills
+PASS the knowledge
+the agent passes every check</pre>
+  </div>
+</section>
+
+<section class="band price">
+  <div class="section-head">
+    <p class="eyebrow">Price</p>
+    <h2>Free</h2>
+    <p class="lead">LARRYD is free to install and free to use on your own computer. No account, no card, no trial that runs out.</p>
+    <a class="button" href="#install">Install LARRYD</a>
+  </div>
+</section>
+
+<section id="faq" class="band">
+  <div class="section-head">
+    <p class="eyebrow">Questions</p>
+    <h2>Good questions, short answers</h2>
+  </div>
+  <div class="faq">
+    <details><summary>What is an AI agent?</summary><p>A small program that does one job well — for example, turning a few words into a set of brand colours, or writing a short report from a list. You ask, it answers.</p></details>
+    <details><summary>Do I need to know how to code?</summary><p>It helps, but Claude Code writes most of it with you. LARRYD's instructions and its doctor make sure what gets written is safe and in the right shape.</p></details>
+    <details><summary>What does "daemon" mean?</summary><p>A helper that runs quietly in the background. Your computer has many. LARRYD's daemon is the one that runs your agents — safely, one job at a time.</p></details>
+    <details><summary>Which computers does it work on?</summary><p>Mac and Linux, with Python 3.11 or newer. Trying an agent on your own computer (<code>larryd run</code>) works on a Mac today; Linux and Windows come next.</p></details>
+    <details><summary>Where does my agent run when others use it?</summary><p>On LARRYD, sealed off from the internet and from everything else. Sharing with others opens soon.</p></details>
+    <details><summary>Is it really free?</summary><p>Yes. Installing and using LARRYD on your own computer costs nothing.</p></details>
+  </div>
+</section>
+
+</main>
+
+<footer class="footer">
+  <div class="footer-brand">
+    <picture><source media="(prefers-color-scheme: light)" srcset="/assets/img/pulse-amber.png"><img src="/assets/img/pulse-green.png" alt="" width="48" height="24"></picture>
+    <p><strong>LARRYD</strong><br>Your server has a daemon. Your agents should have one too.</p>
+  </div>
+  <nav class="footer-links" aria-label="Elsewhere">
+    <a href="https://github.com/larrydaemon/larryd">GitHub</a>
+    <a href="https://pypi.org/project/larryd/">PyPI</a>
+    <a href="https://www.npmjs.com/package/larryd">npm</a>
+    <a href="https://crates.io/crates/larryd">crates.io</a>
+  </nav>
+  <p class="legal">© 2026 COTECLAT LLC</p>
+</footer>
+
+<script>
+document.querySelectorAll('.copy').forEach(function (b) {
+  b.addEventListener('click', function () {
+    var text = b.getAttribute('data-copy');
+    var done = function () { b.textContent = 'Copied'; setTimeout(function () { b.textContent = 'Copy'; }, 1600); };
+    if (navigator.clipboard) { navigator.clipboard.writeText(text).then(done, function () {}); }
+  });
+});
+</script>
+</body>
+</html>
