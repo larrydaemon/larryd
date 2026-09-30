@@ -3,8 +3,10 @@ macOS sandbox-exec, or on Linux bubblewrap (bwrap) with a seccomp filter; on any
 - no network at all (the harness makes every call; an agent never does);
 - no new process (no fork, no other program);
 - writes only in its own run folder (made for the run, removed after), never into the locker;
-- reads nothing private: on macOS nothing under /Users but its own folder; on Linux nothing but its own folder, its run
-  folder and the Python runtime (the binary, its standard library, its shared libraries);
+- reads nothing but its own folder, its run folder and what the Python runtime needs to start (the binary, its standard
+  library, the libraries those link, the system's own libraries): on macOS every other read is refused (a file's name
+  and size may be looked up, never its contents: /etc/hosts, another project, the home folders); on Linux nothing
+  else is mounted;
 - an empty environment, one JSON object in on stdin, one JSON object out on stdout, inside the time limit.
 Anything else is FAILED with the kind of failure (never the agent's words)."""
 import json
@@ -74,7 +76,33 @@ def _linux_command(agent, run, entry):
     return cmd
 
 
+# MACOS: what the runtime reads besides the agent's folders. The system's own libraries and devices, the time zones, and
+# the root folder itself (the Python binary reads "/" as it starts; its list of names, nothing under it).
+_MAC_SYSTEM = ('/usr/lib', '/System', '/dev', '/usr/share/zoneinfo', '/private/var/db/timezone')
+_MAC_LITERAL = ('/', '/private/etc/localtime')
+_LINKED = re.compile(rb'(/[\x21-\x7e]+?\.dylib)\x00')
+
+
+def _mac_runtime():
+    """The folders of the Python runtime: its own (sys.base_prefix) and every library folder its binary and compiled
+    standard library name in their load commands (e.g. Homebrew's openssl, mpdecimal, sqlite), outside the system's own,
+    each as named and as it really is (a link resolved)."""
+    folders = {_BASE}
+    binaries = [PYTHON] + [str(p) for p in pathlib.Path(_BASE).rglob('lib-dynload/*.so')]
+    for path in binaries:
+        try:
+            data = pathlib.Path(path).read_bytes()
+        except OSError:
+            continue
+        for linked in _LINKED.findall(data):
+            name = os.path.dirname(linked.decode())
+            if not name.startswith(('/usr/lib', '/System', _BASE)):
+                folders.update({name, os.path.realpath(name)})
+    return sorted(folders)
+
+
 def _profile(agent, run):
+    reads = ' '.join(f'(subpath "{p}")' for p in [agent, run, *_mac_runtime(), *_MAC_SYSTEM]) + ' ' + ' '.join(f'(literal "{p}")' for p in _MAC_LITERAL)
     return f'''(version 1)
 (allow default)
 (deny network*)
@@ -83,8 +111,9 @@ def _profile(agent, run):
 (allow process-exec (literal "{PYTHON}"))
 (deny file-write*)
 (allow file-write* (subpath "{run}") (literal "/dev/null"))
-(deny file-read* (subpath "/Users"))
-(allow file-read* (subpath "{agent}") (subpath "{run}"))
+(deny file-read*)
+(allow file-read-metadata)
+(allow file-read* {reads})
 '''
 
 

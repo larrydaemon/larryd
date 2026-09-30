@@ -2,9 +2,9 @@
 - the doctor first: an agent it refuses is not run;
 - the job handed is what PF HANZO would hand a RUN: {"do": run.do, ...run.hands}, taken from the sample job;
 - its own process, sandboxed by the system as LARRYD sandboxes it: on a Mac, sandbox-exec; on Linux, LARRYD's own
-  bubblewrap command with its seccomp filter (the runtime's sandbox, the very same command): no network, no new process,
-  writes only in a scratch run folder (made for the run, removed after), reads nothing private but the agent's own
-  folder, an empty environment, a time limit;
+  bubblewrap command with its seccomp filter (the runtime's sandbox, the very same profile and command): no network, no new
+  process, writes only in a scratch run folder (made for the run, removed after), reads nothing but the agent's own
+  folder, its run folder and what Python needs to start, an empty environment, a time limit;
 - one JSON object out, holding only what "gives" names.
 Scratch only: nothing is sent anywhere, no live record is read or written. Any other system (Windows) is refused."""
 import base64
@@ -36,35 +36,16 @@ class Result:
     problems: list = field(default_factory=list)
 
 
-def python():
-    """The plain Python runtime (no packages from any virtual environment), as PF HANZO runs agents. A framework build
-    starts through its app binary, so that one is the program the sandbox lets start."""
-    base = os.path.realpath(sys.base_prefix)
-    app = os.path.join(base, 'Resources', 'Python.app', 'Contents', 'MacOS', 'Python')
-    return app if os.path.isfile(app) else os.path.realpath(os.path.join(base, 'bin', f'python{sys.version_info.major}.{sys.version_info.minor}'))
-
-
-def profile(agent, run, runtime):
-    base = os.path.realpath(sys.base_prefix)
-    return '\n'.join([
-        '(version 1)',
-        '(allow default)',
-        '(deny network*)',
-        '(deny process-fork)',
-        '(deny process-exec)',
-        f'(allow process-exec (literal "{runtime}"))',
-        '(deny file-write*)',
-        f'(allow file-write* (subpath "{run}") (literal "/dev/null"))',
-        '(deny file-read* (subpath "/Users"))',
-        f'(allow file-read* (subpath "{agent}") (subpath "{run}") (subpath "{base}"))',
-        '',
-    ])
-
-
-def _linux():
-    """LARRYD's runtime sandbox (larryd_runtime.core_engine.sandbox): its bubblewrap command is the one a RUN gets."""
+def _runtime():
+    """LARRYD's runtime sandbox (larryd_runtime.core_engine.sandbox): its Mac profile and its bubblewrap command are the
+    ones a RUN gets."""
     from larryd_runtime.core_engine import sandbox
     return sandbox
+
+
+def python():
+    """The plain Python runtime (no packages from any virtual environment), as PF HANZO runs agents: the runtime's own."""
+    return _runtime().PYTHON
 
 
 def no_sandbox():
@@ -74,7 +55,7 @@ def no_sandbox():
             return None
         return Result('REFUSED', reason=f'this Mac has no {SANDBOX}', todo='larryd run needs macOS sandbox-exec; the doctor works everywhere')
     if sys.platform.startswith('linux'):
-        if os.path.isfile(_linux().BWRAP):
+        if os.path.isfile(_runtime().BWRAP):
             return None
         return Result('REFUSED', reason='this Linux has no bubblewrap (bwrap), which LARRYD sandboxes agents with',
                       todo='install it (sudo apt install bubblewrap, or your system\'s package), then run again; the doctor works without it')
@@ -84,10 +65,10 @@ def no_sandbox():
 
 def command(agent, run, entry):
     """The sandboxed command for this system (no_sandbox() said it has one)."""
+    sandbox = _runtime()
     if sys.platform == 'darwin':
-        runtime = python()
-        return [SANDBOX, '-p', profile(agent, run, runtime), runtime, '-I', '-B', os.path.join(agent, entry)]
-    return _linux()._linux_command(agent, run, entry)
+        return [SANDBOX, '-p', sandbox._profile(agent, run), sandbox.PYTHON, '-I', '-B', os.path.join(agent, entry)]
+    return sandbox._linux_command(agent, run, entry)
 
 
 def sandboxed(agent, entry, given, seconds=SECONDS):

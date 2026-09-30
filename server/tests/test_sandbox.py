@@ -115,6 +115,30 @@ class SandboxTest(unittest.TestCase):
             self.assertTrue(said(reason, 'read outside'), reason)
             self.assertEqual(self._control(folder).returncode, 0)
 
+    def test_reads_no_system_file(self):
+        """A file every Mac and Linux has, readable by anyone (/etc/hosts): never the agent's."""
+        folder = self._agent('open("/etc/hosts").read()\nprint("{}")\n')
+        state, _answer, reason = sandbox.run(folder, 'agent.py', {})
+        self.assertEqual(state, 'FAILED')
+        self.assertTrue(said(reason, 'read outside'), reason)
+        self.assertEqual(self._control(folder).returncode, 0)
+
+    def test_reads_no_other_project(self):
+        """Another folder in the shared temporary area, beside the agent's own."""
+        with tempfile.TemporaryDirectory(prefix='hanzo_other_project_') as other:
+            notes = pathlib.Path(other) / 'notes.txt'
+            notes.write_text('not yours')
+            folder = self._agent(f'open({str(notes)!r}).read()\nprint("{{}}")\n')
+            state, _answer, reason = sandbox.run(folder, 'agent.py', {})
+            self.assertEqual(state, 'FAILED')
+            self.assertTrue(said(reason, 'read outside'), reason)
+            self.assertEqual(self._control(folder).returncode, 0)
+
+    def test_a_normal_agent_uses_the_standard_library(self):
+        folder = self._agent('import csv, datetime, decimal, hashlib, json, math, random, re, sqlite3, statistics\n'
+                             'print(json.dumps({"n": str(decimal.Decimal("1.1") * 2), "db": sqlite3.connect(":memory:").execute("select 6*7").fetchone()[0]}))\n')
+        self.assertEqual(sandbox.run(folder, 'agent.py', {}), ('DONE', {'n': '2.2', 'db': 42}, ''))
+
     def test_reads_its_own_folder(self):
         folder = self._agent('import json\nprint(json.dumps({"n": len(open(__file__).read()) > 0}))\n')
         self.assertEqual(sandbox.run(folder, 'agent.py', {}), ('DONE', {'n': True}, ''))

@@ -146,6 +146,46 @@ def test_the_air_gap_catches(agent, name):
     assert problems[0].line > 0 and problems[0].todo
 
 
+# the disguises (the new-user trial's finding #5): a module, a path or code the doctor cannot read in the source
+DISGUISED_PLANTS = {
+    'builtins.__import__': '\nimport builtins\nx = builtins.__import__("sock" + "et")\n',
+    'getattr on __builtins__': '\nx = getattr(__builtins__, "__imp" + "ort__")("sock" + "et")\n',
+    'getattr with a built name': '\nimport os\nf = getattr(os, "sys" + "tem")\n',
+    'sys.modules': '\nimport sys\nm = sys.modules["o" + "s"]\n',
+    'exec': '\nexec("import sock" + "et")\n',
+    'eval': '\nx = eval("1 + 1")\n',
+    'compile': '\nc = compile("x = 1", "made", "exec")\n',
+    'globals()': '\ng = globals()["__builtins__"]\n',
+    'vars()': '\nimport json\nv = vars(json)\n',
+    'a class escape': '\nx = ().__class__.__base__.__subclasses__()\n',
+    'pickle': '\nimport pickle\n',
+    'marshal': '\nimport marshal\n',
+    'chr(47) path': '\nopen(chr(47) + "etc" + chr(47) + "hosts")\n',
+    'os.sep path': '\nimport os\nopen(os.sep + os.path.join("etc", "hosts"))\n',
+    'os.path.sep path': '\nimport os.path\np = os.path.sep\n',
+    'the home folder': '\nimport os\nh = os.path.expanduser("~")\n',
+    'Path.home': '\nimport pathlib\nh = pathlib.Path.home()\n',
+    'an escaped slash': '\nopen("\\x2fetc\\x2fhosts")\n',
+    'a root piece': '\nopen("/" + "etc" + "/hosts")\n',
+    'an absolute path': '\nopen("/opt/data.csv")\n',
+}
+
+
+@pytest.mark.parametrize('name', DISGUISED_PLANTS)
+def test_the_air_gap_sees_through(agent, name):
+    _code(agent, DISGUISED_PLANTS[name])
+    problems = [p for p in doctor.check(agent) if p.check == 'the air gap']
+    assert problems, name
+    assert problems[0].file == 'agent/agent.py' and problems[0].line > 0 and problems[0].todo
+
+
+def test_plain_code_the_disguise_rules_leave_alone(agent):
+    """What a normal agent does stays clean: its own folder by __file__, a getattr by a written name, text with slashes."""
+    _code(agent, '\nimport os, pathlib\nHERE = pathlib.Path(__file__).parent\nDATA = os.path.join(os.path.dirname(__file__), "data.csv")\n'
+                 'class Card:\n    size = 1\nn = getattr(Card, "size", 0)\nWHEN = "10/03"\nRATIO = "a/b"\nL = chr(65)\n')
+    assert doctor.check(agent) == []
+
+
 def test_a_plant_in_another_file_of_the_agent(agent):
     (agent / 'agent' / 'helper.py').write_text('import socket\n')
     problems = [p for p in doctor.check(agent) if p.check == 'the air gap']

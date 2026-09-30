@@ -20,8 +20,18 @@ NETWORK = {'socket', 'ssl', 'http', 'urllib', 'ftplib', 'smtplib', 'poplib', 'im
            'socketserver', 'asyncio', 'selectors', 'select', 'webbrowser', 'wsgiref', 'mailbox', 'smtpd'}
 PROCESS = {'subprocess', 'multiprocessing', 'pty', 'ctypes', 'concurrent'}
 OS_PROCESS = re.compile(r'^(system|popen|fork|forkpty|kill|killpg|exec\w*|spawn\w*|posix_spawn\w*)$')
-HIDDEN = {'importlib', 'imp', 'runpy', 'pkgutil', 'zipimport'}
+HIDDEN = {'importlib', 'imp', 'runpy', 'pkgutil', 'zipimport', 'builtins', 'pickle', 'marshal', 'shelve'}
 PATHS = re.compile(r'(^|[\s"\'=(:])(/Users/|/home/|/private/|/tmp/|/var/|/etc/|/Volumes/|~/|\.\./)')
+# the disguises: code, modules and paths made at run time, which the doctor could not read in the source
+BY_NAME = {'__import__', '__builtins__', '__loader__', '__spec__'}                  # the interpreter's own doors, by name
+RUNS_CODE = {'eval', 'exec', 'compile', 'globals', 'locals', 'vars', 'breakpoint'}   # code or namespaces from a string
+BY_STRING = {'getattr', 'setattr', 'delattr', 'hasattr'}                            # an attribute named at run time
+INSIDES = {'__dict__', '__class__', '__base__', '__bases__', '__mro__', '__subclasses__', '__globals__', '__code__',
+           '__closure__', '__getattribute__', '__builtins__', '__import__', '__loader__', '__spec__'}
+SYS_DOORS = {'modules', 'meta_path', 'path_hooks', 'path_importer_cache'}
+PATH_MAKERS = {('os', 'sep'), ('os', 'altsep'), ('path', 'sep'), ('path', 'altsep'), ('path', 'expanduser'),
+               ('path', 'expandvars'), ('Path', 'home'), ('os', 'getenv')}
+ABSOLUTE = re.compile(r'^(/|\\|~)[\w.@~-]*(/[\w.@~-]*)*$')   # a value that is a path from the root or the home folder
 PLATFORM = re.compile(r'virtual_workspace|pfhanzo', re.I)
 
 # no secret: files that are secrets by their name, and text that looks like one
@@ -211,8 +221,8 @@ def _air_gap(root, trees, f):
                           'use the standard library only (LARRYD runs the plain Python runtime), or put the code in agent/ yourself', n.lineno)
             if isinstance(n, ast.Attribute) and isinstance(n.value, ast.Name) and n.value.id == 'os' and OS_PROCESS.match(n.attr):
                 f.add(c, where, f'it calls os.{n.attr}, which starts or stops processes', 'remove it and do the work inside this one process', n.lineno)
-            if isinstance(n, ast.Name) and n.id == '__import__':
-                f.add(c, where, 'it uses __import__, which loads code the doctor cannot see', 'import what you need by name, at the top of the file', n.lineno)
+            for wrong, todo in _disguise(n):
+                f.add(c, where, wrong, todo, n.lineno)
     for path in _files(agent):
         if not path.is_file() or path.is_symlink():
             continue
@@ -221,12 +231,56 @@ def _air_gap(root, trees, f):
         except (UnicodeDecodeError, OSError):
             continue
         where = _rel(root, path)
+        seen = {p.line for p in f.problems if p.check == c and p.file == where}   # one problem per line: the code's own reading wins
         for i, line in enumerate(text.splitlines(), 1):
+            if i in seen:
+                continue
             if PLATFORM.search(line):
                 f.add(c, where, 'it names the platform\'s or LARRYD\'s folder; the agent is air gapped from both',
                       'remove it. The agent reaches nothing; LARRYD hands it what it needs', i)
             elif PATHS.search(line):
                 f.add(c, where, 'it names a path outside the agent\'s own folder', 'remove it. The agent reads only what it is handed and writes only in the folder it is run in', i)
+
+
+def _named(node):
+    """The name an expression ends in: os.path.sep -> ('path', 'sep'); a plain name -> (None, name)."""
+    if isinstance(node, ast.Attribute):
+        inner = node.value
+        return (inner.id if isinstance(inner, ast.Name) else inner.attr if isinstance(inner, ast.Attribute) else None), node.attr
+    if isinstance(node, ast.Name):
+        return None, node.id
+    return None, None
+
+
+def _disguise(n):
+    """-> [(what is wrong, what to do)] for one node: code, a module or a path made at run time."""
+    by_hand = 'import what you need by name, at the top of the file, and write the code itself'
+    if isinstance(n, ast.Name) and n.id in BY_NAME:
+        return [(f'it uses {n.id}, which reaches modules or code by a name the doctor cannot see', by_hand)]
+    if isinstance(n, ast.Attribute):
+        owner, attr = _named(n)
+        if attr in INSIDES:
+            return [(f'it reaches .{attr}, the interpreter\'s inside, where code and modules can be found by name', by_hand)]
+        if owner == 'sys' and attr in SYS_DOORS:
+            return [(f'it uses sys.{attr}, which reaches modules by a name the doctor cannot see', by_hand)]
+        if (owner, attr) in PATH_MAKERS:
+            return [(f'it uses {owner}.{attr}, which builds a path outside the agent\'s own folder',
+                     'read only your own folder (pathlib.Path(__file__).parent) and write only in the folder you are run in')]
+    if isinstance(n, ast.Call) and isinstance(n.func, ast.Name):
+        name, args = n.func.id, n.args
+        if name in RUNS_CODE:
+            return [(f'it calls {name}(), which runs code or reaches names made from a string at run time', by_hand)]
+        if name in BY_STRING and len(args) >= 2 and not (isinstance(args[1], ast.Constant) and isinstance(args[1].value, str)):
+            return [(f'it calls {name}() with a name built at run time', f'write the attribute itself (obj.name), or {name}(obj, "name") with the name written out')]
+        if name == 'chr' and args and isinstance(args[0], ast.Constant) and args[0].value in (47, 92):
+            return [('it builds a path separator with chr(), a path the doctor cannot read',
+                     'read only your own folder (pathlib.Path(__file__).parent) and write only in the folder you are run in')]
+    if isinstance(n, ast.Constant) and isinstance(n.value, (str, bytes)):
+        value = n.value.decode('latin-1') if isinstance(n.value, bytes) else n.value
+        if ABSOLUTE.match(value) or PATHS.search(value) or PLATFORM.search(value):
+            return [(f'it holds the path {value[:40]!r}, outside the agent\'s own folder',
+                     'remove it. The agent reads only what it is handed and its own folder, and writes only in the folder it is run in')]
+    return []
 
 
 def _secrets(root, f):

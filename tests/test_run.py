@@ -127,6 +127,39 @@ def test_no_read_in_the_home_folder_outside_its_folder(tmp_path):
         shutil.rmtree(scratch)
 
 
+def test_no_read_of_system_files(tmp_path):
+    """A file every Mac and Linux has, readable by anyone: the agent reads nothing it is not handed (/etc/hosts)."""
+    folder = _agent(tmp_path, 'out["read"] = open("/etc/hosts").read()[:1]')
+    assert 'read' in _outside(folder, {})
+    assert _said(runner.sandboxed(folder, 'agent.py', {}), 'read outside')
+
+
+def test_no_read_of_another_project(tmp_path):
+    """Another folder in the shared temporary area, beside the agent's own (another project, another run)."""
+    other = pathlib.Path(tempfile.mkdtemp(prefix='larryd_other_project_'))
+    try:
+        (other / 'notes.txt').write_text('not yours')
+        folder = _agent(tmp_path, 'out["read"] = open(job["from"]).read()')
+        assert _outside(folder, {'from': str(other / 'notes.txt')}) == {'read': 'not yours'}
+        assert _said(runner.sandboxed(folder, 'agent.py', {'from': str(other / 'notes.txt')}), 'read outside')
+    finally:
+        shutil.rmtree(other)
+
+
+def test_the_standard_library_still_works(tmp_path):
+    """Sealed tight, a normal agent still starts and uses the standard library (its compiled parts included)."""
+    body = ('import csv, datetime, decimal, hashlib, math, random, re, sqlite3, statistics, pathlib\n'
+            'here = pathlib.Path(__file__).parent\n'
+            'out["own"] = (here / "data.txt").read_text()\n'
+            'out["sum"] = str(decimal.Decimal("1.1") * 2) + hashlib.sha256(b"x").hexdigest()[:4]\n'
+            'out["db"] = sqlite3.connect(":memory:").execute("select 6*7").fetchone()[0]')
+    folder = _agent(tmp_path, body)
+    (folder / 'data.txt').write_text('mine')
+    result = runner.sandboxed(folder, 'agent.py', {})
+    assert result.state == 'DONE', result.said
+    assert result.answer == {'own': 'mine', 'sum': '2.22d71', 'db': 42}
+
+
 def test_the_plain_runtime_only(tmp_path):
     folder = _agent(tmp_path, 'import pytest\nout["had"] = True')
     done = subprocess.run([sys.executable, str(folder / 'agent.py')], input='{}', capture_output=True, text=True)
