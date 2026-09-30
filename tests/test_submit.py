@@ -15,7 +15,7 @@ import pytest
 from larryd import cli, hanzo, hashes, mcp, new
 
 SECRET = 'a' * 64
-KEY = 'MAGT_SCRATCH00001_0001'
+KEY = 'MAGT_00000000D001_0001'
 
 
 @pytest.fixture(autouse=True)
@@ -89,7 +89,7 @@ def test_the_connector_never_takes_the_key():
 def test_the_signature_is_the_documented_scheme():
     data = {'agent_key': KEY, 'files': {'agent.py': 'eA=='}}
     at = '2026-09-29T12:00:00+00:00'
-    text = '/developer/submit ' + at + ' {"agent_key":"MAGT_SCRATCH00001_0001","files":{"agent.py":"eA=="}}'
+    text = '/developer/submit ' + at + ' {"agent_key":"MAGT_00000000D001_0001","files":{"agent.py":"eA=="}}'
     assert hanzo.sign(SECRET, '/developer/submit', data, at) == hmac.new(SECRET.encode(), text.encode(), hashlib.sha256).hexdigest()
 
 
@@ -145,3 +145,10 @@ def test_the_commands_say_it(project, capsys):
 
 def test_the_made_project_has_a_place_for_the_card_key(tmp_path):
     assert json.loads((new.make('fresh', tmp_path) / 'larryd.json').read_text()) == {'agent_key': ''}
+
+
+def test_a_card_key_frost_would_refuse_is_refused_here(project):
+    hanzo.save_key(f'http://127.0.0.1:{_closed_port()}', 'ada', SECRET)
+    (project / 'larryd.json').write_text('{"agent_key": "MAGT_SCRATCH00001_0001"}')   # capitals, not hex: not a minted key
+    with pytest.raises(hanzo.Refused, match='holds no card key'):
+        hanzo.submit(project)

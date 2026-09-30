@@ -21,7 +21,7 @@ import urllib.request
 from . import doctor, hashes, shape
 
 PROJECT = 'larryd.json'
-KEY = re.compile(r'^[A-Z]{4}_[0-9A-Z]{12}_[0-9A-Z]{4}$')
+KEY = re.compile(r'^[A-Z]{4}_[0-9A-F]{12}_[0-9A-F]{4}$')   # as the platform mints it; FROST's review takes only this
 NAME = re.compile(r'^[a-z][a-z0-9-]{1,39}$')
 
 
@@ -101,7 +101,7 @@ def agent_key(root):
     except (ValueError, AttributeError):
         found = ''
     if not KEY.match(found or ''):
-        raise Refused(f'{PROJECT} holds no card key', f'put the card key PF HANZO gave you for this agent in {PROJECT}: {{"agent_key": "XXXX_…_…"}}')
+        raise Refused(f'{PROJECT} holds no card key', f'put the card key PF HANZO gave you for this agent in {PROJECT}: {{"agent_key": "XXXX_0123456789AB_CDEF"}}')
     return found
 
 

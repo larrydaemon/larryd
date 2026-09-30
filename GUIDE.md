@@ -23,7 +23,7 @@ LARRYD makes your developer key: a name and a secret. The secret is shown once. 
 
 Paste the secret when it asks; it is never typed on the command line. It is kept in `~/.larryd/developer.json`,
 readable by you only, never inside a project. The Claude Code tools never see it.
-LARRYD also gives you the card key of each agent you may submit (it looks like `XXXX_XXXXXXXXXXXX_XXXX`).
+LARRYD also gives you the card key of each agent you may submit (four capital letters, 12 and then 4 hex digits, e.g. `MAGT_0123456789AB_CDEF`).
 
 ## 3. A new agent
     larryd new <name>
@@ -36,7 +36,7 @@ This makes the folder `<name>/`:
 - `.claude/skills/larryd/SKILL.md`: the larryd skill Claude Code loads
 - `samples/job.json`: a sample job for `larryd run`
 - `.mcp.json`: starts the LARRYD tools in Claude Code when you open the folder with `claude`
-- `larryd.json`: put the agent's card key here: `{"agent_key": "XXXX_…_…"}`
+- `larryd.json`: put the agent's card key here: `{"agent_key": "MAGT_0123456789AB_CDEF"}` (with your real key)
 
 ## 4. The rules
 LARRYD's sandbox refuses 1, 2 and 3 when the agent runs; the doctor checks all of them before that.
