@@ -1,0 +1,13 @@
+{
+  "name": "larryd",
+  "version": "0.1.0",
+  "description": "Your server has a daemon. Your agents should have one too. Build, test and ship AI agents with Claude Code.",
+  "keywords": ["ai-agents", "claude-code", "mcp", "cli"],
+  "homepage": "https://github.com/larrydaemon/larryd",
+  "repository": {"type": "git", "url": "git+https://github.com/larrydaemon/larryd.git", "directory": "npm"},
+  "license": "SEE LICENSE IN NOTICE.txt",
+  "bin": {"larryd": "bin/larryd.js"},
+  "files": ["bin/", "NOTICE.txt", "README.md"],
+  "engines": {"node": ">=18"},
+  "scripts": {"test": "node --test test/"}
+}
