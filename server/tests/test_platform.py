@@ -52,8 +52,8 @@ class ClientTest(unittest.TestCase):
         self.assertEqual(self._client().get('wid', '/health', {'n': 3})[0], 200)
 
     def test_an_undeclared_office_is_never_called(self):
-        with self.assertRaises(KeyError):
-            self._client().get('lryllm', '/health')
+        self.assertEqual(self._client().get('lryllm', '/health'), (0, {'refused': 'lryllm has no address here'}))
+        self.assertEqual(platform.Client({}, 'scratch').post('wid', '/jobs/result', {}), (0, {'refused': 'wid has no address here'}))
 
     def test_a_silent_platform(self):
         status, body = self._client(port=_free_port()).get('wid', '/health')

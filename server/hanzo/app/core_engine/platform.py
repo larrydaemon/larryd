@@ -25,7 +25,9 @@ class Client:
         self.timeout = timeout
 
     def _send(self, office, method, route, data):
-        base = self.addresses[office]
+        base = self.addresses.get(office)
+        if not base:
+            return 0, {'refused': f'{office} has no address here'}   # an undeclared office is never called: a plain refusal
         at = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='seconds')
         headers = {'X-Office': signing.sign(self.secret, route, data, at), 'X-Office-At': at}
         url = base + '/api' + route
