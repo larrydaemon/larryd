@@ -75,23 +75,12 @@
           "INTEGER NOT NULL DEFAULT 0"
         ]
       ]
-    },
-    "hanzo_developers": {
-      "about": "a developer and the agent keys they may submit: a HANZO-side name and a card's key, never a platform account or member; the developer's secret is a file in HANZO's instance (secrets/developers/), printed once when made",
-      "columns": [
-        [
-          "agent_key",
-          "TEXT PRIMARY KEY"
-        ],
-        [
-          "developer",
-          "TEXT NOT NULL"
-        ],
-        [
-          "added_at",
-          "TEXT NOT NULL"
-        ]
-      ]
     }
+  },
+  "retired": {
+    "about": "tables HANZO no longer keeps, dropped when the store opens: hanzo_developers held the old signed developer door's names and card keys (the door was removed in 0.1.1; a developer submits through LARRYD's submit door with a Google or Apple sign-in)",
+    "tables": [
+      "hanzo_developers"
+    ]
   }
 }

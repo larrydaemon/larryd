@@ -1,6 +1,6 @@
-"""HANZO'S HOST: the /api door, and nothing else. Every call must be signed with HANZO's secret (core_engine/signing.py),
-except the developer door (/api/developer/...), where a developer signs with their own secret; an unsigned, stale or
-wrongly signed call is refused (401) before any route runs. The routes hand the call to the
+"""HANZO'S HOST: the /api door, and nothing else. Every call must be signed with HANZO's secret (core_engine/signing.py);
+an unsigned, stale or wrongly signed call is refused (401) before any route runs. (A developer's agent comes in through
+LARRYD's submit door and the owner's review, then `place` below; never through this door.) The routes hand the call to the
 harness; a RUN is accepted at once (202) and runs on its own thread, its result written back to the platform."""
 import datetime
 import json
@@ -10,12 +10,12 @@ import pathlib
 import sys
 import threading
 
-from flask import Flask, g, jsonify, request
+from flask import Flask, jsonify, request
 
 APP = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(APP))
 
-from core_engine import developers, harness as lanes_harness, platform, signing, store  # noqa: E402
+from core_engine import harness as lanes_harness, intake, platform, signing, store  # noqa: E402
 
 CONFIG = json.loads((APP / 'schemas' / 'hanzo.json').read_text())
 INSTANCE = pathlib.Path(os.environ['LARRYD_INSTANCE']) if os.environ.get('LARRYD_INSTANCE') else APP.parent / 'instance'   # the daemon names it
@@ -39,47 +39,14 @@ def create_app(instance, secret, now=_utc_now, addresses=None, agents=None):
     app = Flask('hanzo')
     app.config['harness'] = h
 
-    dev = CONFIG['developers']
-    secrets_dir = pathlib.Path(instance) / 'secrets' / dev['secrets']
-
     @app.before_request
     def signed_only():
         data = request.args.to_dict() if request.method == 'GET' else (request.get_json(silent=True) or {})
         route = request.path.removeprefix('/api')
-        if route.startswith('/developer/'):
-            who = request.headers.get('X-Developer', '')
-            if not signing.good(developers.secret(secrets_dir, who), route, data, request.headers.get('X-Office-At'),
-                                request.headers.get('X-Developer-Sig'), now(), CONFIG['signed_window_seconds']):
-                return jsonify({'refused': 'not a signed call'}), 401
-            g.developer = who
-            return None
         if not signing.good(secret, route, data, request.headers.get('X-Office-At'), request.headers.get('X-Office'),
                             now(), CONFIG['signed_window_seconds']):
             return jsonify({'refused': 'not a signed call'}), 401
         return None
-
-    @app.post('/api/developer/submit')
-    def developer_submit():
-        """A developer's agent: its files into the locker, then to FROST's review. -> its exact hashes and the review."""
-        d = request.get_json(silent=True) or {}
-        key = str(d.get('agent_key') or '')
-        if key not in developers.theirs(db, g.developer):
-            return jsonify({'refused': 'that agent is not yours'}), 403
-        try:
-            row = developers.receive(db, APP / 'agents' if agents is None else agents, dev['folder'], key, d.get('files'),
-                                     dev['most_files'], dev['most_bytes'])
-        except developers.Refused as no:
-            return jsonify({'refused': no.reason}), no.status
-        held = {'agent_key': key, 'code_sha256': row['code_sha256'], 'manifest_sha256': row['manifest_sha256']}
-        try:
-            review = h.submit(key)
-        except lanes_harness.Refused as no:
-            return jsonify({**held, 'refused': f'held in the locker, but FROST did not take it: {no.reason}; submit again'}), no.status
-        return jsonify({**held, 'review': review}), 200
-
-    @app.get('/api/developer/status')
-    def developer_status():
-        return jsonify(h.developer_status(developers.theirs(db, g.developer))), 200
 
     @app.get('/api/health')
     def health():
@@ -145,6 +112,22 @@ def create_app(instance, secret, now=_utc_now, addresses=None, agents=None):
     return app
 
 
+def place(app, agent_key, data):
+    """An approved agent file into the locker (<intake folder>/<card key>/), then to FROST's review. -> what was held, and
+    FROST's review or why FROST did not take it (the agent stays held; `submit <key>` sends it again)."""
+    h, conf = app.config['harness'], CONFIG['intake']
+    try:
+        files = intake.check(intake.from_zip(data, conf['most_files'], conf['most_bytes']), conf['most_files'], conf['most_bytes'])
+        row = intake.receive(h.db, h.agents, conf['folder'], agent_key, files)
+    except intake.Refused as no:
+        raise SystemExit(f'refused ({no.status}): {no.reason}')
+    held = {'agent_key': agent_key, 'code_sha256': row['code_sha256'], 'manifest_sha256': row['manifest_sha256']}
+    try:
+        return {**held, 'review': h.submit(agent_key)}
+    except lanes_harness.Refused as no:
+        return {**held, 'refused': f'held in the locker, but FROST did not take it: {no.reason}; send it again with submit {agent_key}'}
+
+
 def catch_up(app):
     """At start, once (never a loop): the RUNs the platform queued while HANZO was away."""
     status, body = app.config['harness'].client.get('wid', '/jobs/queued')
@@ -163,20 +146,18 @@ def locker_root(instance):
 def main(argv):
     """python hanzo/app/web/app.py                                   the host
     python hanzo/app/web/app.py submit <key>                        an agent HANZO holds, to FROST's review (its key, its exact hashes, its manifest)
-    python hanzo/app/web/app.py developer add <name> <agent_key>    the developer may submit that agent; a new developer's secret is printed once"""
-    if argv[1:3] == ['developer', 'add'] and len(argv) == 5:
-        try:
-            made = developers.add(store.open_store(INSTANCE), INSTANCE / 'secrets' / CONFIG['developers']['secrets'], argv[3], argv[4])
-        except developers.Refused as no:
-            raise SystemExit(f'refused: {no.reason}')
-        print(f'{argv[3]} may submit {argv[4]}')
-        if made:
-            print(f'the developer\'s secret (shown this once; HANZO keeps its own copy): {made}')
-        return
+    python hanzo/app/web/app.py place <card key> <file.larryd>      an agent the owner approved (LARRYD's review queue): into the locker, then to FROST's review
+    python hanzo/app/web/app.py review <card key>...                what HANZO records for those agents, with FROST's word on the hashes it holds"""
     side = os.environ.get(CONFIG['environment_variable'], 'localhost.rnd').split('.')[-1]
     secret_file = INSTANCE / 'secrets' / CONFIG['secret']['name']
     secret = secret_file.read_text().strip() if secret_file.is_file() else ''
     app = create_app(INSTANCE, secret, addresses=platform.addresses(CONFIG, side, INSTANCE), agents=locker_root(INSTANCE))
+    if argv[1:2] == ['place'] and len(argv) == 4:
+        print(json.dumps(place(app, argv[2], pathlib.Path(argv[3]).read_bytes())))
+        return
+    if argv[1:2] == ['review'] and len(argv) >= 3:
+        print(json.dumps(app.config['harness'].review_state(argv[2:])))
+        return
     if argv[1:2] == ['submit'] and len(argv) == 3:
         try:
             print(json.dumps(app.config['harness'].submit(argv[2])))

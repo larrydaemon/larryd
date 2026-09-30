@@ -36,7 +36,7 @@ def _private_dir(path):
 
 def prepare(instance, runtime):
     """The instance, made once and kept: nothing is overwritten that is already there."""
-    for sub in ('', 'secrets', 'secrets/developers', 'logs', 'agents'):
+    for sub in ('', 'secrets', 'logs', 'agents'):
         _private_dir(instance / sub)
     link = instance / 'secrets' / 'hanzo_link'
     if not link.is_file() or not link.read_text().strip():

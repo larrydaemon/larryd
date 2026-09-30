@@ -219,3 +219,38 @@ def test_the_same_agent_packs_to_the_same_file(tmp_path):
     assert bundle.make(root) == bundle.make(root)
     names = zipfile.ZipFile(io.BytesIO(bundle.make(root)[0])).namelist()
     assert names == ['agent.json', 'agent.py']   # agent/ only: no project file, no key, no cache
+
+
+# ---------------------------------------------------------------- the owner's review (on the larryd machine)
+def _queued(world):
+    held = _held_id(_upload(world))
+    _, q = _start(world, held)
+    _signed_in(world, _handoff(world, q), q['state'])
+    return _rows(world, 'queue')[0][0]
+
+
+def test_export_gives_the_queued_file_exactly(world, tmp_path):
+    queued = _queued(world)
+    out = tmp_path / 'out.larryd'
+    assert submit_door.export(world['instance'], queued, out) == _rows(world, 'queue')[0][2]
+    assert out.read_bytes() == bundle.make(world['project'])[0]
+
+
+def test_export_refuses_a_changed_file(world, tmp_path):
+    queued = _queued(world)
+    (world['instance'] / 'queue' / f'{queued}.larryd').write_bytes(b'changed')
+    with pytest.raises(SystemExit, match='hash changed'):
+        submit_door.export(world['instance'], queued, tmp_path / 'out.larryd')
+    assert not (tmp_path / 'out.larryd').exists()
+
+
+def test_mark_once_and_a_rejection_says_why(world):
+    queued = _queued(world)
+    with pytest.raises(SystemExit, match='says why'):
+        submit_door.mark(world['instance'], queued, 'rejected', ' ')
+    with pytest.raises(SystemExit, match='one of'):
+        submit_door.mark(world['instance'], queued, 'maybe')
+    submit_door.mark(world['instance'], queued, 'approved', 'MAGT_00000000D001_0001')
+    assert _rows(world, 'queue')[0][8:] == ('approved', 'MAGT_00000000D001_0001')
+    with pytest.raises(SystemExit, match='not waiting'):
+        submit_door.mark(world['instance'], queued, 'rejected', 'too late')

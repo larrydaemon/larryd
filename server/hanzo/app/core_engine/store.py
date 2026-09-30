@@ -1,4 +1,5 @@
-"""hanzo.db, HANZO's only database, created from schemas/store.json and nothing else; a table that differs is refused."""
+"""hanzo.db, HANZO's only database, created from schemas/store.json and nothing else; a table that differs is refused, and a
+table the schema retired is dropped."""
 import json
 import pathlib
 import sqlite3
@@ -10,6 +11,9 @@ def open_store(instance):
     path = str(pathlib.Path(instance) / SCHEMA['database'])
     con = sqlite3.connect(path)
     try:
+        for name in SCHEMA.get('retired', {}).get('tables', []):   # a table HANZO no longer keeps goes, with what it held
+            if name not in SCHEMA['tables']:
+                con.execute(f'DROP TABLE IF EXISTS "{name}"')
         for name, table in SCHEMA['tables'].items():
             con.execute(f'CREATE TABLE IF NOT EXISTS "{name}" (' + ', '.join(f'"{c}" {kind}' for c, kind in table['columns']) + ')')
             have = [r[1] for r in con.execute(f'PRAGMA table_info("{name}")')]

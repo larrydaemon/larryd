@@ -9,7 +9,7 @@ export DEBIAN_FRONTEND=noninteractive
 apt-get install -y -q python3-venv bubblewrap >/dev/null
 id larryd >/dev/null 2>&1 || useradd --system --home-dir $HOME_DIR --shell /usr/sbin/nologin larryd
 install -d -o larryd -g larryd -m 0750 $HOME_DIR $HOME_DIR/releases
-install -d -o larryd -g larryd -m 0700 $HOME_DIR/instance $HOME_DIR/instance/secrets $HOME_DIR/instance/secrets/developers \
+install -d -o larryd -g larryd -m 0700 $HOME_DIR/instance $HOME_DIR/instance/secrets \
     $HOME_DIR/instance/logs $HOME_DIR/instance/agents
 rm -rf "$REL" && mkdir -p "$REL"
 tar -xzf "$TAR" -C "$REL" --strip-components=2 && rm -f "$TAR"

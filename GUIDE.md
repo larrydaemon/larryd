@@ -100,6 +100,8 @@ it waits in the review queue; the page says what happens next. No account to mak
 LARRYD reads what it receives and runs none of it: it re-runs the doctor itself, and refuses a file that is too big
 (5 MB), unsafe, or one of too many from one network in an hour. Unclaimed files are deleted after 10 minutes.
 `--no-browser` prints the claim page instead of opening it. A changed agent is a new submission, reviewed again.
+A person at LARRYD reviews it. Approved, it goes into LARRYD's locker under its card key and to the platform's review
+(FROST's); rejected, the answer says why. Either way the answer goes to the email of your sign-in.
 
 ## What LARRYD does with your agent
 - It holds `agent/` in its locker with the hash of the code and of the manifest, and checks them on every call and run.

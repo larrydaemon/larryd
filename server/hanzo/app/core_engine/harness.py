@@ -111,9 +111,10 @@ class Harness:
             raise Refused(503, 'the marketplace is not in the locker')
         return row[0]
 
-    def developer_status(self, keys):
-        """What HANZO records for a developer's agents: held or not, FROST's word on the exact hashes, and the counts of
-        hanzo_runs (runs by state, calls, hires, unhires, mTok charged). Only agent keys and counts: no account, no member."""
+    def review_state(self, keys):
+        """What HANZO records for these agents (the owner's `review` command): held or not, FROST's word on the exact
+        hashes, and the counts of hanzo_runs (runs by state, calls, hires, unhires, mTok charged). Only agent keys and
+        counts: no account, no member."""
         approved = None   # FROST's approved list, asked only when FROST has no review_state door (a FROST before it)
         con = sqlite3.connect(self.db)
         try:

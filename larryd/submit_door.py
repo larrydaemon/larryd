@@ -217,16 +217,60 @@ def create_app(instance, config=None, now=time.time):
     return app
 
 
+REVIEWS = ('approved', 'rejected')
+
+
+def export(instance, queued, to):
+    """A queued file, copied out (for the runtime's `place`). -> its sha256, checked against the queue's."""
+    instance = pathlib.Path(instance)
+    c = sqlite3.connect(instance / CONFIG['database'])
+    row = c.execute('SELECT sha256 FROM queue WHERE id = ?', (queued,)).fetchone()
+    c.close()
+    if row is None:
+        raise SystemExit(f'{queued} is not in the queue')
+    data = (instance / 'queue' / f'{queued}.larryd').read_bytes()
+    if hashlib.sha256(data).hexdigest() != row[0]:
+        raise SystemExit(f'{queued}: the queued file is not the one that was sent (its hash changed)')
+    fd = os.open(to, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o644)
+    with os.fdopen(fd, 'wb') as f:
+        f.write(data)
+    return row[0]
+
+
+def mark(instance, queued, review, note=''):
+    """The owner's word on a queued file: approved (with the card key it was placed under) or rejected (with why)."""
+    if review not in REVIEWS:
+        raise SystemExit(f'a review is one of {", ".join(REVIEWS)}')
+    if review == 'rejected' and not note.strip():
+        raise SystemExit('a rejection says why')
+    c = sqlite3.connect(pathlib.Path(instance) / CONFIG['database'])
+    with c:
+        done = c.execute("UPDATE queue SET review = ?, note = ? WHERE id = ? AND review = 'waiting'", (review, note.strip()[:500], queued)).rowcount
+    c.close()
+    if done != 1:
+        raise SystemExit(f'{queued} is not waiting in the queue')
+
+
 def main(argv):
-    """python -m larryd.submit_door list     the review queue (on the larryd machine; LARRYD_SUBMIT_INSTANCE)"""
+    """python -m larryd.submit_door list                          the review queue
+    python -m larryd.submit_door export <id> <file>              a queued file, copied out (for the runtime's place)
+    python -m larryd.submit_door mark <id> approved <card key>   the owner's word, after the runtime placed it
+    python -m larryd.submit_door mark <id> rejected <why>        the owner's word: why
+    (on the larryd machine; the instance: LARRYD_SUBMIT_INSTANCE)"""
     instance = pathlib.Path(os.environ.get('LARRYD_SUBMIT_INSTANCE') or 'instance')
     if argv == ['list']:
         c = sqlite3.connect(instance / CONFIG['database'])
-        for r in c.execute('SELECT id, name, sha256, provider, email, submitted_at, review FROM queue ORDER BY submitted_at'):
+        for r in c.execute('SELECT id, name, sha256, provider, email, submitted_at, review, note FROM queue ORDER BY submitted_at'):
             print(' · '.join(str(x) for x in r))
         return 0
+    if len(argv) == 3 and argv[0] == 'export':
+        print(export(instance, argv[1], argv[2]))
+        return 0
+    if len(argv) >= 3 and argv[0] == 'mark':
+        mark(instance, argv[1], argv[2], ' '.join(argv[3:]))
+        print(f'{argv[1]}: {argv[2]}')
+        return 0
     raise SystemExit(main.__doc__)
-
 
 if __name__ == '__main__':
     import sys
