@@ -80,10 +80,12 @@ def test_share_is_a_card_marked_open():
     assert '<h3>Share</h3>' in card and '<em class="soon">Open</em>' in card and 'soon</em>' not in card.replace('class="soon">Open</em>', '')
 
 
-def test_the_nav_has_one_coloured_button():
+def test_the_header_is_menu_logo_and_the_two_modes():
+    """The owner: MENU on the left, the heartbeat in the centre, light and dark on the right; no other links in the bar."""
     nav = PAGE[_at(PAGE, '<header class="nav">'):_at(PAGE, '</header>')]
-    assert re.findall(r'class="button[^"]*"', nav) == ['class="button button-small"'] and 'Get LARRYD — free' in nav
-
+    bar = nav[:nav.index('<nav id="menu-panel"')]
+    assert 'class="menu-btn"' in bar and 'class="brand"' in bar and bar.count('class="mode-btn"') == 2
+    assert '<a href="#' not in bar and 'button-small' not in bar
 
 def test_no_heading_without_a_body():
     for page in (PAGE,):

@@ -11,20 +11,26 @@
   <meta name="theme-color" content="#000000">
   <link rel="icon" href="/assets/img/favicon.png">
   <link rel="stylesheet" href="/site.css">
+<script>(function(){try{var m=localStorage.getItem("larryd-mode");}catch(e){}if(m!=="light"&&m!=="dark"){m=matchMedia("(prefers-color-scheme: light)").matches?"light":"dark";}document.documentElement.setAttribute("data-theme",m);})();</script>
 </head>
 <body>
 
 <header class="nav">
-  <a class="brand" href="/" aria-label="LARRYD home">
-    <picture><source media="(prefers-color-scheme: light)" srcset="/assets/img/pulse-amber.png"><img class="brand-mark" src="/assets/img/pulse-green.png" alt="LARRYD" width="64" height="32"></picture>
-  </a>
-  <nav class="nav-links" aria-label="Main">
+  <button class="menu-btn" type="button" aria-expanded="false" aria-controls="menu-panel">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg><span>Menu</span>
+  </button>
+  <a class="brand" href="/" aria-label="LARRYD home"><img class="brand-mark only-dark" src="/assets/img/pulse-green.png" alt="LARRYD" width="64" height="32"><img class="brand-mark only-light" src="/assets/img/pulse-amber.png" alt="LARRYD" width="64" height="32"></a>
+  <div class="mode">
+    <button class="mode-btn" type="button" data-mode="light" aria-label="Light mode" title="Light mode"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></svg></button>
+    <button class="mode-btn" type="button" data-mode="dark" aria-label="Dark mode" title="Dark mode"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5z"/></svg></button>
+  </div>
+  <nav id="menu-panel" class="menu-panel" aria-label="Main" hidden>
+    <a href="#install">Install</a>
     <a href="#what">What it is</a>
     <a href="#cant">What it can't do</a>
     <a href="#checks">The checks</a>
     <a href="#faq">Questions</a>
   </nav>
-  <a class="button button-small" href="#install">Get LARRYD — free</a>
 </header>
 
 <main>
@@ -74,22 +80,22 @@
   </div>
   <div class="cards">
     <article class="card">
-      <picture><source media="(prefers-color-scheme: light)" srcset="/assets/img/pulse-amber.png"><img src="/assets/img/pulse-green.png" alt="" width="56" height="28"></picture>
+      <img class="only-dark" src="/assets/img/pulse-green.png" alt="" width="56" height="28"><img class="only-light" src="/assets/img/pulse-amber.png" alt="" width="56" height="28">
       <h3>Build</h3>
       <p>Type <code>larryd new</code> and a name. You get a ready project with clear instructions that Claude Code reads first, so you can describe what you want in plain words.</p>
     </article>
     <article class="card">
-      <picture><source media="(prefers-color-scheme: light)" srcset="/assets/img/pulse-amber.png"><img src="/assets/img/pulse-green.png" alt="" width="56" height="28"></picture>
+      <img class="only-dark" src="/assets/img/pulse-green.png" alt="" width="56" height="28"><img class="only-light" src="/assets/img/pulse-amber.png" alt="" width="56" height="28">
       <h3>Check</h3>
       <p><code>larryd doctor</code> looks over your agent before anyone else does. Every problem comes with the file, the line, what is wrong and what to do — words Claude Code can act on by itself.</p>
     </article>
     <article class="card">
-      <picture><source media="(prefers-color-scheme: light)" srcset="/assets/img/pulse-amber.png"><img src="/assets/img/pulse-green.png" alt="" width="56" height="28"></picture>
+      <img class="only-dark" src="/assets/img/pulse-green.png" alt="" width="56" height="28"><img class="only-light" src="/assets/img/pulse-amber.png" alt="" width="56" height="28">
       <h3>Run</h3>
       <p><code>larryd run</code> tries your agent on your own computer, sealed off the same way it will run for real: no internet, no private files, one job in and one answer out.</p>
     </article>
     <article class="card card-open">
-      <picture><source media="(prefers-color-scheme: light)" srcset="/assets/img/pulse-amber.png"><img src="/assets/img/pulse-green.png" alt="" width="56" height="28"></picture>
+      <img class="only-dark" src="/assets/img/pulse-green.png" alt="" width="56" height="28"><img class="only-light" src="/assets/img/pulse-amber.png" alt="" width="56" height="28">
       <h3>Share</h3>
       <p><code>larryd submit</code> sends your agent for review. Once it is approved, people add it with one switch.</p>
       <em class="soon">Open</em>
@@ -208,7 +214,7 @@ wrote /Users/Shared/weather-report/larryd-checks.svg: paste ![LARRYD checks](lar
     <details><summary>Do I need to know how to code?</summary><p>It helps, but Claude Code writes most of it with you. LARRYD's instructions and its doctor make sure what gets written is safe and in the right shape.</p></details>
     <details><summary>What does "daemon" mean?</summary><p>A helper that runs quietly in the background. Your computer has many. LARRYD's daemon is the one that runs your agents — safely, one job at a time.</p></details>
     <details><summary>Which computers does it work on?</summary><p>Mac and Linux, with Python 3.11 or newer. Trying an agent on your own computer (<code>larryd run</code>) works on a Mac today; Linux and Windows come next.</p></details>
-    <details><summary>Where does my agent run when others use it?</summary><p>On LARRYD, sealed off from the internet and from everything else. Sharing with others opens soon.</p></details>
+    <details><summary>Where does my agent run when others use it?</summary><p>On LARRYD, sealed off from the internet and from everything else.</p></details>
     <details><summary>Is it really free?</summary><p>Yes. Installing and using LARRYD on your own computer costs nothing.</p></details>
   </div>
 </section>
@@ -217,7 +223,7 @@ wrote /Users/Shared/weather-report/larryd-checks.svg: paste ![LARRYD checks](lar
 
 <footer class="footer">
   <div class="footer-brand">
-    <picture><source media="(prefers-color-scheme: light)" srcset="/assets/img/pulse-amber.png"><img src="/assets/img/pulse-green.png" alt="" width="48" height="24"></picture>
+    <img class="only-dark" src="/assets/img/pulse-green.png" alt="" width="48" height="24"><img class="only-light" src="/assets/img/pulse-amber.png" alt="" width="48" height="24">
     <p><strong>LARRYD</strong><br>Your server has a daemon. Your agents should have one too.</p>
   </div>
   <nav class="footer-links" aria-label="Elsewhere">
@@ -238,6 +244,16 @@ document.querySelectorAll('.copy').forEach(function (b) {
     if (navigator.clipboard) { navigator.clipboard.writeText(text).then(done, function () {}); }
   });
 });
+</script>
+<script>
+(function () {
+  var root = document.documentElement, btn = document.querySelector('.menu-btn'), panel = document.getElementById('menu-panel');
+  btn.addEventListener('click', function () { var open = panel.hidden; panel.hidden = !open; btn.setAttribute('aria-expanded', String(open)); });
+  panel.addEventListener('click', function (e) { if (e.target.tagName === 'A') { panel.hidden = true; btn.setAttribute('aria-expanded', 'false'); } });
+  document.querySelectorAll('.mode-btn').forEach(function (b) {
+    b.addEventListener('click', function () { var m = b.getAttribute('data-mode'); root.setAttribute('data-theme', m); try { localStorage.setItem('larryd-mode', m); } catch (e) {} });
+  });
+})();
 </script>
 </body>
 </html>
