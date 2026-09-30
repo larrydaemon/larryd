@@ -16,13 +16,12 @@
 
 <header class="nav">
   <a class="brand" href="/" aria-label="LARRYD home">
-    <picture><source media="(prefers-color-scheme: light)" srcset="/assets/img/pulse-amber.png"><img class="brand-mark" src="/assets/img/pulse-green.png" alt="" width="40" height="20"></picture>
-    <span class="brand-word">LARRYD</span>
+    <picture><source media="(prefers-color-scheme: light)" srcset="/assets/img/pulse-amber.png"><img class="brand-mark" src="/assets/img/pulse-green.png" alt="LARRYD" width="64" height="32"></picture>
   </a>
   <nav class="nav-links" aria-label="Main">
     <a href="#what">What it is</a>
     <a href="#cant">What it can't do</a>
-    <a href="/checks.html">The checks</a>
+    <a href="#checks">The checks</a>
     <a href="#faq">Questions</a>
   </nav>
   <a class="button button-small" href="#install">Get LARRYD — free</a>
@@ -54,7 +53,7 @@ PASS the skills
 PASS the knowledge
 the agent passes every check</pre>
     </div>
-    <p class="proof-line">Most agent tools trust the agent. LARRYD doesn't. <a href="/checks.html">What the doctor checks</a></p>
+    <p class="proof-line">Most agent tools trust the agent. LARRYD doesn't. <a href="#checks">What the doctor checks</a></p>
   </div>
   <div class="hero-film">
     <video autoplay muted loop playsinline preload="metadata" poster="/assets/video/larryd-poster.jpg" aria-label="LARRYD film">
@@ -112,6 +111,78 @@ the agent passes every check</pre>
   </div>
 </section>
 
+<section id="checks" class="band spec-top">
+  <div class="section-head">
+    <p class="eyebrow">Version 1</p>
+    <h2>The LARRYD checks</h2>
+    <p class="lead"><code>larryd doctor</code> runs these eight checks on an agent, in this order, before it runs and before it is sent anywhere. Its output names them the same way. Every failure says the file, the line, what is wrong and what to do.</p>
+  </div>
+  <ol class="spec">
+    <li class="spec-row"><span class="step-n">1</span><div><h3>the project</h3><p><strong>Proves:</strong> There is an agent here: a real <code>agent/</code> folder (not a link) holding <code>agent.json</code>.</p><p><strong>Why:</strong> Everything else is checked inside <code>agent/</code>, and only <code>agent/</code> is ever sent or run.</p></div></li>
+    <li class="spec-row"><span class="step-n">2</span><div><h3>the manifest</h3><p><strong>Proves:</strong> <code>agent.json</code> is one JSON object with every field and no others. <code>run.do</code> is one of <code>does</code>; <code>calls</code> only names what is in <code>does</code>; <code>run.hands</code> asks only for what LARRYD hands (<code>cards</code>, <code>job</code>); each input has its own slot.</p><p><strong>Why:</strong> The manifest is the agent's promise: what it does, what it is handed, what it answers. The runtime holds the agent to it.</p></div></li>
+    <li class="spec-row"><span class="step-n">3</span><div><h3>the entry</h3><p><strong>Proves:</strong> The entry file exists, compiles, has a function for every name in <code>does</code>, and runs as a program.</p><p><strong>Why:</strong> An agent that cannot start, or that promises a function it does not have, fails in front of a person.</p></div></li>
+    <li class="spec-row"><span class="step-n">4</span><div><h3>the air gap</h3><p><strong>Proves:</strong> No network module, no module that starts processes, no hidden imports, nothing outside the Python standard library and the agent's own files, no path outside its own folder.</p><p><strong>Why:</strong> An agent never reaches out. What it needs is handed to it.</p></div></li>
+    <li class="spec-row"><span class="step-n">5</span><div><h3>no secret</h3><p><strong>Proves:</strong> No file named like a secret (<code>.env</code>, <code>.pem</code>, <code>id_rsa</code>, …) and no text that looks like a key, token or password.</p><p><strong>Why:</strong> An agent holds no secret. Keys belong to the developer, never to the agent.</p></div></li>
+    <li class="spec-row"><span class="step-n">6</span><div><h3>the shape</h3><p><strong>Proves:</strong> <code>agent/</code> holds only plain, visible UTF-8 files of the kinds an agent holds (<code>.py</code>, <code>.json</code>, <code>.txt</code>, <code>.md</code>, <code>.csv</code>), and no links.</p><p><strong>Why:</strong> What is checked is exactly what runs: nothing hidden, nothing that points elsewhere.</p></div></li>
+    <li class="spec-row"><span class="step-n">7</span><div><h3>the skills</h3><p><strong>Proves:</strong> Every skill the agent declares exists (<code>larryd skills</code> lists them by hash).</p><p><strong>Why:</strong> The runtime carries out declared skills for the agent; a skill that does not exist would fail the run.</p></div></li>
+    <li class="spec-row"><span class="step-n">8</span><div><h3>the knowledge</h3><p><strong>Proves:</strong> Every knowledge pack the agent declares is one LARRYD holds.</p><p><strong>Why:</strong> An agent may only lean on knowledge LARRYD can hand it. LARRYD holds none yet, so this is <code>[]</code> today.</p></div></li>
+  </ol>
+</section>
+
+<section class="band">
+  <div class="section-head">
+    <p class="eyebrow">The manifest</p>
+    <h2>Declared in the manifest, enforced when it runs.</h2>
+    <p class="lead">The doctor checks what the manifest declares. When the agent runs, the runtime holds it to the same words.</p>
+  </div>
+  <ul class="checks">
+    <li><strong><code>run.do</code></strong> The agent is asked to do exactly that one thing.</li>
+    <li><strong><code>run.hands</code></strong> It is handed only what it names. A hand LARRYD does not have fails the run.</li>
+    <li><strong><code>inputs</code></strong> The job's inputs reach it only by the names and slots declared.</li>
+    <li><strong><code>skills</code></strong> Only declared skills are carried out. An answer that carries files is refused unless the agent declares the DA-M store.</li>
+    <li><strong><code>calls</code></strong> Only an agent that declares <code>calls</code> answers on a member's screen.</li>
+    <li><strong><code>gives</code></strong> An answer that holds anything <code>gives</code> does not name is refused, by <code>larryd run</code> and by LARRYD's runtime: the run fails, nothing is delivered, nothing is charged.</li>
+  </ul>
+</section>
+
+<section class="band">
+  <div class="section-head">
+    <p class="eyebrow">Every agent, every run</p>
+    <h2>The walls around every agent</h2>
+    <p class="lead">These hold whatever the manifest says. On a Mac they are macOS sandbox-exec; on Linux, bubblewrap with a seccomp filter. Where neither is present, nothing runs.</p>
+  </div>
+  <ul class="checks">
+    <li><strong>No network at all.</strong> What it needs is handed to it.</li>
+    <li><strong>No other programs.</strong> It cannot start a process.</li>
+    <li><strong>None of your files.</strong> On a Mac it reads nothing in the home folders but its own folder; on Linux, nothing but its own folder and the Python runtime. It writes only to a scratch folder, deleted after the run.</li>
+    <li><strong>One job in, one answer out.</strong> One JSON object each way, in an empty environment, inside a time limit.</li>
+  </ul>
+</section>
+
+<section class="band">
+  <div class="section-head">
+    <p class="eyebrow">The badge</p>
+    <h2>Show that your agent passes</h2>
+    <p class="lead">Run the doctor with <code>--badge</code>. It writes <code>larryd-checks.svg</code> beside <code>agent/</code>: PASS in gold or FAIL in red, with the day and the checks' version. Paste the line it prints into your README.</p>
+  </div>
+  <div class="terminal proof">
+    <div class="terminal-bar"><span></span><span></span><span></span></div>
+    <pre><span class="dim">$</span> larryd doctor weather-report --badge
+larryd doctor: /Users/Shared/weather-report
+PASS the project
+PASS the manifest
+PASS the entry
+PASS the air gap
+PASS no secret
+PASS the shape
+PASS the skills
+PASS the knowledge
+the agent passes every check
+wrote /Users/Shared/weather-report/larryd-checks.svg: paste ![LARRYD checks](larryd-checks.svg) into your README</pre>
+  </div>
+  <p class="badge-sample"><img src="/assets/img/larryd-checks.svg" alt="LARRYD checks v1: PASS" width="233" height="22"></p>
+</section>
+
 <section id="install" class="band">
   <div class="section-head">
     <p class="eyebrow">Install</p>
@@ -167,7 +238,7 @@ the agent passes every check</pre>
     <a href="https://pypi.org/project/larryd/">PyPI</a>
     <a href="https://www.npmjs.com/package/larryd">npm</a>
     <a href="https://crates.io/crates/larryd">crates.io</a>
-    <a href="/checks.html">The LARRYD checks</a>
+    <a href="#checks">The LARRYD checks</a>
   </nav>
   <p class="legal">© 2026 COTECLAT LLC</p>
 </footer>

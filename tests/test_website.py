@@ -23,7 +23,7 @@ def test_larryd_only():
 
 
 def test_every_local_file_it_points_at_is_there():
-    pages = PAGE + (SITE / 'checks.html').read_text()
+    pages = PAGE
     wanted = set(re.findall(r'(?:src|href|srcset|poster)="/([^"#?]+)"', pages)) | set(re.findall(r'url\("/([^")]+)"\)', (SITE / 'site.css').read_text()))
     assert wanted
     missing = sorted(p for p in wanted if not (SITE / p).is_file())
@@ -85,23 +85,31 @@ def test_the_nav_has_one_coloured_button():
 
 
 def test_no_heading_without_a_body():
-    for page in (PAGE, (SITE / 'checks.html').read_text()):
+    for page in (PAGE,):
         for m in re.finditer(r'<h2>(.*?)</h2>\s*(</div>\s*)?(<section|</main>|$)', page):
             raise AssertionError(f'a heading with nothing under it: {m.group(1)}')
 
 
 def test_every_image_speaks_or_is_silent():
     for alt in re.findall(r'<img [^>]*alt="([^"]*)"', PAGE):
-        assert alt in ('', 'LARRYD checks v1: PASS'), alt
+        assert alt in ('', 'LARRYD', 'LARRYD checks v1: PASS'), alt
 
 
 # ---------------------------------------------------------------- THE LARRYD CHECKS
 def test_the_checks_page_and_spec_name_the_doctors_checks():
     from larryd import doctor
-    page = (SITE / 'checks.html').read_text()
+    page = PAGE[PAGE.index('id="checks"'):]
     spec = (REPO / 'CHECKS.md').read_text()
     assert f'# THE LARRYD CHECKS · version {doctor.CHECKS_VERSION}' in spec
     assert f'Version {doctor.CHECKS_VERSION}' in page
     assert re.findall(r'<h3>([^<]+)</h3>', page) == list(doctor.CHECKS)
     assert re.findall(r'^\| \d \| \*\*([^*]+)\*\*', spec, re.M) == list(doctor.CHECKS)
     assert 'Declared in the manifest, enforced when it runs.' in page
+
+
+def test_one_long_page_and_the_logo_is_the_heartbeat_alone():
+    """The owner: one single long page; the logo at the very top is the heartbeat line, no word."""
+    assert not (SITE / 'checks.html').exists() and 'id="checks"' in PAGE
+    header = PAGE[_at(PAGE, '<header class="nav">'):_at(PAGE, '</header>')]
+    brand = header[:header.index('</a>')]
+    assert 'brand-mark' in brand and 'brand-word' not in brand
