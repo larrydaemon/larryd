@@ -1,6 +1,6 @@
 {
   "name": "larryd",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Your server has a daemon. Your agents should have one too. Build, test and ship AI agents with Claude Code.",
   "keywords": ["ai-agents", "claude-code", "mcp", "cli"],
   "homepage": "https://larryd.ai",

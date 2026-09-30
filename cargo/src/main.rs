@@ -135,9 +135,9 @@ mod tests {
 
     #[test]
     fn pips_words_become_the_right_sentence() {
-        let missing = "ERROR: Could not find a version that satisfies the requirement larryd==0.1.0 (from versions: 0.0.1)\nERROR: No matching distribution found for larryd==0.1.0";
-        assert!(pip_said(missing, "larryd==0.1.0").starts_with("LARRYD 0.1.0 is not on PyPI yet"));
-        assert!(pip_said("NewConnectionError('Failed to establish a new connection')", "larryd==0.1.0").starts_with("could not reach PyPI"));
-        assert!(pip_said("ERROR: something else", "larryd==0.1.0").starts_with("pip could not install larryd==0.1.0 (its words are above)"));
+        let missing = "ERROR: Could not find a version that satisfies the requirement larryd==0.1.1 (from versions: 0.0.1)\nERROR: No matching distribution found for larryd==0.1.1";
+        assert!(pip_said(missing, "larryd==0.1.1").starts_with("LARRYD 0.1.1 is not on PyPI yet"));
+        assert!(pip_said("NewConnectionError('Failed to establish a new connection')", "larryd==0.1.1").starts_with("could not reach PyPI"));
+        assert!(pip_said("ERROR: something else", "larryd==0.1.1").starts_with("pip could not install larryd==0.1.1 (its words are above)"));
     }
 }

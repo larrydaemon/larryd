@@ -44,11 +44,11 @@ Fits today, once the repository is public and 0.1.0 is on PyPI: 1, 2 (with a lic
 ## The owner's steps, in order (each one outward; one command or page each)
 1. Merge the Apache-2.0 branch (`license-apache`): the license is already in every package.
 2. Make the repository public: github.com/larrydaemon/larryd → Settings → Change visibility.
-3. Publish 0.1.0 together, one version everywhere: PyPI `cd ~/larryd && python3 -m pip install build twine && python3 -m build && python3 -m twine upload dist/*`,
+3. Publish together, one version everywhere: PyPI `cd ~/larryd && python3 -m pip install build twine && python3 -m build && python3 -m twine upload dist/*`,
    npm `cd ~/larryd/npm && npm publish`, crates.io `cd ~/larryd/cargo && cargo publish`.
 4. Official MCP Registry: `brew install mcp-publisher && cd ~/larryd/listings/mcp-registry && mcp-publisher login github && mcp-publisher publish`
    (PulseMCP and GitHub's MCP Registry fill themselves from it.)
-5. Docker Hub: `cd ~/larryd && docker build -f listings/docker/Dockerfile -t larrydaemon/larryd:0.1.0 . && docker push larrydaemon/larryd:0.1.0`
+5. Docker Hub: `cd ~/larryd && docker build -f listings/docker/Dockerfile -t larrydaemon/larryd:0.1.1 . && docker push larrydaemon/larryd:0.1.1`
 6. Anthropic's directory: https://claude.ai/directory/manage → Submit new → Plugin bundle → repository larrydaemon/larryd, path `plugin/`.
 7. Glama: copy `listings/glama/glama.json` (with the owner's GitHub name) and `listings/docker/Dockerfile` to the repository's root, then https://glama.ai/mcp/servers → Add Server.
 8. mcp.so: https://mcp.so/submit (the repository link).

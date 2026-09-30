@@ -46,7 +46,7 @@ fn installs_once_then_hands_every_argument_through() {
     let repo = PathBuf::from(env!("CARGO_MANIFEST_DIR")).parent().unwrap().to_path_buf();
     let first = launcher().arg("help").env("LARRYD_VENV", &venv).env("LARRYD_PIP_SPEC", &repo).output().unwrap();
     assert!(first.status.success(), "{}", String::from_utf8_lossy(&first.stderr));
-    assert!(String::from_utf8_lossy(&first.stderr).contains("larryd: installing LARRYD 0.1.0 (once) into "));
+    assert!(String::from_utf8_lossy(&first.stderr).contains("larryd: installing LARRYD 0.1.1 (once) into "));
     assert!(String::from_utf8_lossy(&first.stdout).contains("usage: larryd"));
     let second = launcher().args(["doctor", venv.join("no-agent-here").to_str().unwrap(), "--json"]).env("LARRYD_VENV", &venv).output().unwrap();
     assert_eq!(second.status.code(), Some(1)); // the doctor's own exit code, handed back

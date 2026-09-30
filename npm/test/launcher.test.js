@@ -33,10 +33,10 @@ test('an older Python: says which one it found, exit 1', () => {
 
 test('pip\'s words become the right sentence', () => {
   const { pipSaid } = require(LAUNCHER);
-  assert.match(pipSaid('ERROR: Could not find a version that satisfies the requirement larryd==0.1.0 (from versions: 0.0.1)\nERROR: No matching distribution found for larryd==0.1.0', 'larryd==0.1.0'),
-    /^LARRYD 0\.1\.0 is not on PyPI yet/);
-  assert.match(pipSaid("WARNING: Retrying ... NewConnectionError('...: Failed to establish a new connection')", 'larryd==0.1.0'), /^could not reach PyPI/);
-  assert.match(pipSaid('ERROR: something else', 'larryd==0.1.0'), /^pip could not install larryd==0\.1\.0 \(its words are above\)/);
+  assert.match(pipSaid('ERROR: Could not find a version that satisfies the requirement larryd==0.1.1 (from versions: 0.0.1)\nERROR: No matching distribution found for larryd==0.1.1', 'larryd==0.1.1'),
+    /^LARRYD 0\.1\.1 is not on PyPI yet/);
+  assert.match(pipSaid("WARNING: Retrying ... NewConnectionError('...: Failed to establish a new connection')", 'larryd==0.1.1'), /^could not reach PyPI/);
+  assert.match(pipSaid('ERROR: something else', 'larryd==0.1.1'), /^pip could not install larryd==0\.1\.1 \(its words are above\)/);
 });
 
 test('installs once into its own venv, then hands every argument through', () => {
@@ -46,7 +46,7 @@ test('installs once into its own venv, then hands every argument through', () =>
   try {
     const first = run(['help'], env);
     assert.strictEqual(first.status, 0, first.stderr);
-    assert.match(first.stderr, /larryd: installing LARRYD 0\.1\.0 \(once\) into /);
+    assert.match(first.stderr, /larryd: installing LARRYD 0\.1\.1 \(once\) into /);
     assert.match(first.stdout, /usage: larryd/);
     const second = run(['doctor', path.join(venv, 'no-agent-here'), '--json'], env);
     assert.strictEqual(second.status, 1);                       // the doctor's own exit code, handed back
