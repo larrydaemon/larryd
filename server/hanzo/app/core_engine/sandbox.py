@@ -27,7 +27,8 @@ MOST_BYTES = 1_000_000
 # (x86_64): fork, vfork, execve, execveat and a clone that is not a thread are refused with EPERM ("Operation not
 # permitted", the Mac's words); clone3 answers ENOSYS so a thread falls back to clone. Then the agent's entry runs.
 _BOOT = r'''
-import ctypes, platform, runpy, struct, sys
+import ctypes, os, platform, runpy, struct, sys
+os.environ.pop("PWD", None)   # bwrap's --chdir sets it; the environment is only what the runtime gives
 if platform.machine() != "x86_64":
     raise SystemExit("the Linux sandbox knows x86_64 only")
 def f(code, jt, jf, k):
@@ -67,7 +68,9 @@ def _linux_command(agent, run, entry):
     for path in _linux_runtime():
         if os.path.exists(path):
             cmd += ['--ro-bind', path, path]
-    cmd += ['--ro-bind', agent, agent, '--bind', run, run, '--chdir', run, PYTHON, '-I', '-B', '-c', _BOOT, os.path.join(agent, entry)]
+    cmd += ['--ro-bind', agent, agent, '--bind', run, run,
+            '--remount-ro', '/',   # bwrap's own root (a tmpfs holding the mount points) read-only: the run folder is the one place to write
+            '--chdir', run, PYTHON, '-I', '-B', '-c', _BOOT, os.path.join(agent, entry)]
     return cmd
 
 
