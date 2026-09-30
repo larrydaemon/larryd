@@ -182,7 +182,8 @@ def test_the_air_gap_sees_through(agent, name):
 def test_plain_code_the_disguise_rules_leave_alone(agent):
     """What a normal agent does stays clean: its own folder by __file__, a getattr by a written name, text with slashes."""
     _code(agent, '\nimport os, pathlib\nHERE = pathlib.Path(__file__).parent\nDATA = os.path.join(os.path.dirname(__file__), "data.csv")\n'
-                 'class Card:\n    size = 1\nn = getattr(Card, "size", 0)\nWHEN = "10/03"\nRATIO = "a/b"\nL = chr(65)\n')
+                 'class Card:\n    size = 1\nn = getattr(Card, "size", 0)\nWHEN = "10/03"\nRATIO = "a/b"\nL = chr(65)\n'
+                 'D = "/".join(["2026", "09"])\nM = 3\nF = f"{M}/{M}"\n')
     assert doctor.check(agent) == []
 
 

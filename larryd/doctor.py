@@ -31,7 +31,7 @@ INSIDES = {'__dict__', '__class__', '__base__', '__bases__', '__mro__', '__subcl
 SYS_DOORS = {'modules', 'meta_path', 'path_hooks', 'path_importer_cache'}
 PATH_MAKERS = {('os', 'sep'), ('os', 'altsep'), ('path', 'sep'), ('path', 'altsep'), ('path', 'expanduser'),
                ('path', 'expandvars'), ('Path', 'home'), ('os', 'getenv')}
-ABSOLUTE = re.compile(r'^(/|\\|~)[\w.@~-]*(/[\w.@~-]*)*$')   # a value that is a path from the root or the home folder
+ABSOLUTE = re.compile(r'^(/|\\|~)[\w.@~-]+(/[\w.@~-]*)*$')   # a value that is a path from the root or the home folder (a separator alone, as in "/".join, is not)
 PLATFORM = re.compile(r'virtual_workspace|pfhanzo', re.I)
 
 # no secret: files that are secrets by their name, and text that looks like one
