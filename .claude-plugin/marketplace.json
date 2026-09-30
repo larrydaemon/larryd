@@ -3,12 +3,12 @@
   "owner": {
     "name": "LARRYD"
   },
-  "description": "LARRYD: the tools and the skill for building LARRYD agents with Claude Code.",
+  "description": "LARRYD: build, test and ship AI agents with Claude Code.",
   "plugins": [
     {
       "name": "larryd",
       "source": "./plugin",
-      "description": "LARRYD: build an agent for LARRYD with Claude Code."
+      "description": "Your server has a daemon. Your agents should have one too. LARRYD's tools and skill for Claude Code."
     }
   ]
 }

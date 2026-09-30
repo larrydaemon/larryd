@@ -1,5 +1,7 @@
 # LARRYD
 
+<!-- mcp-name: io.github.larrydaemon/larryd -->
+
 Your server has a daemon. Your agents should have one too.
 
 Build, test and ship AI agents with Claude Code.

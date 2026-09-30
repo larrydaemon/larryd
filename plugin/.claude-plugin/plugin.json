@@ -1,7 +1,7 @@
 {
   "name": "larryd",
   "version": "0.1.0",
-  "description": "LARRYD: build an agent for LARRYD with Claude Code. The tools larryd_new, larryd_doctor and larryd_run, and the larryd skill. Needs the larryd command: pip install it first.",
+  "description": "Your server has a daemon. Your agents should have one too. Build, test and ship AI agents with Claude Code: LARRYD's tools (new, doctor, run, submit, status, skills, pack) and its skill. Needs the larryd command: pip install larryd.",
   "author": {
     "name": "LARRYD"
   }

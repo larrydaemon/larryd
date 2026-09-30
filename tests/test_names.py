@@ -8,7 +8,8 @@ from larryd import new
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
 READ = ['README.md', 'GUIDE.md', 'pyproject.toml', 'larryd/skills.json', '.claude-plugin/marketplace.json',
-        'plugin/.claude-plugin/plugin.json', 'plugin/.mcp.json', 'plugin/skills/larryd/SKILL.md'] + [
+        'plugin/.claude-plugin/plugin.json', 'plugin/.mcp.json', 'plugin/skills/larryd/SKILL.md', 'plugin/README.md'] + [
+        p.relative_to(REPO).as_posix() for p in (REPO / 'listings').rglob('*') if p.is_file()] + [
         p.relative_to(REPO).as_posix() for p in (REPO / 'larryd' / 'kit').rglob('*') if p.is_file()]
 
 
@@ -43,7 +44,8 @@ def test_a_made_project_never_says_hanzo(tmp_path):
 
 
 def test_the_public_lines():
-    readme = (REPO / 'README.md').read_text().splitlines()
+    readme = [line for line in (REPO / 'README.md').read_text().splitlines() if not line.startswith('<!--')]   # the registry's mcp-name line is not a line people read
+    readme = readme[:1] + readme[2:] if readme[1] == '' and readme[2] == '' else readme
     guide = (REPO / 'GUIDE.md').read_text().splitlines()
     summary = 'Your server has a daemon. Your agents should have one too.'
     assert readme[2] == summary and guide[2] == summary
