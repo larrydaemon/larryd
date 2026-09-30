@@ -7,7 +7,7 @@ REPO = pathlib.Path(__file__).resolve().parent.parent
 SITE = REPO / 'website'
 PAGE = (SITE / 'index.html').read_text()
 
-LINES = ['npm install -g larryd', 'pip install larryd', 'pipx install larryd', 'cargo install larryd', 'sudo larryd &amp;']
+LINES = ['pipx install larryd', 'uv tool install larryd', 'npm install -g larryd', 'cargo install larryd', 'larryd']
 
 
 def test_the_install_lines_in_the_owners_order():
@@ -30,11 +30,11 @@ def _at(text, needle):
 
 
 def test_the_sections_in_order():
-    order = ['class="hero"', 'id="install"', 'id="what"', 'id="cant"', 'id="checks"', 'id="faq"', 'id="faq"']
+    order = ['class="lx-hero"', 'id="install"', 'id="what"', 'id="cant"', 'id="checks"', 'id="faq"', 'id="faq"']
     at = [_at(PAGE, n) for n in order]
     assert at == sorted(at), dict(zip(order, at))
     assert 'id="how"' not in PAGE and 'From an idea to a working agent' not in PAGE
-    hero = PAGE[_at(PAGE, 'class="hero"'):_at(PAGE, 'id="install"')]
+    hero = PAGE[_at(PAGE, 'class="lx-hero"'):_at(PAGE, 'id="install"')]
     assert 'class="terminal' not in hero   # the owner: install goes right under the hero, no terminal output there
 
 
@@ -69,7 +69,7 @@ def test_share_is_a_card_marked_open():
     """The owner: "just say open"."""
     card = PAGE[_at(PAGE, 'class="card card-open"'):]
     card = card[:card.index('</article>')]
-    assert '<h3>Share</h3>' in card and '<em class="soon">Open</em>' in card and 'soon</em>' not in card.replace('class="soon">Open</em>', '')
+    assert '>Share</h3>' in card and '<em class="soon">Open</em>' in card and 'soon</em>' not in card.replace('class="soon">Open</em>', '')
 
 
 def test_no_heading_without_a_body():
@@ -85,18 +85,21 @@ def test_the_checks_page_and_spec_name_the_doctors_checks():
     spec = (REPO / 'CHECKS.md').read_text()
     assert f'# THE LARRYD CHECKS · version {doctor.CHECKS_VERSION}' in spec
     assert f'Version {doctor.CHECKS_VERSION}' in page
-    assert re.findall(r'<h3>([^<]+)</h3>', page) == list(doctor.CHECKS)
+    assert re.findall(r'<h3[^>]*>([^<]+)</h3>', page) == list(doctor.CHECKS)
     assert re.findall(r'^\| \d \| \*\*([^*]+)\*\*', spec, re.M) == list(doctor.CHECKS)
     assert 'Declared in the manifest, enforced when it runs.' in page
 
 
 
 
-def test_the_official_header_and_footer_and_the_app_background():
-    """The owner: the official header and footer 1:1 (frozen from the official site), the app theme's CRT animation,
-    the header scrolls with the page, no price section."""
-    assert PAGE.count('class="lx-chrome lx-dark"') == 2 and PAGE.count('class="lx-chrome lx-light"') == 2
-    assert 'pf-cathode-warmup' in PAGE and 'class="pf-crt-warm pf-anim--crt"' in PAGE
-    assert '<header class="layout--header">' in PAGE and '<footer class="layout--footer">' in PAGE
-    assert 'id="lx-official-chrome"' in PAGE and 'position: sticky' not in PAGE.split('id="lx-official-chrome"')[1].split('</style>')[0].split('.layout--header {')[1].split('}')[0] if '.layout--header {' in PAGE else True
-    assert 'band price' not in PAGE and '>Free<' not in PAGE
+def test_the_platforms_own_page():
+    """The owner: the official LARRYD page's chrome 1:1 (built inside the platform's page system: its header, footer,
+    CRT animation and the brand's own stylesheets from /cdn-pf/, never a copy), our words in <main>, the standard server
+    section above the footer, no price section, no sudo."""
+    for css in ('faf51f39/static/css/core.css', 'faf51f39/static/css/faf51f39.css', 'def9f8bf/static/css/def9f8bf.css'):
+        assert f'<link rel="stylesheet" href="/cdn-pf/' in PAGE and css in PAGE, css
+    assert 'data-brilliance-hierarchy="F13650BD0AC1"' in PAGE and 'class="pf-crt-warm pf-anim--crt"' in PAGE
+    assert PAGE.count('<header class="layout--header">') == 1 and PAGE.count('<footer class="layout--footer">') == 1
+    assert PAGE.index('<main class="main-container">') < PAGE.index('Our Own Silicon') < PAGE.index('<footer class="layout--footer">')
+    assert 'class="main-button' in PAGE and 'lx-chrome' not in PAGE
+    assert 'band price' not in PAGE and 'sudo larryd' not in PAGE
