@@ -197,12 +197,9 @@ setTimeout(go,12000);})();</script>
 
 
 
- <a href="https://positivefeedback.ai/en/custom_settings?page=larryd&amp;site=def9f8bf&amp;mode=dark&amp;theme=F13650BD0AC1&amp;agentlayer=pf" title="Settings" class="hdr-icon-btn" style="display:flex;align-items:center">
- <svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:currentColor;stroke-width:1.2;fill:none"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
- </a>
 
 
- <a href="https://positivefeedback.ai/fs/auth/logout?single_sign_on=def9f8bf&amp;mode=dark&amp;theme=F13650BD0AC1&amp;agentlayer=pf" title="Logout" style="display:flex;align-items:center">
+ <a href="https://positivefeedback.ai/fs/auth/login?single_sign_on=def9f8bf&amp;mode=dark&amp;theme=F13650BD0AC1&amp;agentlayer=pf" title="Login" style="display:flex;align-items:center">
  <svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:currentColor;stroke-width:1.2;fill:none"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
  </a>
 
@@ -510,7 +507,7 @@ main.lx-ours { overflow-x: clip; overflow-y: visible; }
 <section id="about" class="band">
   <div class="section-head">
     <p class="eyebrow">What is LARRYD?</p>
-    <h2>LARRYD Developer. LARRYD Server. LARRYD Observe.</h2>
+    <h2>LARRYD Developer. LARRYD Observe. LARRYD Server.</h2>
     <p class="lead">LARRYD is a daemon that looks after AI agents. You build on a mini version of it, LARRYD Developer, on your own computer. Same walls. Same checks. Same runtime. When your agent is ready, it runs on the full one: LARRYD Server.</p>
   </div>
   <div class="cards cards-three">
@@ -542,13 +539,13 @@ main.lx-ours { overflow-x: clip; overflow-y: visible; }
     <div class="terminal-bar"><span></span><span></span><span></span></div>
     <ul class="commands">
       <li><span class="how">pipx</span><code>pipx install larryd</code><button class="copy" type="button" data-copy="pipx install larryd">Copy</button><p class="explain">The safest Python way: LARRYD gets its own space. No pipx yet? <code>brew install pipx</code>, or <code>sudo apt install pipx</code>.</p></li>
-      <li><span class="how">uv</span><code>uv tool install larryd</code><button class="copy" type="button" data-copy="uv tool install larryd">Copy</button><p class="explain">Brings its own Python, so it works on any Mac or Linux computer. No uv yet? <code>brew install uv</code>.</p></li>
+      <li><span class="how">uv</span><code>uv tool install --python 3.12 larryd</code><button class="copy" type="button" data-copy="uv tool install --python 3.12 larryd">Copy</button><p class="explain">Brings its own Python, so it works on any Mac or Linux computer. No uv yet? <code>brew install uv</code>.</p></li>
       <li><span class="how">npm</span><code>npm install -g larryd</code><button class="copy" type="button" data-copy="npm install -g larryd">Copy</button><p class="explain">If you've installed Node.js, use this one.</p></li>
       <li><span class="how">cargo</span><code>cargo install larryd</code><button class="copy" type="button" data-copy="cargo install larryd">Copy</button><p class="explain">If you've installed Rust, use this one.</p></li>
       <li class="start"><span class="how">start</span><code>larryd</code><button class="copy" type="button" data-copy="larryd">Copy</button><p class="explain">Starts LARRYD's daemon in this terminal, on 127.0.0.1. Ctrl-C stops it. No sudo.</p></li>
     </ul>
   </div>
-  <p class="note"><code>larryd key</code> keeps your developer key. <code>larryd status</code> shows where your agents stand. <code>larryd mcp</code> is the Claude Code connector. Type <code>larryd help</code> any time to see everything it can do. In Claude Code, just say "Install LARRYD for me".</p>
+  <p class="note"><code>larryd mcp</code> is the Claude Code connector. Type <code>larryd help</code> any time to see everything it can do. In Claude Code, just say "Install LARRYD for me".</p>
 </section>
 
 <section id="prompt" class="band">
@@ -592,7 +589,7 @@ Phase 0: Look around
 Phase 1: Install
   Use the first line that fits what you found:
     pipx install larryd        (needs Python 3.11 or newer)
-    uv tool install larryd     (brings its own Python)
+    uv tool install --python 3.12 larryd     (brings its own Python)
     npm install -g larryd      (needs Node and Python 3.11 or newer)
     cargo install larryd       (needs Rust and Python 3.11 or newer)
   Then run: larryd --version
@@ -607,14 +604,13 @@ Phase 2: Start the daemon
   tell me.
 
 Phase 3: Learn the tool
-  Read the output of: larryd help, larryd status, larryd key
+  Read the output of: larryd help
   Connect LARRYD to Claude Code:
     claude mcp add larryd -- larryd mcp
   Tell me if this session needs a restart to see the LARRYD tools.
 
 Phase 4: Brief me, in plain words
   - the one command to start LARRYD again tomorrow
-  - the one command to see where my agents stand
   - how to ask you for a new agent
   Then say &quot;ready&quot; and wait.
 
@@ -638,6 +634,19 @@ RULES
 
 Start with Phase 0.</pre>
   </div>
+</section>
+
+<section id="share" class="band">
+  <div class="section-head">
+    <p class="eyebrow">Three steps</p>
+    <h2>Install. Build. Submit.</h2>
+    <p class="lead">Nothing to carry: no account to make, no key to keep, no secret to paste.</p>
+  </div>
+  <ol class="spec">
+    <li class="spec-row"><span class="step-n">1</span><div><h3>Install</h3><p>One line from above, or paste the prompt into Claude Code and it installs LARRYD for you.</p></div></li>
+    <li class="spec-row"><span class="step-n">2</span><div><h3>Build and test</h3><p>In Claude Code, say "Make me a LARRYD agent that…". <code>larryd new</code>, <code>larryd doctor</code> and <code>larryd run</code> work on your own computer, no account needed.</p></div></li>
+    <li class="spec-row"><span class="step-n">3</span><div><h3>Submit</h3><p>Type <code>larryd submit</code>. Your browser opens; sign in with Google or Apple, and your agent goes to review. That sign-in is the only gate.</p></div></li>
+  </ol>
 </section>
 
 <section id="what" class="band">
@@ -1004,7 +1013,7 @@ document.querySelectorAll('.copy-pre').forEach(function (b) {
  <div class="title" style="margin-bottom:4px">POSITIVE FEEDBACK<span class="pfft-tm">™</span></div>
 
 
-<div class="annotation" style="color:var(--active-color-01);font-size:var(--font-subtitle-sz);margin-bottom:48px"><a href="https://positivefeedback.ai/en/app?site=335614bc&amp;mode=dark&amp;theme=24D48DF57CAD&amp;agentlayer=pf" class="nav">ORGANIZE.</a> <a href="https://positivefeedback.ai/en/app?site=621351ba&amp;mode=dark&amp;theme=A5F4A6195233&amp;agentlayer=pf" class="nav">MANAGE.</a> <a href="https://positivefeedback.ai/en/app?site=622a5e4f&amp;mode=dark&amp;theme=888A596DADD1&amp;agentlayer=pf" class="nav">CREATE.</a> <a href="https://positivefeedback.ai/en/app?site=def9f8bf&amp;mode=dark&amp;theme=F13650BD0AC1&amp;agentlayer=pf" class="nav">OBSERVE.</a> </div>
+<div class="annotation" style="color:var(--active-color-01);font-size:var(--font-subtitle-sz);margin-bottom:48px"><a href="https://invoicemaps.ai" class="nav">ORGANIZE.</a> <a href="https://agencymgmt.ai" class="nav">MANAGE.</a> <a href="https://paceshift.ai" class="nav">CREATE.</a> <a href="https://larryd.ai" class="nav">OBSERVE.</a> </div>
 <div class="heading" style="margin-bottom:4px">PERFECTLY<br>CONNECTED</div>
  
  

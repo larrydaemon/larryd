@@ -7,7 +7,7 @@ REPO = pathlib.Path(__file__).resolve().parent.parent
 SITE = REPO / 'website'
 PAGE = (SITE / 'index.html').read_text()
 
-LINES = ['pipx install larryd', 'uv tool install larryd', 'npm install -g larryd', 'cargo install larryd', 'larryd']
+LINES = ['pipx install larryd', 'uv tool install --python 3.12 larryd', 'npm install -g larryd', 'cargo install larryd', 'larryd']
 
 
 def test_the_install_lines_in_the_owners_order():
