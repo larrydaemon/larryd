@@ -138,6 +138,19 @@ def _marketplace_pages(app, h, instance, token):
     who = (preview.ACCOUNT, preview.SCOPE, preview.MEMBER)
     first = instance / 'preview' / 'first_visit.json'
 
+    def mine():
+        """The developer's own browser or CLI on this computer, and nothing else: the loopback host name (a rebound name is
+        refused) and no cross-site origin (a form or a fetch from another site is refused). -> '' or why not."""
+        if request.host.split(':')[0] not in ('127.0.0.1', 'localhost'):
+            return "not this computer's address"
+        origin = request.headers.get('Origin')
+        if origin and origin.rstrip('/') != request.host_url.rstrip('/'):
+            return 'not from this page'
+        return ''
+
+    def refused(why):
+        return jsonify({'refused': why}), 403
+
     def collection():
         if not first.exists():
             first.parent.mkdir(parents=True, exist_ok=True)
@@ -149,6 +162,8 @@ def _marketplace_pages(app, h, instance, token):
 
     @app.get('/marketplace')
     def marketplace():
+        if mine():
+            return refused(mine())
         try:
             answer, not_shown = collection()
         except lanes_harness.Refused as why:
@@ -158,6 +173,8 @@ def _marketplace_pages(app, h, instance, token):
 
     @app.get('/marketplace.json')
     def marketplace_json():
+        if mine():
+            return refused(mine())
         try:
             answer, not_shown = collection()
         except lanes_harness.Refused as why:
@@ -166,6 +183,8 @@ def _marketplace_pages(app, h, instance, token):
 
     @app.post('/marketplace/hire')
     def marketplace_hire():
+        if mine():
+            return refused(mine())
         form = request.form
         if form.get('token') != token:
             return redirect('/marketplace?no=' + quote('the page was stale; it is fresh now, toggle again'))
@@ -180,6 +199,10 @@ def _marketplace_pages(app, h, instance, token):
     def marketplace_place():
         """`larryd place`: the agent's one file (agent/ as a zip) into this runtime's locker, the way the server places an
         approved one; the same agent placed again replaces itself."""
+        if mine():
+            return refused(mine())
+        if request.headers.get('X-Larryd-Place') != '1' or not (request.content_type or '').startswith('application/octet-stream'):
+            return refused('not larryd place')   # a browser cannot send this header without a preflight nobody answers
         key, conf = str(request.args.get('key') or ''), CONFIG['intake']
         try:
             files = intake.check(intake.from_zip(request.get_data(), conf['most_files'], conf['most_bytes']), conf['most_files'], conf['most_bytes'])

@@ -57,7 +57,7 @@ class DeveloperMarketplace(unittest.TestCase):
         return re.search(r'name="token" value="([0-9a-f]+)"', html).group(1)
 
     def place(self, key, files):
-        return self.client.post(f'/marketplace/place?key={key}', data=_zip(files), content_type='application/octet-stream')
+        return self.client.post(f'/marketplace/place?key={key}', data=_zip(files), content_type='application/octet-stream', headers={'X-Larryd-Place': '1'})
 
     def toggle(self, html, key, on):
         r = self.client.post('/marketplace/hire', data={'token': self.token(html), 'key': key, 'value': 'on' if on else 'off'})
@@ -127,6 +127,16 @@ class DeveloperMarketplace(unittest.TestCase):
         where = self.toggle(html, 'DAGT_FFFFFFFFFFFF_FFFF', True)
         self.assertIn('could%20not%20be%20hired', where)
         self.assertIn('The agent could not be hired', self.client.get(where).get_data(as_text=True))
+
+    def test_only_this_computers_browser_and_larryd_place_are_answered(self):
+        self.assertEqual(self.client.get('/marketplace', headers={'Host': 'evil.example'}).status_code, 403)
+        self.assertEqual(self.client.get('/marketplace.json', headers={'Host': 'evil.example'}).status_code, 403)
+        self.assertEqual(self.client.post('/marketplace/hire', data={'token': 'x', 'key': preview.MARKETPLACE_KEY, 'value': 'off'},
+                                          headers={'Origin': 'https://evil.example'}).status_code, 403)
+        sneaky = _zip(_agent('Sneaky', GOOD_CARD))
+        self.assertEqual(self.client.post(f'/marketplace/place?key={KEY_A}', data=sneaky, content_type='text/plain').status_code, 403)
+        self.assertEqual(self.client.post(f'/marketplace/place?key={KEY_A}', data=sneaky, content_type='application/octet-stream').status_code, 403)
+        self.assertEqual(self.client.get('/marketplace.json').get_json()['total'], 1)
 
     def test_the_marketplace_let_go_can_be_hired_again_from_the_page(self):
         html = self.page()

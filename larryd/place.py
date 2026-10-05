@@ -37,7 +37,7 @@ def key_for(name):
 
 
 def _post(url, data, timeout=30):
-    req = urllib.request.Request(url, data=data, method='POST', headers={'Content-Type': 'application/octet-stream'})
+    req = urllib.request.Request(url, data=data, method='POST', headers={'Content-Type': 'application/octet-stream', 'X-Larryd-Place': '1'})
     try:
         with urllib.request.urlopen(req, timeout=timeout) as r:
             return r.status, json.load(r)
