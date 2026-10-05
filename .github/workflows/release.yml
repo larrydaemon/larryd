@@ -1,0 +1,146 @@
+name: release
+
+# One tag = one release on every registry (PyPI, npm, crates.io).
+# No tokens anywhere: each registry trusts this workflow directly (trusted publishing, OIDC).
+# Normal use: release/release.sh X.Y.Z pushes tag vX.Y.Z and this runs.
+# Re-run for an existing tag: gh workflow run release.yml -f tag=vX.Y.Z
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to (re)publish, for example v0.1.1"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  check:
+    name: versions agree and tests pass
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      tag: ${{ steps.v.outputs.tag }}
+    steps:
+      - name: the tag is a release tag (vX.Y.Z) and nothing else
+        env:
+          TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "refused: '$TAG' is not vX.Y.Z"; exit 1; }
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref_name }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - id: v
+        env:
+          TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          python release/check_versions.py "$TAG"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+      - name: python tests
+        run: |
+          python -m pip install --quiet -e ".[door]" pytest build
+          python -m pytest -q tests
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: npm launcher tests
+        run: cd npm && npm test
+      - uses: dtolnay/rust-toolchain@stable
+      - name: cargo launcher tests
+        run: cd cargo && cargo test -q
+
+  pypi:
+    name: PyPI
+    needs: check
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.check.outputs.tag }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: |
+          python -m pip install --quiet build
+          python -m build
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          skip-existing: true
+
+  npm:
+    name: npm
+    needs: check
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.check.outputs.tag }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: npm new enough for trusted publishing (11.5.1 or newer)
+        run: npm install -g npm@latest && npm --version
+      - name: publish (skips if this version is already there)
+        env:
+          V: ${{ needs.check.outputs.version }}
+        run: |
+          if npm view "larryd@$V" version >/dev/null 2>&1; then
+            echo "npm already has larryd $V"; exit 0
+          fi
+          cd npm && npm publish --access public
+
+  crates:
+    name: crates.io
+    needs: check
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.check.outputs.tag }}
+      - uses: dtolnay/rust-toolchain@stable
+      - id: auth
+        uses: rust-lang/crates-io-auth-action@v1
+      - name: publish (skips if this version is already there)
+        env:
+          V: ${{ needs.check.outputs.version }}
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
+        run: |
+          if curl -fsS -A "larryd-release" "https://crates.io/api/v1/crates/larryd/$V" >/dev/null 2>&1; then
+            echo "crates.io already has larryd $V"; exit 0
+          fi
+          cd cargo && cargo publish
+
+  verify:
+    name: every registry serves the version
+    needs: [check, pypi, npm, crates]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.check.outputs.tag }}
+      - env:
+          V: ${{ needs.check.outputs.version }}
+        run: bash release/verify.sh "$V"
