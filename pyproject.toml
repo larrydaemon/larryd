@@ -34,7 +34,7 @@ larryd_runtime = "server/hanzo/app"
 
 [tool.setuptools.package-data]
 larryd = ["kit/*", "kit/**/*", "skills.json", "submit_door.json"]
-larryd_runtime = ["schemas/*.json", "agents/marketplace/agent.json", "agents/marketplace/agent.py"]
+larryd_runtime = ["schemas/*.json", "agents/marketplace/agent.json", "agents/marketplace/agent.py", "web/*.html"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]   # the tool's tests; the runtime (server/) runs its own suite with its own venv

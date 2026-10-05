@@ -29,6 +29,8 @@ One command, `larryd` (`larryd help` lists them, `larryd --version` says which; 
 - `larryd doctor`: the pretest before submission; every problem says what is wrong and what to do
 - `larryd run`: runs the agent here the way LARRYD runs it, with the sample job
 - `larryd submit`: sends the agent to LARRYD for review: the doctor, one file, then the browser opens the page where you
+- `larryd place`: puts the agent on your own LARRYD's shelf (the runtime on this computer)
+- `larryd card`: places it and opens the marketplace page: every agent here as a card with its hire toggle, as the platform shows it
   sign in with Google or Apple to submit it (nothing to paste or keep)
 - `larryd skills`, `larryd pack <folder>`: the skills an agent may declare; a knowledge pack's hash
 - `larryd mcp`: serves the tools to Claude Code

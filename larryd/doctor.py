@@ -349,6 +349,40 @@ def _knowledge(root, card, f):
                   'take it out: LARRYD holds no knowledge pack yet' if not held else 'declare only packs LARRYD holds, by their hash')
 
 
+def _card(root, card, f):
+    """The card facts, checked with the marketplace's own rules: a card the gate cannot show is no agent for hire."""
+    if 'card' not in card:
+        return   # the manifest check already said it is missing
+    where, c, facts = _rel(root, root / shape.AGENT / shape.MANIFEST), 'the card', card.get('card')
+    if not isinstance(facts, dict):
+        f.add(c, where, '"card" is not an object', 'set "card" to {' + ', '.join(f'"{k}": ...' for k in shape.CARD) + '}; `larryd new` shows the shape')
+        return
+    for k in shape.CARD:
+        if k not in facts:
+            f.add(c, where, f'card "{k}" is missing', f'add card "{k}": {shape.CARD[k]}')
+    for k in facts:
+        if k not in shape.CARD:
+            f.add(c, where, f'"{k}" is not a card field', f'remove "{k}"; the card\'s fields are: {", ".join(shape.CARD)}')
+
+    def text(k):
+        return isinstance(facts.get(k), str)
+
+    for k in ('class', 'pitch', 'type', 'residency', 'product', 'module', 'developer'):
+        if k in facts and not (text(k) and facts[k].strip()):
+            f.add(c, where, f'card "{k}" is empty or not text', f'set card "{k}" to {shape.CARD[k]}')
+    if text('pitch') and len(facts['pitch']) > shape.MOST_PITCH:
+        f.add(c, where, f'card "pitch" is longer than {shape.MOST_PITCH} characters', 'say it in one line; the card has room for one')
+    if 'price' in facts and not (text('price') and re.fullmatch(r'\d+', facts['price'])):
+        f.add(c, where, 'the price is not a whole mTok rate', 'write card "price" as whole mTok per run, as text: "0" (free) or "5"')
+    if 'screen' in facts and not (text('screen') and re.fullmatch(shape.SCREEN, facts['screen'])):
+        f.add(c, where, 'the card names no screen', 'set card "screen" to the screen it lives on, <species>/<page>, e.g. cont/card')
+    for k in ('sends_to', 'data_sent'):
+        if k in facts and not text(k):
+            f.add(c, where, f'card "{k}" is not text', f'set card "{k}" to {shape.CARD[k]}')
+    if text('sends_to') and facts['sends_to'].strip() and not (text('data_sent') and facts['data_sent'].strip()):
+        f.add(c, where, 'card "sends_to" names an outside service, but "data_sent" says nothing', 'say in card "data_sent" what is sent there, in plain words')
+
+
 def check(root):
     """-> [Problem]: every problem found in the agent project at `root` (empty = the agent passes)."""
     root = pathlib.Path(root).resolve()
@@ -359,6 +393,8 @@ def check(root):
               'run the doctor in the agent project\'s folder (the one `larryd new` made), or make one with `larryd new <name>`')
         return f.problems
     card = _manifest(root, f)
+    if card is not None:
+        _card(root, card, f)
     trees = {}
     for path in _files(agent):
         if path.suffix == '.py' and path.is_file() and not path.is_symlink():

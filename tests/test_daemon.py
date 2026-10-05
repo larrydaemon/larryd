@@ -54,7 +54,9 @@ def test_the_daemon(tmp_path):
                 time.sleep(0.25)
         assert (status, body) == (401, {'refused': 'not a signed call'})
         secret = (instance / 'secrets' / 'hanzo_link').read_text().strip()
-        assert get(port, secret) == (200, {'office': 'hanzo', 'locker': 0, 'runs': 0})
+        assert get(port, secret) == (200, {'office': 'hanzo', 'locker': 1, 'runs': 0})   # the marketplace, held as a server holds it
+        with urllib.request.urlopen(f'http://127.0.0.1:{port}/marketplace', timeout=20) as page:   # the developer's own shelf, unsigned
+            assert page.status == 200 and 'THE AGENT MARKETPLACE' in page.read().decode('utf-8')
         assert stat.S_IMODE(os.stat(instance).st_mode) == 0o700 and stat.S_IMODE(os.stat(instance / 'secrets' / 'hanzo_link').st_mode) == 0o600
         assert json.loads((instance / 'platform.json').read_text()) == {}
         assert (instance / 'agents' / 'marketplace' / 'agent.py').is_file()

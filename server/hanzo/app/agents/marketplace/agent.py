@@ -33,6 +33,7 @@ def collection(cards):
     out = [{'key': c['key'], 'number': _number(c.get('number')), 'class': c.get('class') or '', 'name': c['name'], 'initials': _initials(c['name']),
             'image_dam_key': c.get('image_dam_key') or '', 'product': c['product'], 'module': c['module'], 'pitch': c.get('pitch') or '',
             'developer': c.get('developer') or '', 'type': c.get('type') or '', 'residency': c.get('residency') or '',
+            'screen': c.get('screen') or '', 'sends_to': c.get('sends_to') or '', 'data_sent': c.get('data_sent') or '',
             'rate': _rate(c.get('price')), 'hired': bool(c.get('hired')), 'hireable': bool(c.get('hireable')), 'needs': c.get('needs') or ''}
            for c in cards]
     return {'cards': out, 'total': len(out), 'hired': sum(1 for c in out if c['hired']),

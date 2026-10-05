@@ -89,7 +89,7 @@ def test_nothing_to_paste_or_keep(project, tmp_path, monkeypatch):
         with pytest.raises(SystemExit):
             cli.main(gone)
     assert not (tmp_path / 'home').exists()
-    assert set(mcp.TOOLS) == {'larryd_new', 'larryd_doctor', 'larryd_run', 'larryd_submit', 'larryd_skills', 'larryd_pack'}
+    assert set(mcp.TOOLS) == {'larryd_new', 'larryd_doctor', 'larryd_run', 'larryd_submit', 'larryd_skills', 'larryd_pack', 'larryd_card'}
 
 
 def test_version(capsys):

@@ -27,6 +27,23 @@ FIELDS = {
     'knowledge': 'the list of knowledge pack hashes the agent needs (empty when none; `larryd pack` gives a pack its hash)',
     'inputs': 'only with "job" in run.hands: the job\'s inputs by name, each on one of the job\'s slots 001-015, e.g. {"mood": "001"}',
 }
+FIELDS['card'] = ('the card the marketplace shows, as the member sees it: {class, pitch, price, type, residency, screen, product, '
+                  'module, developer, sends_to, data_sent}; the number and the art are LARRYD\'s to give at approval')
+CARD = {
+    'class': 'the class on the card, e.g. "MARK I AGENT (NORMAL)"',
+    'pitch': 'one line on the card: what the member gets',
+    'price': 'whole mTok per run, as text: "0" is free',
+    'type': 'e.g. OFF-THE-SHELF or CUSTOM',
+    'residency': 'INTERNAL (it runs on LARRYD) or EXTERNAL',
+    'screen': 'the screen it lives on, <species>/<page>, e.g. cont/card (contact cards) or agnt/home (the agents page)',
+    'product': 'the product that screen belongs to, e.g. Invoice Maps, Agency Mgmt, Pace Shift, LARRYD',
+    'module': 'the module that screen is in, e.g. CONTACTS',
+    'developer': 'who made it, as the card credits it: your name or company',
+    'sends_to': 'the outside AI service it sends a member\'s data to, by name; "" when it sends nothing out',
+    'data_sent': 'what it sends there, in plain words; "" when nothing',
+}
+SCREEN = r'[a-z][a-z0-9]{1,15}/[a-z][a-z0-9]{1,15}'   # <species>/<page>
+MOST_PITCH = 140                                      # characters on the card
 OPTIONAL = ('inputs',)
 PACK = 'pack.json'   # a knowledge pack: a folder of plain text files with pack.json {"name", "about"}
 PACK_FIELDS = ('name', 'about')

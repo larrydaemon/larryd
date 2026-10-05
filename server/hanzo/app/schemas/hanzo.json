@@ -5,12 +5,12 @@
   "ports": {"rnd": 5010, "pf": 5010},
   "host": "127.0.0.1",
   "platform": {
-    "about": "where HANZO calls the platform, per side (the platform's global_config offices)",
-    "wid": {"rnd": "http://127.0.0.1:5004"},
-    "cc": {"rnd": "http://127.0.0.1:5007"},
-    "fs": {"rnd": "http://127.0.0.1:5008"},
-    "lryllm": {"rnd": "http://127.0.0.1:5009"},
-    "so": {"rnd": "http://127.0.0.1:5006"}
+    "about": "where HANZO calls the platform, per side (the platform's global_config offices: rnd = the stage, pf = live)",
+    "wid": {"rnd": "http://127.0.0.1:5004", "pf": "http://127.0.0.1:5005"},
+    "cc": {"rnd": "http://127.0.0.1:5007", "pf": "http://127.0.0.1:5007"},
+    "fs": {"rnd": "http://127.0.0.1:5008", "pf": "http://127.0.0.1:5008"},
+    "lryllm": {"rnd": "http://127.0.0.1:5009", "pf": "http://127.0.0.1:5009"},
+    "so": {"rnd": "http://127.0.0.1:5006", "pf": "http://127.0.0.1:5006"}
   },
   "callers": {
     "about": "the offices that may call HANZO's /api (X-Office), each checked with the secret",

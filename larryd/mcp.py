@@ -4,7 +4,7 @@ nothing itself; each tool is the same code as the command of the same name."""
 import json
 import sys
 
-from . import __version__, doctor, knowledge, new, runner, skills, submit
+from . import __version__, doctor, knowledge, new, place, runner, skills, submit
 
 VERSIONS = ('2025-11-25', '2025-06-18', '2025-03-26', '2024-11-05')   # the protocol versions this server speaks, newest first
 
@@ -64,6 +64,19 @@ TOOLS = {
                     {'type': 'object', 'properties': {'folder': {'type': 'string', 'description': 'the pack\'s folder'}},
                      'required': ['folder'], 'additionalProperties': False}),
 }
+
+
+def _card(args):
+    try:
+        return place.card(args.get('path') or '.', open_browser=False), False
+    except place.Refused as no:
+        return no.as_json(), True
+
+
+TOOLS['larryd_card'] = (_card, 'Place the agent on your own LARRYD (the runtime on this computer, started with `larryd`) and give the '
+                               'marketplace page\'s address: every agent held here as a card with its hire toggle, as the platform will '
+                               'show it; a card the gate cannot show is listed with why.',
+                        {'type': 'object', 'properties': {'path': PATH}, 'additionalProperties': False})
 
 
 def _tools():

@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LARRYD · the marketplace</title>
+<style>
+/* THE DEVELOPER'S SHELF: the platform's card structure (its cards.html), in LARRYD's own ink on this computer. */
+:root { --ink: #e8f5ea; --dim: #8fa392; --ground: #0a0d0a; --panel: #111611; --line: #263126; --hot: #4dff6b; --hot-ink: #06120a; --warn: #ffb84d; }
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--ground); color: var(--ink); font: 14px/1.45 "DejaVu Sans Mono", ui-monospace, Menlo, monospace; }
+a { color: var(--hot); }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 28px 16px 60px; }
+.mk-controller { display: flex; flex-direction: column; gap: 6px; margin: 0 0 22px; }
+.subtitle { font-size: 22px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+.caption { color: var(--dim); font-size: 12px; letter-spacing: .04em; text-transform: uppercase; }
+.annotation { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--dim); }
+.mk-verdict { color: var(--warn); }
+.mk-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 18px; }
+.mk-card { position: relative; display: flex; flex-direction: column; gap: 10px; padding: 14px 14px 16px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; }
+.mk-card[data-on="1"] { border-color: var(--hot); box-shadow: 0 0 0 1px var(--hot) inset, 0 0 26px -8px var(--hot); }
+.mk-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.mk-id { display: flex; flex-direction: column; gap: 2px; }
+.mk-hire { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.mk-form { margin: 0; }
+.toggle { position: relative; display: block; flex: none; width: 42px; height: 22px; padding: 0; border: 1px solid var(--dim); border-radius: 22px; background: transparent; cursor: pointer; }
+.toggle__knob { position: absolute; left: 1px; top: 1px; width: 16px; height: 16px; border: 1px solid var(--dim); border-radius: 50%; background: var(--panel); transition: left .15s; }
+.toggle[aria-pressed="true"] { border-color: var(--hot); background: var(--hot); }
+.toggle[aria-pressed="true"] .toggle__knob { left: 21px; border-color: var(--hot-ink); background: var(--hot-ink); }
+.mk-name { font-size: 20px; font-weight: 700; line-height: 1.15; }
+.mk-frame { aspect-ratio: 1 / 1; display: flex; align-items: center; justify-content: center; border: 1px solid var(--line); border-radius: 10px; background: radial-gradient(circle at 50% 35%, #1b241b, #0b0f0b 70%); }
+.mk-initials { font-size: 64px; font-weight: 700; letter-spacing: .04em; color: var(--hot); }
+.mk-flavour { color: var(--ink); text-transform: none; letter-spacing: 0; font-size: 13px; min-height: 2.6em; }
+.mk-foot { display: flex; justify-content: space-between; align-items: baseline; margin-top: auto; padding-top: 8px; border-top: 1px solid var(--line); }
+.mk-price { font-size: 15px; font-weight: 700; }
+.mk-needs, .mk-sends { color: var(--warn); text-transform: none; letter-spacing: 0; font-size: 12px; }
+.mk-home { text-transform: none; letter-spacing: 0; }
+.shelf-note { margin-top: 26px; color: var(--dim); font-size: 12px; }
+.hidden-list { margin: 22px 0 0; padding: 14px; border: 1px dashed var(--line); border-radius: 10px; }
+.hidden-list ul { margin: 8px 0 0; padding-left: 18px; }
+.hidden-list li { margin: 4px 0; }
+.refused { padding: 16px; border: 1px solid var(--warn); border-radius: 10px; color: var(--warn); display: flex; flex-direction: column; gap: 12px; }
+.button { display: inline-block; padding: 8px 14px; border: 1px solid var(--hot); border-radius: 8px; background: transparent; color: var(--hot); font: inherit; cursor: pointer; }
+</style>
+</head>
+<body>
+<div class="wrap">
+{% if refused %}
+<div class="refused">
+ <div>The marketplace cannot answer: {{ refused }}</div>
+ <form method="post" action="/marketplace/hire" class="mk-form"><input type="hidden" name="token" value="{{ token }}"><input type="hidden" name="key" value="{{ marketplace_key }}"><input type="hidden" name="value" value="on"><button class="button">Hire the marketplace again</button></form>
+</div>
+{% else %}
+<section class="mk-panel" data-answer="{{ A.agent_key }}">
+ <div class="mk-controller">
+  <div class="subtitle">{{ A.title }}</div>
+  <div class="caption">{{ A.total }} total in network · {{ A.hired }} hired</div>
+  <div class="caption">Hire an agent with the hire toggle on its card. Once hired, it is ready to switch on in your settings.</div>
+  {% if no %}<div class="caption mk-verdict">{{ no }}</div>{% endif %}
+ </div>
+ <div class="mk-grid">{% for c in A.cards %}
+  <article class="mk-card" data-agent="{{ c.key }}" data-on="{{ '1' if c.hired else '0' }}">
+   <div class="mk-head">
+    <div class="mk-id">{% if c.number is not none %}<span class="caption">No. {{ '%03d' % c.number }}</span>{% endif %}<span class="annotation">{{ c['class'] }}</span></div>
+    <div class="mk-hire">{% if c.hireable or c.hired %}<form method="post" action="/marketplace/hire" class="mk-form"><input type="hidden" name="token" value="{{ token }}"><input type="hidden" name="key" value="{{ c.key }}"><input type="hidden" name="value" value="{{ 'off' if c.hired else 'on' }}"><button class="toggle" aria-pressed="{{ 'true' if c.hired else 'false' }}" title="Hire"><span class="toggle__knob"></span></button></form>{% endif %}<span class="annotation">Hire</span></div>
+   </div>
+   <div class="mk-name">{{ c.name }}</div>
+   <div class="mk-frame"><span class="mk-initials">{{ c.initials }}</span></div>
+   <div class="annotation mk-info">{{ c.product }} · {{ c.module }}</div>
+   <div class="caption mk-flavour">{{ c.pitch }}</div>
+   <div class="caption mk-credit">Developer · {{ c.developer }}</div>
+   <div class="mk-foot"><span class="annotation">▸ {{ c.type }} ▸ {{ c.residency }}</span><span class="mk-price">{% if c.rate %}{{ c.rate }} mTok{% else %}Free{% endif %}</span></div>
+   {% if c.needs %}<div class="caption mk-needs">Needs the {{ c.needs }} subscription</div>{% endif %}
+   {% if c.sends_to %}<div class="caption mk-sends">Sends data to {{ c.sends_to }}{% if c.data_sent %}: {{ c.data_sent }}{% endif %}</div>{% endif %}
+   {% if c.screen %}<div class="annotation mk-home">lives on {{ c.screen }}</div>{% endif %}
+  </article>{% endfor %}
+ </div>
+ {% if hidden %}
+ <div class="hidden-list">
+  <div class="caption">Not on the shelf</div>
+  <ul>{% for name, why in hidden %}<li>{{ name }}: {{ why }}</li>{% endfor %}</ul>
+ </div>
+ {% endif %}
+ <p class="shelf-note">This is your own LARRYD's marketplace, on this computer: every agent it holds, as a card with its hire toggle. The platform shows the same cards in its own look and in the member's language; the number and the art are given at approval.</p>
+</section>
+{% endif %}
+</div>
+</body>
+</html>

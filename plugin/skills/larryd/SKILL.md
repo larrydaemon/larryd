@@ -13,9 +13,11 @@ The project's CLAUDE.md holds the spec and the rules; read it first.
 2. `larryd doctor`: checks the agent before submission; every problem says what is wrong and what to do (--json for the result as JSON)
 3. `larryd run`: runs the agent here the way LARRYD runs it (no network, no new process, a scratch run folder, a time limit), with samples/job.json or --job <file>; on a Mac or Linux
 4. `larryd submit`: sends the agent (agent/ only, one file) to LARRYD for review, after the doctor, and opens the page where you sign in with Google or Apple to submit it; nothing to paste or keep
-5. `larryd skills`: lists the skills an agent may declare in "skills", by hash
-6. `larryd pack <folder>`: checks a knowledge pack and gives its hash
-7. `larryd mcp`: serves these tools to Claude Code (larryd_new, larryd_doctor, larryd_run, larryd_submit, larryd_skills, larryd_pack); this project's .mcp.json starts it
+5. `larryd place`: puts the agent on your own LARRYD's shelf: the doctor, then agent/ as one file into the locker of the runtime running on this computer (`larryd` in another terminal); the same agent placed again replaces itself
+6. `larryd card`: places the agent and opens the marketplace page on this computer: every agent LARRYD holds here as a card with its hire toggle, as the platform will show it; a card the gate cannot show is listed with why
+7. `larryd skills`: lists the skills an agent may declare in "skills", by hash
+8. `larryd pack <folder>`: checks a knowledge pack and gives its hash
+9. `larryd mcp`: serves these tools to Claude Code (larryd_new, larryd_doctor, larryd_run, larryd_submit, larryd_skills, larryd_pack, larryd_card); this project's .mcp.json starts it
 
 ## When something is wrong
 Every message from a LARRYD tool says what is wrong and what to do. Do what it says, then run the tool again.

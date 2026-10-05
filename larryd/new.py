@@ -16,10 +16,14 @@ TOOLS = (
                    'with samples/job.json or --job <file>; on a Mac or Linux'),
     ('larryd submit', 'sends the agent (agent/ only, one file) to LARRYD for review, after the doctor, and opens the page where you sign in '
                       'with Google or Apple to submit it; nothing to paste or keep'),
+    ('larryd place', 'puts the agent on your own LARRYD\'s shelf: the doctor, then agent/ as one file into the locker of the runtime '
+                     'running on this computer (`larryd` in another terminal); the same agent placed again replaces itself'),
+    ('larryd card', 'places the agent and opens the marketplace page on this computer: every agent LARRYD holds here as a card with its '
+                    'hire toggle, as the platform will show it; a card the gate cannot show is listed with why'),
     ('larryd skills', 'lists the skills an agent may declare in "skills", by hash'),
     ('larryd pack <folder>', 'checks a knowledge pack and gives its hash'),
     ('larryd mcp', 'serves these tools to Claude Code (larryd_new, larryd_doctor, larryd_run, larryd_submit, larryd_skills, '
-                   'larryd_pack); this project\'s .mcp.json starts it'),
+                   'larryd_pack, larryd_card); this project\'s .mcp.json starts it'),
 )
 MCP = {'mcpServers': {'larryd': {'command': 'larryd', 'args': ['mcp']}}}
 
@@ -45,6 +49,9 @@ def manifest(name):
         'gives': ['delivery'],
         'skills': [],
         'knowledge': [],
+        'card': {'class': 'MARK I AGENT (NORMAL)', 'pitch': f'What {name} does for the member, in one line.', 'price': '0',
+                 'type': 'OFF-THE-SHELF', 'residency': 'INTERNAL', 'screen': 'agnt/home', 'product': 'LARRYD', 'module': 'AGENT',
+                 'developer': 'Independent developer', 'sends_to': '', 'data_sent': ''},
     }
 
 

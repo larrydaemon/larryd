@@ -31,7 +31,8 @@ class CollectionTest(unittest.TestCase):
         self.assertEqual(out['cards'], [{
             'key': 'MAGT_AAAAAAAAAAAA_0001', 'number': 1, 'class': 'MARK I AGENT (NORMAL)', 'name': 'The Agent Marketplace',
             'initials': 'TA', 'image_dam_key': '', 'product': 'LARRYD', 'module': 'AGENT', 'pitch': 'Every agent, one toggle.',
-            'developer': 'Positive Feedback', 'type': 'OFF-THE-SHELF', 'residency': 'INTERNAL', 'rate': 0,
+            'developer': 'Positive Feedback', 'type': 'OFF-THE-SHELF', 'residency': 'INTERNAL',
+            'screen': 'larryd/agnt/home', 'sends_to': '', 'data_sent': '', 'rate': 0,
             'hired': False, 'hireable': True, 'needs': ''}])
 
     def test_counts_and_order_come_from_the_cards(self):

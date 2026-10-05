@@ -5,7 +5,7 @@ import json
 import pathlib
 import sys
 
-from . import __version__, doctor, knowledge, mcp, new, runner, skills, submit
+from . import __version__, doctor, knowledge, mcp, new, place, runner, skills, submit
 
 
 def parser():
@@ -26,6 +26,13 @@ def parser():
     s.add_argument('path', nargs='?', default='.', help='the agent project (default: here)')
     s.add_argument('--json', action='store_true', help='the result as JSON')
     s.add_argument('--no-browser', action='store_true', help='print the claim page instead of opening it')
+    pl = sub.add_parser('place', help='put the agent on your own LARRYD\'s shelf (the runtime on this computer): the doctor, one file, held in its locker')
+    pl.add_argument('path', nargs='?', default='.', help='the agent project (default: here)')
+    pl.add_argument('--json', action='store_true', help='the result as JSON')
+    c = sub.add_parser('card', help='place the agent and open the marketplace page: every agent on this computer as a card with its hire toggle')
+    c.add_argument('path', nargs='?', default='.', help='the agent project (default: here)')
+    c.add_argument('--json', action='store_true', help='the result as JSON')
+    c.add_argument('--no-browser', action='store_true', help='print the page\'s address instead of opening it')
     sub.add_parser('mcp', help='serve the tools to Claude Code (a local tool server on stdin/stdout)')
     sub.add_parser('help', help='these commands; `larryd` alone starts the daemon (LARRYD\'s runtime on 127.0.0.1)')
     sub.add_parser('skills', help='list the skills an agent may declare, by hash')
@@ -79,10 +86,25 @@ def main(argv=None):
             out = no.as_json()
         print(json.dumps(out, indent=2) if args.json else _said(out))
         return 0 if out['ok'] else 1
+    if args.command in ('place', 'card'):
+        try:
+            out = place.place(args.path) if args.command == 'place' else place.card(args.path, open_browser=not args.no_browser)
+        except place.Refused as no:
+            out = no.as_json()
+        print(json.dumps(out, indent=2) if args.json else _placed(args.command, out))
+        return 0 if out['ok'] else 1
     if args.command == 'mcp':
         mcp.serve()
         return 0
     return 2
+
+
+def _placed(command, out):
+    if not out['ok']:
+        lines = [f'larryd {command}: {out["wrong"]}. What to do: {out["todo"]}']
+        return '\n'.join(lines + [doctor.Problem(**p).text() for p in out.get('problems', [])])
+    where = ' (opened in your browser)' if out.get('opened') else ''
+    return f'larryd {command}: held {out["held"].get("name", "the agent")} as {out["agent_key"]}. The marketplace: {out["marketplace"]}{where}'
 
 
 def _said(out):

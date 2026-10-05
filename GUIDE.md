@@ -139,3 +139,20 @@ The loop for the AI: change the agent → larryd_doctor → larryd_run → fix �
 - The job's inputs on the live platform: LARRYD hands `job` today, but the platform's side (the route that gives
   LARRYD a RUN's inputs) is not on the live platform yet; until it is, a RUN of an agent that hands `job` fails with
   LARRYD's plain reason. `larryd run` works with them now.
+
+## The card and the shelf
+
+Every agent for hire is a card on the marketplace: its number and class, the hire toggle, its name, its art, the
+product and module of the screen it lives on, its pitch, its developer, its type and residency, its price in whole
+mTok, and, when it sends a member's data to an outside AI service, where and what. The card's facts are the `card`
+field of `agent/agent.json` (the doctor checks them with the marketplace's own rules); the number and the art are
+LARRYD's to give at approval.
+
+See your card the way a member will, on your own LARRYD:
+
+    larryd                   (in another terminal: your runtime, on 127.0.0.1:5010)
+    larryd card              (places the agent in its locker and opens http://127.0.0.1:5010/marketplace)
+
+`larryd place` does the placing without opening the page. The same agent placed again replaces itself. A card the
+marketplace cannot show (no screen, a price that is not whole mTok) is listed under "Not on the shelf" with why.
+
