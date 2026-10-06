@@ -413,17 +413,15 @@ def main(argv):
 
 
 def selftest(app):
-    """The proof that an agent really runs here (the review's M5): the marketplace agent held from the lockers bucket,
-    run once in the sandbox with an empty collection, its record written where this runtime writes them."""
+    """The proof that an agent really runs here (the review's M5): the image's own marketplace agent, run once in the
+    sandbox with an empty collection, and its record written where this runtime writes them (Firestore on Cloud Run).
+    Nothing is placed in the lockers bucket for it: the bucket holds approved agents only."""
     h = app.config['harness']
-    key = h.marketplace_key()
-    row = preview.locker.held(h.db, key)
-    manifest = preview.locker.manifest(h.agents, row['folder'])
-    state, answer, reason = sandbox.run(h.agents / row['folder'], manifest['entry'], {'do': (manifest.get('calls') or ['collection'])[0], 'cards': []},
-                                        h.seconds)
-    h.records.record('selftest', key, state, reason, caller='selftest')
-    return {'agent_key': key, 'state': state, 'reason': reason, 'answer_keys': sorted(answer) if isinstance(answer, dict) else []}
-
+    folder = APP / 'agents' / 'marketplace'
+    manifest = json.loads((folder / 'agent.json').read_text())
+    state, answer, reason = sandbox.run(folder, manifest['entry'], {'do': (manifest.get('calls') or ['collection'])[0], 'cards': []}, h.seconds)
+    h.records.record('selftest', 'image:marketplace', state, reason, caller='selftest')
+    return {'state': state, 'reason': reason, 'answer_keys': sorted(answer) if isinstance(answer, dict) else []}
 
 if __name__ == '__main__':
     main(sys.argv)
