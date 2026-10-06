@@ -42,6 +42,7 @@ a { color: var(--hot); }
 .refused { padding: 16px; border: 1px solid var(--warn); border-radius: 10px; color: var(--warn); display: flex; flex-direction: column; gap: 12px; }
 .button { display: inline-block; padding: 8px 14px; border: 1px solid var(--hot); border-radius: 8px; background: transparent; color: var(--hot); font: inherit; cursor: pointer; }
 </style>
+{% if A and A.style %}<style>{{ A.style|safe }}</style>{% endif %}{# the agent's own card sheet (the owner, 2026-10-06) #}
 </head>
 <body>
 <div class="wrap">

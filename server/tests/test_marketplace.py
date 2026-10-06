@@ -54,7 +54,9 @@ class CollectionTest(unittest.TestCase):
                              'residency': ['EXTERNAL', 'INTERNAL'], 'class': ['MARK I AGENT (NORMAL)']})
 
     def test_an_empty_collection_is_empty(self):
-        self.assertEqual(run({'do': 'collection', 'cards': []}), {'cards': [], 'total': 0, 'hired': 0,
+        out = run({'do': 'collection', 'cards': []})
+        self.assertTrue(out.pop('style'))   # the card's own sheet comes with every collection
+        self.assertEqual(out, {'cards': [], 'total': 0, 'hired': 0,
                          'filters': {'product': [], 'module': [], 'type': [], 'residency': [], 'class': []}})
 
 
@@ -85,3 +87,19 @@ class Gives(unittest.TestCase):
             state, answer, reason = sandbox.run(FOLDER, 'agent.py', {'do': do, 'cards': cards})
             self.assertEqual(state, 'DONE', reason)
             self.assertLessEqual(set(answer), gives, do)
+
+
+class TheCardsOwnLook(unittest.TestCase):
+    """Owner 2026-10-06: the card's frame, type and class look (Mark I CRT, Mark II Wellness, Mark III Glitch) are the
+    agent's own sheet, never the platform's; a sheet that reaches anywhere would be refused by the platform."""
+    def test_the_collection_carries_the_agents_own_sheet_with_the_three_marks(self):
+        sheet = run({'do': 'collection', 'cards': [card()]})['style']
+        for mark in ('data-mark="1"', 'data-mark="2"', 'data-mark="3"'):
+            self.assertIn(mark, sheet)
+        self.assertIn('.mk-panel', sheet)
+
+    def test_the_sheet_reaches_nowhere(self):
+        sheet = run({'do': 'collection', 'cards': []})['style'].lower()
+        for reach in ('url(', '@import', 'expression(', 'javascript:'):
+            self.assertNotIn(reach, sheet)
+
