@@ -23,7 +23,7 @@ from werkzeug.exceptions import HTTPException
 APP = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(APP))
 
-from core_engine import callers, harness as lanes_harness, intake, platform, preview, signing, store  # noqa: E402
+from core_engine import callers, harness as lanes_harness, intake, platform, preview, sandbox, signing, slot as one_slot, store  # noqa: E402
 
 CONFIG = json.loads((APP / 'schemas' / 'hanzo.json').read_text())
 INSTANCE = pathlib.Path(os.environ['LARRYD_INSTANCE']) if os.environ.get('LARRYD_INSTANCE') else APP.parent / 'instance'   # the daemon names it
@@ -51,7 +51,8 @@ def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, deve
     client = preview.Local(db, locker_dir, instance) if local else platform.Client(addresses or {}, secret)
     h = lanes_harness.Harness(db, locker_dir, client, CONFIG['run']['seconds'])
     running, lock = set(), threading.Lock()
-    slot = threading.Lock()   # ONE RUN PER INSTANCE: taken before any agent code runs, given back in a finally
+    slot = one_slot.Slot(CONFIG['run']['seconds'] + 60)   # ONE RUN PER INSTANCE: the run's own limit plus a minute's margin
+    sandbox.sweep()   # a run's folders left by a stopped instance are removed before anything runs
     app = Flask('hanzo', template_folder=str(APP / 'web'))
     app.config['harness'] = h
     app.config['slot'] = slot
@@ -82,7 +83,7 @@ def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, deve
     def failed(error):   # nothing of an exception is ever echoed to a caller (the security review, 2026-10-06)
         if isinstance(error, HTTPException):
             return jsonify({'refused': error.name}), error.code   # a 404 or 405 stays itself, with its plain name only
-        logging.getLogger('hanzo').exception('a call failed')
+        logging.getLogger('hanzo').error('a call failed: %s on %s', type(error).__name__, request.path)   # the kind and the door only, never a run's data
         return jsonify({'refused': 'the runtime could not answer'}), 500
 
     @app.get('/api/health')
@@ -107,12 +108,13 @@ def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, deve
 
     @app.get('/api/agents/answer')
     def answer():
-        if not slot.acquire(blocking=False):   # the slot first, atomically, before any of the agent's code
+        token = slot.take()   # the slot first, atomically, before any of the agent's code
+        if not token:
             return busy()
         try:
             return answered(lambda: h.answer(*(given('agent_key')[k] for k in NEEDS + ('agent_key',))))
         finally:
-            slot.release()
+            slot.give_back(token)
 
     @app.post('/api/agents/hire')
     def hire():
@@ -132,7 +134,8 @@ def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, deve
         with lock:
             if (job_key, run) in running:
                 return False
-            if not slot.acquire(blocking=False):   # the slot is taken here, before the thread exists
+            token = slot.take()   # the slot is taken here, before the thread exists
+            if not token:
                 return None
             running.add((job_key, run))
 
@@ -142,13 +145,13 @@ def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, deve
             finally:
                 with lock:
                     running.discard((job_key, run))
-                slot.release()
+                slot.give_back(token)
         try:
             threading.Thread(target=go, daemon=True).start()
         except BaseException:
             with lock:
                 running.discard((job_key, run))
-            slot.release()
+            slot.give_back(token)
             raise
         return True
 

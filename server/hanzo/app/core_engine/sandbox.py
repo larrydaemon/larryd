@@ -141,7 +141,8 @@ def _kind(stderr, code):
 def run(folder, entry, given, seconds=20):
     """-> (state, answer, reason): ('DONE', {...}, '') or ('FAILED', None, why)."""
     agent = os.path.realpath(folder)
-    run_dir = os.path.realpath(tempfile.mkdtemp(prefix='hanzo_run_'))
+    run_dir = os.path.realpath(tempfile.mkdtemp(prefix='hanzo_run_'))   # private (0o700), this run's only place
+    out_dir = os.path.realpath(tempfile.mkdtemp(prefix='hanzo_out_'))   # its answer, outside the folder the agent can write
     try:
         try:
             if sys.platform == 'darwin' and os.path.isfile(SANDBOX_EXEC):
@@ -151,7 +152,6 @@ def run(folder, entry, given, seconds=20):
             else:
                 return 'FAILED', None, 'no sandbox on this system: nothing runs unsandboxed'
             linux = sys.platform.startswith('linux')
-            out_dir = tempfile.mkdtemp(prefix='hanzo_out_')   # outside the run folder: the agent cannot write here itself
             out_path, err_path = os.path.join(out_dir, 'out'), os.path.join(out_dir, 'err')
             with open(out_path, 'w') as out, open(err_path, 'w') as err:
                 done = subprocess.run(command, input=json.dumps(given), stdout=out, stderr=err, text=True, timeout=seconds,
@@ -159,7 +159,6 @@ def run(folder, entry, given, seconds=20):
                                       env={'PATH': '/usr/bin:/bin', 'HOME': run_dir, 'TMPDIR': run_dir, 'LC_CTYPE': 'UTF-8'})
             stdout = open(out_path).read(MOST_BYTES + 2)
             stderr = open(err_path).read(MOST_BYTES)
-            shutil.rmtree(out_dir, ignore_errors=True)
         except subprocess.TimeoutExpired:
             return 'FAILED', None, f'over the time limit ({seconds} s)'
         if len(stdout) > MOST_BYTES:
@@ -173,5 +172,12 @@ def run(folder, entry, given, seconds=20):
         if not isinstance(answer, dict):
             return 'FAILED', None, 'the answer is not one JSON object'
         return 'DONE', answer, ''
-    finally:
+    finally:   # every exit: done, failed, timed out, killed
         shutil.rmtree(run_dir, ignore_errors=True)
+        shutil.rmtree(out_dir, ignore_errors=True)
+
+
+def sweep():
+    """At an instance's start: any run's folders left by a run cut off before its own finally."""
+    for p in pathlib.Path(tempfile.gettempdir()).glob('hanzo_[ro][ua][nt]_*'):
+        shutil.rmtree(p, ignore_errors=True)
