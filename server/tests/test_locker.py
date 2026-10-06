@@ -65,7 +65,7 @@ class LockerTest(unittest.TestCase):
         locker.add(self.db, self.root, 'MAGT_TEST_0001', 'echo')
         _agent(self.tmp.name, 'outside')
         con = sqlite3.connect(self.db)
-        con.execute("UPDATE hanzo_locker SET folder = '../outside'")
+        con.execute("UPDATE runtime_locker SET folder = '../outside'")
         con.commit()
         con.close()
         self.assertEqual(locker.verify(self.db, self.root, 'MAGT_TEST_0001'), (False, 'tampered: the folder is outside the locker'))

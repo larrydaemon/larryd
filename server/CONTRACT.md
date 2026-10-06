@@ -43,5 +43,5 @@ Shown: status LIVE, a screen, a whole mTok price, held and verified. Hireable: f
 subscribed. Runs: also hired and switched on. The doctor applies the same rules to a developer's card.
 
 ## The sides
-rnd (the stage) and pf (live), per office, in `schemas/hanzo.json`. The words agent and gate are the URL's agent
+rnd (the stage) and pf (live), per office, in `schemas/runtime.json`. The words agent and gate are the URL's agent
 layer on the platform, not sides.

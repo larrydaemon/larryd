@@ -1,5 +1,5 @@
-"""THE SKILLS HANZO CARRIES OUT: an agent declares skills by hash (schemas/skills.json, the same definitions as LARRYD's);
-a skill with a hand is carried out before the RUN and handed in; a skill HANZO does not have fails the run before
+"""THE SKILLS THE RUNTIME CARRIES OUT: an agent declares skills by hash (schemas/skills.json, the same definitions as LARRYD's);
+a skill with a hand is carried out before the RUN and handed in; a skill LARRYD does not have fails the run before
 anything is asked. LARRY LLM here is a Recorder (in this process); what LARRY LLM answers is proven live only."""
 import json
 import pathlib
@@ -51,7 +51,7 @@ def _closed_port():
 
 
 class World(unittest.TestCase):
-    """A scratch HANZO: its store, a locker with one agent, the platform's facts as it would answer them."""
+    """A scratch runtime: its store, a locker with one agent, the platform's facts as it would answer them."""
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.instance = pathlib.Path(self.tmp.name) / 'instance'
@@ -74,7 +74,7 @@ class World(unittest.TestCase):
         else:
             (folder / 'agent.py').write_text('import json, sys\njob = json.load(sys.stdin)\nprint(json.dumps({"delivery": json.dumps({k: job.get(k) for k in ("greeting", "identity") if k in job} or None, sort_keys=True)}))\n')
         con = sqlite3.connect(self.db)
-        con.execute('DELETE FROM hanzo_locker')
+        con.execute('DELETE FROM runtime_locker')
         con.commit()
         con.close()
         locker.add(self.db, self.agents, KEY, 'echo')
@@ -117,22 +117,22 @@ class Skills(World):
         self.agent([IDENTITY])
         p = Platform(status=401)
         self.assertEqual(self.run_with(p), 'FAILED')
-        self.assertEqual(self.results(p)[-1]['log'], 'HANZO could not read who the agent works for: sign in first')
+        self.assertEqual(self.results(p)[-1]['log'], 'LARRYD could not read who the agent works for: sign in first')
 
     def test_a_silent_or_refusing_larry_llm_fails_the_run(self):
         self.agent([GREETING])
         p = Platform(status=401)
         self.assertEqual(self.run_with(p), 'FAILED')
-        self.assertEqual(self.results(p)[-1]['log'], "HANZO could not read the member's greeting: sign in first")
+        self.assertEqual(self.results(p)[-1]['log'], "LARRYD could not read the member's greeting: sign in first")
         silent = platform.Client({'lryllm': f'http://127.0.0.1:{_closed_port()}', 'wid': f'http://127.0.0.1:{_closed_port()}'}, 'scratch', timeout=2)
         self.assertEqual(self.run_with(silent), 'FAILED')
 
-    def test_a_skill_hanzo_does_not_have_fails_before_anything_is_asked(self):
+    def test_a_skill_runtime_does_not_have_fails_before_anything_is_asked(self):
         self.agent(['0' * 64])
         p = Platform()
         self.assertEqual(self.run_with(p), 'FAILED')
         self.assertEqual([r for _o, r, _d in p.said if r != '/jobs/result'], [])
-        self.assertEqual(self.results(p)[-1]['log'], 'the agent declares a skill HANZO does not have: 000000000000')
+        self.assertEqual(self.results(p)[-1]['log'], 'the agent declares a skill LARRYD does not have: 000000000000')
 
     def test_the_mtok_charge_hands_nothing_and_asks_nothing(self):
         self.agent([MTOK])
@@ -238,7 +238,7 @@ class Gives(World):
         card.update(does=['answer'], calls=['answer'])
         (folder / 'agent.json').write_text(json.dumps(card))
         con = sqlite3.connect(self.db)
-        con.execute('DELETE FROM hanzo_locker')
+        con.execute('DELETE FROM runtime_locker')
         con.commit()
         con.close()
         locker.add(self.db, self.agents, KEY, 'echo')
@@ -250,7 +250,7 @@ class Gives(World):
         card['gives'] = ['delivery', 'secret_extra']
         (folder / 'agent.json').write_text(json.dumps(card))
         con = sqlite3.connect(self.db)
-        con.execute('DELETE FROM hanzo_locker')
+        con.execute('DELETE FROM runtime_locker')
         con.commit()
         con.close()
         locker.add(self.db, self.agents, KEY, 'echo')

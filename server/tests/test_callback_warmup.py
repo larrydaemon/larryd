@@ -58,7 +58,7 @@ class WarmUp(unittest.TestCase):
         def shake(host, port):
             clock.t += 3
             raise socket.timeout('lost')
-        with self.assertLogs('hanzo', 'ERROR'):
+        with self.assertLogs('runtime', 'ERROR'):
             r = warmup.warm([('frost-b.positivefeedback.ai', 443)], shake=shake, clock=clock, sleep=clock.sleep)
         self.assertFalse(r['ready'])
         self.assertGreaterEqual(r['seconds'], 60)
@@ -198,9 +198,9 @@ class CallbackFailed(unittest.TestCase):
             def post(self, office, route, data):
                 return 0, {'refused': 'wid does not answer'}
         h = lanes_harness.Harness(db, pathlib.Path(tmp.name), Lost(), records=run_records.FirestoreRecords(col=col), caller='slot-b')
-        with self.assertLogs('hanzo', 'ERROR'):
+        with self.assertLogs('runtime', 'ERROR'):
             h._end('ACCT_0123456789AB_0001', 'scope', 'MEMB_0123456789AB_0001', '', 'JOBS_0123456789AB_0001', 7, 'DONE', 'RUN 7 DONE')
-        with self.assertLogs('hanzo', 'ERROR'):
+        with self.assertLogs('runtime', 'ERROR'):
             state = h._end('ACCT_0123456789AB_0001', 'scope', 'MEMB_0123456789AB_0001', '', 'JOBS_0123456789AB_0002', 8, 'FAILED', 'the agent stopped: x')
         (done, failed) = sorted(col.docs.values(), key=lambda d: d['run'])
         self.assertEqual((done['state'], done['error_code']), ('CALLBACK_FAILED', 'RUN_DONE'))

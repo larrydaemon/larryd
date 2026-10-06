@@ -10,7 +10,7 @@ import signal
 import threading
 import time
 
-LOG = logging.getLogger('hanzo')
+LOG = logging.getLogger('runtime')
 CONFIRM_SECONDS = 5   # how long a reclaim waits to see the old process group gone
 
 

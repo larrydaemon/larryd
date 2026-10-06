@@ -1,4 +1,4 @@
-"""`larryd doctor`: the pretest before submission. It checks the agent the way PF HANZO will hold and run it, and says
+"""`larryd doctor`: the pretest before submission. It checks the agent the way the LARRYD runtime will hold and run it, and says
 for every problem what is wrong and what to do, in words an AI can act on without asking.
 The checks, in order: the project · the manifest · the entry · the air gap · no secret · the shape · the skills · the knowledge."""
 import ast
@@ -15,7 +15,7 @@ CHECKS_VERSION = '1'   # THE LARRYD CHECKS (CHECKS.md, larryd.ai/checks.html): a
 BADGE = 'larryd-checks.svg'   # `larryd doctor --badge` writes it beside agent/, never inside it (the shape keeps agent/ to its own kinds)
 GOLD, RED = '#FFB000', '#910E0D'   # the brand's gold (PASS) and red (FAIL)
 
-# the air gap: an agent never reaches out (PF HANZO's sandbox denies all network) and never starts a process
+# the air gap: an agent never reaches out (the LARRYD runtime's sandbox denies all network) and never starts a process
 NETWORK = {'socket', 'ssl', 'http', 'urllib', 'ftplib', 'smtplib', 'poplib', 'imaplib', 'nntplib', 'telnetlib', 'xmlrpc',
            'socketserver', 'asyncio', 'selectors', 'select', 'webbrowser', 'wsgiref', 'mailbox', 'smtpd'}
 PROCESS = {'subprocess', 'multiprocessing', 'pty', 'ctypes', 'concurrent'}
@@ -32,7 +32,7 @@ SYS_DOORS = {'modules', 'meta_path', 'path_hooks', 'path_importer_cache'}
 PATH_MAKERS = {('os', 'sep'), ('os', 'altsep'), ('path', 'sep'), ('path', 'altsep'), ('path', 'expanduser'),
                ('path', 'expandvars'), ('Path', 'home'), ('os', 'getenv')}
 ABSOLUTE = re.compile(r'^(/|\\|~)[\w.@~-]+(/[\w.@~-]*)*$')   # a value that is a path from the root or the home folder (a separator alone, as in "/".join, is not)
-PLATFORM = re.compile(r'virtual_workspace|pfhanzo', re.I)
+PLATFORM = re.compile(r'virtual_workspace', re.I)
 
 # no secret: files that are secrets by their name, and text that looks like one
 SECRET_FILES = re.compile(r'(^\.env|\.pem$|\.key$|\.p12$|\.pfx$|^id_(rsa|dsa|ecdsa|ed25519)|^secrets?(\.|$)|credentials)', re.I)
@@ -71,7 +71,7 @@ class _Found:
 
 
 def _files(agent):
-    """Every file of the agent, by its path inside the project; compiled caches are not the agent (PF HANZO skips them)."""
+    """Every file of the agent, by its path inside the project; compiled caches are not the agent (the LARRYD runtime skips them)."""
     return sorted(p for p in agent.rglob('*') if '__pycache__' not in p.relative_to(agent).parts)
 
 

@@ -1,14 +1,14 @@
 {
-  "about": "PF HANZO's own config. HANZO is air gapped: its ONLY link to the platform is HTTP to the addresses below, signed with the secret named here. No path, file, database or module of the platform is ever named.",
-  "office": "hanzo",
-  "environment_variable": "HANZO_ENV",
+  "about": "The LARRYD runtime's own config. It is air gapped: its ONLY link to the platform is HTTP to the addresses below, signed with the secret named here. No path, file, database or module of the platform is ever named.",
+  "office": "runtime",
+  "environment_variable": "LARRYD_ENV",
   "ports": {
     "rnd": 5010,
     "pf": 5010
   },
   "host": "127.0.0.1",
   "platform": {
-    "about": "where HANZO calls the platform, per side (the platform's global_config offices: rnd = the stage, pf = live)",
+    "about": "where the runtime calls the platform, per side (the platform's global_config offices: rnd = the stage, pf = live)",
     "wid": {
       "rnd": "http://127.0.0.1:5004",
       "pf": "http://127.0.0.1:5005"
@@ -31,14 +31,14 @@
     }
   },
   "callers": {
-    "about": "the offices that may call HANZO's /api (X-Office), each checked with the secret",
+    "about": "the offices that may call the runtime's /api (X-Office), each checked with the secret",
     "offices": [
       "wid"
     ]
   },
   "secret": {
-    "name": "hanzo_link",
-    "purpose": "signs every call between the platform and HANZO; each side keeps its own copy in its own instance"
+    "name": "runtime_link",
+    "purpose": "signs every call between the platform and the runtime; each side keeps its own copy in its own instance"
   },
   "intake": {
     "about": "an agent the owner approved from LARRYD's review queue (one .larryd file) becomes a locker folder <folder>/<card key>/ (the host's place command)",

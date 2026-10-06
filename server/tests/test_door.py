@@ -27,7 +27,7 @@ class DoorTest(unittest.TestCase):
     def test_signed_call_answers_real_counts(self):
         r = self._get('/health', {})
         self.assertEqual(r.status_code, 200)
-        self.assertEqual(r.get_json(), {'office': 'hanzo', 'locker': 0, 'runs': 0})
+        self.assertEqual(r.get_json(), {'office': 'runtime', 'locker': 0, 'runs': 0})
 
     def test_unsigned_is_refused(self):
         self.assertEqual(self.client.get('/api/health').status_code, 401)

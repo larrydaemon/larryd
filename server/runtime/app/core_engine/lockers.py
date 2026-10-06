@@ -11,7 +11,7 @@ import sqlite3
 
 from . import intake, locker
 
-LOG = logging.getLogger('hanzo')
+LOG = logging.getLogger('runtime')
 
 
 class BucketLockers:
@@ -49,7 +49,7 @@ class BucketLockers:
                 LOG.error('locker %s not held: its files are not what was approved', key)
                 con = sqlite3.connect(db)
                 try:
-                    con.execute('DELETE FROM hanzo_locker WHERE agent_key = ?', (key,))
+                    con.execute('DELETE FROM runtime_locker WHERE agent_key = ?', (key,))
                     con.commit()
                 finally:
                     con.close()

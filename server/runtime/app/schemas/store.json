@@ -1,9 +1,9 @@
 {
-  "about": "hanzo.db: HANZO's only database, and only what HANZO itself needs (the owner 2026-09-28: \"data stays in wid, never back to pfhanzo\"): no record value, no delivery, no member or account. Tables are created from here and nowhere else; a table that differs is refused, never kept.",
-  "database": "hanzo.db",
+  "about": "runtime.db: the runtime's only database, and only what the runtime itself needs (the owner 2026-09-28: data stays in wid): no record value, no delivery, no member or account. Tables are created from here and nowhere else; a table that differs is refused, never kept.",
+  "database": "runtime.db",
   "tables": {
-    "hanzo_locker": {
-      "about": "an agent HANZO holds: its folder and the sha256 of its code and manifest, checked on every call and run",
+    "runtime_locker": {
+      "about": "an agent the runtime holds: its folder and the sha256 of its code and manifest, checked on every call and run",
       "columns": [
         [
           "agent_key",
@@ -31,8 +31,8 @@
         ]
       ]
     },
-    "hanzo_runs": {
-      "about": "every call and job run, refused ones too, by the agent's key and the job's: its state, its times, what was charged, a plain reason (never an agent's words); every count HANZO shows is counted here",
+    "runtime_runs": {
+      "about": "every call and job run, refused ones too, by the agent's key and the job's: its state, its times, what was charged, a plain reason (never an agent's words); every count the runtime shows is counted here",
       "columns": [
         [
           "id",
@@ -76,11 +76,5 @@
         ]
       ]
     }
-  },
-  "retired": {
-    "about": "tables HANZO no longer keeps, dropped when the store opens: hanzo_developers held the old signed developer door's names and card keys (the door was removed in 0.1.1; a developer submits through LARRYD's submit door with a Google or Apple sign-in)",
-    "tables": [
-      "hanzo_developers"
-    ]
   }
 }

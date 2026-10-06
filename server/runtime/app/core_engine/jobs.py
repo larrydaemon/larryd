@@ -53,7 +53,7 @@ class CloudRunJobs:
     """Starts the job execution with the run's arguments (the Cloud Run Admin API, the service's own identity from the
     metadata server; no key is ever made). The job's command is python; the arguments (which replace the job's own) are
     the runtime's file and then the run's."""
-    ENTRY = 'hanzo/app/web/app.py'
+    ENTRY = 'runtime/app/web/app.py'
     METADATA = 'http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token'
 
     def __init__(self, project, region, job, opener=urllib.request.urlopen):

@@ -1,5 +1,5 @@
 """THE RUN RECORDS (the LARRYD runtime design, 2026-10-06, decisions 2 and 8): one record per call and run, written by
-the runtime only (the platform reads them to reconcile; mTok alone charges). On a laptop or a test they live in hanzo.db;
+the runtime only (the platform reads them to reconcile; mTok alone charges). On a laptop or a test they live in runtime.db;
 on Cloud Run in Firestore (`runs`), because an instance's own disk is gone the moment it stops, and they are kept 13
 months (Firestore's own TTL on expire_at). A record holds keys, states, times and counts: never a record value, an
 input or a delivery (data stays in wid)."""
@@ -46,7 +46,7 @@ def _now():
 
 
 class SqliteRecords:
-    """The laptop's and the tests' records: hanzo.db's hanzo_runs, as before."""
+    """The laptop's and the tests' records: runtime.db's runtime_runs, as before."""
     def __init__(self, db):
         self.db = db
 
@@ -57,7 +57,7 @@ class SqliteRecords:
         at = _now().isoformat(timespec='seconds')
         con = sqlite3.connect(self.db)
         try:
-            con.execute('INSERT INTO hanzo_runs (lane, agent_key, job_key, run, state, reason, started_at, finished_at, charged) VALUES (?,?,?,?,?,?,?,?,?)',
+            con.execute('INSERT INTO runtime_runs (lane, agent_key, job_key, run, state, reason, started_at, finished_at, charged) VALUES (?,?,?,?,?,?,?,?,?)',
                         (lane, agent_key, job_key, int(run), state, error_code(reason), at, at, int(charged)))
             con.commit()
         finally:
@@ -71,21 +71,21 @@ class SqliteRecords:
                 args.append(val)
         con = sqlite3.connect(self.db)
         try:
-            return con.execute('SELECT COUNT(*) FROM hanzo_runs' + (' WHERE ' + ' AND '.join(where) if where else ''), args).fetchone()[0]
+            return con.execute('SELECT COUNT(*) FROM runtime_runs' + (' WHERE ' + ' AND '.join(where) if where else ''), args).fetchone()[0]
         finally:
             con.close()
 
     def by_state(self, agent_key, lane):
         con = sqlite3.connect(self.db)
         try:
-            return dict(con.execute('SELECT state, COUNT(*) FROM hanzo_runs WHERE agent_key = ? AND lane = ? GROUP BY state', (agent_key, lane)).fetchall())
+            return dict(con.execute('SELECT state, COUNT(*) FROM runtime_runs WHERE agent_key = ? AND lane = ? GROUP BY state', (agent_key, lane)).fetchall())
         finally:
             con.close()
 
     def charged(self, agent_key):
         con = sqlite3.connect(self.db)
         try:
-            return con.execute("SELECT COALESCE(SUM(charged), 0) FROM hanzo_runs WHERE agent_key = ? AND lane = 'job'", (agent_key,)).fetchone()[0]
+            return con.execute("SELECT COALESCE(SUM(charged), 0) FROM runtime_runs WHERE agent_key = ? AND lane = 'job'", (agent_key,)).fetchone()[0]
         finally:
             con.close()
 

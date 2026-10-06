@@ -18,7 +18,7 @@ def test_everything_compiles_on_the_oldest_python():
     floor, python = oldest()
     assert python, f'Python {floor}, the oldest LARRYD supports, is needed to run this test (brew install python@{floor})'
     files = [p for p in (REPO / 'larryd').rglob('*.py') if 'kit' not in p.parts]   # kit/ holds templates, filled in by `larryd new`
-    files += [p for p in (REPO / 'server' / 'hanzo').rglob('*.py') if '.venv' not in p.parts]
+    files += [p for p in (REPO / 'server' / 'runtime').rglob('*.py') if '.venv' not in p.parts]
     code = 'import sys, ast\nfor f in sys.argv[1:]:\n    ast.parse(open(f, encoding="utf-8").read(), filename=f)\n'
     done = subprocess.run([python, '-c', code, *map(str, files)], capture_output=True, text=True)
     assert done.returncode == 0, done.stderr

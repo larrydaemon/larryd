@@ -1,5 +1,5 @@
 {
-  "about": "The skills an agent may declare, each by its hash (the sha256 of its definition as compact sorted JSON), the same definitions as LARRYD's skills.json. Only a door that exists is a skill; a skill with a hand is carried out by HANZO before the RUN.",
+  "about": "The skills an agent may declare, each by its hash (the sha256 of its definition as compact sorted JSON), the same definitions as LARRYD's skills.json. Only a door that exists is a skill; a skill with a hand is carried out by the runtime before the RUN.",
   "skills": [
     {
       "name": "mTok charge",

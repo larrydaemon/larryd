@@ -1,5 +1,5 @@
-"""THE LOCKER: the agents HANZO holds. An agent is a folder inside the locker (its manifest agent.json + its code) and
-one hanzo_locker row binding the key of its card on the platform to that folder and the sha256 of both. Every call and
+"""THE LOCKER: the agents the runtime holds. An agent is a folder inside the locker (its manifest agent.json + its code) and
+one runtime_locker row binding the key of its card on the platform to that folder and the sha256 of both. Every call and
 run verifies the folder against the row first; any change, an added file or a link is TAMPERED and refused."""
 import datetime
 import hashlib
@@ -50,7 +50,7 @@ def add(db, root, agent_key, folder):
         raise ValueError(f'{folder}/{MANIFEST} needs {", ".join(NEEDS)} and its entry file')
     con = sqlite3.connect(db)
     try:
-        con.execute('INSERT INTO hanzo_locker (agent_key, name, folder, code_sha256, manifest_sha256, registered_at) VALUES (?,?,?,?,?,?)',
+        con.execute('INSERT INTO runtime_locker (agent_key, name, folder, code_sha256, manifest_sha256, registered_at) VALUES (?,?,?,?,?,?)',
                     (agent_key, card['name'], path.relative_to(pathlib.Path(root).resolve()).as_posix(), _code_sha256(path),
                      _manifest_sha256(path), datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='seconds')))
         con.commit()
@@ -62,7 +62,7 @@ def held(db, agent_key):
     con = sqlite3.connect(db)
     con.row_factory = sqlite3.Row
     try:
-        row = con.execute('SELECT * FROM hanzo_locker WHERE agent_key = ?', (agent_key,)).fetchone()
+        row = con.execute('SELECT * FROM runtime_locker WHERE agent_key = ?', (agent_key,)).fetchone()
         return dict(row) if row else None
     finally:
         con.close()
@@ -89,7 +89,7 @@ def verify(db, root, agent_key):
 
 
 def main(argv):
-    """python hanzo/app/core_engine/locker.py add <agent_key> <folder inside hanzo/app/agents>"""
+    """python runtime/app/core_engine/locker.py add <agent_key> <folder inside runtime/app/agents>"""
     from store import open_store
     app = pathlib.Path(__file__).resolve().parent.parent
     if len(argv) != 4 or argv[1] != 'add':

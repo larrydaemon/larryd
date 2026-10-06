@@ -53,11 +53,11 @@ def test_the_daemon(tmp_path):
             except OSError:
                 time.sleep(0.25)
         assert (status, body) == (401, {'refused': 'not a signed call'})
-        secret = (instance / 'secrets' / 'hanzo_link').read_text().strip()
-        assert get(port, secret) == (200, {'office': 'hanzo', 'locker': 1, 'runs': 0})   # the marketplace, held as a server holds it
+        secret = (instance / 'secrets' / 'runtime_link').read_text().strip()
+        assert get(port, secret) == (200, {'office': 'runtime', 'locker': 1, 'runs': 0})   # the marketplace, held as a server holds it
         with urllib.request.urlopen(f'http://127.0.0.1:{port}/marketplace', timeout=20) as page:   # the developer's own shelf, unsigned
             assert page.status == 200 and 'THE AGENT MARKETPLACE' in page.read().decode('utf-8')
-        assert stat.S_IMODE(os.stat(instance).st_mode) == 0o700 and stat.S_IMODE(os.stat(instance / 'secrets' / 'hanzo_link').st_mode) == 0o600
+        assert stat.S_IMODE(os.stat(instance).st_mode) == 0o700 and stat.S_IMODE(os.stat(instance / 'secrets' / 'runtime_link').st_mode) == 0o600
         assert json.loads((instance / 'platform.json').read_text()) == {}
         assert (instance / 'agents' / 'marketplace' / 'agent.py').is_file()
         second = subprocess.run([str(LARRYD)], env={**env, 'LARRYD_INSTANCE': str(tmp_path / 'other')}, capture_output=True, text=True, timeout=30)
@@ -110,9 +110,9 @@ def test_the_runtimes_own_marketplace_is_placed_fresh_and_nothing_else_is_touche
     mine.mkdir()
     (mine / 'agent.json').write_text('{"name": "the developer\'s"}')
     daemon.prepare(instance, runtime)
-    secret = (instance / 'secrets' / 'hanzo_link').read_text()
+    secret = (instance / 'secrets' / 'runtime_link').read_text()
     assert (old / 'agent.json').read_text() == (runtime / 'agents' / 'marketplace' / 'agent.json').read_text()
     assert 'gives' in json.loads((old / 'agent.json').read_text())
     assert (mine / 'agent.json').read_text() == '{"name": "the developer\'s"}'
     daemon.prepare(instance, runtime)
-    assert (instance / 'secrets' / 'hanzo_link').read_text() == secret
+    assert (instance / 'secrets' / 'runtime_link').read_text() == secret

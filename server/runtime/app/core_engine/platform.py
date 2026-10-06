@@ -1,4 +1,4 @@
-"""THE ONLY WAY OUT: HANZO reaches the platform by signed HTTP to the addresses declared in hanzo.json (or, for a
+"""THE ONLY WAY OUT: the runtime reaches the platform by signed HTTP to the addresses declared in runtime.json (or, for a
 scratch run, in instance/platform.json), and by nothing else. A GET signs its query values as strings and a POST its
 JSON body, as the platform's offices do; the route is signed without the /api prefix."""
 import datetime

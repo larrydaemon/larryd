@@ -96,7 +96,7 @@ def receive(db, agents, folder, agent_key, files):
         con = sqlite3.connect(db)
         try:
             con.execute('BEGIN IMMEDIATE')
-            con.execute('DELETE FROM hanzo_locker WHERE agent_key = ?', (agent_key,))
+            con.execute('DELETE FROM runtime_locker WHERE agent_key = ?', (agent_key,))
             if target.exists():
                 shutil.rmtree(target)
             incoming.rename(target)
