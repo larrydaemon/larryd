@@ -23,7 +23,7 @@ from werkzeug.exceptions import HTTPException
 APP = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(APP))
 
-from core_engine import callers, harness as lanes_harness, intake, platform, preview, sandbox, signing, slot as one_slot, store  # noqa: E402
+from core_engine import callers, harness as lanes_harness, intake, jobs as long_runs, lockers as bucket_lockers, platform, preview, records as run_records, sandbox, signing, slot as one_slot, store  # noqa: E402
 
 CONFIG = json.loads((APP / 'schemas' / 'hanzo.json').read_text())
 INSTANCE = pathlib.Path(os.environ['LARRYD_INSTANCE']) if os.environ.get('LARRYD_INSTANCE') else APP.parent / 'instance'   # the daemon names it
@@ -38,25 +38,61 @@ NEEDS = ('account', 'scope', 'member')
 MAX_BODY = 64 * 1024   # a signed call's body; anything larger is refused unread
 
 
-def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, developer=False, keys=None, nonces=None):
+def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, developer=False, keys=None, nonces=None, cloud=None):
     """agents: the locker's folder (default HANZO's own; a test gives a scratch one). developer: the developer's runtime
-    (the marketplace page; the platform's answers from the instance when no address is declared)."""
-    if not secret and keys is None:
+    (the marketplace page; the platform's answers from the instance when no address is declared).
+    keys: the hardened call (Cloud Run): {key id: [versions]} of the callers. cloud: Cloud Run's parts (the runtime design):
+    {'outbound': callers.Outbound, 'records': run records, 'lockers': BucketLockers or None, 'claims': job claims,
+    'jobs': the job starter or None}. On Cloud Run the runtime REFUSES TO START without its own outbound key for every
+    slot that may call it (no call back to the platform is ever signed with an empty key)."""
+    cloud = dict(cloud or {})
+    if keys is not None:
+        outbound = cloud.get('outbound')
+        callers_known = sorted((keys.now() if hasattr(keys, 'now') else keys) or {})
+        if outbound is None or not callers_known or any(c not in outbound.slots() for c in callers_known):
+            raise SystemExit('the runtime does not start without its own outbound key for every slot that may call it')
+    elif not secret:
         raise SystemExit(f"HANZO does not start without its secret '{CONFIG['secret']['name']}'")
     db = store.open_store(instance)
     locker_dir = APP / 'agents' if agents is None else pathlib.Path(agents)
+    lockers = cloud.get('lockers')
+    held_from_bucket = None
+    if lockers is not None:   # Cloud Run: the instance's locker is only a cache of the lockers bucket, filled at start
+        locker_dir.mkdir(parents=True, exist_ok=True)
+        held_from_bucket = lockers.sync(db, locker_dir, CONFIG['intake'])
     local = bool(developer) and not addresses
     if local:
         preview.hold_marketplace(db, locker_dir)
+    records = cloud.get('records') or run_records.SqliteRecords(db)
     client = preview.Local(db, locker_dir, instance) if local else platform.Client(addresses or {}, secret)
-    h = lanes_harness.Harness(db, locker_dir, client, CONFIG['run']['seconds'])
+    h = lanes_harness.Harness(db, locker_dir, client, CONFIG['run']['seconds'], records=records)
+    harnesses = {}
+    if keys is not None:   # one harness per slot: its calls go back to THAT slot, signed with the runtime's key for it
+        slots = CONFIG['slots']
+        for caller in cloud['outbound'].slots():
+            base = slots.get(caller, '')
+            harnesses[caller] = lanes_harness.Harness(
+                db, locker_dir, platform.Client({o: f'{base}/{o}' for o in slots['offices']} if base else {}, '',
+                                                outbound=cloud['outbound'], slot=caller),
+                CONFIG['run']['seconds'], records=records, caller=caller)
+    claims = cloud.get('claims') or long_runs.MemoryClaims()
+    job_starter = cloud.get('jobs')
     running, lock = set(), threading.Lock()
-    slot = one_slot.Slot(CONFIG['run']['seconds'] + 60)   # ONE RUN PER INSTANCE: the run's own limit plus a minute's margin
+    slot = one_slot.Slot(CONFIG['run']['seconds'] + 60)   # ONE RUN PER INSTANCE: above the run's own hard limit, plus a minute
     sandbox.sweep()   # a run's folders left by a stopped instance are removed before anything runs
     app = Flask('hanzo', template_folder=str(APP / 'web'))
     app.config['harness'] = h
+    app.config['harnesses'] = harnesses
     app.config['slot'] = slot
     app.config['developer'] = bool(developer)
+    app.config['lockers'] = lockers
+    app.config['held_from_bucket'] = held_from_bucket
+    app.config['records'] = records
+
+    def harness_for():
+        """The calling slot's harness on Cloud Run (its key id named it), else the one harness."""
+        caller = request.headers.get('X-Office-Key') if keys is not None else None
+        return harnesses.get(caller, h) if caller else h
 
     @app.before_request
     def signed_only():
@@ -68,6 +104,11 @@ def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, deve
             if (request.content_length or 0) > MAX_BODY or not signing.well_formed(h.get('X-Office-Key'), h.get('X-Office-At'),
                                                                                      h.get('X-Office-Nonce'), h.get('X-Office'), known):
                 return jsonify({'refused': 'not a signed call'}), 401   # before the body is read or anything is stored
+            if request.method != 'GET':   # the cap on the bytes actually read (a chunked body has no Content-Length to trust)
+                raw = request.stream.read(MAX_BODY + 1)
+                if len(raw) > MAX_BODY:
+                    return jsonify({'refused': 'too large'}), 413   # never read on, nothing stored
+                request._cached_data = raw   # the body as read, for get_json below
             data = request.args.to_dict() if request.method == 'GET' else (request.get_json(silent=True) or {})
             ok = signing.good_hardened(known, h.get('X-Office-Key'), route, data, h.get('X-Office-At'), h.get('X-Office-Nonce'),
                                        h.get('X-Office'), now(), CONFIG['signed_window_seconds'], nonces.fresh)
@@ -88,7 +129,12 @@ def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, deve
 
     @app.get('/api/health')
     def health():
-        return jsonify({'office': CONFIG['office'], **store.counts(db)})
+        if slot.stuck():   # held past the limit with nothing that can be reclaimed: Cloud Run replaces this instance
+            return jsonify({'office': CONFIG['office'], 'refused': 'the slot is stuck'}), 503
+        counts = store.counts(db)
+        if lockers is not None:
+            counts = {'locker': counts['locker'], 'runs': 'firestore'}   # the run records are Firestore's, never this disk's
+        return jsonify({'office': CONFIG['office'], **counts})
 
     def given(*more):
         data = request.args.to_dict() if request.method == 'GET' else (request.get_json(silent=True) or {})
@@ -111,9 +157,12 @@ def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, deve
         token = slot.take()   # the slot first, atomically, before any of the agent's code
         if not token:
             return busy()
+        run_with = harness_for()
+        run_with.on_start = lambda pid: slot.attach(token, pid)   # the run's process group, so a reclaim can kill it whole
         try:
-            return answered(lambda: h.answer(*(given('agent_key')[k] for k in NEEDS + ('agent_key',))))
+            return answered(lambda: run_with.answer(*(given('agent_key')[k] for k in NEEDS + ('agent_key',))))
         finally:
+            run_with.on_start = None
             slot.give_back(token)
 
     @app.post('/api/agents/hire')
@@ -122,15 +171,23 @@ def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, deve
             d = given('agent_key', 'on')
             if str(d['on']) not in ('on', 'off'):
                 raise lanes_harness.Refused(400, 'on is "on" or "off"')
-            return h.hire(d['account'], d['scope'], d['member'], d['agent_key'], str(d['on']) == 'on')
+            return harness_for().hire(d['account'], d['scope'], d['member'], d['agent_key'], str(d['on']) == 'on')
         return answered(work)
 
     @app.post('/api/agents/defaults')
     def defaults():
-        return answered(lambda: h.defaults(*(given('board')[k] for k in NEEDS + ('board',))))
+        return answered(lambda: harness_for().defaults(*(given('board')[k] for k in NEEDS + ('board',))))
 
-    def start(account, scope, member, job_key, run):
-        """-> True started, False already running, None the instance is busy (the slot is held)."""
+    def start(account, scope, member, job_key, run, caller=''):
+        """-> True started, False already started (anywhere), None the instance is busy (the slot is held).
+        Cloud Run: the run is claimed once across every instance, then started as its own Cloud Run job execution; this
+        instance answers at once and runs nothing after its answer (no thread, the CPU is the request's only).
+        A laptop: the run goes on a thread here, holding the slot (no CPU limit there)."""
+        if job_starter is not None:
+            if not claims.claim(job_key, run):
+                return False
+            job_starter.start(['job', caller, account, scope, member, job_key, str(int(run))])
+            return True
         with lock:
             if (job_key, run) in running:
                 return False
@@ -163,7 +220,8 @@ def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, deve
             return jsonify({'refused': no.reason}), no.status
         if not str(d['run']).isdigit():
             return jsonify({'refused': 'run is the RUN number'}), 400
-        started = start(d['account'], d['scope'], d['member'], d['job_key'], int(d['run']))
+        caller = request.headers.get('X-Office-Key', '') if keys is not None else ''
+        started = start(d['account'], d['scope'], d['member'], d['job_key'], int(d['run']), caller)
         if started is None:
             return busy()
         return jsonify({'accepted': d['job_key'], 'run': int(d['run']), 'already': not started}), 202
@@ -257,7 +315,7 @@ def _marketplace_pages(app, h, instance, token):
                         'marketplace': '/marketplace'}), 201
 
 
-def place(app, agent_key, data):
+def place(app, agent_key, data, role=''):
     """An approved agent file into the locker (<intake folder>/<card key>/), then to FROST's review. -> what was held, and
     FROST's review or why FROST did not take it (the agent stays held; `submit <key>` sends it again)."""
     h, conf = app.config['harness'], CONFIG['intake']
@@ -267,6 +325,8 @@ def place(app, agent_key, data):
     except intake.Refused as no:
         raise SystemExit(f'refused ({no.status}): {no.reason}')
     held = {'agent_key': agent_key, 'code_sha256': row['code_sha256'], 'manifest_sha256': row['manifest_sha256']}
+    if app.config.get('lockers') is not None:   # Cloud Run: the approved package is kept in the lockers bucket, read by every instance
+        app.config['lockers'].publish(agent_key, row, data, role=role)
     try:
         return {**held, 'review': h.submit(agent_key)}
     except lanes_harness.Refused as no:
@@ -274,10 +334,15 @@ def place(app, agent_key, data):
 
 
 def catch_up(app):
-    """At start, once (never a loop): the RUNs the platform queued while HANZO was away."""
-    status, body = app.config['harness'].client.get('wid', '/jobs/queued')
-    for j in body.get('jobs', []) if status == 200 else []:
-        app.config['start'](j['account'], j['scope'], j['member'], j['job_key'], int(j['run']))
+    """At start, once (never a loop): the RUNs the platform queued while the runtime was away. On Cloud Run every
+    slot's queue is read, and each run is claimed once across every instance before it starts (two new instances never
+    start the same run)."""
+    status = 0
+    sources = list(app.config['harnesses'].items()) or [('', app.config['harness'])]
+    for caller, h in sources:
+        status, body = h.client.get('wid', '/jobs/queued')
+        for j in body.get('jobs', []) if status == 200 else []:
+            app.config['start'](j['account'], j['scope'], j['member'], j['job_key'], int(j['run']), caller)
     return status
 
 
@@ -288,20 +353,36 @@ def locker_root(instance):
     return held if held.is_dir() else APP / 'agents'
 
 
+def cloud_parts():
+    """Cloud Run's parts, named by its environment (the Dockerfile and the service), or None on a laptop."""
+    if not os.environ.get('LARRYD_KEYS_DIR'):
+        return None
+    out = os.environ.get('LARRYD_OUTBOUND_DIR')
+    return {'outbound': callers.Outbound(out) if out else None,
+            'records': run_records.FirestoreRecords() if os.environ.get('LARRYD_RECORDS') == 'firestore' else None,
+            'lockers': bucket_lockers.BucketLockers(os.environ['LARRYD_LOCKERS']) if os.environ.get('LARRYD_LOCKERS') else None,
+            'claims': long_runs.FirestoreClaims() if os.environ.get('LARRYD_JOB') else None,
+            'jobs': long_runs.from_environment()}
+
+
 def main(argv):
     """python hanzo/app/web/app.py                                   the host
     python hanzo/app/web/app.py submit <key>                        an agent HANZO holds, to FROST's review (its key, its exact hashes, its manifest)
-    python hanzo/app/web/app.py place <card key> <file.larryd>      an agent the owner approved (LARRYD's review queue): into the locker, then to FROST's review
-    python hanzo/app/web/app.py review <card key>...                what HANZO records for those agents, with FROST's word on the hashes it holds"""
+    python hanzo/app/web/app.py place <card key> <file.larryd> [marketplace]   an agent the owner approved: into the locker (and, on Cloud Run, the lockers bucket), then to FROST's review
+    python hanzo/app/web/app.py review <card key>...                what HANZO records for those agents, with FROST's word on the hashes it holds
+    python hanzo/app/web/app.py job <slot> <account> <scope> <member> <job key> <run>   a Cloud Run job execution: one RUN, its result to that slot
+    python hanzo/app/web/app.py selftest                            Cloud Run: the marketplace agent run once in the sandbox, its record written"""
     side = os.environ.get(CONFIG['environment_variable'], 'localhost.rnd').split('.')[-1]
     secret_file = INSTANCE / 'secrets' / CONFIG['secret']['name']
     secret = secret_file.read_text().strip() if secret_file.is_file() else ''
-    keys_dir = os.environ.get('LARRYD_KEYS_DIR')   # Cloud Run: the callers' keys, one file each (the hardened call)
-    app = create_app(INSTANCE, secret, addresses=platform.addresses(CONFIG, side, INSTANCE), agents=locker_root(INSTANCE),
+    keys_dir = os.environ.get('LARRYD_KEYS_DIR')   # Cloud Run: the callers' keys, one folder each (the hardened call)
+    cloud = cloud_parts()
+    app = create_app(INSTANCE, secret, addresses=platform.addresses(CONFIG, side, INSTANCE) if not cloud else {},
+                     agents=(INSTANCE / 'agents') if cloud and cloud.get('lockers') else locker_root(INSTANCE),
                      developer=os.environ.get(DEVELOPER) == '1',
-                     keys=callers.Keys(keys_dir) if keys_dir else None, nonces=callers.nonces() if keys_dir else None)
-    if argv[1:2] == ['place'] and len(argv) == 4:
-        print(json.dumps(place(app, argv[2], pathlib.Path(argv[3]).read_bytes())))
+                     keys=callers.Keys(keys_dir) if keys_dir else None, nonces=callers.nonces() if keys_dir else None, cloud=cloud)
+    if argv[1:2] == ['place'] and len(argv) in (4, 5):
+        print(json.dumps(place(app, argv[2], pathlib.Path(argv[3]).read_bytes(), role=argv[4] if len(argv) == 5 else '')))
         return
     if argv[1:2] == ['review'] and len(argv) >= 3:
         print(json.dumps(app.config['harness'].review_state(argv[2:])))
@@ -312,12 +393,36 @@ def main(argv):
         except lanes_harness.Refused as no:
             raise SystemExit(f'refused ({no.status}): {no.reason}')
         return
+    if argv[1:2] == ['job'] and len(argv) == 8:
+        _slot, account, scope, member, job_key, run = argv[2:]
+        h = app.config['harnesses'].get(_slot)
+        if h is None:
+            raise SystemExit('no such slot')
+        state = h.run_job(account, scope, member, job_key, int(run))
+        print(json.dumps({'job_key': job_key, 'run': int(run), 'state': state}))
+        return
+    if argv[1:2] == ['selftest']:
+        print(json.dumps(selftest(app)))
+        return
     if len(argv) > 1:
         raise SystemExit(main.__doc__)
     logging.getLogger('werkzeug').setLevel(logging.ERROR)   # no request lines: a call's query names an account and a member (data stays in wid)
     catch_up(app)
     app.run(host=os.environ.get('LARRYD_HOST') or CONFIG['host'], port=int(os.environ.get('PORT') or os.environ.get('LARRYD_PORT') or CONFIG['ports'][side]),
             threaded=True)   # 127.0.0.1, except in a container (Cloud Run names LARRYD_HOST and PORT)
+
+
+def selftest(app):
+    """The proof that an agent really runs here (the review's M5): the marketplace agent held from the lockers bucket,
+    run once in the sandbox with an empty collection, its record written where this runtime writes them."""
+    h = app.config['harness']
+    key = h.marketplace_key()
+    row = preview.locker.held(h.db, key)
+    manifest = preview.locker.manifest(h.agents, row['folder'])
+    state, answer, reason = sandbox.run(h.agents / row['folder'], manifest['entry'], {'do': (manifest.get('calls') or ['collection'])[0], 'cards': []},
+                                        h.seconds)
+    h.records.record('selftest', key, state, reason, caller='selftest')
+    return {'agent_key': key, 'state': state, 'reason': reason, 'answer_keys': sorted(answer) if isinstance(answer, dict) else []}
 
 
 if __name__ == '__main__':

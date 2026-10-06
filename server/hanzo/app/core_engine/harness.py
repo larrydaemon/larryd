@@ -13,7 +13,7 @@ import pathlib
 import re
 import sqlite3
 
-from . import gate, lanes, locker, sandbox
+from . import gate, lanes, locker, records as run_records, sandbox
 
 MARKETPLACE = 'marketplace'   # the one agent's locker folder: it answers the collection, hires, and places defaults
 HANDS = ('cards', 'job')      # what a RUN can be handed: the cards the member sees; the job's own inputs (read from wid, kept nowhere)
@@ -63,8 +63,12 @@ def _now():
 
 
 class Harness:
-    def __init__(self, db, agents, client, seconds=20):
+    def __init__(self, db, agents, client, seconds=20, records=None, caller='', on_start=None):
+        """records: where every call and run is recorded (hanzo.db by default; Firestore on Cloud Run). caller: the key id
+        of the office that called (a run record names it). on_start(pid): told each sandboxed run's process (the slot)."""
         self.db, self.agents, self.client, self.seconds = db, agents, client, seconds
+        self.records = records if records is not None else run_records.SqliteRecords(db)
+        self.caller, self.on_start = caller, on_start
 
     # ---------------------------------------------------------------- what the platform says
     def _ask(self, office, method, route, data):
@@ -104,7 +108,8 @@ class Harness:
     def marketplace_key(self):
         con = sqlite3.connect(self.db)
         try:
-            row = con.execute('SELECT agent_key FROM hanzo_locker WHERE folder = ?', (MARKETPLACE,)).fetchone()
+            row = con.execute('SELECT agent_key FROM hanzo_locker WHERE folder = ? OR folder LIKE ? ORDER BY folder = ? DESC',
+                              (MARKETPLACE, MARKETPLACE + '/%', MARKETPLACE)).fetchone()   # the image's own, or one held from the lockers bucket
         finally:
             con.close()
         if row is None:
@@ -116,27 +121,19 @@ class Harness:
         hashes, and the counts of hanzo_runs (runs by state, calls, hires, unhires, mTok charged). Only agent keys and
         counts: no account, no member."""
         approved = None   # FROST's approved list, asked only when FROST has no review_state door (a FROST before it)
-        con = sqlite3.connect(self.db)
-        try:
-            out = []
-            for key in keys:
-                row = locker.held(self.db, key)
-                note = ''
-                if row is None:
-                    review = 'not submitted'
-                else:
-                    review, note, approved = self._review(key, row, approved)
-                runs = dict(con.execute("SELECT state, COUNT(*) FROM hanzo_runs WHERE agent_key = ? AND lane = 'job' GROUP BY state", (key,)).fetchall())
-                count = lambda lane, state=None: con.execute(  # noqa: E731
-                    'SELECT COUNT(*) FROM hanzo_runs WHERE agent_key = ? AND lane = ?' + (' AND state = ?' if state else ''),
-                    (key, lane) + ((state,) if state else ())).fetchone()[0]
-                charged = con.execute("SELECT COALESCE(SUM(charged), 0) FROM hanzo_runs WHERE agent_key = ? AND lane = 'job'", (key,)).fetchone()[0]
-                out.append({'agent_key': key, 'held': row is not None, 'code_sha256': row['code_sha256'] if row else '',
-                            'manifest_sha256': row['manifest_sha256'] if row else '', 'review': review, 'note': note, 'runs': runs,
-                            'calls': count('call'), 'hires': count('hire', 'ON'), 'unhires': count('hire', 'OFF'), 'charged': charged})
-            return {'agents': out}
-        finally:
-            con.close()
+        out, rec = [], self.records
+        for key in keys:
+            row = locker.held(self.db, key)
+            note = ''
+            if row is None:
+                review = 'not submitted'
+            else:
+                review, note, approved = self._review(key, row, approved)
+            out.append({'agent_key': key, 'held': row is not None, 'code_sha256': row['code_sha256'] if row else '',
+                        'manifest_sha256': row['manifest_sha256'] if row else '', 'review': review, 'note': note,
+                        'runs': rec.by_state(key, 'job'), 'calls': rec.count(key, 'call'), 'hires': rec.count(key, 'hire', 'ON'),
+                        'unhires': rec.count(key, 'hire', 'OFF'), 'charged': rec.charged(key)})
+        return {'agents': out}
 
     def _review(self, key, row, approved):
         """FROST's word on these exact hashes: -> (review, note, approved). waiting · approved · rejected (with FROST's
@@ -156,16 +153,10 @@ class Harness:
         return f"unknown: {body.get('refused') or body.get('error') or f'FROST answered {status}'}", '', approved
 
     # ---------------------------------------------------------------- the record
-    def _record(self, lane, agent_key, state, reason='', job_key='', run=0, charged=0):
-        """One row per call and run: the agent's key, the job's, its state, times, charge and a plain reason; never an
-        account, a member, an input or a delivery (data stays in wid)."""
-        con = sqlite3.connect(self.db)
-        try:
-            con.execute('INSERT INTO hanzo_runs (lane, agent_key, job_key, run, state, reason, started_at, finished_at, charged) VALUES (?,?,?,?,?,?,?,?,?)',
-                        (lane, agent_key, job_key, run, state, reason, _now(), _now(), charged))
-            con.commit()
-        finally:
-            con.close()
+    def _record(self, lane, agent_key, state, reason='', job_key='', run=0, charged=0, account='', member=''):
+        """One record per call and run: the agent's key, the job's, its state, times, charge, a plain reason, the caller and
+        the account and member keys as the platform gave them; never an input or a delivery (data stays in wid)."""
+        self.records.record(lane, agent_key, state, reason, job_key, run, charged, caller=self.caller, account=account, member=member)
 
     @staticmethod
     def _card(cards, key):
@@ -184,14 +175,14 @@ class Harness:
             raise Refused(404, 'the agent has no LIVE card')
         ok, why = gate.may_run(card, verify(agent_key), lanes.hired_on(hired, agent_key), groups)
         if not ok:
-            self._record('call', agent_key, 'REFUSED', why)
+            self._record('call', agent_key, 'REFUSED', why, account=account, member=member)
             raise Refused(403, why)
         state, answer, reason = sandbox.run(self.agents / held['folder'], locker.manifest(self.agents, held['folder'])['entry'],
-                                            {'do': calls[0], 'cards': lanes.assemble(cards, hired, groups, verify)}, self.seconds)
+                                            {'do': calls[0], 'cards': lanes.assemble(cards, hired, groups, verify)}, self.seconds, on_start=self.on_start)
         outside = _outside_gives(locker.manifest(self.agents, held['folder']), answer) if state == 'DONE' else ''
         if outside:
             state, reason = 'FAILED', outside
-        self._record('call', agent_key, state, reason)
+        self._record('call', agent_key, state, reason, account=account, member=member)
         if state != 'DONE':
             raise Refused(500, reason)
         return {'agent_key': agent_key, 'title': card['name'], **answer}
@@ -212,7 +203,7 @@ class Harness:
         if on and not card['hireable']:
             raise Refused(403, card['reason'])
         done = self._ask('wid', 'POST', '/agnt/hire' if on else '/agnt/unhire', {'account': account, 'scope': scope, 'member': member, 'agent_key': agent_key})
-        self._record('hire', agent_key, 'ON' if on else 'OFF')   # the agent's key only: who hired it stays in wid
+        self._record('hire', agent_key, 'ON' if on else 'OFF', account=account, member=member)
         return done
 
     def defaults(self, account, scope, member, board):
@@ -223,7 +214,7 @@ class Harness:
         if card is None or card['screen'] != board or card['hired'] or not card['hireable']:
             return {'placed': []}
         self._ask('wid', 'POST', '/agnt/hire', {'account': account, 'scope': scope, 'member': member, 'agent_key': key})
-        self._record('hire', key, 'ON')
+        self._record('hire', key, 'ON', account=account, member=member)
         return {'placed': [key]}
 
     # ---------------------------------------------------------------- the JOB lane: a RUN, pushed by the platform
@@ -266,7 +257,7 @@ class Harness:
         self._result(account, scope, job_key, run, 'RUNNING', f'RUN {run} RUNNING')
         if 'cards' in hands:
             given['cards'] = lanes.assemble(cards, hired, groups, verify)
-        state, answer, reason = sandbox.run(self.agents / folder, manifest['entry'], given, self.seconds)
+        state, answer, reason = sandbox.run(self.agents / folder, manifest['entry'], given, self.seconds, on_start=self.on_start)
         if state != 'DONE':
             return self._end(account, scope, member, key, job_key, run, 'FAILED', reason)
         outside = _outside_gives(manifest, answer)
@@ -367,5 +358,5 @@ class Harness:
             self._result(account, scope, job_key, run, state, log, delivery)
         except Refused as lost:
             reason = f'{reason} · the platform did not take the result: {lost.reason}'.lstrip(' ·')
-        self._record('job', key, state, reason, job_key, int(run), charged)
+        self._record('job', key, state, reason, job_key, int(run), charged, account=account, member=member)
         return state

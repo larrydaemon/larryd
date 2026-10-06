@@ -9,6 +9,8 @@ import re
 
 
 def sign(secret, route, data, at):
+    if not secret:
+        raise ValueError('no call is signed with an empty key')   # fail closed: never an empty-secret signature
     text = route + ' ' + at + ' ' + json.dumps(data, sort_keys=True, separators=(',', ':'))
     return hmac.new(secret.encode('utf-8'), text.encode('utf-8'), hashlib.sha256).hexdigest()
 
@@ -30,6 +32,8 @@ def good(secret, route, data, at, signature, now, window_seconds):
 # route + ' ' + at + ' ' + nonce + ' ' + the data as compact sorted JSON. A nonce is accepted once: the caller of
 # good_hardened() passes `fresh`, which records the nonce and answers False when it was seen before.
 def sign_hardened(secret, route, data, at, nonce):
+    if not secret:
+        raise ValueError('no call is signed with an empty key')
     text = route + ' ' + at + ' ' + nonce + ' ' + json.dumps(data, sort_keys=True, separators=(',', ':'))
     return hmac.new(secret.encode('utf-8'), text.encode('utf-8'), hashlib.sha256).hexdigest()
 
@@ -51,18 +55,25 @@ def well_formed(key_id, at, nonce, signature, known):
 
 
 def good_hardened(keys, key_id, route, data, at, nonce, signature, now, window_seconds, fresh):
-    """keys: {key id: secret} (every enabled version of every caller's key). fresh(nonce): True the first time only,
-    asked only after the signature is good, so a bad call never uses up a nonce."""
+    """keys: {key id: [secrets]} (every enabled version of every caller's key; a single secret string is read as one
+    version). fresh(nonce): True the first time only, asked only after the signature is good, so a bad call never uses
+    up a nonce."""
     keys = keys or {}
     if not well_formed(key_id, at, nonce, signature, keys):
         return False
-    secret = keys[key_id]
+    versions = keys[key_id]
+    versions = [versions] if isinstance(versions, str) else [v for v in versions if v]
+    if not versions:
+        return False
     try:
         moment = datetime.datetime.fromisoformat(at)
         if abs(now - moment) > datetime.timedelta(seconds=window_seconds):
             return False
     except (TypeError, ValueError):
         return False
-    if not hmac.compare_digest(sign_hardened(secret, route, data, at, nonce), signature):
+    good = False
+    for secret in versions:   # every version is compared (constant time each), whichever matches
+        good = hmac.compare_digest(sign_hardened(secret, route, data, at, nonce), signature) or good
+    if not good:
         return False
     return bool(fresh(nonce))
