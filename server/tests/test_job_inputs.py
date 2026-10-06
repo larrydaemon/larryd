@@ -44,7 +44,7 @@ class Wid:
         return (200, {'charged': 0, 'free': True}) if route == '/mtok/use' else (200, {'saved': True})
 
 
-class JobInputs(unittest.TestCase):
+class Echo(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.instance = pathlib.Path(self.tmp.name) / 'instance'
@@ -79,6 +79,8 @@ class JobInputs(unittest.TestCase):
     def results(wid):
         return [d for _o, route, d in wid.said if route == '/jobs/result']
 
+
+class JobInputs(Echo):
     def test_the_inputs_are_handed_by_name(self):
         self.agent({'name': '001', 'mood': '002', 'seed': '003'})
         wid = Wid({'001': 'Harbor', '002': PLANTED})
@@ -145,3 +147,31 @@ class JobInputs(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class ARevokedAgentsQueuedJob(Echo):
+    """THE OWNER AND THE SECURITY REVIEW, 2026-10-06: revocation is total. A RUN queued while the agent was approved is
+    refused when it starts once FROST revoked it (its approved list asked at that moment) or once its card is hidden (the
+    platform's catalog at that moment): nothing runs, nothing is asked of wid's inputs."""
+    def queued_run(self, cards, approved_hashes):
+        self.agent({'name': '001'})
+        row = locker.held(self.db, KEY)
+        wid = Wid({'001': 'Harbor'})
+        h = harness.Harness(self.db, self.agents, wid)
+        approved = {(KEY, row['code_sha256'], row['manifest_sha256']): ''} if approved_hashes else {}
+        h.facts = lambda account, scope, member: (cards, HIRED, [], h._verifier(approved))
+        return h.run_job(ACCOUNT, SCOPE, MEMBER, JOB, 1), wid
+
+    def test_approved_and_shown_it_runs(self):
+        self.assertEqual(self.queued_run([CARD], True)[0], 'DONE')
+
+    def test_revoked_at_frost_it_is_refused(self):
+        state, wid = self.queued_run([CARD], False)
+        self.assertEqual(state, 'REFUSED')
+        self.assertEqual([d['state'] for d in self.results(wid)], ['REFUSED'])
+        self.assertNotIn('/jobs/inputs', [route for _o, route, _d in wid.said])
+
+    def test_its_card_hidden_it_is_refused(self):
+        state, wid = self.queued_run([], True)   # the catalog shows only APPROVED (and LIVE) cards: a revoked card is not in it
+        self.assertEqual(state, 'REFUSED')
+        self.assertNotIn('/jobs/inputs', [route for _o, route, _d in wid.said])
