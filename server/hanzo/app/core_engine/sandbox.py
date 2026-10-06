@@ -24,6 +24,17 @@ PYTHON = _FRAMEWORK if os.path.isfile(_FRAMEWORK) else os.path.realpath(os.path.
 SANDBOX_EXEC = '/usr/bin/sandbox-exec'
 BWRAP = shutil.which('bwrap') or '/usr/bin/bwrap'
 MOST_BYTES = 1_000_000
+MOST_MEMORY = 512 * 1024 * 1024   # a run's address space (the runtime's own limit, beside Cloud Run's)
+MOST_CPU_SECONDS = 30             # a run's CPU time; the wall clock is `seconds` in run()
+MOST_FILE_BYTES = MOST_BYTES + 1  # any file a run writes, its answer included, is cut at this size
+
+
+def limits():
+    """Applied in the child before the sandbox starts (Linux): memory, CPU and file size, enforced by the kernel."""
+    import resource
+    resource.setrlimit(resource.RLIMIT_AS, (MOST_MEMORY, MOST_MEMORY))
+    resource.setrlimit(resource.RLIMIT_CPU, (MOST_CPU_SECONDS, MOST_CPU_SECONDS))
+    resource.setrlimit(resource.RLIMIT_FSIZE, (MOST_FILE_BYTES, MOST_FILE_BYTES))
 
 # LINUX: before the agent's code runs, a start-up written with the standard library alone installs a seccomp filter
 # (x86_64): fork, vfork, execve, execveat and a clone that is not a thread are refused with EPERM ("Operation not
@@ -139,17 +150,24 @@ def run(folder, entry, given, seconds=20):
                 command = _linux_command(agent, run_dir, entry)
             else:
                 return 'FAILED', None, 'no sandbox on this system: nothing runs unsandboxed'
-            done = subprocess.run(command,
-                                  input=json.dumps(given), capture_output=True, text=True, timeout=seconds, cwd=run_dir,
-                                  env={'PATH': '/usr/bin:/bin', 'HOME': run_dir, 'TMPDIR': run_dir, 'LC_CTYPE': 'UTF-8'})
+            linux = sys.platform.startswith('linux')
+            out_dir = tempfile.mkdtemp(prefix='hanzo_out_')   # outside the run folder: the agent cannot write here itself
+            out_path, err_path = os.path.join(out_dir, 'out'), os.path.join(out_dir, 'err')
+            with open(out_path, 'w') as out, open(err_path, 'w') as err:
+                done = subprocess.run(command, input=json.dumps(given), stdout=out, stderr=err, text=True, timeout=seconds,
+                                      cwd=run_dir, preexec_fn=limits if linux else None,
+                                      env={'PATH': '/usr/bin:/bin', 'HOME': run_dir, 'TMPDIR': run_dir, 'LC_CTYPE': 'UTF-8'})
+            stdout = open(out_path).read(MOST_BYTES + 2)
+            stderr = open(err_path).read(MOST_BYTES)
+            shutil.rmtree(out_dir, ignore_errors=True)
         except subprocess.TimeoutExpired:
             return 'FAILED', None, f'over the time limit ({seconds} s)'
-        if done.returncode != 0:
-            return 'FAILED', None, _kind(done.stderr, done.returncode)
-        if len(done.stdout) > MOST_BYTES:
+        if len(stdout) > MOST_BYTES:
             return 'FAILED', None, 'the answer is too long'
+        if done.returncode != 0:
+            return 'FAILED', None, _kind(stderr, done.returncode)
         try:
-            answer = json.loads(done.stdout)
+            answer = json.loads(stdout)
         except ValueError:
             answer = None
         if not isinstance(answer, dict):

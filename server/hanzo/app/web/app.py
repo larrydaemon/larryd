@@ -51,8 +51,10 @@ def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, deve
     client = preview.Local(db, locker_dir, instance) if local else platform.Client(addresses or {}, secret)
     h = lanes_harness.Harness(db, locker_dir, client, CONFIG['run']['seconds'])
     running, lock = set(), threading.Lock()
+    slot = threading.Lock()   # ONE RUN PER INSTANCE: taken before any agent code runs, given back in a finally
     app = Flask('hanzo', template_folder=str(APP / 'web'))
     app.config['harness'] = h
+    app.config['slot'] = slot
     app.config['developer'] = bool(developer)
 
     @app.before_request
@@ -100,9 +102,17 @@ def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, deve
         except lanes_harness.Refused as no:
             return jsonify({'refused': no.reason}), no.status
 
+    def busy():
+        return jsonify({'refused': 'busy: this instance is running another agent, try again'}), 409
+
     @app.get('/api/agents/answer')
     def answer():
-        return answered(lambda: h.answer(*(given('agent_key')[k] for k in NEEDS + ('agent_key',))))
+        if not slot.acquire(blocking=False):   # the slot first, atomically, before any of the agent's code
+            return busy()
+        try:
+            return answered(lambda: h.answer(*(given('agent_key')[k] for k in NEEDS + ('agent_key',))))
+        finally:
+            slot.release()
 
     @app.post('/api/agents/hire')
     def hire():
@@ -118,9 +128,12 @@ def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, deve
         return answered(lambda: h.defaults(*(given('board')[k] for k in NEEDS + ('board',))))
 
     def start(account, scope, member, job_key, run):
+        """-> True started, False already running, None the instance is busy (the slot is held)."""
         with lock:
             if (job_key, run) in running:
                 return False
+            if not slot.acquire(blocking=False):   # the slot is taken here, before the thread exists
+                return None
             running.add((job_key, run))
 
         def go():
@@ -129,7 +142,14 @@ def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, deve
             finally:
                 with lock:
                     running.discard((job_key, run))
-        threading.Thread(target=go, daemon=True).start()
+                slot.release()
+        try:
+            threading.Thread(target=go, daemon=True).start()
+        except BaseException:
+            with lock:
+                running.discard((job_key, run))
+            slot.release()
+            raise
         return True
 
     @app.post('/api/jobs/run')
@@ -141,6 +161,8 @@ def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, deve
         if not str(d['run']).isdigit():
             return jsonify({'refused': 'run is the RUN number'}), 400
         started = start(d['account'], d['scope'], d['member'], d['job_key'], int(d['run']))
+        if started is None:
+            return busy()
         return jsonify({'accepted': d['job_key'], 'run': int(d['run']), 'already': not started}), 202
 
     app.config['start'] = start
