@@ -5,6 +5,7 @@ import datetime
 import json
 import pathlib
 import secrets
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -22,12 +23,20 @@ def addresses(config, side, instance):
 class Client:
     """outbound + slot: the hardened scheme (Cloud Run): the call to that slot signed with the runtime's own key for it,
     a key id, a nonce and the moment (the same 60-second window the platform checks). Without them, the laptop's shared
-    secret. No call is ever signed with an empty key: it is refused before it leaves."""
-    def __init__(self, addresses, secret, timeout=10, outbound=None, slot=None):
+    secret. No call is ever signed with an empty key: it is refused before it leaves.
+
+    retry_seconds (Cloud Run): a call that gets no answer is tried again after 0.5, 1, 2, 4, 8 ... seconds until that
+    many seconds have passed, each try signed again with a FRESH nonce and moment. A GET is retried on any lost answer;
+    a POST only when it never left (the connection or the handshake failed), so a delivery or a charge is never sent
+    twice. 0 = one try (the laptop)."""
+    BACKOFF = (0.5, 1, 2, 4, 8, 16, 32)
+
+    def __init__(self, addresses, secret, timeout=10, outbound=None, slot=None, retry_seconds=0, clock=time.monotonic, sleep=time.sleep):
         self.addresses = dict(addresses)
         self.secret = secret
         self.timeout = timeout
         self.outbound, self.slot = outbound, slot
+        self.retry_seconds, self.clock, self.sleep = retry_seconds, clock, sleep
 
     def _headers(self, route, data, at):
         if self.outbound is not None:
@@ -38,14 +47,23 @@ class Client:
         return {'X-Office': signing.sign(self.secret, route, data, at), 'X-Office-At': at}
 
     def _send(self, office, method, route, data):
-        base = self.addresses.get(office)
-        if not base:
+        if not self.addresses.get(office):
             return 0, {'refused': f'{office} has no address here'}   # an undeclared office is never called: a plain refusal
+        until = self.clock() + self.retry_seconds
+        for pause in self.BACKOFF + (None,):
+            status, body, again = self._once(office, method, route, data)
+            if not again or pause is None or self.clock() + pause >= until:
+                return status, body
+            self.sleep(pause)
+
+    def _once(self, office, method, route, data):
+        """-> status, body, and whether a retry is safe and useful (no answer came; for a POST, nothing left)."""
+        base = self.addresses[office]
         at = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='seconds')
         try:
             headers = self._headers(route, data, at)
         except (ValueError, LookupError):
-            return 0, {'refused': f'no key to sign a call to {office}'}   # fail closed: nothing unsigned ever leaves
+            return 0, {'refused': f'no key to sign a call to {office}'}, False   # fail closed: nothing unsigned ever leaves
         url = base + '/api' + route
         body = None
         if method == 'GET':
@@ -55,15 +73,17 @@ class Client:
             headers['Content-Type'] = 'application/json'
         try:
             with urllib.request.urlopen(urllib.request.Request(url, data=body, headers=headers, method=method), timeout=self.timeout) as r:
-                return r.status, json.load(r)
+                return r.status, json.load(r), False
         except urllib.error.HTTPError as e:
             with e:
                 try:
-                    return e.code, json.load(e)
+                    return e.code, json.load(e), False
                 except ValueError:
-                    return e.code, {'refused': f'{office} answered {e.code}'}
-        except (urllib.error.URLError, OSError):
-            return 0, {'refused': f'{office} does not answer'}
+                    return e.code, {'refused': f'{office} answered {e.code}'}, False
+        except urllib.error.URLError:   # raised before the answer was read: the connection, the handshake or the sending failed
+            return 0, {'refused': f'{office} does not answer'}, True
+        except OSError:   # sent, then no answer: a GET may ask again, a POST may have been taken
+            return 0, {'refused': f'{office} does not answer'}, method == 'GET'
 
     def get(self, office, route, data=None):
         return self._send(office, 'GET', route, {k: str(v) for k, v in (data or {}).items()})

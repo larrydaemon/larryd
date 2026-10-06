@@ -23,7 +23,7 @@ from werkzeug.exceptions import HTTPException
 APP = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(APP))
 
-from core_engine import callers, harness as lanes_harness, intake, jobs as long_runs, lockers as bucket_lockers, platform, preview, records as run_records, sandbox, signing, slot as one_slot, store  # noqa: E402
+from core_engine import callers, harness as lanes_harness, intake, jobs as long_runs, lockers as bucket_lockers, platform, preview, records as run_records, sandbox, signing, slot as one_slot, store, warmup  # noqa: E402
 
 CONFIG = json.loads((APP / 'schemas' / 'hanzo.json').read_text())
 INSTANCE = pathlib.Path(os.environ['LARRYD_INSTANCE']) if os.environ.get('LARRYD_INSTANCE') else APP.parent / 'instance'   # the daemon names it
@@ -36,14 +36,19 @@ def _utc_now():
 
 NEEDS = ('account', 'scope', 'member')
 MAX_BODY = 64 * 1024   # a signed call's body; anything larger is refused unread
+RETRY_IN_REQUEST = 40   # a call back made inside a request retries this long (the request itself ends at 60 s)
+RETRY_IN_JOB = 60       # a job execution's calls back retry this long
 
 
-def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, developer=False, keys=None, nonces=None, cloud=None):
+def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, developer=False, keys=None, nonces=None, cloud=None,
+               retry_seconds=RETRY_IN_REQUEST):
     """agents: the locker's folder (default HANZO's own; a test gives a scratch one). developer: the developer's runtime
     (the marketplace page; the platform's answers from the instance when no address is declared).
     keys: the hardened call (Cloud Run): {key id: [versions]} of the callers. cloud: Cloud Run's parts (the runtime design):
     {'outbound': callers.Outbound, 'records': run records, 'lockers': BucketLockers or None, 'claims': job claims,
-    'jobs': the job starter or None}. On Cloud Run the runtime REFUSES TO START without its own outbound key for every
+    'jobs': the job starter or None}. retry_seconds: how long a call back to a slot is retried (Cloud Run only).
+    On Cloud Run the app is NOT READY (/ready answers 503) until warm_up() has run: the startup probe holds every call
+    back until the instance can reach the slots. On Cloud Run the runtime REFUSES TO START without its own outbound key for every
     slot that may call it (no call back to the platform is ever signed with an empty key)."""
     cloud = dict(cloud or {})
     if keys is not None:
@@ -73,7 +78,7 @@ def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, deve
             base = slots.get(caller, '')
             harnesses[caller] = lanes_harness.Harness(
                 db, locker_dir, platform.Client({o: f'{base}/{o}' for o in slots['offices']} if base else {}, '',
-                                                outbound=cloud['outbound'], slot=caller),
+                                                outbound=cloud['outbound'], slot=caller, retry_seconds=retry_seconds),
                 CONFIG['run']['seconds'], records=records, caller=caller)
     claims = cloud.get('claims') or long_runs.MemoryClaims()
     job_starter = cloud.get('jobs')
@@ -88,14 +93,24 @@ def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, deve
     app.config['lockers'] = lockers
     app.config['held_from_bucket'] = held_from_bucket
     app.config['records'] = records
+    app.config['ready'] = threading.Event()
+    if keys is None:
+        app.config['ready'].set()   # a laptop or a test has no NAT to warm
 
     def harness_for():
         """The calling slot's harness on Cloud Run (its key id named it), else the one harness."""
         caller = request.headers.get('X-Office-Key') if keys is not None else None
         return harnesses.get(caller, h) if caller else h
 
+    @app.get('/ready')
+    def ready():
+        """Cloud Run's startup probe (unsigned: the probe cannot sign). Says only ready or not, nothing else."""
+        return (jsonify({'ready': True}), 200) if app.config['ready'].is_set() else (jsonify({'ready': False}), 503)
+
     @app.before_request
     def signed_only():
+        if request.path == '/ready' and request.method == 'GET':
+            return None   # the startup probe; the route answers one word and runs nothing
         if developer and request.path.startswith('/marketplace'):
             return None   # the developer's own page, on 127.0.0.1, in the browser: no office signs it
         route = request.path.removeprefix('/api')
@@ -333,6 +348,20 @@ def place(app, agent_key, data, role=''):
         return {**held, 'refused': f'held in the locker, but FROST did not take it: {no.reason}; send it again with submit {agent_key}'}
 
 
+def warm_up(app, shake=warmup.handshake, sleep=None, then=None):
+    """Cloud Run, at start (the service) or before a run (a job execution): the warm-up handshakes to every slot with a
+    callback address, then `then` (the service's catch-up: still inside the start-up, where the instance has its CPU),
+    then the app is ready. -> the warm-up's result."""
+    kw = {'shake': shake} if sleep is None else {'shake': shake, 'sleep': sleep}
+    try:
+        result = warmup.warm(warmup.hosts(CONFIG['slots']), **kw)
+        if then is not None:
+            then(app)
+    finally:
+        app.config['ready'].set()
+    return result
+
+
 def catch_up(app):
     """At start, once (never a loop): the RUNs the platform queued while the runtime was away. On Cloud Run every
     slot's queue is read, and each run is claimed once across every instance before it starts (two new instances never
@@ -377,7 +406,7 @@ def main(argv):
     secret = secret_file.read_text().strip() if secret_file.is_file() else ''
     keys_dir = os.environ.get('LARRYD_KEYS_DIR')   # Cloud Run: the callers' keys, one folder each (the hardened call)
     cloud = cloud_parts()
-    app = create_app(INSTANCE, secret, addresses=platform.addresses(CONFIG, side, INSTANCE) if not cloud else {},
+    app = create_app(INSTANCE, secret, retry_seconds=RETRY_IN_JOB if argv[1:2] == ['job'] else RETRY_IN_REQUEST, addresses=platform.addresses(CONFIG, side, INSTANCE) if not cloud else {},
                      agents=(INSTANCE / 'agents') if cloud and cloud.get('lockers') else locker_root(INSTANCE),
                      developer=os.environ.get(DEVELOPER) == '1',
                      keys=callers.Keys(keys_dir) if keys_dir else None, nonces=callers.nonces() if keys_dir else None, cloud=cloud)
@@ -398,6 +427,8 @@ def main(argv):
         h = app.config['harnesses'].get(_slot)
         if h is None:
             raise SystemExit('no such slot')
+        if keys_dir:
+            print(json.dumps({'warm_up': warm_up(app)}))   # the same warm-up as the service, before the run calls back
         state = h.run_job(account, scope, member, job_key, int(run))
         print(json.dumps({'job_key': job_key, 'run': int(run), 'state': state}))
         return
@@ -407,7 +438,10 @@ def main(argv):
     if len(argv) > 1:
         raise SystemExit(main.__doc__)
     logging.getLogger('werkzeug').setLevel(logging.ERROR)   # no request lines: a call's query names an account and a member (data stays in wid)
-    catch_up(app)
+    if keys_dir:   # Cloud Run: the instance listens at once; /ready answers only after the warm-up and the catch-up
+        threading.Thread(target=warm_up, args=(app,), kwargs={'then': catch_up}, daemon=True).start()
+    else:
+        catch_up(app)
     app.run(host=os.environ.get('LARRYD_HOST') or CONFIG['host'], port=int(os.environ.get('PORT') or os.environ.get('LARRYD_PORT') or CONFIG['ports'][side]),
             threaded=True)   # 127.0.0.1, except in a container (Cloud Run names LARRYD_HOST and PORT)
 

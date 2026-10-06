@@ -9,6 +9,7 @@ import binascii
 import datetime
 import hashlib
 import json
+import logging
 import pathlib
 import re
 import sqlite3
@@ -56,6 +57,9 @@ class Refused(Exception):
     def __init__(self, status, reason):
         super().__init__(reason)
         self.status, self.reason = status, reason
+
+
+LOG = logging.getLogger('hanzo')
 
 
 def _now():
@@ -353,10 +357,14 @@ class Harness:
         return {name: held[slot] for name, slot in declared.items() if slot in held}
 
     def _end(self, account, scope, member, key, job_key, run, state, log, charged=0, delivery=''):
-        reason = '' if state == 'DONE' else log
+        """-> the state the run ended in. Its result goes back to the platform; when it never reaches it (after the
+        client's retries) the record says so: state CALLBACK_FAILED, the error code the run's own (RUN_DONE for a done
+        run), and a log line with the ids; never silent."""
+        recorded, reason = state, ('' if state == 'DONE' else log)
         try:
             self._result(account, scope, job_key, run, state, log, delivery)
-        except Refused as lost:
-            reason = f'{reason} · the platform did not take the result: {lost.reason}'.lstrip(' ·')
-        self._record('job', key, state, reason, job_key, int(run), charged, account=account, member=member)
+        except Refused:
+            recorded, reason = 'CALLBACK_FAILED', (reason or 'RUN DONE')
+            LOG.error('callback failed: job %s run %s ended %s, its result did not reach the platform', job_key, int(run), state)
+        self._record('job', key, recorded, reason, job_key, int(run), charged, account=account, member=member)
         return state
