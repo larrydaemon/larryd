@@ -61,14 +61,14 @@ def main(argv=None):
         print(f'made {root}/ · open it with Claude Code: cd {root} && claude')
         return 0
     if args.command == 'doctor':
+        notes = [] if args.json else doctor.conversions(args.path)   # what becomes the menu (the owner, 2026-10-06), said before --fix removes the sheet, so the author learns it
         if args.fix:
             for change in doctor.fix(args.path):
                 print(f'FIXED {change}')
         problems = doctor.check(args.path)
         print(json.dumps(doctor.as_json(problems), indent=2) if args.json else doctor.report(args.path, problems))
-        if not args.json:
-            for note in doctor.conversions(args.path):   # what the platform converts to its own menu (the owner, 2026-10-06), so the author learns it
-                print(f'CONVERTED {note}')
+        for note in notes:
+            print(f'CONVERTED {note}')
         if args.badge:
             root = pathlib.Path(args.path).resolve()
             if root.is_dir():
