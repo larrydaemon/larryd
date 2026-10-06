@@ -1,0 +1,8 @@
+**/instance
+**/secrets
+**/.venv
+**/__pycache__
+tests
+*.pyc
+.gcloudignore
+.git

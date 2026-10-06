@@ -22,7 +22,7 @@ from flask import Flask, jsonify, redirect, render_template, request
 APP = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(APP))
 
-from core_engine import harness as lanes_harness, intake, platform, preview, signing, store  # noqa: E402
+from core_engine import callers, harness as lanes_harness, intake, platform, preview, signing, store  # noqa: E402
 
 CONFIG = json.loads((APP / 'schemas' / 'hanzo.json').read_text())
 INSTANCE = pathlib.Path(os.environ['LARRYD_INSTANCE']) if os.environ.get('LARRYD_INSTANCE') else APP.parent / 'instance'   # the daemon names it
@@ -36,10 +36,10 @@ def _utc_now():
 NEEDS = ('account', 'scope', 'member')
 
 
-def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, developer=False):
+def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, developer=False, keys=None, nonces=None):
     """agents: the locker's folder (default HANZO's own; a test gives a scratch one). developer: the developer's runtime
     (the marketplace page; the platform's answers from the instance when no address is declared)."""
-    if not secret:
+    if not secret and keys is None:
         raise SystemExit(f"HANZO does not start without its secret '{CONFIG['secret']['name']}'")
     db = store.open_store(instance)
     locker_dir = APP / 'agents' if agents is None else pathlib.Path(agents)
@@ -59,8 +59,14 @@ def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, deve
             return None   # the developer's own page, on 127.0.0.1, in the browser: no office signs it
         data = request.args.to_dict() if request.method == 'GET' else (request.get_json(silent=True) or {})
         route = request.path.removeprefix('/api')
-        if not signing.good(secret, route, data, request.headers.get('X-Office-At'), request.headers.get('X-Office'),
-                            now(), CONFIG['signed_window_seconds']):
+        if keys is not None:   # THE HARDENED CALL (Cloud Run): a key per caller and a nonce, never the shared secret
+            ok = signing.good_hardened(keys.now(), request.headers.get('X-Office-Key'), route, data, request.headers.get('X-Office-At'),
+                                       request.headers.get('X-Office-Nonce') or '', request.headers.get('X-Office'), now(),
+                                       CONFIG['signed_window_seconds'], nonces.fresh)
+        else:
+            ok = signing.good(secret, route, data, request.headers.get('X-Office-At'), request.headers.get('X-Office'),
+                              now(), CONFIG['signed_window_seconds'])
+        if not ok:
             return jsonify({'refused': 'not a signed call'}), 401
         return None
 
@@ -252,8 +258,10 @@ def main(argv):
     side = os.environ.get(CONFIG['environment_variable'], 'localhost.rnd').split('.')[-1]
     secret_file = INSTANCE / 'secrets' / CONFIG['secret']['name']
     secret = secret_file.read_text().strip() if secret_file.is_file() else ''
+    keys_dir = os.environ.get('LARRYD_KEYS_DIR')   # Cloud Run: the callers' keys, one file each (the hardened call)
     app = create_app(INSTANCE, secret, addresses=platform.addresses(CONFIG, side, INSTANCE), agents=locker_root(INSTANCE),
-                     developer=os.environ.get(DEVELOPER) == '1')
+                     developer=os.environ.get(DEVELOPER) == '1',
+                     keys=callers.Keys(keys_dir) if keys_dir else None, nonces=callers.nonces() if keys_dir else None)
     if argv[1:2] == ['place'] and len(argv) == 4:
         print(json.dumps(place(app, argv[2], pathlib.Path(argv[3]).read_bytes())))
         return
@@ -270,7 +278,8 @@ def main(argv):
         raise SystemExit(main.__doc__)
     logging.getLogger('werkzeug').setLevel(logging.ERROR)   # no request lines: a call's query names an account and a member (data stays in wid)
     catch_up(app)
-    app.run(host=CONFIG['host'], port=int(os.environ.get('LARRYD_PORT') or CONFIG['ports'][side]), threaded=True)   # always 127.0.0.1
+    app.run(host=os.environ.get('LARRYD_HOST') or CONFIG['host'], port=int(os.environ.get('PORT') or os.environ.get('LARRYD_PORT') or CONFIG['ports'][side]),
+            threaded=True)   # 127.0.0.1, except in a container (Cloud Run names LARRYD_HOST and PORT)
 
 
 if __name__ == '__main__':
