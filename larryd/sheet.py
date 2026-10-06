@@ -138,15 +138,19 @@ def nearest_colour(rgb, cat):
     return best[0], best[1], far
 
 
+ROLE_RULE = 'nearest by case first, then size and weight'
+ROLE_RULE_NO_CASE = 'no case written: nearest by size and weight'
+
+
 def nearest_role(written, cat):
-    """The type role nearest to written type ({property: value}) by size, weight and case; unwritten weight and case are CSS's own."""
+    """The type role nearest to written type ({property: value}): a written case first (an uppercase line stays an
+    uppercase role), then size and weight (an unwritten weight counts as 400). A tie goes to the earlier role."""
     roles = cat['roles']
-    size, wt, case = _px(written.get('font-size')), written.get('font-weight', '400'), written.get('text-transform', 'none')
+    size, wt = _px(written.get('font-size')), written.get('font-weight', '400')
     wt = {'bold': 700, 'bolder': 800, 'normal': 400, 'lighter': 300}.get(wt, int(wt) if wt.isdigit() else 400)
-    return min(roles, key=lambda r: (abs(roles[r]['size'] - size) if size is not None else 0) + abs(roles[r]['weight'] - wt) / 50
-               + (6 if case != roles[r]['case'] else 0))
-
-
+    case = written.get('text-transform')
+    return min(roles, key=lambda r: ((case is not None and case != roles[r]['case']),
+                                     (abs(roles[r]['size'] - size) if size is not None else 0) + abs(roles[r]['weight'] - wt) / 50))
 
 
 def table(cat=None):
@@ -159,14 +163,14 @@ def table(cat=None):
              'or dark), so the colours below are the reference theme\'s only; a designed colour goes to the nearest as the eye sees it.', '',
              '| Colour (reference theme) | active-color-NN |', '|---|---|']
     lines += [f'| `{hexa}` | {", ".join(nums)} |' for hexa, nums in shades.items()]
-    lines += ['', '"radius" and "space": a step of the scale (a designed length goes to the nearest step; a tie rounds down):', '',
+    lines += ['', '"radius" is the card\'s corner, "space" its padding (the template sets the gaps inside from it); each is a step of the scale (a designed length goes to the nearest step; a tie rounds down):', '',
               '| Step | ' + ' | '.join(cat['steps']) + ' |', '|---|' + '---|' * len(cat['steps']),
               '| px | ' + ' | '.join(f'{v:g}' for v in cat['steps'].values()) + ' |', '',
               f'"effect": {", ".join(cat["effects"])}.', '',
-              '"text": a part of the card and its type role (each part has a default; name only the ones you change):', '',
+              '"text": a part of the card and its type role (each part has a default; name only the ones you change). A part takes a role, never a colour: colour is card-wide, the accent only.', '',
               '| Part | Default role | What it is |', '|---|---|---|']
     lines += [f'| {p} | {r} | {cat["part_for"][p]} |' for p, r in cat['parts'].items()]
-    lines += ['', 'The type roles (a designed font, size, weight, case or letter spacing goes to the nearest by size, weight and case):', '',
+    lines += ['', 'The type roles (designed type on a part goes to the nearest role, ' + ROLE_RULE + '; the role brings its own font, style and letter spacing):', '',
               '| Role | Size | Weight | Case | For |', '|---|---|---|---|---|']
     lines += [f'| {r} | {v["size"]:g}px | {v["weight"]} | {v["case"]} | {cat["for"].get(r, "")} |' for r, v in cat['roles'].items()]
     return '\n'.join(lines)

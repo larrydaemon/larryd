@@ -102,21 +102,59 @@ def _decls(body):
     return out
 
 
-def _rules(text):
-    """[(selector, [(prop, value)])] of the sheet's plain rules, nested at-rules opened; keyframes skipped."""
+def _rules(text, within=''):
+    """-> ([(selector, [(prop, value)], within)], [(at-rule, why)]): the sheet's plain rules, nested @media and the like
+    opened (within names it), and every other at-rule, which never becomes a name."""
     items, _said = sheet._blocks(text or '')
-    out = []
+    rules, ats = [], []
     for item in items:
+        if item[0] == 'at':
+            ats.append((item[1], AT_WHY.get(item[1][1:].split(None, 1)[0].lower(), 'not part of a card\'s look')))
+            continue
         if item[0] != 'block':
             continue
         prelude = ' '.join(item[1].split())
         if prelude.startswith('@'):
             name = prelude[1:].split(None, 1)[0].lower()
             if name in ('media', 'supports', 'container', 'layer'):
-                out += _rules(item[2])
+                more, more_ats = _rules(item[2], prelude)
+                rules += more
+                ats += more_ats
+            else:
+                ats.append((prelude, AT_WHY.get(name, 'not part of a card\'s look')))
             continue
-        out.append((prelude, _decls(item[2])))
-    return out
+        rules.append((prelude, _decls(item[2]), within))
+    return rules, ats
+
+
+AT_WHY = {'import': 'the template loads every file itself', 'font-face': 'the type roles bring their own faces',
+          'keyframes': 'the effect brings its own animation', '-webkit-keyframes': 'the effect brings its own animation',
+          'charset': 'not part of a card\'s look', 'namespace': 'not part of a card\'s look', 'page': 'not part of a card\'s look'}
+STATES = re.compile(r':(hover|focus|focus-visible|focus-within|active|visited|checked|disabled)\b', re.I)
+REASONS = (   # (properties, why they never become a name); the first that matches says it
+    (re.compile(r'^(position|top|right|bottom|left|inset.*|z-index|float|clear)$'), 'the template places every part'),
+    (re.compile(r'^(gap|row-gap|column-gap|margin.*)$'), '"space" is the card\'s padding; the template sets the gaps and margins from it'),
+    (re.compile(r'^(display|flex.*|grid.*|order|align.*|justify.*|place.*|aspect-ratio|width|height|min-.*|max-.*|overflow.*|box-sizing|columns?.*)$'),
+     'the template lays out the card'),
+    (re.compile(r'^(transition.*|animation.*|transform.*|translate|rotate|scale|filter|backdrop-filter|box-shadow|text-shadow|opacity|mix-blend-mode|will-change)$'),
+     'the effect brings its own motion, light and shadow'),
+    (re.compile(r'^(cursor|pointer-events|user-select|content|outline.*)$'), 'the template draws every state'),
+)
+
+
+def _why(prop, selector, part, card):
+    if STATES.search(selector):
+        return 'the template draws hover, focus and every other state'
+    for props, why in REASONS:
+        if props.match(prop):
+            return why
+    if prop in sheet.TYPE:
+        return f'no text part of the card here (the parts: {", ".join(sheet.catalog()["parts"])})' if part is None else 'the role brings its own type'
+    if card and re.search(r'colou?r|background|border|fill|stroke', prop):
+        return 'one accent per card: the first colour on the card became it; the template draws the border and the ground'
+    if re.search(r'colou?r|background|border|fill|stroke', prop):
+        return 'colour is card-wide, the accent only: a text part takes a role, never a colour'
+    return 'not a name on the menu'
 
 
 def _first_colour(value):
@@ -145,50 +183,55 @@ def _part(selector):
 
 
 def from_sheet(text, cat=None):
-    """-> (the look record nearest to a designed sheet, [what was mapped, each said]). The card's own rule (.mk-card,
-    .agent-card, :host) gives the accent (its border, outline or text colour first), the radius and the space; the
-    sheet's words give the effect; each rule that sets type on a named part gives that part's role."""
+    """-> (the look record nearest to a designed sheet, [what was mapped], [what was dropped]): every declaration of the
+    sheet is said once, as a name it became or as dropped with why. The card's own rule (.mk-card, .agent-card, :host,
+    no state) gives the accent (its border, outline or text colour first), the radius and the space (its padding); the
+    sheet's animation words give the effect; type on a named part gives that part's role."""
     cat = cat or sheet.catalog()
-    rules = _rules(text)
-    said, look = [], {}
-    card = [r for r in rules if CARD.search(r[0])] + [r for r in rules if not CARD.search(r[0])]
+    rules, ats = _rules(text)
+    said, look, used = [], {}, set()
+    card = [n for n, r in enumerate(rules) if CARD.search(r[0]) and not STATES.search(r[0])]
 
     order = ('border-color', 'border', 'outline', 'outline-color', 'border-top', 'border-bottom', 'color', 'box-shadow', 'background-color', 'background')
     found = None
-    for selector, decls in card:
+    for n in card:
         for want in order:
-            for prop, value in decls:
+            for k, (prop, value) in enumerate(rules[n][1]):
                 if prop == want:
                     named, typed = _first_colour(value)
                     if named or typed:
-                        found = (selector, prop, named, typed)
+                        found = (n, k, prop, named, typed)
                         break
             if found:
                 break
         if found:
             break
     if found:
-        selector, prop, named, typed = found
+        n, k, prop, named, typed = found
+        selector = rules[n][0]
         if named:
             look['accent'] = named
+            used.add((n, k))
             said.append(f'{selector}: {prop} var(--{named}) -> accent {named}')
         else:
             rgba = sheet._rgba(typed)
             if rgba:
                 slot, hexa, far = sheet.nearest_colour(rgba[:3], cat)
                 look['accent'] = slot.lstrip('-')   # the NAME only: the match is made once, here, against the reference theme
+                used.add((n, k))
                 said.append(f'{selector}: {prop} {typed} -> accent {look["accent"]} (the theme\'s nearest colour, {hexa} in the reference theme, distance {far:.2f})')
 
-    for field, props in (('radius', ('border-radius',)), ('space', ('padding', 'gap', 'margin'))):
+    for field, test in (('radius', lambda p: p == 'border-radius' or (p.startswith('border-') and p.endswith('-radius'))),
+                        ('space', lambda p: p == 'padding' or p.startswith('padding-'))):
         done = False
-        for selector, decls in card:
-            ranked = sorted(decls, key=lambda d: next((n for n, p in enumerate(props) if d[0] == p or d[0].startswith(p + '-')), len(props)))
-            for prop, value in ranked:
-                if prop in props or (field == 'radius' and prop.startswith('border-') and prop.endswith('-radius')):
+        for n in card:
+            for k, (prop, value) in enumerate(rules[n][1]):
+                if test(prop):
                     step, tie = _step(value, cat)
                     if step:
                         look[field] = step
-                        said.append(f'{selector}: {prop} {value} -> {field} {step} ({cat["steps"][step]}px, the nearest step{"; tie: rounds down" if tie else ""})')
+                        used.add((n, k))
+                        said.append(f'{rules[n][0]}: {prop} {value} -> {field} {step} ({cat["steps"][step]}px, the nearest step{"; tie: rounds down" if tie else ""})')
                         done = True
                         break
             if done:
@@ -198,20 +241,30 @@ def from_sheet(text, cat=None):
     best = max(hits, key=lambda e: hits[e]) if any(hits.values()) else 'none'
     if best != 'none':
         look['effect'] = best
-        said.append(f'the sheet\'s animation and layers -> effect {best}')
+        said.append(f'the sheet\'s animation and layers -> effect {best} (read from its words: {", ".join(sorted(set(m.group(0).lower() for m in EFFECT_WORDS[best].finditer(text))))})')
 
     text_roles = {}
-    for selector, decls in rules:
+    for n, (selector, decls, _within) in enumerate(rules):
+        if STATES.search(selector):
+            continue
         written = {p: v for p, v in decls if p in sheet.TYPE and not v.startswith('var(--font-')}
-        if not written:
-            continue
         part = _part(selector)
-        if part is None:
-            said.append(f'{selector}: {"; ".join(f"{k}: {v}" for k, v in written.items())} -> dropped (no text part of the card; the parts: {", ".join(cat["parts"])})')
+        if not written or part is None:
             continue
-        role = sheet.nearest_role(written, cat)
+        role, how = sheet.nearest_role(written, cat), sheet.ROLE_RULE if 'text-transform' in written else sheet.ROLE_RULE_NO_CASE
         text_roles[part] = role
-        said.append(f'{selector}: {"; ".join(f"{k}: {v}" for k, v in written.items())} -> text {part}: the {role} role (its own font, size, weight, case and letter spacing)')
+        used.update((n, k) for k, (p, _v) in enumerate(decls) if p in written)
+        said.append(f'{selector}: {"; ".join(f"{k}: {v}" for k, v in written.items())} -> text {part}: the {role} role ({how}; the role brings its own font, size, weight, style, case and letter spacing)')
     if text_roles:
         look['text'] = text_roles
-    return look, said
+
+    dropped = [f'{at} -> no name on the menu ({why})' for at, why in ats]
+    for n, (selector, decls, within) in enumerate(rules):
+        groups = {}
+        for k, (prop, value) in enumerate(decls):
+            if (n, k) not in used:
+                groups.setdefault(_why(prop, selector, _part(selector), n in card), []).append(prop)
+        where = f'{within} {selector}' if within else selector
+        for why, props in groups.items():
+            dropped.append(f'{where}: {", ".join(props)} -> no name on the menu ({why})')
+    return look, said, dropped

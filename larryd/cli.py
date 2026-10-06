@@ -70,16 +70,16 @@ def main(argv=None):
     if args.command == 'doctor':
         notes = [] if args.json else doctor.conversions(args.path)   # what a design sheet maps to: said before --fix writes it, so the author learns it
         if args.fix:
-            for note in notes:
-                print(f'CONVERTED {note}')
+            for verb, note in notes:
+                print(f'{"CONVERTED" if verb == "CONVERT" else "DROPPED"} {note}')
             for change in doctor.fix(args.path):
                 print(f'FIXED {change}')
         problems = doctor.check(args.path)
         print(json.dumps(doctor.as_json(problems), indent=2) if args.json else doctor.report(args.path, problems))
         if not args.json:
             left = doctor.conversions(args.path)   # read from the files as they are now: after --fix, agent/ holds no sheet
-            for note in left:
-                print(f'WILL CONVERT {note}')
+            for verb, note in left:
+                print(f'WILL {verb} {note}')
             if left:
                 print('run `larryd doctor --fix` to write these into the look record (the sheet moves to design/)')
             elif args.fix and notes:

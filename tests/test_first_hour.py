@@ -90,8 +90,11 @@ def test_fix_says_what_it_did_then_the_agent_is_clean(tmp_path, capsys):
 
 
 # 6. the nearest name, as the eye sees it, and the menu written down from the one fixed list
-def test_unwritten_weight_and_case_count_as_css_s_own():
-    assert sheet.nearest_role({'font-size': '0.85rem', 'letter-spacing': '0.08em'}, sheet.catalog()) == 'body'
+def test_a_written_case_counts_first_an_unwritten_one_not_at_all():
+    cat = sheet.catalog()
+    assert sheet.nearest_role({'font-size': '0.85rem', 'letter-spacing': '0.08em'}, cat) == 'subnav'   # 13.6px, weight 400 counted
+    assert sheet.nearest_role({'font-size': '0.85rem', 'text-transform': 'none'}, cat) == 'body'      # a written case first
+    assert sheet.nearest_role({'font-size': '48px', 'font-weight': '300', 'text-transform': 'none'}, cat) == 'body'
 
 
 def test_the_menu_is_in_the_guide_and_every_project(tmp_path):
@@ -155,7 +158,7 @@ def test_the_guide_names_every_tool_the_server_serves():
 
 def test_a_tie_on_the_scale_rounds_down_and_says_so():
     from larryd import look
-    record, said = look.from_sheet('.mk-card { padding: 10px }')
+    record, said, _ = look.from_sheet('.mk-card { padding: 10px }')
     assert record == {'space': 'step-3'} and said[0].endswith('(8px, the nearest step; tie: rounds down)')
     assert 'a tie rounds down' in sheet.table()
 
@@ -164,3 +167,30 @@ def test_install_leads_with_the_line_that_works_today():
     text = (PACKAGE / 'GUIDE.md').read_text()
     first = text.split('## 1. Install\n', 1)[1].splitlines()[0]
     assert first.strip() == 'python3 -m venv ~/larryd-venv && ~/larryd-venv/bin/pip install --pre larryd'
+
+
+# rc11's rerun: what a design sheet loses is said in both modes; the design sheet it replaces is kept
+def test_doctor_says_will_drop_and_fix_says_dropped(tmp_path, capsys):
+    root = made(tmp_path)
+    sheet_text = '.mk-card { border: 1px solid #8a8a8a; gap: 12px }\n.mk-name { color: #ffb000 }\n'
+    (root / 'agent' / 'card.css').write_text(sheet_text)
+    cli.main(['doctor', str(root)])
+    out = capsys.readouterr().out
+    assert 'WILL DROP card.css: .mk-name: color -> no name on the menu (colour is card-wide' in out
+    assert 'WILL DROP card.css: .mk-card: gap -> no name on the menu' in out
+    assert cli.main(['doctor', '--fix', str(root)]) == 0
+    out = capsys.readouterr().out
+    assert 'DROPPED card.css: .mk-name: color -> no name on the menu' in out and 'WILL DROP' not in out
+
+
+def test_fix_keeps_the_design_sheet_it_replaces(tmp_path, capsys):
+    root = made(tmp_path)
+    before = (root / 'design' / 'card.css').read_text()
+    (root / 'agent' / 'card.css').write_text('.mk-card { border-radius: 4px }\n')
+    changed = doctor.fix(root)
+    assert (root / '.larryd' / 'doctor_backup' / 'design' / 'card.css').read_text() == before
+    assert any('the previous design sheet kept' in c for c in changed)
+    assert (root / 'design' / 'card.css').read_text() == '.mk-card { border-radius: 4px }\n'
+    (root / 'agent' / 'card.css').write_text('.mk-card { border-radius: 8px }\n')
+    doctor.fix(root)
+    assert (root / '.larryd' / 'doctor_backup' / 'design' / 'card.css').read_text() == '.mk-card { border-radius: 4px }\n'   # always the one before

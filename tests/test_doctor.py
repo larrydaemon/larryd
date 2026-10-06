@@ -327,7 +327,7 @@ def test_a_shipped_sheet_fails_and_says_what_it_will_convert(tmp_path):
     assert [p.check for p in problems] == ['the shape'] and 'agents ship no CSS' in problems[0].wrong and '--fix' in problems[0].todo
     said = doctor.conversions(root)
     for line in ('-> accent active-color-', 'border-radius 20px -> radius step-6', 'padding 14px -> space step-4', '.mk-name: font-size: 40px; font-weight: 900 -> text name: the heading role'):
-        assert any(line in n for n in said), (line, said)
+        assert any(line in n for _verb, n in said), (line, said)
 
 
 def test_fix_writes_the_record_moves_the_sheet_and_is_deterministic(tmp_path):

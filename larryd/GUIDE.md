@@ -99,12 +99,16 @@ value must be a name on the menu below; the platform checks it again at submissi
 drops anything else. A look the record does not name keeps the template's default.
 
 Design in CSS if you like: write `agent/card.css` normally and run `larryd doctor --fix`. It maps each value to the
-nearest name on the menu and says each mapping (CONVERTED ...): a colour to the theme colour variable nearest as the eye
-sees it (OKLab distance against the reference theme, done once; only the name is kept), a radius, padding or gap to the
-nearest step, written type on a part of the card to the nearest role by size, weight and case, the sheet's layers and
-animation to the nearest effect. It writes the look record, moves the sheet to `design/card.css` (agents ship no CSS)
-and keeps your original manifest in `.larryd/doctor_backup/`. Plain `larryd doctor` changes nothing: while a sheet is in
-`agent/` it fails the shape and says what it WILL CONVERT. `larryd place` and `larryd submit` convert it the same way
+nearest name on the menu and says each mapping (CONVERTED ...): the card's first colour to the theme colour variable
+nearest as the eye sees it (OKLab distance against the reference theme, done once; only the name is kept), its corner
+radius and its padding to the nearest step, written type on a part of the card to the nearest role (by case first, then
+size and weight), the sheet's animation words to the nearest effect. Every other value is said too, as DROPPED ... with
+why: colour is card-wide (the accent only), so a part's colour is dropped (a part takes a role, never a colour); gap and
+margin are dropped ("space" is the card's padding and the template sets the gaps from it); layout, position, hover and
+other states, shadows, transforms and transitions are the template's and the effect's; @import, @font-face and
+@keyframes never become a name. It writes the look record, moves the sheet to `design/card.css` (agents ship no CSS)
+and keeps your original manifest, and the design sheet it replaces, in `.larryd/doctor_backup/`. Plain `larryd doctor` changes nothing: while a sheet is in
+`agent/` it fails the shape and says what it WILL CONVERT and WILL DROP. `larryd place` and `larryd submit` convert it the same way
 first, so CSS is never a reason to refuse. --fix also fills the card's missing facts with honest defaults it names.
 The same files always give the same result.
 
@@ -124,7 +128,7 @@ or dark), so the colours below are the reference theme's only; a designed colour
 | `#17191A` | 11, 12, 30, 39, 45, 47, 49, 51, 58 |
 | `#F1E8C7` | 19 |
 
-"radius" and "space": a step of the scale (a designed length goes to the nearest step; a tie rounds down):
+"radius" is the card's corner, "space" its padding (the template sets the gaps inside from it); each is a step of the scale (a designed length goes to the nearest step; a tie rounds down):
 
 | Step | step-0 | step-1 | step-2 | step-3 | step-4 | step-5 | step-6 | step-7 | step-8 | step-9 |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -132,7 +136,7 @@ or dark), so the colours below are the reference theme's only; a designed colour
 
 "effect": none, crt, wellness, glitch.
 
-"text": a part of the card and its type role (each part has a default; name only the ones you change):
+"text": a part of the card and its type role (each part has a default; name only the ones you change). A part takes a role, never a colour: colour is card-wide, the accent only.
 
 | Part | Default role | What it is |
 |---|---|---|
@@ -145,7 +149,7 @@ or dark), so the colours below are the reference theme's only; a designed colour
 | facts | annotation | the type and residency |
 | price | callout | the price |
 
-The type roles (a designed font, size, weight, case or letter spacing goes to the nearest by size, weight and case):
+The type roles (designed type on a part goes to the nearest role, nearest by case first, then size and weight; the role brings its own font, style and letter spacing):
 
 | Role | Size | Weight | Case | For |
 |---|---|---|---|---|

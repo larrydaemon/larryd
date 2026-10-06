@@ -456,14 +456,15 @@ def _sheets(agent):
 
 
 def conversions(root):
-    """-> [str]: what `larryd doctor --fix` will make of a sheet in agent/: the look record's names, each mapping said."""
+    """-> [(verb, str)]: what `larryd doctor --fix` will make of a sheet in agent/, every declaration said once:
+    ('CONVERT', the name it becomes) or ('DROP', why it becomes none)."""
     notes = []
     for path in _sheets(pathlib.Path(root).resolve() / shape.AGENT):
         try:
-            _look, said = look.from_sheet(path.read_text())
+            _look, said, dropped = look.from_sheet(path.read_text())
         except UnicodeDecodeError:
             continue
-        notes += [f'{path.name}: {n}' for n in said]
+        notes += [('CONVERT', f'{path.name}: {n}') for n in said] + [('DROP', f'{path.name}: {n}') for n in dropped]
     return notes
 
 
@@ -491,7 +492,7 @@ def fix_look(root):
             changed.append(f'{path.relative_to(root)}: a link, left as it is (not moved)')
             continue
         try:
-            found, _said = look.from_sheet(path.read_text())
+            found, _said, _dropped = look.from_sheet(path.read_text())
         except UnicodeDecodeError:
             continue
         text = {**(record.get('text') or {}), **found.pop('text', {})}
@@ -513,8 +514,13 @@ def fix_look(root):
         design.mkdir(exist_ok=True)
     for path in moved:
         target = design / path.name
-        if target.exists():
-            _backup(root, target)
+        if target.is_file() and not target.is_symlink():   # the previous design sheet is kept too, never lost to the new one
+            kept = root / '.larryd' / 'doctor_backup' / DESIGN
+            if kept.is_symlink() or (kept.exists() and not kept.is_dir()):
+                raise PermissionError(f'{kept} is a link or not a folder: nothing moved')
+            kept.mkdir(mode=0o700, exist_ok=True)
+            _write(root, kept / path.name, target.read_text())
+            changed.append(f'{DESIGN}/{path.name}: the previous design sheet kept in .larryd/doctor_backup/{DESIGN}/{path.name}')
         os.replace(path, target)
         changed.append(f'{path.relative_to(root)}: turned into the look record in agent.json and moved to {DESIGN}/{path.name} (agents ship no CSS)')
     if 'look' in data:
