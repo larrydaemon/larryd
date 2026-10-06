@@ -5,6 +5,7 @@ import ast
 import json
 import pathlib
 import re
+from importlib import resources
 import sys
 from dataclasses import asdict, dataclass
 
@@ -46,7 +47,11 @@ SECRET_TEXT = (
     (re.compile(r'\bAIza[0-9A-Za-z_-]{35}\b'), 'a Google API key'),
     (re.compile(r'(?i)\b\w*(secret|password|passwd|token|api_?key|private_?key)\w*["\']?\s*[:=]\s*["\'][^"\'\s]{8,}["\']'), 'a secret written into the code'),
 )
-KINDS = {'.py', '.json', '.txt', '.md', '.csv'}
+KINDS = {'.py', '.json', '.txt', '.md', '.csv', '.css'}   # .css: the agent's own card sheet (the owner, 2026-10-06), checked to reach nowhere
+SHEET_TYPE = re.compile(r'(^|[;{\s])(font(-[a-z-]+)?|line-height|letter-spacing|text-transform|word-spacing)\s*:|@font-face', re.I)   # the owner, 2026-10-06: an agent picks the platform's type classes, never writes type
+SHEET_COLOUR = re.compile(r'#[0-9a-f]{3,8}\b|\b(rgba?|hsla?|hwb|lab|lch|oklab|oklch)\s*\(', re.I)   # a colour is the theme's own variable, never typed
+TYPE_CLASSES = 'heading, title, subtitle, caption, label, callout, annotation, body, link, subnav and the sizes size--xxxs to size--xxxxl'
+SHEET_REACHES = re.compile(r'url\s*\(|@import|expression\s*\(|javascript:|<|\\', re.I)   # the platform's own refusal, the same words
 
 
 @dataclass
@@ -321,9 +326,14 @@ def _shape(root, f):
                       f'keep only {", ".join(sorted(KINDS))} files in agent/; anything else stays outside it')
             else:
                 try:
-                    path.read_text()
+                    text = path.read_text()
                 except UnicodeDecodeError:
                     f.add(c, where, 'it is not plain UTF-8 text', 'save it as UTF-8 text, or take it out of agent/')
+                else:
+                    if path.suffix == '.css' and (SHEET_REACHES.search(text) or len(text) > 20000):
+                        f.add(c, where, 'the card sheet reaches out (an address, a load, a script, markup or an escape) or is over 20,000 characters',
+                              'keep the sheet to plain rules over the card\'s own classes; the platform refuses a sheet that reaches anywhere')
+
         elif not path.is_dir():
             f.add(c, where, 'it is not a plain file or folder', 'remove it from agent/')
 
@@ -439,3 +449,124 @@ def badge(problems, day):
 def as_json(problems):
     return {'ok': not problems, 'checks_version': CHECKS_VERSION, 'checks': [{'check': n, 'ok': not any(p.check == n for p in problems),
                                             'problems': [asdict(p) for p in problems if p.check == n]} for n in CHECKS]}
+
+
+ELEMENTS = {'h1': 'heading', 'h2': 'title', 'h3': 'subtitle', 'h4': 'subtitle', 'p': 'body', 'small': 'annotation', 'label': 'label',
+            'a': 'link', 'nav': 'nav', 'blockquote': 'callout', 'aside': 'callout', 'code': 'notes', 'pre': 'notes'}   # what a developer writes by habit, said as the catalog's roles
+
+
+def _catalog():
+    return json.loads(resources.files('larryd').joinpath('kit', 'catalog.json').read_text())
+
+
+def conversions(root):
+    """-> [str]: each conversion the platform will make of the agent's card sheets (the owner, 2026-10-06: "if they write
+    anything it can get converted automatically"), so the author learns THE GLOBAL FONT CATALOG: written type -> the
+    nearest role (by size, weight and case, against the reference catalog), a typed colour -> the nearest colour slot."""
+    cat, notes = _catalog(), []
+    roles = cat['roles']
+    slots = {k: tuple(int(v[i:i + 2], 16) for i in (1, 3, 5)) for k, v in cat['colours'].items()}
+    px = lambda v: (lambda m: float(m.group(1)) * (16 if m.group(2) in ('rem', 'em') else 1) if m else None)(re.fullmatch(r'\s*([\d.]+)\s*(px|rem|em)?\s*', v or ''))
+    for path in _files(pathlib.Path(root).resolve() / shape.AGENT):
+        if path.suffix != '.css' or not path.is_file():
+            continue
+        text = re.sub(r'/\*.*?\*/', '', path.read_text(), flags=re.S)
+        for selector, body in re.findall(r'([^{}]+)\{([^{}]*)\}', text):
+            selector = re.sub(r'/\*.*?\*/', '', selector, flags=re.S)
+            selector = re.sub(r'(?<![\w.#:-])(h1|h2|h3|h4|p|small|label|a|nav|blockquote|aside|code|pre)\b(?![\w-])', lambda m: '.' + ELEMENTS[m.group(1)], selector)   # the habits, said quietly as the catalog's roles
+            written = {k.strip().lower(): v.strip() for k, v in (d.split(':', 1) for d in body.split(';') if ':' in d)}
+            typ = {k: v for k, v in written.items() if k in ('font-size', 'font-weight', 'text-transform', 'font-family', 'font', 'line-height', 'letter-spacing', 'font-style') and not v.startswith('var(')}
+            if typ:
+                size, wt = px(typ.get('font-size')), typ.get('font-weight', '')
+                wt = {'bold': 700, 'normal': 400}.get(wt, int(wt) if wt.isdigit() else None)
+                case = typ.get('text-transform')
+                role = min(roles, key=lambda r: (abs(roles[r]['size'] - size) if size is not None else 0) + (abs(roles[r]['weight'] - wt) / 50 if wt else 0) + (6 if case and case != roles[r]['case'] else 0))
+                notes.append(f'{selector.strip()}: {"; ".join(f"{k}: {v}" for k, v in typ.items())} -> class {role}')
+            for token in re.findall(r'#[0-9a-fA-F]{6}\b|#[0-9a-fA-F]{3}\b', body):
+                h = token[1:] if len(token) == 7 else ''.join(c * 2 for c in token[1:])
+                rgb = tuple(int(h[i:i + 2], 16) for i in (0, 2, 4))
+                slot = min(slots, key=lambda k: sum((a - b) ** 2 for a, b in zip(slots[k], rgb)))
+                notes.append(f'{selector.strip()}: {token} -> var({slot})')
+    return notes
+
+
+UNSAFE_DECL = re.compile(r'url\s*\(|expression\s*\(|javascript:|behaviou?r\s*:|-moz-binding|position\s*:\s*(fixed|sticky)', re.I)
+
+
+def _fix_sheet(text, cat):
+    """A card sheet in the platform's form: habit tags as the catalog's roles, written type as the nearest role's own
+    variables, typed colours as the nearest slot, @import and @font-face and anything unsafe removed. Deterministic."""
+    roles = cat['roles']
+    slots = {k: tuple(int(v[i:i + 2], 16) for i in (1, 3, 5)) for k, v in cat['colours'].items()}
+    px = lambda v: (lambda m: float(m.group(1)) * (16 if m.group(2) in ('rem', 'em') else 1) if m else None)(re.fullmatch(r'\s*([\d.]+)\s*(px|rem|em)?\s*', v or ''))
+    text = re.sub(r'@import[^;]*;', '', text)
+    text = re.sub(r'@font-face\s*\{[^}]*\}', '', text)
+
+    def colour(m):
+        h = m.group(0)[1:]
+        h = ''.join(c * 2 for c in h) if len(h) == 3 else h[:6]
+        rgb = tuple(int(h[i:i + 2], 16) for i in (0, 2, 4))
+        return 'var(' + min(slots, key=lambda k: sum((a - b) ** 2 for a, b in zip(slots[k], rgb))) + ')'
+
+    def rule(m):
+        selector, body = m.group(1), m.group(2)
+        if selector.strip().startswith('@') or re.fullmatch(r'\s*(from|to|\d{1,3}%)(\s*,\s*(from|to|\d{1,3}%))*\s*', selector):
+            return m.group(0)
+        lead = re.match(r'\s*(?:/\*.*?\*/\s*)*', selector, re.S).group(0)   # the author's comments before the rule stay as written
+        selector = lead + re.sub(r'(?<![\w.#:-])(h1|h2|h3|h4|p|small|label|a|nav|blockquote|aside|code|pre)\b(?![\w-])', lambda e: '.' + ELEMENTS[e.group(1)], selector[len(lead):])
+        keep, typ = [], {}
+        for d in body.split(';'):
+            if ':' not in d:
+                continue
+            k, v = (x.strip() for x in d.split(':', 1))
+            if k.lower() in ('font', 'font-family', 'font-size', 'font-weight', 'font-style', 'line-height', 'letter-spacing', 'text-transform'):
+                typ[k.lower()] = v
+            elif not UNSAFE_DECL.search(f'{k}: {v}'):
+                keep.append(k + ': ' + re.sub(r'#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?\b|#[0-9a-fA-F]{3}\b', colour, v))
+        if typ:
+            size, wt, case = px(typ.get('font-size')), typ.get('font-weight', ''), typ.get('text-transform')
+            wt = {'bold': 700, 'normal': 400}.get(wt, int(wt) if wt.isdigit() else None)
+            r = min(roles, key=lambda x: (abs(roles[x]['size'] - size) if size is not None else 0) + (abs(roles[x]['weight'] - wt) / 50 if wt else 0) + (6 if case and case != roles[x]['case'] else 0))
+            keep += [f'font-family: var(--font-{r})', f'font-size: var(--font-{r}-sz)', f'font-weight: var(--font-{r}-wt)', f'text-transform: var(--font-{r}-tt)']
+        return selector.rstrip() + ' { ' + '; '.join(keep) + ' }' if keep else ''
+    return re.sub(r'([^{}]+)\{([^{}]*)\}', rule, text)
+
+
+def fix(root):
+    """`larryd doctor --fix` (the owner, 2026-10-06: "instead of just doctor it fixes it too"): rewrites the developer's
+    own card sheets to the platform's form (fix_sheet) and fills the card's missing facts with honest defaults it names;
+    the originals are kept in .larryd/doctor_backup/. -> [str]: what it changed. Deterministic: the same files give the
+    same result."""
+    import shutil
+    root = pathlib.Path(root).resolve()
+    agent, changed, cat = root / shape.AGENT, [], _catalog()
+    backup = root / '.larryd' / 'doctor_backup'
+    for path in _files(agent):
+        if path.suffix == '.css' and path.is_file():
+            old = path.read_text()
+            new = _fix_sheet(old, cat)
+            if new != old:
+                backup.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(path, backup / path.name)
+                path.write_text(new)
+                changed.append(f'{path.relative_to(root)}: written in the catalog\'s roles and the theme\'s colours, anything unsafe removed')
+    manifest = agent / shape.MANIFEST
+    if manifest.is_file():
+        try:
+            data = json.loads(manifest.read_text())
+        except ValueError:
+            data = None
+        if isinstance(data, dict):
+            card = data.setdefault('card', {})
+            defaults = {'class': 'MARK I AGENT (NORMAL)', 'price': '0', 'type': 'OFF-THE-SHELF', 'residency': 'INTERNAL', 'screen': 'agnt/home',
+                        'product': 'LARRYD', 'module': 'AGENT', 'developer': 'Independent developer', 'sends_to': '', 'data_sent': '',
+                        'pitch': f"What {data.get('name') or 'this agent'} does for the member, in one line."}
+            missing = [k for k in defaults if k not in card]
+            if missing:
+                backup.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(manifest, backup / manifest.name)
+                for k in missing:
+                    card[k] = defaults[k]
+                manifest.write_text(json.dumps(data, indent=2) + '\n')
+                changed.append(f'{manifest.relative_to(root)}: the card\'s missing facts filled ({", ".join(f"{k} = {defaults[k]!r}" for k in missing)}): check them')
+    return changed

@@ -301,3 +301,53 @@ def test_the_command(agent, capsys):
     assert gap['ok'] is False and gap['problems'][0]['line'] > 0 and 'What to do' not in gap['problems'][0]['todo']
     assert cli.main(['doctor', str(agent)]) == 1
     assert 'FAIL the air gap · agent/agent.py line' in capsys.readouterr().out
+
+
+# THE MARKETPLACE EXAMPLE AND THE CARD SHEET (the owner, 2026-10-06): a stranger can start from the marketplace agent,
+# its card sheet passes the doctor, written type and typed colours are converted (said, never failed), a sheet that
+# reaches out fails.
+def test_the_marketplace_example_is_doctor_clean(tmp_path):
+    from larryd import new as larryd_new
+    root = larryd_new.make('marketplace', tmp_path, example='marketplace')
+    assert (root / 'agent' / 'card.css').is_file()
+    assert doctor.check(root) == []
+
+
+def test_written_type_and_colour_are_converted_and_said(tmp_path):
+    from larryd import new as larryd_new
+    root = larryd_new.make('m', tmp_path, example='marketplace')
+    with open(root / 'agent' / 'card.css', 'a') as fh:
+        fh.write('\nh1 { font-size: 40px; font-weight: 900 } .x { color: #fdfdfd }\n')
+    assert doctor.check(root) == []
+    notes = doctor.conversions(root)
+    assert any(n.startswith('.heading:') and '-> class' in n for n in notes), notes
+    assert any('#fdfdfd -> var(--active-color-08)' in n for n in notes), notes
+
+
+def test_a_sheet_that_reaches_out_fails(tmp_path):
+    from larryd import new as larryd_new
+    root = larryd_new.make('m', tmp_path, example='marketplace')
+    with open(root / 'agent' / 'card.css', 'a') as fh:
+        fh.write('\n.x { background: url(https://elsewhere.example/x.png) }\n')
+    assert any(p.check == 'the shape' and 'reaches out' in p.wrong for p in doctor.check(root))
+
+
+# THE DOCTOR FIXES (the owner, 2026-10-06: "instead of just doctor it fixes it too"): each fix kind, then a clean doctor.
+def test_fix_rewrites_the_sheet_and_the_card_then_the_doctor_is_clean(tmp_path):
+    from larryd import new as larryd_new
+    root = larryd_new.make('m', tmp_path, example='marketplace')
+    sheet = root / 'agent' / 'card.css'
+    with open(sheet, 'a') as fh:
+        fh.write('\n@import "x.css";\nh1 { font-size: 40px; font-weight: 900; color: #fdfdfd }\n.z { position: fixed; background: url(https://x.example/a.png); opacity: 1 }\n')
+    manifest = json.loads((root / 'agent' / 'agent.json').read_text())
+    del manifest['card']['price']
+    (root / 'agent' / 'agent.json').write_text(json.dumps(manifest))
+    assert doctor.check(root)   # unclean before
+    changed = doctor.fix(root)
+    assert any('card.css' in c for c in changed) and any("price = '0'" in c for c in changed), changed
+    text = sheet.read_text()
+    assert '.heading {' in text and 'var(--font-heading-sz)' in text and 'var(--active-color-08)' in text
+    assert 'url(' not in text and '@import' not in text and 'fixed' not in text and 'font-size: 40px' not in text
+    assert (root / '.larryd' / 'doctor_backup' / 'card.css').is_file()
+    assert doctor.check(root) == []
+    assert doctor.fix(root) == []   # deterministic: fixed once, nothing more to change

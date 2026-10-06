@@ -55,7 +55,16 @@ def manifest(name):
     }
 
 
-def make(name, where='.'):
+EXAMPLES = ('marketplace',)   # the example agents a project may start from (larryd/kit/examples/<name>/)
+
+
+def _example(example):
+    """{file name: text} of an example agent, as the kit ships it."""
+    folder = resources.files('larryd').joinpath('kit', 'examples', example)
+    return {f.name: f.read_text() for f in folder.iterdir() if f.is_file() and not f.name.startswith('.')}
+
+
+def make(name, where='.', example=None):
     """-> the new project folder. Refuses a name that is not a plain folder name, and a folder that already exists."""
     if not NAME.match(name or ''):
         raise ValueError(f'"{name}" is not a plain name: start with a letter, then letters, digits, - or _ (at most 63)')
@@ -72,6 +81,11 @@ def make(name, where='.'):
         shape.SKILL: skill(),
         '.mcp.json': json.dumps(MCP, indent=2) + '\n',
     }
+    if example:   # an example agent: its own code, manifest and files replace the plain ones; its card keeps its own facts
+        if example not in EXAMPLES:
+            raise ValueError(f'no example "{example}": the examples are {", ".join(EXAMPLES)}')
+        for file, text in _example(example).items():
+            files[shape.SAMPLE if file == 'job.json' else f'{shape.AGENT}/{file}'] = text   # its sample job: where `larryd run` reads one
     for rel, text in files.items():
         path = root / rel
         path.parent.mkdir(parents=True, exist_ok=True)

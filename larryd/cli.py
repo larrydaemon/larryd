@@ -14,9 +14,11 @@ def parser():
     sub = p.add_subparsers(dest='command', required=True)
     n = sub.add_parser('new', help='make a new agent project')
     n.add_argument('name', help='the agent\'s name, also its folder')
+    n.add_argument('--from', dest='example', choices=['marketplace'], help='start from a LARRYD example agent (marketplace: the PF agent marketplace)')
     d = sub.add_parser('doctor', help='check the agent before submission')
     d.add_argument('path', nargs='?', default='.', help='the agent project (default: here)')
     d.add_argument('--json', action='store_true', help='the result as JSON')
+    d.add_argument('--fix', action='store_true', help='rewrite the card sheets and the card to the platform\'s form (originals kept in .larryd/doctor_backup/), then check again')
     d.add_argument('--badge', action='store_true', help=f'also write {doctor.BADGE} beside agent/: PASS or FAIL, the day, the checks\' version, for your README')
     r = sub.add_parser('run', help='run the agent here, the way LARRYD runs it, with a sample job')
     r.add_argument('path', nargs='?', default='.', help='the agent project (default: here)')
@@ -52,15 +54,21 @@ def main(argv=None):
     args = parser().parse_args(argv)
     if args.command == 'new':
         try:
-            root = new.make(args.name)
+            root = new.make(args.name, example=args.example)
         except ValueError as no:
             print(f'larryd new: {no}', file=sys.stderr)
             return 1
         print(f'made {root}/ · open it with Claude Code: cd {root} && claude')
         return 0
     if args.command == 'doctor':
+        if args.fix:
+            for change in doctor.fix(args.path):
+                print(f'FIXED {change}')
         problems = doctor.check(args.path)
         print(json.dumps(doctor.as_json(problems), indent=2) if args.json else doctor.report(args.path, problems))
+        if not args.json:
+            for note in doctor.conversions(args.path):   # what the platform converts to its own menu (the owner, 2026-10-06), so the author learns it
+                print(f'CONVERTED {note}')
         if args.badge:
             root = pathlib.Path(args.path).resolve()
             if root.is_dir():

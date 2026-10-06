@@ -3,7 +3,8 @@
    platform draws the card's values in its own markup (mk-*); this sheet, the agent's, draws the card around them: the
    border box, the type, and the class look over the page's own background: Mark I CRT, Mark II Wellness, Mark III
    Glitch (modelled on the platform's crt.js, wellness.js and glitch.js looks), animated. The art is the product's
-   LARRY card (a clear ground), from the theme. Colours come from the theme's own variables. The sheet names no
+   LARRY card (a clear ground), from the theme. Colours come from the theme's own variables, never typed; the card's text wears the platform's own type classes (the
+   owner: "they just pick the CSS type from our definitions"), so this sheet sets no font, size, weight or spacing. The sheet names no
    address and loads nothing: the platform refuses a sheet that reaches anywhere. */
 .mk-panel .mk-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 22px; }
 .mk-panel .mk-card { position: relative; display: flex; flex-direction: column; gap: 8px; padding: 14px 14px 16px; border: 2px solid var(--active-color-01); border-radius: 16px; background: transparent; box-shadow: 0 0 0 1px var(--active-color-09) inset; overflow: hidden; }
@@ -11,15 +12,14 @@
 .mk-panel .mk-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
 .mk-panel .mk-id { display: flex; flex-direction: column; gap: 2px; }
 .mk-panel .mk-hire { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
-.mk-panel .mk-name { line-height: 1.1; }
 .mk-panel .mk-frame { position: relative; aspect-ratio: 7 / 9; display: flex; align-items: center; justify-content: center; border: 1px solid var(--active-color-01); border-radius: 10px; overflow: hidden; isolation: isolate; }
 .mk-panel .mk-art { position: relative; z-index: 1; width: 92%; height: 92%; object-fit: contain; }
 .mk-panel .mk-frame::before, .mk-panel .mk-frame::after { content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 2; }
 .mk-panel .mk-foot { display: flex; justify-content: space-between; align-items: baseline; margin-top: auto; padding-top: 8px; border-top: 1px solid var(--active-color-01); }
 
 /* MARK I: CRT. Scanlines, a soft phosphor glow and the slow rolling bar. */
-.mk-panel .mk-frame[data-mark="1"]::before { background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.28) 0 1px, transparent 1px 3px); }
-.mk-panel .mk-frame[data-mark="1"]::after { background: linear-gradient(180deg, transparent 0%, rgba(255, 255, 255, 0.07) 48%, transparent 56%); background-size: 100% 220%; animation: mk-roll 6s linear infinite; }
+.mk-panel .mk-frame[data-mark="1"]::before { background: repeating-linear-gradient(0deg, color-mix(in srgb, var(--active-color-09) 28%, transparent) 0 1px, transparent 1px 3px); }
+.mk-panel .mk-frame[data-mark="1"]::after { background: linear-gradient(180deg, transparent 0%, color-mix(in srgb, var(--active-color-01) 7%, transparent) 48%, transparent 56%); background-size: 100% 220%; animation: mk-roll 6s linear infinite; }
 .mk-panel .mk-frame[data-mark="1"] .mk-art { filter: drop-shadow(0 0 6px var(--active-color-01)); }
 
 /* MARK II: WELLNESS. Two big drifting glow clouds behind the art, breathing slowly. */
@@ -27,9 +27,9 @@
 .mk-panel .mk-frame[data-mark="2"] .mk-art { animation: mk-breathe 7s ease-in-out infinite; }
 
 /* MARK III: GLITCH. The block grid's shimmer, a colour fringe and a foil sweep: the premium card. */
-.mk-panel .mk-frame[data-mark="3"]::before { background: linear-gradient(115deg, transparent 30%, rgba(255, 255, 255, 0.22) 45%, transparent 60%); background-size: 260% 100%; mix-blend-mode: screen; animation: mk-foil 4.5s ease-in-out infinite; }
-.mk-panel .mk-frame[data-mark="3"]::after { background: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.05) 0 1px, transparent 1px 12px), repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.05) 0 1px, transparent 1px 12px); animation: mk-flicker 3.2s steps(1) infinite; }
-.mk-panel .mk-frame[data-mark="3"] .mk-art { filter: drop-shadow(1px 0 0 rgba(255, 0, 80, 0.55)) drop-shadow(-1px 0 0 rgba(0, 220, 255, 0.55)); animation: mk-jitter 5s steps(1) infinite; }
+.mk-panel .mk-frame[data-mark="3"]::before { background: linear-gradient(115deg, transparent 30%, color-mix(in srgb, var(--active-color-01) 22%, transparent) 45%, transparent 60%); background-size: 260% 100%; mix-blend-mode: screen; animation: mk-foil 4.5s ease-in-out infinite; }
+.mk-panel .mk-frame[data-mark="3"]::after { background: repeating-linear-gradient(90deg, color-mix(in srgb, var(--active-color-01) 5%, transparent) 0 1px, transparent 1px 12px), repeating-linear-gradient(0deg, color-mix(in srgb, var(--active-color-01) 5%, transparent) 0 1px, transparent 1px 12px); animation: mk-flicker 3.2s steps(1) infinite; }
+.mk-panel .mk-frame[data-mark="3"] .mk-art { filter: drop-shadow(1px 0 0 var(--active-color-08)) drop-shadow(-1px 0 0 var(--active-color-01)); animation: mk-jitter 5s steps(1) infinite; }
 .mk-panel .mk-card:has(.mk-frame[data-mark="3"]) { border-image: linear-gradient(135deg, var(--active-color-01), var(--active-color-08), var(--active-color-01)) 1; border-radius: 0; }
 
 @keyframes mk-roll { from { background-position: 0 0; } to { background-position: 0 -220%; } }

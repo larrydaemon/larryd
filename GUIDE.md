@@ -46,6 +46,13 @@ This makes the folder `<name>/`:
 - `samples/job.json`: a sample job for `larryd run`
 - `.mcp.json`: starts the LARRYD tools in Claude Code when you open the folder with `claude`
 
+To start from a LARRYD example instead of a blank agent:
+
+    larryd new marketplace --from marketplace
+
+makes the PF AGENT MARKETPLACE: its code, its manifest with a doctor-clean card, its card sheet (`agent/card.css`)
+and a sample job. It is the agent the platform's own marketplace is built from.
+
 ## 3. The rules
 LARRYD's sandbox refuses 1, 2 and 3 when the agent runs; the doctor checks all of them before that.
 1. No network, ever. No network module, no address.
@@ -70,7 +77,37 @@ value that is not text or is longer than 10,000 characters, and it keeps none of
 inputs the same way: `{"do": "answer", "job": {"name": "Harbor", "mood": "calm cool"}}`.
 
 ## 4. The doctor
-    larryd doctor            (or --json)
+    larryd doctor --fix      (write normally, then this; or plain `larryd doctor` to check only, --json for JSON)
+
+`--fix` rewrites your own files to the platform's form and then checks again: your card sheet's type becomes the
+platform's type roles, your colours the theme's own colour variables, habit tags (h1, p, small, a...) the roles they
+mean, anything unsafe (an outside address, an @import, a fixed position) is removed, and the card's missing facts are
+filled with honest defaults it names. It prints each change (FIXED ...) and keeps your originals in
+`.larryd/doctor_backup/`. The same files always give the same result. Write normally, run `larryd doctor --fix`, submit.
+
+### The card's type and colours: pick from the menu
+
+An agent never writes type: its card's text wears the platform's own type roles, the standard names, each with its own
+font, weight, size and spacing per brand (THE GLOBAL FONT CATALOG). Pick the role's class:
+
+| Role | Class | For |
+|---|---|---|
+| Heading | `.heading` | the page or card heading |
+| Title | `.title` | a name, the card's name |
+| Subtitle | `.subtitle` | a section's title |
+| Body | `.body` | running text, the card's pitch |
+| Caption | `.caption` | an eyebrow, the card's class line |
+| Label | `.label` | a field's label |
+| Link | `.link` | a link |
+| Nav | `.nav` | the main navigation |
+| Subnav | `.subnav` | a sub navigation |
+| Callout | `.callout` | a figure that stands out, the card's price |
+| Notes | `.notes` | small notes |
+| Annotation | `.annotation` | facts, the card's product, module and type |
+
+Sizes change in place with `.size--xxxs` to `.size--xxxxl`. Colours are the theme's own variables, `var(--active-color-01)`
+to `var(--active-color-64)` (or `color-mix()` of them with transparent), never a typed colour. What you write anyway is
+converted to the nearest of these (`CONVERTED ...` lines), so you learn the menu.
 
 It checks the project, the manifest, the entry, the air gap, no secret, the shape, the skills and the knowledge.
 Every problem names the file and line, what is wrong and what to do. Do what it says, then run it again.
