@@ -158,3 +158,61 @@ class SlotNeverLeaks(unittest.TestCase):
         self.assertTrue(made)
         # every folder a run makes is mkdtemp's: created 0o700 (owner only); none survives the run
         self.assertTrue(all(not os.path.exists(p) for p in made))
+
+
+class SlotFailsClosed(unittest.TestCase):
+    """The fourth review (2026-10-06): any error or doubt while taking the slot refuses the run (409), never runs it;
+    two takers at once get one token; two reclaimers of the same stale slot get one token (a compare-and-swap)."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.app = host.create_app(self.tmp.name, secret=SECRET)
+        self.client = self.app.test_client()
+        self.who = {'account': 'ACCT_000000000001_0001', 'scope': 'SCRATCH', 'member': 'MCON_000000000002_0002'}
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def headers(self, route, data):
+        at = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='seconds')
+        return {'X-Office': signing.sign(SECRET, route, data, at), 'X-Office-At': at}
+
+    def test_an_error_reading_the_slot_refuses_the_run(self):
+        slot = self.app.config['slot']
+        def broken():
+            raise OSError('the clock could not be read')
+        slot.clock = broken
+        self.assertIsNone(slot.take())
+        d = {**self.who, 'agent_key': 'AGNT_X'}
+        r = self.client.get('/api/agents/answer', query_string=d, headers=self.headers('/agents/answer', d))
+        self.assertEqual(r.status_code, 409)
+        d = {**self.who, 'job_key': 'JOB_X', 'run': '1'}
+        self.assertEqual(self.client.post('/api/jobs/run', json=d, headers=self.headers('/jobs/run', d)).status_code, 409)
+        slot.clock = __import__('time').monotonic   # the clock back: the slot was never left held
+        t = slot.take()
+        self.assertTrue(t)
+        slot.give_back(t)
+
+    def test_two_takers_at_once_get_one_token(self):
+        slot, tokens, go = self.app.config['slot'], [], threading.Barrier(8)
+        def taker():
+            go.wait()
+            tokens.append(slot.take())
+        threads = [threading.Thread(target=taker) for _ in range(8)]
+        [t.start() for t in threads]
+        [t.join() for t in threads]
+        self.assertEqual(len([t for t in tokens if t]), 1)
+
+    def test_two_reclaimers_of_one_stale_slot_get_one_token(self):
+        slot = self.app.config['slot']
+        self.assertTrue(slot.take())
+        slot.taken_at -= slot.most_seconds + 1
+        tokens, go = [], threading.Barrier(8)
+        def reclaimer():
+            go.wait()
+            tokens.append(slot.take())
+        threads = [threading.Thread(target=reclaimer) for _ in range(8)]
+        with self.assertLogs('hanzo', level='WARNING'):
+            [t.start() for t in threads]
+            [t.join() for t in threads]
+        self.assertEqual(len([t for t in tokens if t]), 1)
