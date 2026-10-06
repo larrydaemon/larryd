@@ -1,5 +1,5 @@
 {
- "about": "The type roles and the colour variables: an agent's card text picks a role class, its colours a theme variable; written type and typed colours are converted to the nearest of these. Reference values: the Positive Feedback theme; each brand's theme carries its own.",
+ "about": "The menu of an agent's look: the type roles, the theme's colour variables, the scale's steps, the card's effects and its text parts. An agent's look record (\"look\" in agent.json) names only these; a sheet written while designing is converted to the nearest of them. Reference values: the Positive Feedback theme; each brand's theme carries its own.",
  "roles": {
   "heading": {
    "size": 48.0,
@@ -153,5 +153,43 @@
   "callout": "a figure that stands out, the card's price",
   "notes": "small notes",
   "annotation": "facts, the card's product, module and type"
+ },
+ "steps": {
+  "step-0": 0,
+  "step-1": 2,
+  "step-2": 4,
+  "step-3": 8,
+  "step-4": 12,
+  "step-5": 16,
+  "step-6": 22,
+  "step-7": 32,
+  "step-8": 48,
+  "step-9": 64
+ },
+ "effects": [
+  "none",
+  "crt",
+  "wellness",
+  "glitch"
+ ],
+ "parts": {
+  "number": "caption",
+  "class": "caption",
+  "name": "title",
+  "info": "annotation",
+  "pitch": "body",
+  "developer": "annotation",
+  "facts": "annotation",
+  "price": "callout"
+ },
+ "part_for": {
+  "number": "the card's number (No. 001)",
+  "class": "the class line (MARK I AGENT)",
+  "name": "the agent's name",
+  "info": "the product and module",
+  "pitch": "the one-line pitch",
+  "developer": "the developer credit",
+  "facts": "the type and residency",
+  "price": "the price"
  }
 }

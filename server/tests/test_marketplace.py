@@ -56,7 +56,6 @@ class CollectionTest(unittest.TestCase):
 
     def test_an_empty_collection_is_empty(self):
         out = run({'do': 'collection', 'cards': []})
-        self.assertTrue(out.pop('style'))   # the card's own sheet comes with every collection
         self.assertEqual(out, {'cards': [], 'total': 0, 'hired': 0,
                          'filters': {'product': [], 'module': [], 'type': [], 'residency': [], 'class': []}})
 
@@ -90,16 +89,9 @@ class Gives(unittest.TestCase):
             self.assertLessEqual(set(answer), gives, do)
 
 
-class TheCardsOwnLook(unittest.TestCase):
-    """The owner, 2026-10-06: "all agents' CSS definitions are IN THE AGENT": the card's frame and class look (Mark I CRT,
-    Mark II Wellness, Mark III Glitch) are the agent's own sheet, sent with every collection, already in the doctor's
-    form (larryd/sheet.py), drawn by the platform in each card's own shadow root."""
-    def test_the_collection_carries_the_agents_own_sheet_with_the_three_marks(self):
-        sheet = run({'do': 'collection', 'cards': [card()]})['style']
-        for mark in ('.mk-mark-1 ', '.mk-mark-2 ', '.mk-mark-3 '):
-            self.assertIn(mark, sheet)
-
-    def test_the_sheet_reaches_nowhere(self):
-        sheet = run({'do': 'collection', 'cards': []})['style'].lower()
-        for reach in ('url(', '@import', 'expression(', 'javascript:', '<', '\\', 'position: fixed', 'body', 'html', ':root'):
-            self.assertNotIn(reach, sheet)
+class NoSheet(unittest.TestCase):
+    """Agents ship no CSS: the marketplace answers values only; each card's look is its own agent's record of names,
+    attached by the runtime from the held, approved manifest (harness.py), drawn by the one card template."""
+    def test_the_collection_carries_no_sheet(self):
+        self.assertNotIn('style', run({'do': 'collection', 'cards': [card()]}))
+        self.assertFalse(list(FOLDER.glob('*.css')))

@@ -54,7 +54,7 @@ class TheSinkByTheCard(Held):
         self.assertEqual(self.h._verifier({})(self.CARD), (False, 'not approved by FROST'))
 
     def test_a_new_hash_needs_a_new_review(self):
-        (self.agents / 'marketplace' / 'card.css').write_text('.mk-card { opacity: 0.5 }\n')   # the sheet changed after approval
+        (self.agents / 'marketplace' / 'notes.txt').write_text('changed after approval\n')   # a file added after approval
         self.assertEqual(self.h._verifier({self.exact: self.CARD})(self.CARD), (False, 'tampered: the code changed'))
 
     def test_another_card_is_not_covered(self):

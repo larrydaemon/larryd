@@ -19,13 +19,13 @@ import threading
 import time
 from urllib.parse import quote
 
-from flask import Flask, jsonify, redirect, render_template, request
+from flask import Flask, jsonify, redirect, render_template, request, send_from_directory
 from werkzeug.exceptions import HTTPException
 
 APP = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(APP))
 
-from core_engine import callers, harness as lanes_harness, intake, jobs as long_runs, locker, lockers as bucket_lockers, platform, preview, records as run_records, sandbox, signing, slot as one_slot, store, warmup  # noqa: E402
+from core_engine import callers, harness as lanes_harness, intake, jobs as long_runs, locker, lockers as bucket_lockers, look as card_look, platform, preview, records as run_records, sandbox, signing, slot as one_slot, store, warmup  # noqa: E402
 
 CONFIG = json.loads((APP / 'schemas' / 'hanzo.json').read_text())
 INSTANCE = pathlib.Path(os.environ['LARRYD_INSTANCE']) if os.environ.get('LARRYD_INSTANCE') else APP.parent / 'instance'   # the daemon names it
@@ -252,6 +252,20 @@ def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, deve
     return app
 
 
+CARD_FILES = ('agent_card.css', 'agent_card.js', 'page.css', 'reference_theme.css')
+# the shelf page under a strict policy: no inline style or script anywhere, so a card's look can only arrive by the
+# card script's style.setProperty, after its check against the menu
+STRICT = ("default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:; form-action 'self'; "
+          "base-uri 'none'; frame-ancestors 'none'")
+
+
+def _strict(body, status=200):
+    from flask import make_response
+    response = make_response(body, status)
+    response.headers['Content-Security-Policy'] = STRICT
+    return response
+
+
 def _marketplace_pages(app, h, instance, token):
     """THE DEVELOPER'S SHELF: the marketplace's answer of cards, drawn in the platform's structure (cards.html's: the
     controller's counts, then each card: NO. · class · HIRE toggle · name · art · product · module · pitch · developer ·
@@ -289,9 +303,16 @@ def _marketplace_pages(app, h, instance, token):
         try:
             answer, not_shown = collection()
         except lanes_harness.Refused as why:
-            return render_template('marketplace.html', refused=why.reason, token=token, marketplace_key=preview.MARKETPLACE_KEY), why.status
-        return render_template('marketplace.html', A=answer, hidden=not_shown, no=request.args.get('no', ''), token=token,
-                               marketplace_key=preview.MARKETPLACE_KEY)
+            return _strict(render_template('marketplace.html', refused=why.reason, token=token, marketplace_key=preview.MARKETPLACE_KEY, menu=card_look.MENU), why.status)
+        return _strict(render_template('marketplace.html', A=answer, hidden=not_shown, no=request.args.get('no', ''), token=token,
+                                       marketplace_key=preview.MARKETPLACE_KEY, menu=card_look.MENU))
+
+    @app.get('/marketplace/<name>')
+    def marketplace_file(name):
+        """The card template's own files: its sheet and script, the page's sheet, the reference theme."""
+        if name not in CARD_FILES:
+            return refused('no such file')
+        return send_from_directory(pathlib.Path(__file__).resolve().parent, name, max_age=0)
 
     @app.get('/marketplace.json')
     def marketplace_json():

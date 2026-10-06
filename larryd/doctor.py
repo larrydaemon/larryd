@@ -10,10 +10,10 @@ import os
 import sys
 from dataclasses import asdict, dataclass
 
-from . import knowledge, shape, sheet, skills
+from . import knowledge, look, shape, skills
 
 CHECKS = ('the project', 'the manifest', 'the entry', 'the air gap', 'no secret', 'the shape', 'the skills', 'the knowledge')
-CHECKS_VERSION = '1'   # THE LARRYD CHECKS (CHECKS.md, larryd.ai/checks.html): a new or changed check raises it
+CHECKS_VERSION = '2'   # THE LARRYD CHECKS (CHECKS.md, larryd.ai/checks.html): a new or changed check raises it
 BADGE = 'larryd-checks.svg'   # `larryd doctor --badge` writes it beside agent/, never inside it (the shape keeps agent/ to its own kinds)
 GOLD, RED = '#FFB000', '#910E0D'   # the brand's gold (PASS) and red (FAIL)
 
@@ -48,7 +48,8 @@ SECRET_TEXT = (
     (re.compile(r'\bAIza[0-9A-Za-z_-]{35}\b'), 'a Google API key'),
     (re.compile(r'(?i)\b\w*(secret|password|passwd|token|api_?key|private_?key)\w*["\']?\s*[:=]\s*["\'][^"\'\s]{8,}["\']'), 'a secret written into the code'),
 )
-KINDS = {'.py', '.json', '.txt', '.md', '.csv', '.css'}   # .css: the agent's own card sheet, written in the platform's form by --fix and submit (sheet.py)
+KINDS = {'.py', '.json', '.txt', '.md', '.csv'}   # never .css: an agent ships no sheet, its look is a record of names (look.py)
+DESIGN = 'design'   # where --fix keeps a sheet written while designing, beside agent/, never in it
 
 
 @dataclass
@@ -112,11 +113,9 @@ def _manifest(root, f):
             f.add(c, where, f'"{k}" is empty or not text', f'set "{k}" to {shape.FIELDS[k]}')
     if 'entry' in card and not (text('entry') and re.fullmatch(r'[A-Za-z_]\w*\.py', card['entry'])):
         f.add(c, where, '"entry" is not a .py file name inside agent/', 'set "entry" to the file name only, e.g. "agent.py" (no folder, no path)')
-    if 'style' in card:
-        if not (text('style') and re.fullmatch(r'[A-Za-z0-9_][\w.-]*\.css', card['style'])):
-            f.add(c, where, '"style" is not a .css file name inside agent/', 'set "style" to the sheet\'s file name only, e.g. "card.css" (no folder, no path)')
-        elif not (root / shape.AGENT / card['style']).is_file():
-            f.add(c, where, f'"style" names {card["style"]}, which is not in agent/', f'add agent/{card["style"]} (your card\'s sheet), or remove "style"')
+    if 'look' in card:
+        for wrong, todo in look.check(card['look']):
+            f.add(c, where, wrong, todo)
     if 'does' in card and not (names('does') and card['does']):
         f.add(c, where, '"does" is not a list of function names', 'set "does" to the names of the functions that answer a job, e.g. ["answer"]')
     does = set(card['does']) if names('does') else set()
@@ -323,12 +322,15 @@ def _shape(root, f):
         elif any(p.startswith('.') for p in parts[1:]):
             f.add(c, where, 'a hidden file or folder is in the agent', 'remove it from agent/; everything the agent is must be visible')
         elif path.is_file():
-            if path.suffix not in KINDS:
+            if path.suffix.lower() == '.css':
+                f.add(c, where, 'agents ship no CSS: the card\'s look is the "look" record in agent.json',
+                      f'run `larryd doctor --fix`: it turns this sheet into the look record (the nearest names) and moves it to {DESIGN}/{path.name}')
+            elif path.suffix not in KINDS:
                 f.add(c, where, f'"{path.suffix or path.name}" is not a kind of file an agent holds',
                       f'keep only {", ".join(sorted(KINDS))} files in agent/; anything else stays outside it')
             else:
                 try:
-                    path.read_text()   # a card sheet is never a reason to refuse (the owner, 2026-10-06: "we are writing the CSS"): --fix and submit write it (sheet.py)
+                    path.read_text()
                 except UnicodeDecodeError:
                     f.add(c, where, 'it is not plain UTF-8 text', 'save it as UTF-8 text, or take it out of agent/')
 
@@ -454,40 +456,69 @@ def _sheets(agent):
 
 
 def conversions(root):
-    """-> [str]: what the platform's form makes of the agent's card sheets (sheet.py's one rule list), as information
-    only: --fix writes it, and submit writes it before it sends."""
+    """-> [str]: what `larryd doctor --fix` will make of a sheet in agent/: the look record's names, each mapping said."""
     notes = []
     for path in _sheets(pathlib.Path(root).resolve() / shape.AGENT):
         try:
-            _new, said = sheet.rewrite(path.read_text())
+            _look, said = look.from_sheet(path.read_text())
         except UnicodeDecodeError:
             continue
         notes += [f'{path.name}: {n}' for n in said]
     return notes
 
 
-def fix_sheets(root):
-    """THE CARD SHEETS IN THE PLATFORM'S FORM (sheet.rewrite), the originals kept in .larryd/doctor_backup/, never written
-    through a link. -> [str]: what changed. --fix and submit both run it."""
+def fix_look(root):
+    """A SHEET WRITTEN WHILE DESIGNING BECOMES THE LOOK RECORD: each .css in agent/ is converted to the nearest names
+    (look.from_sheet), merged into agent.json's "look" (the sheet's names win), and moved out of agent/ to design/ (the
+    manifest kept in .larryd/doctor_backup/ first). An old "style" field goes. Never written through a link.
+    -> [str]: what changed. --fix, place and submit all run it: CSS is never a reason to refuse."""
     root = pathlib.Path(os.path.realpath(root))
     agent, changed = root / shape.AGENT, []
     if not _inside(root, agent):
         return [f'{agent}: a link or outside the project: nothing fixed']
+    manifest = agent / shape.MANIFEST
+    try:
+        data = json.loads(manifest.read_text()) if manifest.is_file() and _inside(root, manifest) else None
+    except (ValueError, UnicodeDecodeError):
+        data = None
+    if not isinstance(data, dict):
+        return changed
+    record, moved = dict(data.get('look') or {}) if isinstance(data.get('look'), dict) else {}, []
     for path in _files(agent):
-        if path.suffix != '.css':
+        if path.suffix.lower() != '.css':
             continue
         if not _inside(root, path) or not path.is_file():
-            changed.append(f'{path.relative_to(root)}: a link, left as it is (not written)')
+            changed.append(f'{path.relative_to(root)}: a link, left as it is (not moved)')
             continue
         try:
-            old = path.read_text()
+            found, _said = look.from_sheet(path.read_text())
         except UnicodeDecodeError:
             continue
-        new, said = sheet.rewrite(old)
-        if new != old:
-            _backup(root, path)
-            _write(root, path, new)
-            changed.append(f'{path.relative_to(root)}: written in the platform\'s form ({len(said)} change{"s" if len(said) != 1 else ""}: type to the catalog\'s roles, colours to the theme\'s, spacing to the scale, what is not allowed removed)')
+        text = {**(record.get('text') or {}), **found.pop('text', {})}
+        record.update(found)
+        if text:
+            record['text'] = text
+        moved.append(path)
+    if not moved and 'style' not in data:
+        return changed
+    design = root / DESIGN
+    if moved and (design.is_symlink() or (design.exists() and not design.is_dir())):
+        raise PermissionError(f'{design} is a link or not a folder: nothing changed')
+    _backup(root, manifest)
+    data.pop('style', None)
+    if record:
+        data['look'] = look.clean(record)
+    _write(root, manifest, json.dumps(data, indent=2) + '\n')
+    if moved:
+        design.mkdir(exist_ok=True)
+    for path in moved:
+        target = design / path.name
+        if target.exists():
+            _backup(root, target)
+        os.replace(path, target)
+        changed.append(f'{path.relative_to(root)}: turned into the look record in agent.json and moved to {DESIGN}/{path.name} (agents ship no CSS)')
+    if 'look' in data:
+        changed.append(f'{manifest.relative_to(root)}: "look": {json.dumps(data["look"])}')
     return changed
 
 
@@ -535,12 +566,12 @@ def _backup(root, path):
 
 def fix(root):
     """`larryd doctor --fix` (the owner, 2026-10-06: "instead of just doctor it fixes it too"): rewrites the developer's
-    own card sheets in the platform's form (fix_sheets, sheet.py's rules) and fills the card's missing facts with honest defaults it names;
+    design sheet into the look record (fix_look, look.py's menu) and fills the card's missing facts with honest defaults it names;
     the originals are kept in .larryd/doctor_backup/. -> [str]: what it changed (and what it would not touch: a link, a
     path outside the project). Deterministic: the same files give the same result. Never writes through a link."""
     root = pathlib.Path(os.path.realpath(root))
     agent = root / shape.AGENT
-    changed = fix_sheets(root)
+    changed = fix_look(root)
     if not _inside(root, agent):
         return changed
     manifest = agent / shape.MANIFEST

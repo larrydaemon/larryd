@@ -25,7 +25,12 @@
     "total",
     "hired",
     "filters",
-    "style",
     "delivery"
-  ]
+  ],
+  "look": {
+    "accent": "active-color-01",
+    "radius": "step-5",
+    "space": "step-3",
+    "effect": "crt"
+  }
 }

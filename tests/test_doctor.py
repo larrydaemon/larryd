@@ -303,36 +303,35 @@ def test_the_command(agent, capsys):
     assert 'FAIL the air gap · agent/agent.py line' in capsys.readouterr().out
 
 
-# THE AGENT'S OWN SHEET, IN THE PLATFORM'S FORM (the owner, 2026-10-06: "all agents' CSS definitions are IN THE AGENT";
-# "the doctor rewrites the CSS for the agent"; "it's impossible for the submission to get refused on CSS, because we are
-# writing the CSS"): the doctor says what the form changes, --fix and submit write it, CSS never fails a check.
+# AN AGENT SHIPS NO CSS: its look is a record of names in agent.json; a sheet written while designing is turned into
+# that record by --fix (and by place and submit first), so CSS is never a reason to refuse, but a shipped sheet fails.
 SHEET = """/* written normally */
-.mk-card { display: flex; gap: 10px; padding: 14px; border: 2px solid #ff0000; position: fixed; font-size: 40px; font-weight: 900 }
+.mk-card { display: flex; gap: 10px; padding: 14px; border: 2px solid #ff0000; border-radius: 20px; position: fixed }
+.mk-name { font-size: 40px; font-weight: 900 }
 body { display: none }
 @import "x.css";
 """
 
 
-def test_the_marketplace_example_is_doctor_clean_and_already_in_form(tmp_path):
+def test_the_marketplace_example_is_doctor_clean_and_ships_no_css(tmp_path):
     from larryd import new as larryd_new
     root = larryd_new.make('marketplace', tmp_path, example='marketplace')
-    assert (root / 'agent' / 'card.css').is_file()
-    assert doctor.check(root) == []
-    assert doctor.conversions(root) == []
-    assert doctor.fix(root) == []
+    assert not list((root / 'agent').glob('*.css')) and (root / 'design' / 'card.css').is_file()
+    assert doctor.check(root) == [] and doctor.conversions(root) == [] and doctor.fix(root) == []
 
 
-def test_a_sheet_out_of_form_never_fails_a_check_and_is_said(tmp_path):
+def test_a_shipped_sheet_fails_and_says_what_it_will_convert(tmp_path):
     from larryd import new as larryd_new
     root = larryd_new.make('m', tmp_path, example='marketplace')
     (root / 'agent' / 'card.css').write_text(SHEET)
-    assert doctor.check(root) == []   # never a reason to refuse
+    problems = doctor.check(root)
+    assert [p.check for p in problems] == ['the shape'] and 'agents ship no CSS' in problems[0].wrong and '--fix' in problems[0].todo
     said = doctor.conversions(root)
-    for line in ('#ff0000 -> var(--active-color-', 'padding 14px -> 12px', 'position: fixed -> removed', '-> the heading role', 'body: removed', '@import "x.css" -> removed'):
+    for line in ('-> accent active-color-', 'border-radius 20px -> radius step-6', 'padding 14px -> space step-4', '.mk-name: font-size: 40px; font-weight: 900 -> text name: the heading role'):
         assert any(line in n for n in said), (line, said)
 
 
-def test_fix_writes_the_form_keeps_the_original_and_is_deterministic(tmp_path):
+def test_fix_writes_the_record_moves_the_sheet_and_is_deterministic(tmp_path):
     from larryd import new as larryd_new
     root = larryd_new.make('m', tmp_path, example='marketplace')
     (root / 'agent' / 'card.css').write_text(SHEET)
@@ -340,16 +339,37 @@ def test_fix_writes_the_form_keeps_the_original_and_is_deterministic(tmp_path):
     del manifest['card']['price']
     (root / 'agent' / 'agent.json').write_text(json.dumps(manifest))
     changed = doctor.fix(root)
-    assert any('card.css: written in the platform' in c for c in changed) and any("price = '0'" in c for c in changed), changed
-    text = (root / 'agent' / 'card.css').read_text()
-    assert '.mk-card { display: flex; gap: 8px; padding: 12px; border: 2px solid var(--active-color-' in text   # the agent's own layout kept
-    for gone in ('#ff0000', 'fixed', '40px', 'body', '@import'):
-        assert gone not in text, gone
-    assert (root / '.larryd' / 'doctor_backup' / 'card.css').read_text() == SHEET
-    assert doctor.check(root) == [] and doctor.fix(root) == []
+    assert any('moved to design/card.css' in c for c in changed) and any("price = '0'" in c for c in changed), changed
+    look = json.loads((root / 'agent' / 'agent.json').read_text())['look']
+    assert look['radius'] == 'step-6' and look['space'] == 'step-4' and look['text'] == {'name': 'heading'} and look['accent'].startswith('active-color-')
+    assert (root / 'design' / 'card.css').read_text() == SHEET and not (root / 'agent' / 'card.css').exists()
+    assert (root / '.larryd' / 'doctor_backup' / 'agent.json').is_file()
+    assert doctor.check(root) == [] and doctor.fix(root) == []   # nothing left; the same files give the same result
 
 
-def test_submit_writes_the_form_first_and_never_refuses_on_css(tmp_path, monkeypatch):
+def test_an_old_style_field_goes(tmp_path):
+    from larryd import new as larryd_new
+    root = larryd_new.make('m', tmp_path, example='marketplace')
+    manifest = json.loads((root / 'agent' / 'agent.json').read_text())
+    manifest['style'] = 'card.css'
+    (root / 'agent' / 'agent.json').write_text(json.dumps(manifest))
+    assert any('"style" is not a manifest field' in p.wrong for p in doctor.check(root))
+    doctor.fix(root)
+    assert 'style' not in json.loads((root / 'agent' / 'agent.json').read_text()) and doctor.check(root) == []
+
+
+def test_a_look_value_off_the_menu_fails_with_the_names(tmp_path):
+    from larryd import new as larryd_new
+    root = larryd_new.make('m', tmp_path, example='marketplace')
+    manifest = json.loads((root / 'agent' / 'agent.json').read_text())
+    manifest['look'] = {'accent': '#8a8a8a', 'radius': '20px', 'effect': 'sparkle', 'text': {'name': 'huge', 'footer': 'body'}, 'shadow': 'x'}
+    (root / 'agent' / 'agent.json').write_text(json.dumps(manifest))
+    wrong = ' | '.join(p.wrong for p in doctor.check(root))
+    for w in ('"accent": "#8a8a8a"', '"radius": "20px"', '"effect": "sparkle"', '"huge" is not a type role', '"footer" is not a part', '"shadow" is not a look field'):
+        assert w in wrong, (w, wrong)
+
+
+def test_submit_converts_first_and_never_refuses_on_css(tmp_path, monkeypatch):
     from larryd import new as larryd_new, submit
     root = larryd_new.make('m', tmp_path, example='marketplace')
     (root / 'agent' / 'card.css').write_text(SHEET)
@@ -357,7 +377,7 @@ def test_submit_writes_the_form_first_and_never_refuses_on_css(tmp_path, monkeyp
     monkeypatch.setattr(submit, 'send', lambda data: (sent.append(data), (201, {'claim': 'https://scratch.example/claim', 'minutes': 10}))[1])
     out = submit.submit(root, open_browser=False)
     assert out['ok'] and any('card.css' in c for c in out['sheets'])
-    assert '@import' not in (root / 'agent' / 'card.css').read_text()   # what was sent is the doctor's output
+    assert not (root / 'agent' / 'card.css').exists()   # what was sent holds no CSS
     assert len(sent) == 1
 
 
@@ -367,7 +387,6 @@ def test_fix_never_writes_through_a_linked_sheet(tmp_path):
     root = larryd_new.make('m', tmp_path, example='marketplace')
     outside = tmp_path / 'precious.css'
     outside.write_text('h1 { font-size: 40px }\n')
-    (root / 'agent' / 'card.css').unlink()
     (root / 'agent' / 'card.css').symlink_to(outside)
     changed = doctor.fix(root)
     assert outside.read_text() == 'h1 { font-size: 40px }\n'
@@ -386,6 +405,20 @@ def test_fix_never_writes_through_a_linked_backup_folder(tmp_path):
         doctor.fix(root)
     assert list(elsewhere.iterdir()) == []
     assert (root / 'agent' / 'card.css').read_text() == 'h1 { font-size: 40px }\n'   # nothing changed when the backup cannot be made
+
+
+def test_fix_never_moves_a_sheet_into_a_linked_design_folder(tmp_path):
+    from larryd import new as larryd_new
+    root = larryd_new.make('m', tmp_path, example='marketplace')
+    elsewhere = tmp_path / 'elsewhere'
+    elsewhere.mkdir()
+    import shutil
+    shutil.rmtree(root / 'design')
+    (root / 'design').symlink_to(elsewhere)
+    (root / 'agent' / 'card.css').write_text('.mk-card { border-radius: 4px }\n')
+    with pytest.raises(PermissionError):
+        doctor.fix(root)
+    assert list(elsewhere.iterdir()) == []
 
 
 def test_fix_never_follows_a_linked_manifest(tmp_path):

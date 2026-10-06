@@ -21,7 +21,7 @@ def parser():
     d = sub.add_parser('doctor', help='check the agent before submission')
     d.add_argument('path', nargs='?', default='.', help='the agent project (default: here)')
     d.add_argument('--json', action='store_true', help='the result as JSON')
-    d.add_argument('--fix', action='store_true', help='write the agent\'s card sheet in the platform\'s form, fill the card (originals kept in .larryd/doctor_backup/), then check again')
+    d.add_argument('--fix', action='store_true', help='turn a design sheet (agent/card.css) into the look record by the nearest names, fill the card (originals kept in .larryd/doctor_backup/), then check again')
     d.add_argument('--badge', action='store_true', help=f'also write {doctor.BADGE} beside agent/: PASS or FAIL, the day, the checks\' version, for your README')
     r = sub.add_parser('run', help='run the agent here, the way LARRYD runs it, with a sample job')
     r.add_argument('path', nargs='?', default='.', help='the agent project (default: here)')
@@ -68,7 +68,7 @@ def main(argv=None):
         print(f'made {root}/ · read {root}/CLAUDE.md first, then open it with Claude Code: cd {root} && claude')
         return 0
     if args.command == 'doctor':
-        notes = [] if args.json else doctor.conversions(args.path)   # what the sheet's form changes: said before --fix writes it, so the author learns it
+        notes = [] if args.json else doctor.conversions(args.path)   # what a design sheet maps to: said before --fix writes it, so the author learns it
         if args.fix:
             for note in notes:
                 print(f'CONVERTED {note}')
@@ -77,13 +77,13 @@ def main(argv=None):
         problems = doctor.check(args.path)
         print(json.dumps(doctor.as_json(problems), indent=2) if args.json else doctor.report(args.path, problems))
         if not args.json:
-            left = doctor.conversions(args.path)   # read from the files as they are now: after --fix, the written sheet
+            left = doctor.conversions(args.path)   # read from the files as they are now: after --fix, agent/ holds no sheet
             for note in left:
                 print(f'WILL CONVERT {note}')
             if left:
-                print('run `larryd doctor --fix` to write these (your original is kept in .larryd/doctor_backup/)')
+                print('run `larryd doctor --fix` to write these into the look record (the sheet moves to design/)')
             elif args.fix and notes:
-                print('the card sheet is in the platform\'s form: nothing left to convert')
+                print('agent/ holds no CSS: the look record is in agent.json, nothing left to convert')
         if args.badge:
             root = pathlib.Path(args.path).resolve()
             if root.is_dir():

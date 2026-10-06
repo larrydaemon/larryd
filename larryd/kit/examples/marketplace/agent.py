@@ -3,19 +3,9 @@ hired state, whether the member may hire it, and the product whose subscription 
 as cards, in order, with the counts and the filters; values only, never words (the platform says them in the member's
 language). It never reaches anything itself. RUN asks for the report."""
 import json
-import os
 import sys
 
 FILTERS = ('product', 'module', 'type', 'residency', 'class')
-STYLE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'card.css')   # the card's own look, named in agent.json as "style"
-
-
-def style():
-    """The card's sheet, as this agent ships it (the platform refuses one that reaches anywhere)."""
-    with open(STYLE, encoding='utf-8') as fh:
-        return fh.read()
-
-
 def _number(number):
     number = str(number or '').strip()
     return int(number) if number.isdigit() else None
@@ -44,7 +34,7 @@ def collection(cards):
             'screen': c.get('screen') or '', 'sends_to': c.get('sends_to') or '', 'data_sent': c.get('data_sent') or '',
             'rate': _rate(c.get('price')), 'hired': bool(c.get('hired')), 'hireable': bool(c.get('hireable')), 'needs': c.get('needs') or ''}
            for c in cards]
-    return {'cards': out, 'total': len(out), 'hired': sum(1 for c in out if c['hired']), 'style': style(),
+    return {'cards': out, 'total': len(out), 'hired': sum(1 for c in out if c['hired']),
             'filters': {f: sorted({c[f] for c in cards if c.get(f)}) for f in FILTERS}}
 
 

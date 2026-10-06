@@ -51,7 +51,7 @@ TODO = {0: 'check this computer\'s network, then submit again',
 
 
 def submit(root, open_browser=True):
-    sheets = doctor.fix_sheets(root)   # the card sheet in the platform's form first: CSS is never a reason to refuse (the owner, 2026-10-06)
+    sheets = doctor.fix_look(root)   # a design sheet becomes the look record first: CSS is never a reason to refuse
     problems = doctor.check(root)
     if problems:
         raise Refused('the doctor found problems; LARRYD would not take this agent', 'fix each one (`larryd doctor`), then submit again',

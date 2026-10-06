@@ -19,23 +19,27 @@ The whole contract: LARRYD runs the agent's entry file as its own process. One J
 one JSON object goes out on stdout. `delivery` in the answer (plain text) is what lands in the member's job.
 
 ## 1. Install
+    python3 -m venv ~/larryd-venv && ~/larryd-venv/bin/pip install --pre larryd
+    ~/larryd-venv/bin/larryd --version
+
+That works today wherever the release is published, and with a package file or index you were given
+(`pip install --pre --index-url <the index> larryd`). It needs Python 3.11 or newer (`python3 --version`; a Mac's own
+python3 is 3.9). Nothing needs activating: a project made by `larryd new` names the full path of this larryd.
+Until 0.1.0 is published, the public registries hold only the name's reservation, 0.0.1, which prints one line and
+does nothing; from 0.1.0 these work too, each giving the one command `larryd`:
+
     pipx install larryd
     uv tool install --python 3.12 larryd
     npm install -g larryd
     cargo install larryd
-    larryd
 
-Any one of the first four gives one command, `larryd` (`larryd help` lists what it does). Each needs Python 3.11 or
-newer (`python3 --version`; a Mac's own python3 is 3.9), except uv, which brings its own (`brew install uv`); pipx:
-`brew install pipx` or `sudo apt install pipx`. npm and cargo keep LARRYD in its own place. In a virtual environment
-`pip install larryd` works as usual; outside one, Homebrew, Debian and Ubuntu refuse it (PEP 668). The last line starts
-the daemon, LARRYD's runtime on this computer, in this terminal (on 127.0.0.1, its instance in ~/.larryd; Ctrl-C stops
-it), where you can try what you build. No sudo; as root its instance is /var/lib/larryd, for a server. It is proven on
-Python 3.14 (a Mac) and 3.11 (Debian 12). (Until 0.1.0 is published, the three registries hold only the name's
-reservation, 0.0.1, which prints one line and does nothing.)
+uv brings its own Python (`brew install uv`); pipx: `brew install pipx` or `sudo apt install pipx`; npm and cargo keep
+LARRYD in its own place. Outside a virtual environment Homebrew, Debian and Ubuntu refuse a plain `pip install`
+(PEP 668). It is proven on Python 3.14 (a Mac) and 3.11 (Debian 12).
 
-Your own LARRYD: `larryd` alone runs the runtime on this machine (127.0.0.1:5010, its instance in ~/.larryd;
-`LARRYD_PORT` and `LARRYD_INSTANCE` name others), where you can try what you build.
+Your own LARRYD: `larryd` alone runs the daemon, LARRYD's runtime on this computer, in this terminal (127.0.0.1:5010,
+its instance in ~/.larryd; `LARRYD_PORT` and `LARRYD_INSTANCE` name others; Ctrl-C stops it), where you can try what you
+build. No sudo; as root its instance is /var/lib/larryd, for a server.
 
 ## 2. A new agent
     larryd new <name>
@@ -44,8 +48,7 @@ This makes the folder `<name>/`:
 - `agent/`: the agent, and only the agent. It is exactly what LARRYD holds.
   - `agent/agent.json`: the manifest (its fields are explained in the project's CLAUDE.md)
   - `agent/agent.py`: the code, with one entry: `answer(job)`
-  - `agent/card.css` (optional): the card's own sheet, named in the manifest as `"style": "card.css"`; it ships with
-    the agent
+  - an agent ships no CSS: the card's look is the `"look"` record in `agent/agent.json` (section 4)
 - `CLAUDE.md`: the spec and the rules, for Claude Code
 - `.claude/skills/larryd/SKILL.md`: the larryd skill Claude Code loads
 - `samples/job.json`: a sample job for `larryd run`
@@ -56,8 +59,8 @@ To start from a LARRYD example instead of a blank agent:
 
     larryd new marketplace --from marketplace
 
-makes the PF AGENT MARKETPLACE: its code, its manifest with a doctor-clean card, its own card sheet (`agent/card.css`)
-and a sample job. It is the agent the platform's own marketplace is built from.
+makes the PF AGENT MARKETPLACE: its code, its manifest with a doctor-clean card, its look record, its design sheet
+(`design/card.css`, not shipped) and a sample job. It is the agent the platform's own marketplace is built from.
 
 ## 3. The rules
 LARRYD's sandbox refuses 1, 2 and 3 when the agent runs; the doctor checks all of them before that.
@@ -85,47 +88,32 @@ inputs the same way: `{"do": "answer", "job": {"name": "Harbor", "mood": "calm c
 ## 4. The doctor
     larryd doctor --fix      (write normally, then this; or plain `larryd doctor` to check only, --json for JSON)
 
-Your agent's card sheet is yours (`agent/card.css`): its frame, its layout and its looks, animated if you like. The
-platform draws it inside each card's own shadow root, so it styles only your card. Write it normally; the doctor
-writes it in the platform's form so every card looks native, and tells you each change:
+Your card's look is a small record of NAMES in `agent/agent.json`, never CSS:
 
-- type (font, size, weight, case, spacing of letters) becomes the nearest type role of the table below, by size, weight
-  and case (an unwritten weight counts as 400, an unwritten case as none); the role brings its own letter spacing;
-- a typed colour (#hex, rgb(), hsl(), a colour's name) becomes the theme's colour variable nearest to it as the eye sees
-  it (OKLab distance), `var(--active-color-NN)`; a see-through colour keeps its alpha;
-- gap, padding, margin and border-radius go to the spacing scale (0, 2, 4, 8, 12, 16, 22, 32, 48, 64 px);
-- removed: @import and any url() to another host, @font-face, scripts in CSS, `position: fixed` or `sticky`, a selector
-  naming the page outside your card (html, body, :root), markup or a backslash, anything past 20,000 characters.
+    "look": {"accent": "active-color-04", "radius": "step-2", "space": "step-3", "effect": "wellness",
+             "text": {"name": "title", "price": "callout"}}
 
-Your sheet is never a reason to refuse: `larryd doctor --fix` writes the form and keeps your original in
-`.larryd/doctor_backup/`, and `larryd submit` writes it again before it sends, so what is reviewed is exactly the
-doctor's output. It also fills the card's missing facts with honest defaults it names. Plain `larryd doctor` changes
-nothing and says each conversion as WILL CONVERT ... (run `larryd doctor --fix`); `--fix` says what it wrote as FIXED
-... and CONVERTED ..., checks the written sheet again and says it is clean. The same files always give the same result.
-Write normally, run `larryd doctor --fix`, submit. To keep a value exactly, write it from the menu below.
+The platform's one card template draws every card and puts the record on the card as custom properties that point at
+the live theme (`--accent: var(--active-color-04)`), so your card follows the brand and light or dark by itself. Every
+value must be a name on the menu below; the platform checks it again at submission and when it draws the card, and
+drops anything else. A look the record does not name keeps the template's default.
 
-### The menu
+Design in CSS if you like: write `agent/card.css` normally and run `larryd doctor --fix`. It maps each value to the
+nearest name on the menu and says each mapping (CONVERTED ...): a colour to the theme colour variable nearest as the eye
+sees it (OKLab distance against the reference theme, done once; only the name is kept), a radius, padding or gap to the
+nearest step, written type on a part of the card to the nearest role by size, weight and case, the sheet's layers and
+animation to the nearest effect. It writes the look record, moves the sheet to `design/card.css` (agents ship no CSS)
+and keeps your original manifest in `.larryd/doctor_backup/`. Plain `larryd doctor` changes nothing: while a sheet is in
+`agent/` it fails the shape and says what it WILL CONVERT. `larryd place` and `larryd submit` convert it the same way
+first, so CSS is never a reason to refuse. --fix also fills the card's missing facts with honest defaults it names.
+The same files always give the same result.
 
-Type roles (a written font, size, weight, case or letter spacing becomes the nearest role by size, weight and case):
+### The menu (a fixed list, the same for the doctor, this guide and the platform)
 
-| Role | Class | Size | Weight | Case | For |
-|---|---|---|---|---|---|
-| Heading | `.heading` | 48px | 900 | uppercase | the page or card heading |
-| Title | `.title` | 32px | 900 | uppercase | a name, the card's name |
-| Subtitle | `.subtitle` | 14.4px | 900 | uppercase | a section's title |
-| Body | `.body` | 14.4px | 300 | none | running text, the card's pitch |
-| Caption | `.caption` | 11.2px | 600 | uppercase | an eyebrow, the card's class line |
-| Label | `.label` | 14.4px | 500 | uppercase | a field's label |
-| Link | `.link` | 14.4px | 500 | none | a link |
-| Nav | `.nav` | 11.2px | 400 | uppercase | the main navigation |
-| Subnav | `.subnav` | 14.4px | 400 | uppercase | a sub navigation |
-| Callout | `.callout` | 17.6px | 500 | uppercase | a figure that stands out, the card's price |
-| Notes | `.notes` | 17.6px | 500 | uppercase | small notes |
-| Annotation | `.annotation` | 9.6px | 300 | uppercase | facts, the card's product, module and type |
+"accent": a theme colour variable, `active-color-01` to `active-color-64`. The card follows the live theme (brand, light
+or dark), so the colours below are the reference theme's only; a designed colour goes to the nearest as the eye sees it.
 
-Colours (a typed colour becomes the variable nearest to it as the eye sees it; each brand's theme sets its own values):
-
-| Colour (reference theme) | Variables `--active-color-NN` |
+| Colour (reference theme) | active-color-NN |
 |---|---|
 | `#92866F` | 01, 02, 03, 04, 06, 13, 15, 16, 17, 18, 21, 22, 25, 26, 31, 32, 33, 35, 36, 37, 38, 40, 41, 43, 52, 56, 57, 59, 62, 63, 64 |
 | `#D5C5AA` | 05, 23, 28 |
@@ -136,11 +124,43 @@ Colours (a typed colour becomes the variable nearest to it as the eye sees it; e
 | `#17191A` | 11, 12, 30, 39, 45, 47, 49, 51, 58 |
 | `#F1E8C7` | 19 |
 
-Spacing scale (gap, padding, margin, border-radius go to the nearest step): 0, 2, 4, 8, 12, 16, 22, 32, 48, 64 px.
+"radius" and "space": a step of the scale (a designed length goes to the nearest step; a tie rounds down):
 
-Sizes change in place with `.size--xxxs` to `.size--xxxxl`. The card's parts are the platform's own classes:
-`.mk-card` (with `.mk-mark-1`, `.mk-mark-2` or `.mk-mark-3` for its class, and `.mk-on` once hired), `.mk-head`,
-`.mk-frame` (its layers `.mk-glow`, `.mk-art`, `.mk-scan`), `.mk-foot`; `:host` is the card's own box.
+| Step | step-0 | step-1 | step-2 | step-3 | step-4 | step-5 | step-6 | step-7 | step-8 | step-9 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| px | 0 | 2 | 4 | 8 | 12 | 16 | 22 | 32 | 48 | 64 |
+
+"effect": none, crt, wellness, glitch.
+
+"text": a part of the card and its type role (each part has a default; name only the ones you change):
+
+| Part | Default role | What it is |
+|---|---|---|
+| number | caption | the card's number (No. 001) |
+| class | caption | the class line (MARK I AGENT) |
+| name | title | the agent's name |
+| info | annotation | the product and module |
+| pitch | body | the one-line pitch |
+| developer | annotation | the developer credit |
+| facts | annotation | the type and residency |
+| price | callout | the price |
+
+The type roles (a designed font, size, weight, case or letter spacing goes to the nearest by size, weight and case):
+
+| Role | Size | Weight | Case | For |
+|---|---|---|---|---|
+| heading | 48px | 900 | uppercase | the page or card heading |
+| title | 32px | 900 | uppercase | a name, the card's name |
+| subtitle | 14.4px | 900 | uppercase | a section's title |
+| body | 14.4px | 300 | none | running text, the card's pitch |
+| caption | 11.2px | 600 | uppercase | an eyebrow, the card's class line |
+| label | 14.4px | 500 | uppercase | a field's label |
+| link | 14.4px | 500 | none | a link |
+| nav | 11.2px | 400 | uppercase | the main navigation |
+| subnav | 14.4px | 400 | uppercase | a sub navigation |
+| callout | 17.6px | 500 | uppercase | a figure that stands out, the card's price |
+| notes | 17.6px | 500 | uppercase | small notes |
+| annotation | 9.6px | 300 | uppercase | facts, the card's product, module and type |
 
 It checks the project, the manifest, the entry, the air gap, no secret, the shape, the skills and the knowledge.
 Every problem names the file and line, what is wrong and what to do. Do what it says, then run it again.
@@ -183,7 +203,7 @@ A person at LARRYD reviews it. Approved, it goes into LARRYD's locker under its 
 
 ## In Claude Code
 In a project made by `larryd new`, open the folder with `claude` and approve the LARRYD tools:
-larryd_new, larryd_doctor, larryd_run, larryd_submit, larryd_skills, larryd_pack.
+larryd_new, larryd_doctor, larryd_run, larryd_submit, larryd_skills, larryd_pack, larryd_card.
 Elsewhere, one line: `claude mcp add larryd -- larryd mcp`. The repository is also a Claude Code plugin marketplace.
 The loop for the AI: change the agent → larryd_doctor → larryd_run → fix → again → larryd_submit.
 

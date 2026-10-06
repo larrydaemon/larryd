@@ -99,7 +99,8 @@ def make(name, where='.', example=None):
         if example not in EXAMPLES:
             raise ValueError(f'no example "{example}": the examples are {", ".join(EXAMPLES)}')
         for file, text in _example(example).items():
-            files[shape.SAMPLE if file == 'job.json' else f'{shape.AGENT}/{file}'] = text   # its sample job: where `larryd run` reads one
+            # its sample job where `larryd run` reads one; its design sheet beside agent/, never in it (agents ship no CSS)
+            files[shape.SAMPLE if file == 'job.json' else 'design/card.css' if file == 'design.css' else f'{shape.AGENT}/{file}'] = text
     for rel, text in files.items():
         path = root / rel
         path.parent.mkdir(parents=True, exist_ok=True)

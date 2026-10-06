@@ -1,7 +1,6 @@
 {
   "name": "PF AGENT MARKETPLACE",
   "entry": "agent.py",
-  "style": "card.css",
   "about": "The collection: every agent card the member may see (approved, on a screen, a whole mTok rate, held and verified), laid out as cards in order, with the member's hired state; its RUN delivers the collection report.",
   "does": [
     "collection",
@@ -26,7 +25,6 @@
     "total",
     "hired",
     "filters",
-    "style",
     "delivery"
   ],
   "card": {
@@ -43,5 +41,11 @@
     "data_sent": ""
   },
   "skills": [],
-  "knowledge": []
+  "knowledge": [],
+  "look": {
+    "accent": "active-color-01",
+    "radius": "step-5",
+    "space": "step-3",
+    "effect": "crt"
+  }
 }

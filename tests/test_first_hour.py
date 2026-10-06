@@ -62,63 +62,47 @@ def test_help_ends_with_where_to_start(capsys):
     assert cli.parser().format_help().rstrip().splitlines()[-1] == want
 
 
-# 4 + 5. plain doctor says WILL CONVERT and changes nothing; --fix writes, checks the written file, says it is clean
-GREY = '.mk-foot { color: #8a8a8a; border-radius: 20px; font-size: 0.85rem; letter-spacing: 0.08em }\n'
+# 4 + 5. plain doctor says WILL CONVERT and changes nothing; --fix writes the look record, says it, and is clean after
+GREY = '.mk-card { border: 1px solid #8a8a8a; border-radius: 20px }\n.mk-foot { font-size: 0.85rem; letter-spacing: 0.08em }\n'
 
 
 def test_plain_doctor_says_will_convert_and_changes_nothing(tmp_path, capsys):
     root = made(tmp_path)
     css = root / 'agent' / 'card.css'
-    css.write_text(css.read_text() + GREY)
-    before = css.read_text()
-    assert cli.main(['doctor', str(root)]) == 0
+    css.write_text(GREY)
+    before = (root / 'agent' / 'agent.json').read_text()
+    assert cli.main(['doctor', str(root)]) == 1   # a shipped sheet fails the shape
     out = capsys.readouterr().out
-    assert css.read_text() == before and 'CONVERTED' not in out
-    assert 'WILL CONVERT card.css: .mk-foot: border-radius 20px -> 22px (the spacing scale)' in out
-    assert 'run `larryd doctor --fix` to write these' in out
+    assert css.read_text() == GREY and (root / 'agent' / 'agent.json').read_text() == before and 'CONVERTED' not in out
+    assert 'WILL CONVERT card.css: .mk-card: border-radius 20px -> radius step-6 (22px, the nearest step)' in out
+    assert 'run `larryd doctor --fix` to write these into the look record' in out
 
 
-def test_fix_says_what_it_did_then_the_written_sheet_is_clean(tmp_path, capsys):
+def test_fix_says_what_it_did_then_the_agent_is_clean(tmp_path, capsys):
     root = made(tmp_path)
-    css = root / 'agent' / 'card.css'
-    css.write_text(css.read_text() + GREY)
+    (root / 'agent' / 'card.css').write_text(GREY)
     assert cli.main(['doctor', '--fix', str(root)]) == 0
     out = capsys.readouterr().out
-    assert 'CONVERTED card.css: .mk-foot: border-radius 20px -> 22px' in out and 'FIXED agent/card.css' in out
-    assert 'WILL CONVERT' not in out and out.rstrip().endswith("the card sheet is in the platform's form: nothing left to convert")
+    assert 'CONVERTED card.css: .mk-card: border-radius 20px -> radius step-6' in out and 'moved to design/card.css' in out
+    assert 'WILL CONVERT' not in out and out.rstrip().endswith('agent/ holds no CSS: the look record is in agent.json, nothing left to convert')
     assert cli.main(['doctor', str(root)]) == 0
     assert 'CONVERT' not in capsys.readouterr().out
 
 
-# 6. the nearest match, as the eye sees it, and the menu written down
-def test_a_colour_goes_to_the_nearest_the_eye_sees_not_the_nearest_number():
-    cat = sheet.catalog()
-    # #ffcc99 (a peach): by RGB numbers the nearest is #D5C5AA; as the eye sees it (OKLab) it is the light cream #EFE5C6
-    slot, hexa, _ = sheet.nearest_colour((0xff, 0xcc, 0x99), cat)
-    assert hexa == '#EFE5C6' and cat['colours'][slot] == '#EFE5C6'
-    slot, hexa, far = sheet.nearest_colour((0x8a, 0x8a, 0x8a), cat)
-    assert (slot, hexa) == ('--active-color-01', '#92866F') and far < 0.05   # a grey goes to the theme's own grey-taupe, said with its distance
-
-
-def test_a_see_through_colour_keeps_its_alpha_and_the_form_is_stable():
-    out, said = sheet.rewrite('.a { background: rgba(0, 0, 0, 0.5); color: #ffffff80 }')
-    assert 'color-mix(in srgb, var(--active-color-09) 50%, transparent)' in out and 'var(--active-color-08) 50%' in out
-    assert sheet.rewrite(out) == (out, [])
-
-
+# 6. the nearest name, as the eye sees it, and the menu written down from the one fixed list
 def test_unwritten_weight_and_case_count_as_css_s_own():
-    out, said = sheet.rewrite('.a { font-size: 0.85rem; letter-spacing: 0.08em }')
-    assert 'var(--font-body)' in out and 'letter spacing' in said[0]
+    assert sheet.nearest_role({'font-size': '0.85rem', 'letter-spacing': '0.08em'}, sheet.catalog()) == 'body'
 
 
 def test_the_menu_is_in_the_guide_and_every_project(tmp_path):
     table = sheet.table()
     cat = sheet.catalog()
     for role in cat['roles']:
-        assert f'`.{cat["roles"][role]["class"]}`' in table
+        assert f'| {role} |' in table
     for name in cat['colours']:
         assert re.search(rf'\b{name.rsplit("-", 1)[1]}\b', table), name
-    assert ', '.join(str(x) for x in sheet.SPACING) in table
+    for step in cat['steps']:
+        assert step in table
     assert table in (PACKAGE / 'GUIDE.md').read_text()
     assert table in (made(tmp_path) / 'CLAUDE.md').read_text()
 
@@ -143,19 +127,40 @@ def test_no_internal_word_in_the_kit_the_guide_or_a_made_project(tmp_path):
             assert not INTERNAL.search(line), f'{path}:{n}: {line[:100]}'
 
 
-# 9. the card sheet is part of the agent, and the manifest says so
-def test_the_example_names_its_sheet_and_the_doctor_holds_it(tmp_path):
+# 9. what ships is plain: agent/ holds no CSS; the look is in the manifest, and the guide says so
+def test_the_example_ships_a_look_record_and_no_sheet(tmp_path):
     root = made(tmp_path)
     manifest = json.loads((root / 'agent' / 'agent.json').read_text())
-    assert manifest['style'] == 'card.css' and (root / 'agent' / 'card.css').is_file()
-    assert doctor.check(root) == []
-    assert 'card.css' in (root / 'CLAUDE.md').read_text() and '"style": "card.css"' in (PACKAGE / 'GUIDE.md').read_text()
-    for wrong, said in (('../card.css', 'not a .css file name'), ('gone.css', 'not in agent/')):
-        manifest['style'] = wrong
-        (root / 'agent' / 'agent.json').write_text(json.dumps(manifest))
-        assert any(said in p.wrong for p in doctor.check(root)), wrong
+    assert manifest['look'] == {'accent': 'active-color-01', 'radius': 'step-5', 'space': 'step-3', 'effect': 'crt'} and 'style' not in manifest
+    assert not list((root / 'agent').glob('*.css')) and doctor.check(root) == []
+    assert 'ships no CSS' in (root / 'CLAUDE.md').read_text() and 'ships no CSS' in (PACKAGE / 'GUIDE.md').read_text()
 
 
-def test_a_plain_agent_needs_no_sheet(tmp_path):
+def test_a_plain_agent_needs_no_look(tmp_path):
     root = new.make('plain', tmp_path)
-    assert 'style' not in json.loads((root / 'agent' / 'agent.json').read_text()) and doctor.check(root) == []
+    assert 'look' not in json.loads((root / 'agent' / 'agent.json').read_text()) and doctor.check(root) == []
+
+
+# rc10's rerun: the guide's links ship, its tool list is the server's, a tie is said, the install line works today
+def test_the_guide_s_checks_link_ships_beside_it():
+    assert '[CHECKS.md](CHECKS.md)' in (PACKAGE / 'GUIDE.md').read_text()
+    assert (PACKAGE / 'CHECKS.md').read_text() == (REPO / 'CHECKS.md').read_text(), 'cp CHECKS.md larryd/CHECKS.md'
+    assert 'CHECKS.md' in open(REPO / 'pyproject.toml').read().split('[tool.setuptools.package-data]', 1)[1]
+
+
+def test_the_guide_names_every_tool_the_server_serves():
+    from larryd import mcp
+    assert ', '.join(mcp.TOOLS) + '.' in (PACKAGE / 'GUIDE.md').read_text()
+
+
+def test_a_tie_on_the_scale_rounds_down_and_says_so():
+    from larryd import look
+    record, said = look.from_sheet('.mk-card { padding: 10px }')
+    assert record == {'space': 'step-3'} and said[0].endswith('(8px, the nearest step; tie: rounds down)')
+    assert 'a tie rounds down' in sheet.table()
+
+
+def test_install_leads_with_the_line_that_works_today():
+    text = (PACKAGE / 'GUIDE.md').read_text()
+    first = text.split('## 1. Install\n', 1)[1].splitlines()[0]
+    assert first.strip() == 'python3 -m venv ~/larryd-venv && ~/larryd-venv/bin/pip install --pre larryd'

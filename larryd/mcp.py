@@ -17,7 +17,7 @@ def _new(args):
 def _doctor(args):
     problems = doctor.check(args.get('path') or '.')
     out = doctor.as_json(problems)
-    out['will_convert'] = doctor.conversions(args.get('path') or '.')   # the card sheet's form, said (never a failure): larryd doctor --fix writes it
+    out['will_convert'] = doctor.conversions(args.get('path') or '.')   # what a design sheet in agent/ maps to: larryd doctor --fix writes the look record
     return out, False
 
 

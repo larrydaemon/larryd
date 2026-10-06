@@ -4,9 +4,8 @@ You are building one agent. It runs on LARRYD, air gapped (LARRYD is also the pl
 run, apart from everything else), owned by its developer. The platform reaches it only through LARRYD; the agent itself reaches nothing. Read this whole file before you change anything.
 
 ## What an agent is
-- The folder `agent/` is the agent. It is exactly what LARRYD holds in its locker: the manifest `agent/agent.json`,
-  the code, and the card's own sheet when it has one (`agent/card.css`, named in the manifest as `"style": "card.css"`).
-  Nothing else in this project goes to LARRYD.
+- The folder `agent/` is the agent. It is exactly what LARRYD holds in its locker: the manifest `agent/agent.json`
+  and the code. Nothing else in this project goes to LARRYD. An agent ships no CSS.
 - LARRYD runs the entry (`agent/agent.py`) as its own process. One JSON object comes in on stdin, one JSON object
   goes out on stdout. That is the whole contract.
 - The job it is handed: `{{"do": "<one of does>", ...the inputs named in run.hands}}`.
@@ -27,10 +26,17 @@ run, apart from everything else), owned by its developer. The platform reaches i
 7. Nothing fake. The agent answers from what it is handed, or it says plainly that it cannot.
 8. Plain words. Names as they are: LARRYD, FROST, mTok, DA-M, LARRY LLM.
 
-## The card's sheet (`agent/card.css`, optional)
-Write it normally. `larryd doctor` says what it will convert (WILL CONVERT ...); `larryd doctor --fix` writes it in the
-platform's form (your original kept in `.larryd/doctor_backup/`), and `larryd submit` does the same before it sends.
-Nothing in a sheet ever fails a check. The values it is converted to:
+## The card's look (`"look"` in `agent/agent.json`, optional)
+The card's look is a small record of NAMES, never CSS: the platform's one card template draws every card and points
+each name at the live theme, so the card follows the brand and light or dark by itself.
+
+    "look": {{"accent": "active-color-04", "radius": "step-2", "space": "step-3", "effect": "wellness",
+             "text": {{"name": "title", "price": "callout"}}}}
+
+You may design in CSS: write `agent/card.css` normally, then run `larryd doctor --fix`. It maps each value to the
+nearest name below (colours as the eye sees them, lengths to the nearest step, type to the nearest role), says each
+mapping, writes the look record, and moves the sheet to `design/card.css`. Plain `larryd doctor` fails while a sheet is
+in `agent/` and says what it WILL CONVERT. The menu, a fixed list:
 
 {sheet}
 

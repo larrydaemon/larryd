@@ -39,5 +39,6 @@ def test_the_three_install_lines_name_the_same_package():
 
 def test_the_install_lines_in_order():
     lines = '    pipx install larryd\n    uv tool install --python 3.12 larryd\n    npm install -g larryd\n    cargo install larryd\n    larryd\n'
-    for doc in ('README.md', 'GUIDE.md', 'listings/text.md'):
+    for doc in ('README.md', 'listings/text.md'):
         assert lines in (REPO / doc).read_text(), doc
+    assert lines.rsplit('    larryd\n', 1)[0] in (REPO / 'GUIDE.md').read_text()   # the guide leads with the line that works before 0.1.0, then these

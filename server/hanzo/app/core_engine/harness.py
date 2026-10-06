@@ -14,7 +14,7 @@ import pathlib
 import re
 import sqlite3
 
-from . import gate, lanes, locker, records as run_records, sandbox
+from . import gate, lanes, locker, look, records as run_records, sandbox
 
 MARKETPLACE = 'marketplace'   # the one agent's locker folder: it answers the collection, hires, and places defaults
 HANDS = ('cards', 'job')      # what a RUN can be handed: the cards the member sees; the job's own inputs (read from wid, kept nowhere)
@@ -192,7 +192,22 @@ class Harness:
         self._record('call', agent_key, state, reason, account=account, member=member)
         if state != 'DONE':
             raise Refused(500, reason)
+        self._looks(answer, verify)
         return {'agent_key': agent_key, 'title': card['name'], **answer}
+
+    def _looks(self, answer, verify):
+        """EACH CARD'S LOOK IS ITS OWN AGENT'S: the record of names from that agent's held manifest, only while FROST
+        approved its exact hashes (the look is in the manifest's hash), cleaned against the menu. Whatever an answering
+        agent wrote as a card's look is dropped: no agent speaks for another's card."""
+        for c in answer.get('cards') or []:
+            if not isinstance(c, dict):
+                continue
+            c.pop('look', None)
+            held = locker.held(self.db, c.get('key') or '')
+            if held and verify(c['key'])[0]:
+                record = look.clean(locker.manifest(self.agents, held['folder']).get('look'))
+                if record:
+                    c['look'] = record
 
     def hire(self, account, scope, member, agent_key, on):
         """THE MARKETPLACE'S HIRE: only a card in the collection the member may hire; the marketplace itself can always be hired again."""

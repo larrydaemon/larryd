@@ -1,0 +1,6 @@
+/* The marketplace card's design sheet, written normally while designing. It is not shipped: `larryd doctor --fix`
+   reads it from agent/card.css, turns it into the "look" record in agent.json (the nearest names on the menu) and
+   keeps it here. To change the look: copy it to agent/card.css, edit, run `larryd doctor --fix`. */
+.mk-card { border: 2px solid #92866F; border-radius: 16px; padding: 8px }
+.mk-scan { background: repeating-linear-gradient(0deg, #121212 0 1px, transparent 1px 3px); animation: roll 6s linear infinite }
+@keyframes roll { from { background-position: 0 0 } to { background-position: 0 -220% } }
