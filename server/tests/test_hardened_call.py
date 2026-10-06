@@ -77,3 +77,54 @@ class HardenedCallTest(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class HeaderValidationTest(HardenedCallTest):
+    """The security review (2026-10-06): every header is checked for presence, length and characters before use; a
+    malformed or oversize call is refused with 401 before its body is read or any nonce is stored; nothing of an
+    exception is echoed."""
+
+    def raw(self, headers, body=None, method='POST', route='/health'):
+        return self.client.open('/api' + route, method=method, headers=headers, data=body,
+                                content_type='application/json' if body is not None else None)
+
+    def good_headers(self, nonce=None):
+        at, nonce = self.now.isoformat(timespec='seconds'), nonce or secrets.token_hex(16)
+        return {'X-Office-Key': 'slot-a', 'X-Office-At': at, 'X-Office-Nonce': nonce,
+                'X-Office': signing.sign_hardened(self.a, '/health', {}, at, nonce)}
+
+    def test_a_key_id_that_is_a_path_or_unknown_is_refused(self):
+        for bad in ('../slot-a', 'slot-a/', 'SLOT-A', 'slot a', 'x' * 64, ''):
+            h = self.good_headers(); h['X-Office-Key'] = bad
+            self.assertEqual(self.raw(h, method='GET').status_code, 401, bad)
+
+    def test_a_nonce_must_be_32_hex(self):
+        for bad in ('g' * 32, 'a' * 31, 'a' * 33, 'A' * 32 + ' ', '00' * 100):
+            h = self.good_headers(nonce=bad)
+            self.assertEqual(self.raw(h, method='GET').status_code, 401, bad)
+
+    def test_a_signature_must_be_64_hex(self):
+        for bad in ('0' * 63, '0' * 65, 'z' * 64, ''):
+            h = self.good_headers(); h['X-Office'] = bad
+            self.assertEqual(self.raw(h, method='GET').status_code, 401, bad)
+
+    def test_a_timestamp_must_be_the_iso_utc_form(self):
+        for bad in ('1791300000', 'yesterday', self.now.isoformat() + 'x', 'x' * 200):
+            h = self.good_headers(); h['X-Office-At'] = bad
+            self.assertEqual(self.raw(h, method='GET').status_code, 401, bad)
+
+    def test_an_oversize_body_is_refused_before_it_is_read(self):
+        h = self.good_headers()
+        r = self.raw(h, body='{"x": "' + 'a' * 70000 + '"}')
+        self.assertEqual(r.status_code, 401)
+
+    def test_a_malformed_call_stores_no_nonce(self):
+        nonce = secrets.token_hex(16)
+        h = self.good_headers(nonce=nonce); h['X-Office'] = '0' * 64   # well formed, wrong signature
+        self.assertEqual(self.raw(h, method='GET').status_code, 401)
+        self.assertEqual(self.raw(self.good_headers(nonce=nonce), method='GET').status_code, 200)   # the nonce was not used up
+
+    def test_a_refusal_says_nothing_more(self):
+        h = self.good_headers(); h['X-Office-At'] = 'x' * 200
+        r = self.raw(h, method='GET')
+        self.assertEqual(r.get_json(), {'refused': 'not a signed call'})

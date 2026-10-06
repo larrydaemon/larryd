@@ -18,6 +18,7 @@ import threading
 from urllib.parse import quote
 
 from flask import Flask, jsonify, redirect, render_template, request
+from werkzeug.exceptions import HTTPException
 
 APP = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(APP))
@@ -34,6 +35,7 @@ def _utc_now():
 
 
 NEEDS = ('account', 'scope', 'member')
+MAX_BODY = 64 * 1024   # a signed call's body; anything larger is refused unread
 
 
 def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, developer=False, keys=None, nonces=None):
@@ -57,18 +59,29 @@ def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, deve
     def signed_only():
         if developer and request.path.startswith('/marketplace'):
             return None   # the developer's own page, on 127.0.0.1, in the browser: no office signs it
-        data = request.args.to_dict() if request.method == 'GET' else (request.get_json(silent=True) or {})
         route = request.path.removeprefix('/api')
         if keys is not None:   # THE HARDENED CALL (Cloud Run): a key per caller and a nonce, never the shared secret
-            ok = signing.good_hardened(keys.now(), request.headers.get('X-Office-Key'), route, data, request.headers.get('X-Office-At'),
-                                       request.headers.get('X-Office-Nonce') or '', request.headers.get('X-Office'), now(),
-                                       CONFIG['signed_window_seconds'], nonces.fresh)
+            known, h = keys.now(), request.headers
+            if (request.content_length or 0) > MAX_BODY or not signing.well_formed(h.get('X-Office-Key'), h.get('X-Office-At'),
+                                                                                     h.get('X-Office-Nonce'), h.get('X-Office'), known):
+                return jsonify({'refused': 'not a signed call'}), 401   # before the body is read or anything is stored
+            data = request.args.to_dict() if request.method == 'GET' else (request.get_json(silent=True) or {})
+            ok = signing.good_hardened(known, h.get('X-Office-Key'), route, data, h.get('X-Office-At'), h.get('X-Office-Nonce'),
+                                       h.get('X-Office'), now(), CONFIG['signed_window_seconds'], nonces.fresh)
         else:
+            data = request.args.to_dict() if request.method == 'GET' else (request.get_json(silent=True) or {})
             ok = signing.good(secret, route, data, request.headers.get('X-Office-At'), request.headers.get('X-Office'),
                               now(), CONFIG['signed_window_seconds'])
         if not ok:
             return jsonify({'refused': 'not a signed call'}), 401
         return None
+
+    @app.errorhandler(Exception)
+    def failed(error):   # nothing of an exception is ever echoed to a caller (the security review, 2026-10-06)
+        if isinstance(error, HTTPException):
+            return jsonify({'refused': error.name}), error.code   # a 404 or 405 stays itself, with its plain name only
+        logging.getLogger('hanzo').exception('a call failed')
+        return jsonify({'refused': 'the runtime could not answer'}), 500
 
     @app.get('/api/health')
     def health():

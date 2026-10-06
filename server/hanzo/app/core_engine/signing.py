@@ -5,6 +5,7 @@ import datetime
 import hashlib
 import hmac
 import json
+import re
 
 
 def sign(secret, route, data, at):
@@ -33,11 +34,29 @@ def sign_hardened(secret, route, data, at, nonce):
     return hmac.new(secret.encode('utf-8'), text.encode('utf-8'), hashlib.sha256).hexdigest()
 
 
+KEY_ID = re.compile(r'[a-z0-9-]{1,32}')
+NONCE = re.compile(r'[0-9a-f]{32}')
+SIGNATURE = re.compile(r'[0-9a-f]{64}')
+AT = re.compile(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:\+00:00|Z)')
+
+
+def well_formed(key_id, at, nonce, signature, known):
+    """Every header of the hardened call, checked before anything is read or stored (the security review, 2026-10-06):
+    a key id from the known set only (never a path or a lookup string), the timestamp in the ISO UTC form, the nonce
+    32 hex characters, the signature 64 hex characters."""
+    return (isinstance(key_id, str) and KEY_ID.fullmatch(key_id) is not None and key_id in known
+            and isinstance(at, str) and AT.fullmatch(at) is not None
+            and isinstance(nonce, str) and NONCE.fullmatch(nonce) is not None
+            and isinstance(signature, str) and SIGNATURE.fullmatch(signature) is not None)
+
+
 def good_hardened(keys, key_id, route, data, at, nonce, signature, now, window_seconds, fresh):
-    """keys: {key id: secret} (every enabled version of every caller's key). fresh(nonce): True the first time only."""
-    secret = (keys or {}).get(key_id or '')
-    if not (secret and signature and at and nonce) or len(nonce) < 16:
+    """keys: {key id: secret} (every enabled version of every caller's key). fresh(nonce): True the first time only,
+    asked only after the signature is good, so a bad call never uses up a nonce."""
+    keys = keys or {}
+    if not well_formed(key_id, at, nonce, signature, keys):
         return False
+    secret = keys[key_id]
     try:
         moment = datetime.datetime.fromisoformat(at)
         if abs(now - moment) > datetime.timedelta(seconds=window_seconds):
