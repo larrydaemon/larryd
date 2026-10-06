@@ -15,6 +15,7 @@ import pathlib
 import secrets
 import sys
 import threading
+import time
 from urllib.parse import quote
 
 from flask import Flask, jsonify, redirect, render_template, request
@@ -348,11 +349,11 @@ def place(app, agent_key, data, role=''):
         return {**held, 'refused': f'held in the locker, but FROST did not take it: {no.reason}; send it again with submit {agent_key}'}
 
 
-def warm_up(app, shake=warmup.handshake, sleep=None, then=None):
+def warm_up(app, shake=None, sleep=None, then=None):
     """Cloud Run, at start (the service) or before a run (a job execution): the warm-up handshakes to every slot with a
     callback address, then `then` (the service's catch-up: still inside the start-up, where the instance has its CPU),
     then the app is ready. -> the warm-up's result."""
-    kw = {'shake': shake} if sleep is None else {'shake': shake, 'sleep': sleep}
+    kw = {'shake': shake or warmup.handshake, **({'sleep': sleep} if sleep else {})}
     try:
         result = warmup.warm(warmup.hosts(CONFIG['slots']), **kw)
         if then is not None:
@@ -369,7 +370,10 @@ def catch_up(app):
     status = 0
     sources = list(app.config['harnesses'].items()) or [('', app.config['harness'])]
     for caller, h in sources:
+        began = time.monotonic()
         status, body = h.client.get('wid', '/jobs/queued')
+        if caller:   # the instance's first call back to that slot: its answer and how long it took (no data)
+            logging.getLogger('hanzo').warning('catch-up: %s answered %s in %.1f s', caller, status, time.monotonic() - began)
         for j in body.get('jobs', []) if status == 200 else []:
             app.config['start'](j['account'], j['scope'], j['member'], j['job_key'], int(j['run']), caller)
     return status
@@ -400,6 +404,7 @@ def main(argv):
     python hanzo/app/web/app.py place <card key> <file.larryd> [marketplace]   an agent the owner approved: into the locker (and, on Cloud Run, the lockers bucket), then to FROST's review
     python hanzo/app/web/app.py review <card key>...                what HANZO records for those agents, with FROST's word on the hashes it holds
     python hanzo/app/web/app.py job <slot> <account> <scope> <member> <job key> <run>   a Cloud Run job execution: one RUN, its result to that slot
+    python hanzo/app/web/app.py callbacks <slot> <n>                Cloud Run: the warm-up, the first call back to that slot and n more (statuses and times)
     python hanzo/app/web/app.py selftest                            Cloud Run: the marketplace agent run once in the sandbox, its record written"""
     side = os.environ.get(CONFIG['environment_variable'], 'localhost.rnd').split('.')[-1]
     secret_file = INSTANCE / 'secrets' / CONFIG['secret']['name']
@@ -432,6 +437,9 @@ def main(argv):
         state = h.run_job(account, scope, member, job_key, int(run))
         print(json.dumps({'job_key': job_key, 'run': int(run), 'state': state}))
         return
+    if argv[1:2] == ['callbacks'] and len(argv) == 4:   # the proof: a cold execution's first call back, then n more
+        print(json.dumps(callbacks(app, argv[2], int(argv[3]))))
+        return
     if argv[1:2] == ['selftest']:
         print(json.dumps(selftest(app)))
         return
@@ -444,6 +452,26 @@ def main(argv):
         catch_up(app)
     app.run(host=os.environ.get('LARRYD_HOST') or CONFIG['host'], port=int(os.environ.get('PORT') or os.environ.get('LARRYD_PORT') or CONFIG['ports'][side]),
             threaded=True)   # 127.0.0.1, except in a container (Cloud Run names LARRYD_HOST and PORT)
+
+
+def callbacks(app, caller, n):
+    """THE CALLBACK PROOF (a Cloud Run job execution, cold): the warm-up, then the first call back to that slot
+    (wid's queue, a read: nothing written into the platform), then n more. -> the warm-up, each answer's status and
+    time (any answer from the slot, even a refusal, proves the way back is open). Statuses and times only, never a body."""
+    h = app.config['harnesses'].get(caller)
+    if h is None:
+        raise SystemExit('no such slot')
+    began = time.monotonic()
+    out = {'warm_up': warm_up(app)}
+    tries = []
+    for _ in range(n + 1):
+        t = time.monotonic()
+        status, _body = h.client.get('wid', '/jobs/queued')
+        tries.append((status, round((time.monotonic() - t) * 1000)))
+    first, rest = tries[0], tries[1:]
+    return {**out, 'first_call_back': {'status': first[0], 'ms': first[1], 'after_start_s': round(time.monotonic() - began - sum(ms for _, ms in rest) / 1000, 1)},
+            'steady': {'answered': sum(1 for st, _ in rest if st), 'of': n, 'statuses': sorted({st for st, _ in rest}),
+                       'p50_ms': sorted(ms for _, ms in rest)[len(rest) // 2] if rest else None}}
 
 
 def selftest(app):

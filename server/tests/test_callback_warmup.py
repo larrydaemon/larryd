@@ -117,6 +117,26 @@ class Ready(CloudApp):
         self.assertTrue(app.config['ready'].is_set())
 
 
+class Proof(CloudApp):
+    def test_the_callback_proof_warms_up_then_reports_statuses_and_times_only(self):
+        app = self.make()
+        h = app.config['harnesses']['slot-b']
+        h.client.get = lambda office, route, data=None: (200, {'jobs': [{'job_key': 'secret data'}]})
+        orig = host.warmup.handshake
+        host.warmup.handshake = lambda host_, port=443: True
+        try:
+            app.config['ready'].clear()
+            out = host.callbacks(app, 'slot-b', 20)
+        finally:
+            host.warmup.handshake = orig
+        self.assertTrue(out['warm_up']['ready'])
+        self.assertEqual(out['first_call_back']['status'], 200)
+        self.assertEqual((out['steady']['answered'], out['steady']['of'], out['steady']['statuses']), (20, 20, [200]))
+        self.assertNotIn('secret data', repr(out))
+        with self.assertRaises(SystemExit):
+            host.callbacks(app, 'slot-c', 1)
+
+
 class Retries(CloudApp):
     def client(self, retry=60):
         self.clock = Clock()
