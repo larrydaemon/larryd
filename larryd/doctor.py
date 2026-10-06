@@ -5,6 +5,8 @@ import ast
 import json
 import pathlib
 import re
+import tempfile
+import os
 from importlib import resources
 import sys
 from dataclasses import asdict, dataclass
@@ -532,26 +534,71 @@ def _fix_sheet(text, cat):
     return re.sub(r'([^{}]+)\{([^{}]*)\}', rule, text)
 
 
+def _inside(root, path):
+    """Is path (and every folder between root and it) a real, non-link path inside root? Never written through otherwise."""
+    try:
+        rel = path.relative_to(root)
+    except ValueError:
+        return False
+    here = root
+    for part in rel.parts:
+        here = here / part
+        if here.is_symlink():
+            return False
+    return os.path.realpath(path).startswith(str(root) + os.sep)
+
+
+def _write(root, path, text):
+    """An atomic write inside root only: a temp file in the same folder, then a rename; never through a link."""
+    if not _inside(root, path) or (path.exists() and not path.is_file()):
+        raise PermissionError(f'{path} is a link or outside the project: not written')
+    fd, tmp = tempfile.mkstemp(dir=path.parent, prefix='.' + path.name + '.')
+    try:
+        with os.fdopen(fd, 'w') as fh:
+            fh.write(text)
+        os.replace(tmp, path)
+    except BaseException:
+        if os.path.exists(tmp):
+            os.unlink(tmp)
+        raise
+
+
+def _backup(root, path):
+    """The original kept once in .larryd/doctor_backup/ (made private, refused if it or .larryd is a link)."""
+    folder = root / '.larryd' / 'doctor_backup'
+    for f in (root / '.larryd', folder):
+        if f.is_symlink() or (f.exists() and not f.is_dir()):
+            raise PermissionError(f'{f} is a link or not a folder: no backup made, nothing changed')
+        if not f.exists():
+            f.mkdir(mode=0o700)
+    target = folder / path.name
+    if not target.exists():
+        _write(root, target, path.read_text())
+
+
 def fix(root):
     """`larryd doctor --fix` (the owner, 2026-10-06: "instead of just doctor it fixes it too"): rewrites the developer's
     own card sheets to the platform's form (fix_sheet) and fills the card's missing facts with honest defaults it names;
-    the originals are kept in .larryd/doctor_backup/. -> [str]: what it changed. Deterministic: the same files give the
-    same result."""
-    import shutil
-    root = pathlib.Path(root).resolve()
+    the originals are kept in .larryd/doctor_backup/. -> [str]: what it changed (and what it would not touch: a link, a
+    path outside the project). Deterministic: the same files give the same result. Never writes through a link."""
+    root = pathlib.Path(os.path.realpath(root))
     agent, changed, cat = root / shape.AGENT, [], _catalog()
-    backup = root / '.larryd' / 'doctor_backup'
+    if not _inside(root, agent):
+        return [f'{agent}: a link or outside the project: nothing fixed']
     for path in _files(agent):
-        if path.suffix == '.css' and path.is_file():
-            old = path.read_text()
-            new = _fix_sheet(old, cat)
-            if new != old:
-                backup.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(path, backup / path.name)
-                path.write_text(new)
-                changed.append(f'{path.relative_to(root)}: written in the catalog\'s roles and the theme\'s colours, anything unsafe removed')
+        if path.suffix != '.css':
+            continue
+        if not _inside(root, path) or not path.is_file():
+            changed.append(f'{path.relative_to(root)}: a link, left as it is (not written)')
+            continue
+        old = path.read_text()
+        new = _fix_sheet(old, cat)
+        if new != old:
+            _backup(root, path)
+            _write(root, path, new)
+            changed.append(f'{path.relative_to(root)}: written in the catalog\'s roles and the theme\'s colours, anything unsafe removed')
     manifest = agent / shape.MANIFEST
-    if manifest.is_file():
+    if manifest.is_file() and _inside(root, manifest):
         try:
             data = json.loads(manifest.read_text())
         except ValueError:
@@ -563,10 +610,11 @@ def fix(root):
                         'pitch': f"What {data.get('name') or 'this agent'} does for the member, in one line."}
             missing = [k for k in defaults if k not in card]
             if missing:
-                backup.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(manifest, backup / manifest.name)
+                _backup(root, manifest)
                 for k in missing:
                     card[k] = defaults[k]
-                manifest.write_text(json.dumps(data, indent=2) + '\n')
+                _write(root, manifest, json.dumps(data, indent=2) + '\n')
                 changed.append(f'{manifest.relative_to(root)}: the card\'s missing facts filled ({", ".join(f"{k} = {defaults[k]!r}" for k in missing)}): check them')
+    elif manifest.is_symlink():
+        changed.append(f'{manifest.relative_to(root)}: a link, left as it is (not written)')
     return changed

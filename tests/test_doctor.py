@@ -351,3 +351,51 @@ def test_fix_rewrites_the_sheet_and_the_card_then_the_doctor_is_clean(tmp_path):
     assert (root / '.larryd' / 'doctor_backup' / 'card.css').is_file()
     assert doctor.check(root) == []
     assert doctor.fix(root) == []   # deterministic: fixed once, nothing more to change
+
+
+# THE FIXER NEVER WRITES THROUGH A LINK (the security review, 2026-10-06).
+def test_fix_never_writes_through_a_linked_sheet(tmp_path):
+    from larryd import new as larryd_new
+    root = larryd_new.make('m', tmp_path, example='marketplace')
+    outside = tmp_path / 'precious.css'
+    outside.write_text('h1 { font-size: 40px }\n')
+    (root / 'agent' / 'card.css').unlink()
+    (root / 'agent' / 'card.css').symlink_to(outside)
+    changed = doctor.fix(root)
+    assert outside.read_text() == 'h1 { font-size: 40px }\n'
+    assert any('a link, left as it is' in c for c in changed), changed
+
+
+def test_fix_never_writes_through_a_linked_backup_folder(tmp_path):
+    from larryd import new as larryd_new
+    root = larryd_new.make('m', tmp_path, example='marketplace')
+    elsewhere = tmp_path / 'elsewhere'
+    elsewhere.mkdir()
+    (root / '.larryd').mkdir()
+    (root / '.larryd' / 'doctor_backup').symlink_to(elsewhere)
+    with open(root / 'agent' / 'card.css', 'a') as fh:
+        fh.write('\nh1 { font-size: 40px }\n')
+    with pytest.raises(PermissionError):
+        doctor.fix(root)
+    assert list(elsewhere.iterdir()) == []
+    assert 'font-size: 40px' in (root / 'agent' / 'card.css').read_text()   # nothing changed when the backup cannot be made
+
+
+def test_fix_never_follows_a_linked_manifest(tmp_path):
+    from larryd import new as larryd_new
+    root = larryd_new.make('m', tmp_path, example='marketplace')
+    outside = tmp_path / 'other.json'
+    outside.write_text(json.dumps({'name': 'x'}))
+    (root / 'agent' / 'agent.json').unlink()
+    (root / 'agent' / 'agent.json').symlink_to(outside)
+    doctor.fix(root)
+    assert json.loads(outside.read_text()) == {'name': 'x'}
+
+
+def test_the_backup_folder_is_private(tmp_path):
+    from larryd import new as larryd_new
+    root = larryd_new.make('m', tmp_path, example='marketplace')
+    with open(root / 'agent' / 'card.css', 'a') as fh:
+        fh.write('\nh1 { font-size: 40px }\n')
+    doctor.fix(root)
+    assert oct((root / '.larryd' / 'doctor_backup').stat().st_mode & 0o777) == '0o700'
