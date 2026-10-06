@@ -178,22 +178,6 @@ def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, deve
             return harness_for().hire(d['account'], d['scope'], d['member'], d['agent_key'], str(d['on']) == 'on')
         return answered(work)
 
-    @app.post('/api/agents/card')
-    def card():
-        """THE APPROVAL'S CARD KEY (the owner, 2026-10-06: both keys saved and linked): the platform, after FROST approved an
-        agent, tells the runtime which card key shows it: {agent_key (the runtime's own), card_key (the platform's)}."""
-        def work():
-            d = request.get_json(silent=True) or {}
-            agent_key, card_key = str(d.get('agent_key') or ''), str(d.get('card_key') or '')
-            if not (KEY.fullmatch(agent_key) and KEY.fullmatch(card_key)):
-                raise lanes_harness.Refused(400, 'agent_key and card_key are keys')
-            if not locker.link(db, agent_key, card_key):
-                raise lanes_harness.Refused(404, 'not in the locker')
-            if lockers is not None:
-                lockers.link(agent_key, card_key)
-            return {'linked': True}
-        return answered(work)
-
     @app.post('/api/agents/defaults')
     def defaults():
         return answered(lambda: harness_for().defaults(*(given('board')[k] for k in NEEDS + ('board',))))
@@ -348,9 +332,15 @@ def place(app, agent_key, data, role=''):
     if app.config.get('lockers') is not None:   # Cloud Run: the approved package is kept in the lockers bucket, read by every instance
         app.config['lockers'].publish(agent_key, row, data, role=role)
     try:
-        return {**held, 'review': h.submit(agent_key)}
+        review = h.submit(agent_key)
     except lanes_harness.Refused as no:
         return {**held, 'refused': f'held in the locker, but FROST did not take it: {no.reason}; send it again with submit {agent_key}'}
+    card_key = str(review.get('card_key') or '')
+    if KEY.fullmatch(card_key):   # BOTH KEYS LINKED (the owner, 2026-10-06): the platform minted its card's key at submission
+        locker.link(h.db, agent_key, card_key)
+        if app.config.get('lockers') is not None:
+            app.config['lockers'].link(agent_key, card_key)
+    return {**held, 'review': review}
 
 
 def catch_up(app):

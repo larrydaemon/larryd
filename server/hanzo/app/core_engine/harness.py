@@ -82,7 +82,7 @@ class Harness:
         cards = self._ask('wid', 'GET', '/agnt/cards', {})['cards']
         hired = self._ask('wid', 'GET', '/agnt/hired', {'account': account, 'scope': scope, 'member': member})['hired']
         groups = lanes.groups(self._ask('cc', 'GET', '/mtok/balance', {'account': account}))
-        approved = {(a['agent_key'], a['code_sha256'], a['manifest_sha256']) for a in self._ask('fs', 'GET', '/agents/approved', {})['approved']}
+        approved = {(a['agent_key'], a['code_sha256'], a['manifest_sha256']): a.get('card_key') or '' for a in self._ask('fs', 'GET', '/agents/approved', {})['approved']}
         return cards, hired, groups, self._verifier(approved)
 
     def _verifier(self, approved):
@@ -91,8 +91,11 @@ class Harness:
             if not ok:
                 return ok, why
             row = locker.held(self.db, agent_key)   # by its card's key too: FROST approved the runtime's own key
-            if (row['agent_key'], row['code_sha256'], row['manifest_sha256']) not in approved:
+            exact = (row['agent_key'], row['code_sha256'], row['manifest_sha256'])
+            if exact not in approved:   # THE SINK, at every call, hire and run: FROST's approval of exactly these hashes, fail closed
                 return False, 'not approved by FROST'
+            if (row.get('card_key') or approved[exact]) and approved[exact] != (row.get('card_key') or ''):
+                return False, 'not the card FROST approved'   # the approval names the card it shows; another card is not covered
             return True, ''
         return verify
 

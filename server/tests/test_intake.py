@@ -107,6 +107,13 @@ class Intake(unittest.TestCase):
         self.assertEqual((office, route), ('fs', '/agents/submit'))
         self.assertEqual((sent['agent_key'], sent['code_sha256'], sent['manifest_sha256'], sent['name']), (KEY, code, row['manifest_sha256'], 'Scratch agent'))
 
+    def test_the_card_key_frost_answers_is_linked(self):
+        """BOTH KEYS LINKED (the owner, 2026-10-06): the platform minted the card's key at submission; FROST's answer names
+        it and the runtime keeps it beside its own key, so the agent is found by either."""
+        self.frost.post = lambda office, route, data: (self.frost.said.append((office, route, data)), (200, {'id': 1, 'state': 'waiting', 'card_key': 'MAGT_00000000CA01_0001'}))[1]
+        self.place(_agent())
+        self.assertEqual(locker.held(self.db, 'MAGT_00000000CA01_0001')['agent_key'], KEY)
+
     def test_the_submit_doors_own_file_is_placed(self):
         """The exact shape LARRYD's submit door queues (larryd/bundle.py): fixed times, 0644 file modes."""
         out = io.BytesIO()

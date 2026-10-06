@@ -194,14 +194,12 @@ class H1RecordsAndLockers(CloudApp):
         self.assertEqual(app.config['harness'].marketplace_key(), MARKET)
 
     def test_the_card_key_reaches_every_instance(self):
-        """The platform tells one instance its card's key (the owner, 2026-10-06: both keys saved and linked); it is kept in
-        the bucket beside the agent, so the next instance links it too."""
+        """The card's key the platform minted at submission (the owner, 2026-10-06: both keys saved and linked) is kept in
+        the bucket beside the agent, so every instance links it."""
         from core_engine import locker
         package, row = marketplace_package()
         bucket_lockers.BucketLockers(bucket=self.bucket).publish(MARKET, row, package, role='marketplace')
-        app = self.make()
-        r = self.call(app, '/agents/card', {'agent_key': MARKET, 'card_key': 'MAGT_00000000BB02_0002'}, method='POST')
-        self.assertEqual((r.status_code, r.get_json()), (200, {'linked': True}))
+        bucket_lockers.BucketLockers(bucket=self.bucket).link(MARKET, 'MAGT_00000000BB02_0002')   # as place() keeps it at submission
         later = self.make('instance-2')
         self.assertEqual(locker.held(str(pathlib.Path(self.dir.name) / 'instance-2' / 'hanzo.db'), 'MAGT_00000000BB02_0002')['agent_key'], MARKET)
 
