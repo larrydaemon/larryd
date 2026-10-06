@@ -1,5 +1,6 @@
 """THE AGENT MARKETPLACE, run as it really runs: in the sandbox, from its locker folder."""
 import json
+import re
 import unittest
 
 from _here import APP
@@ -93,9 +94,11 @@ class TheCardsOwnLook(unittest.TestCase):
     """Owner 2026-10-06: the card's frame, type and class look (Mark I CRT, Mark II Wellness, Mark III Glitch) are the
     agent's own sheet, never the platform's; a sheet that reaches anywhere would be refused by the platform."""
     def test_the_collection_carries_the_agents_own_sheet_with_the_three_marks(self):
-        sheet = run({'do': 'collection', 'cards': [card()]})['style']
-        for mark in ('data-mark="1"', 'data-mark="2"', 'data-mark="3"'):
+        sheet = re.sub(r'/\*.*?\*/', '', run({'do': 'collection', 'cards': [card()]})['style'], flags=re.S)   # its words aside
+        for mark in ('.mk-mark-1 ', '.mk-mark-2 ', '.mk-mark-3 '):
             self.assertIn(mark, sheet)
+        for never in ('[', '::', ':has(', 'position: absolute', 'translate', '; content:', '{ content:'):   # the platform's menu: classes only, no layer escapes
+            self.assertNotIn(never, sheet)
         self.assertIn('.mk-panel', sheet)
 
     def test_the_sheet_reaches_nowhere(self):

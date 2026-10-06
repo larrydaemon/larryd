@@ -474,9 +474,15 @@ def conversions(root):
             continue
         text = re.sub(r'/\*.*?\*/', '', path.read_text(), flags=re.S)
         for selector, body in re.findall(r'([^{}]+)\{([^{}]*)\}', text):
-            selector = re.sub(r'/\*.*?\*/', '', selector, flags=re.S)
+            selector = raw = re.sub(r'/\*.*?\*/', '', selector, flags=re.S)
             selector = re.sub(r'(?<![\w.#:-])(h1|h2|h3|h4|p|small|label|a|nav|blockquote|aside|code|pre)\b(?![\w-])', lambda m: '.' + ELEMENTS[m.group(1)], selector)   # the habits, said quietly as the catalog's roles
             written = {k.strip().lower(): v.strip() for k, v in (d.split(':', 1) for d in body.split(';') if ':' in d)}
+            for part in raw.split(','):
+                if UNSAFE_SELECTOR.search(part):
+                    notes.append(f'{part.strip()}: a selector off the platform\'s menu -> removed (classes and the combinators only; an attribute, id, star or pseudo-element is never kept)')
+            for k, v in written.items():
+                if UNSAFE_DECL.match(f'{k}: {v}'):
+                    notes.append(f'{selector.strip()}: {k}: {v} -> removed (it would leave the card, cover the page or reach out)')
             typ = {k: v for k, v in written.items() if k in ('font-size', 'font-weight', 'text-transform', 'font-family', 'font', 'line-height', 'letter-spacing', 'font-style') and not v.startswith('var(')}
             if typ:
                 size, wt = px(typ.get('font-size')), typ.get('font-weight', '')
@@ -492,7 +498,10 @@ def conversions(root):
     return notes
 
 
-UNSAFE_DECL = re.compile(r'url\s*\(|expression\s*\(|javascript:|behaviou?r\s*:|-moz-binding|position\s*:\s*(fixed|sticky)', re.I)
+UNSAFE_DECL = re.compile(r'.*(url\s*\(|expression\s*\(|javascript:|behaviou?r\s*:|-moz-binding|!\s*important)|position\s*:\s*(fixed|sticky|absolute)'
+                         r'|margin[\w-]*\s*:.*-\d|transform\s*:.*(translate|matrix|rotate|skew|perspective)|(inset|top|left|right|bottom|content|translate|offset[\w-]*)\s*:'
+                         r'|z-index\s*:\s*(-|\d{3,}|1[1-9]|[2-9]\d)', re.I | re.S)   # what the platform's menu never keeps: off the card, over the page, or reaching out
+UNSAFE_SELECTOR = re.compile(r'\[|#|\*|::|\(|:(has|not|is|where|visited|link|root|focus-within|nth-[\w-]+|before|after)\b', re.I)   # the platform keeps classes, its elements, the combinators and :hover :focus-visible :first-child :last-child only
 
 
 def _fix_sheet(text, cat):
@@ -515,7 +524,10 @@ def _fix_sheet(text, cat):
         if selector.strip().startswith('@') or re.fullmatch(r'\s*(from|to|\d{1,3}%)(\s*,\s*(from|to|\d{1,3}%))*\s*', selector):
             return m.group(0)
         lead = re.match(r'\s*(?:/\*.*?\*/\s*)*', selector, re.S).group(0)   # the author's comments before the rule stay as written
-        selector = lead + re.sub(r'(?<![\w.#:-])(h1|h2|h3|h4|p|small|label|a|nav|blockquote|aside|code|pre)\b(?![\w-])', lambda e: '.' + ELEMENTS[e.group(1)], selector[len(lead):])
+        kept = [part for part in selector[len(lead):].split(',') if not UNSAFE_SELECTOR.search(part)]   # a selector off the menu is never kept
+        if not kept:
+            return lead.rstrip() + '\n' if lead.strip() else ''
+        selector = lead + re.sub(r'(?<![\w.#:-])(h1|h2|h3|h4|p|small|label|a|nav|blockquote|aside|code|pre)\b(?![\w-])', lambda e: '.' + ELEMENTS[e.group(1)], ','.join(kept))
         keep, typ = [], {}
         for d in body.split(';'):
             if ':' not in d:
@@ -523,7 +535,7 @@ def _fix_sheet(text, cat):
             k, v = (x.strip() for x in d.split(':', 1))
             if k.lower() in ('font', 'font-family', 'font-size', 'font-weight', 'font-style', 'line-height', 'letter-spacing', 'text-transform'):
                 typ[k.lower()] = v
-            elif not UNSAFE_DECL.search(f'{k}: {v}'):
+            elif not UNSAFE_DECL.match(f'{k}: {v}'):
                 keep.append(k + ': ' + re.sub(r'#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?\b|#[0-9a-fA-F]{3}\b', colour, v))
         if typ:
             size, wt, case = px(typ.get('font-size')), typ.get('font-weight', ''), typ.get('text-transform')

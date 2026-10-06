@@ -353,6 +353,27 @@ def test_fix_rewrites_the_sheet_and_the_card_then_the_doctor_is_clean(tmp_path):
     assert doctor.fix(root) == []   # deterministic: fixed once, nothing more to change
 
 
+def test_fix_keeps_only_the_platforms_menu(tmp_path):
+    """The security review's second pass (2026-10-06): the platform BUILDS the card sheet from a short menu (classes and
+    combinators; no attribute, id, star, pseudo-element or :has; no position but relative; no translate; no negative
+    margin), so the doctor says each such line and --fix removes it before submission, the rest kept as written."""
+    from larryd import new as larryd_new
+    root = larryd_new.make('m', tmp_path, example='marketplace')
+    sheet = root / 'agent' / 'card.css'
+    with open(sheet, 'a') as fh:
+        fh.write('\ninput[value^="a"] { opacity: 0 }\n.q::before, .ok { opacity: 0.5 }\n.r:has(.s) { opacity: 0 }\n'
+                 '.t { position: absolute; top: -9px; margin-left: -40px; transform: translate(-999px, 0); z-index: 999; opacity: 1 }\n')
+    said = doctor.conversions(root)
+    for line in ('input[value^="a"]', '.q::before', '.r:has(.s)', 'position: absolute', 'margin-left: -40px', 'transform: translate(-999px, 0)', 'z-index: 999'):
+        assert any(line in n for n in said), (line, said)
+    doctor.fix(root)
+    text = sheet.read_text()
+    for gone in ('[value', '::before', ':has(', 'absolute', 'top: -9px', '-40px', 'translate(-999px', 'z-index: 999'):
+        assert gone not in text, gone
+    assert '.ok { opacity: 0.5 }' in text and '.t { opacity: 1 }' in text
+    assert doctor.fix(root) == []
+
+
 # THE FIXER NEVER WRITES THROUGH A LINK (the security review, 2026-10-06).
 def test_fix_never_writes_through_a_linked_sheet(tmp_path):
     from larryd import new as larryd_new

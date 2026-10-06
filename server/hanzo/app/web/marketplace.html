@@ -60,13 +60,13 @@ a { color: var(--hot); }
   {% if no %}<div class="caption mk-verdict">{{ no }}</div>{% endif %}
  </div>
  <div class="mk-grid">{% for c in A.cards %}
-  <article class="mk-card" data-agent="{{ c.key }}" data-on="{{ '1' if c.hired else '0' }}">
+  {% set k = (c['class'] or '')|upper %}{% set mark = 3 if 'MARK III' in k else 2 if 'MARK II' in k else 1 if 'MARK I' in k else 0 %}<article class="mk-card mk-mark-{{ mark }}{{ ' mk-on' if c.hired }}" data-agent="{{ c.key }}" data-on="{{ '1' if c.hired else '0' }}">
    <div class="mk-head">
     <div class="mk-id">{% if c.number is not none %}<span class="caption">No. {{ '%03d' % c.number }}</span>{% endif %}<span class="annotation">{{ c['class'] }}</span></div>
     <div class="mk-hire">{% if c.hireable or c.hired %}<form method="post" action="/marketplace/hire" class="mk-form"><input type="hidden" name="token" value="{{ token }}"><input type="hidden" name="key" value="{{ c.key }}"><input type="hidden" name="value" value="{{ 'off' if c.hired else 'on' }}"><button class="toggle" aria-pressed="{{ 'true' if c.hired else 'false' }}" title="Hire"><span class="toggle__knob"></span></button></form>{% endif %}<span class="annotation">Hire</span></div>
    </div>
    <div class="mk-name">{{ c.name }}</div>
-   <div class="mk-frame"><span class="mk-initials">{{ c.initials }}</span></div>
+   <div class="mk-frame"><span class="mk-glow" aria-hidden="true"></span><span class="mk-initials">{{ c.initials }}</span><span class="mk-scan" aria-hidden="true"></span></div>
    <div class="annotation mk-info">{{ c.product }} · {{ c.module }}</div>
    <div class="caption mk-flavour">{{ c.pitch }}</div>
    <div class="caption mk-credit">Developer · {{ c.developer }}</div>

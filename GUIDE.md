@@ -81,8 +81,12 @@ inputs the same way: `{"do": "answer", "job": {"name": "Harbor", "mood": "calm c
 
 `--fix` rewrites your own files to the platform's form and then checks again: your card sheet's type becomes the
 platform's type roles, your colours the theme's own colour variables, habit tags (h1, p, small, a...) the roles they
-mean, anything unsafe (an outside address, an @import, a fixed position) is removed, and the card's missing facts are
-filled with honest defaults it names. It prints each change (FIXED ...) and keeps your originals in
+mean, anything off the platform's menu is removed and said (an outside address, an @import, an attribute or id or star
+selector, a pseudo-element such as ::before, :has or :not, a position other than relative, a translate, a negative
+margin, a z-index over 10), and the card's missing facts are
+filled with honest defaults it names. The platform builds your sheet from that same menu, so what the doctor
+removes would never reach a card. Layers over the art are the platform's own: `.mk-glow` behind it, `.mk-scan` in front, and
+the class is a class on the card (`.mk-mark-1`, `.mk-mark-2`, `.mk-mark-3`). It prints each change (FIXED ...) and keeps your originals in
 `.larryd/doctor_backup/`. The same files always give the same result. Write normally, run `larryd doctor --fix`, submit.
 
 ### The card's type and colours: pick from the menu
