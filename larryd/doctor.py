@@ -112,6 +112,11 @@ def _manifest(root, f):
             f.add(c, where, f'"{k}" is empty or not text', f'set "{k}" to {shape.FIELDS[k]}')
     if 'entry' in card and not (text('entry') and re.fullmatch(r'[A-Za-z_]\w*\.py', card['entry'])):
         f.add(c, where, '"entry" is not a .py file name inside agent/', 'set "entry" to the file name only, e.g. "agent.py" (no folder, no path)')
+    if 'style' in card:
+        if not (text('style') and re.fullmatch(r'[A-Za-z0-9_][\w.-]*\.css', card['style'])):
+            f.add(c, where, '"style" is not a .css file name inside agent/', 'set "style" to the sheet\'s file name only, e.g. "card.css" (no folder, no path)')
+        elif not (root / shape.AGENT / card['style']).is_file():
+            f.add(c, where, f'"style" names {card["style"]}, which is not in agent/', f'add agent/{card["style"]} (your card\'s sheet), or remove "style"')
     if 'does' in card and not (names('does') and card['does']):
         f.add(c, where, '"does" is not a list of function names', 'set "does" to the names of the functions that answer a job, e.g. ["answer"]')
     does = set(card['does']) if names('does') else set()

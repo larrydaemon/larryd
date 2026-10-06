@@ -5,7 +5,10 @@ Your server has a daemon. Your agents should have one too.
 Build, test and ship AI agents with Claude Code.
 
 This guide is for the developer's AI first and the developer second. Read it whole before you build.
+`larryd guide` prints it; it ships in the package as `larryd/GUIDE.md` (`larryd --help` names the path).
 Every command named here exists and works today; what does not exist yet is listed at the end, plainly.
+
+Start: `larryd new <name> --from marketplace`, then read `<name>/CLAUDE.md`.
 
 ## What you are building
 An agent is a small program that answers a job. Your agent runs on LARRYD, air gapped: LARRYD is also the place where
@@ -41,10 +44,13 @@ This makes the folder `<name>/`:
 - `agent/`: the agent, and only the agent. It is exactly what LARRYD holds.
   - `agent/agent.json`: the manifest (its fields are explained in the project's CLAUDE.md)
   - `agent/agent.py`: the code, with one entry: `answer(job)`
+  - `agent/card.css` (optional): the card's own sheet, named in the manifest as `"style": "card.css"`; it ships with
+    the agent
 - `CLAUDE.md`: the spec and the rules, for Claude Code
 - `.claude/skills/larryd/SKILL.md`: the larryd skill Claude Code loads
 - `samples/job.json`: a sample job for `larryd run`
-- `.mcp.json`: starts the LARRYD tools in Claude Code when you open the folder with `claude`
+- `.mcp.json`: starts the LARRYD tools in Claude Code when you open the folder with `claude` (it names the full path of this
+  larryd, so no virtual environment needs activating)
 
 To start from a LARRYD example instead of a blank agent:
 
@@ -83,37 +89,54 @@ Your agent's card sheet is yours (`agent/card.css`): its frame, its layout and i
 platform draws it inside each card's own shadow root, so it styles only your card. Write it normally; the doctor
 writes it in the platform's form so every card looks native, and tells you each change:
 
-- type (font, size, weight, case, spacing of letters) becomes the nearest type role of the catalog below;
-- a typed colour (#hex, rgb(), hsl(), a colour's name) becomes the theme's nearest colour, `var(--active-color-NN)`;
+- type (font, size, weight, case, spacing of letters) becomes the nearest type role of the table below, by size, weight
+  and case (an unwritten weight counts as 400, an unwritten case as none); the role brings its own letter spacing;
+- a typed colour (#hex, rgb(), hsl(), a colour's name) becomes the theme's colour variable nearest to it as the eye sees
+  it (OKLab distance), `var(--active-color-NN)`; a see-through colour keeps its alpha;
 - gap, padding, margin and border-radius go to the spacing scale (0, 2, 4, 8, 12, 16, 22, 32, 48, 64 px);
 - removed: @import and any url() to another host, @font-face, scripts in CSS, `position: fixed` or `sticky`, a selector
   naming the page outside your card (html, body, :root), markup or a backslash, anything past 20,000 characters.
 
 Your sheet is never a reason to refuse: `larryd doctor --fix` writes the form and keeps your original in
 `.larryd/doctor_backup/`, and `larryd submit` writes it again before it sends, so what is reviewed is exactly the
-doctor's output. It also fills the card's missing facts with honest defaults it names, and prints each change (FIXED
-...; what the form changes is said as CONVERTED ...). The same files always give the same result. Write normally, run
-`larryd doctor --fix`, submit.
+doctor's output. It also fills the card's missing facts with honest defaults it names. Plain `larryd doctor` changes
+nothing and says each conversion as WILL CONVERT ... (run `larryd doctor --fix`); `--fix` says what it wrote as FIXED
+... and CONVERTED ..., checks the written sheet again and says it is clean. The same files always give the same result.
+Write normally, run `larryd doctor --fix`, submit. To keep a value exactly, write it from the menu below.
 
 ### The menu
 
-Type: the platform's own type roles, the standard names, each with its own font, weight, size and spacing per brand
-(THE GLOBAL FONT CATALOG):
+Type roles (a written font, size, weight, case or letter spacing becomes the nearest role by size, weight and case):
 
-| Role | Class | For |
-|---|---|---|
-| Heading | `.heading` | the page or card heading |
-| Title | `.title` | a name, the card's name |
-| Subtitle | `.subtitle` | a section's title |
-| Body | `.body` | running text, the card's pitch |
-| Caption | `.caption` | an eyebrow, the card's class line |
-| Label | `.label` | a field's label |
-| Link | `.link` | a link |
-| Nav | `.nav` | the main navigation |
-| Subnav | `.subnav` | a sub navigation |
-| Callout | `.callout` | a figure that stands out, the card's price |
-| Notes | `.notes` | small notes |
-| Annotation | `.annotation` | facts, the card's product, module and type |
+| Role | Class | Size | Weight | Case | For |
+|---|---|---|---|---|---|
+| Heading | `.heading` | 48px | 900 | uppercase | the page or card heading |
+| Title | `.title` | 32px | 900 | uppercase | a name, the card's name |
+| Subtitle | `.subtitle` | 14.4px | 900 | uppercase | a section's title |
+| Body | `.body` | 14.4px | 300 | none | running text, the card's pitch |
+| Caption | `.caption` | 11.2px | 600 | uppercase | an eyebrow, the card's class line |
+| Label | `.label` | 14.4px | 500 | uppercase | a field's label |
+| Link | `.link` | 14.4px | 500 | none | a link |
+| Nav | `.nav` | 11.2px | 400 | uppercase | the main navigation |
+| Subnav | `.subnav` | 14.4px | 400 | uppercase | a sub navigation |
+| Callout | `.callout` | 17.6px | 500 | uppercase | a figure that stands out, the card's price |
+| Notes | `.notes` | 17.6px | 500 | uppercase | small notes |
+| Annotation | `.annotation` | 9.6px | 300 | uppercase | facts, the card's product, module and type |
+
+Colours (a typed colour becomes the variable nearest to it as the eye sees it; each brand's theme sets its own values):
+
+| Colour (reference theme) | Variables `--active-color-NN` |
+|---|---|
+| `#92866F` | 01, 02, 03, 04, 06, 13, 15, 16, 17, 18, 21, 22, 25, 26, 31, 32, 33, 35, 36, 37, 38, 40, 41, 43, 52, 56, 57, 59, 62, 63, 64 |
+| `#D5C5AA` | 05, 23, 28 |
+| `#EFE5C6` | 07, 46, 48, 50 |
+| `#FDFDFD` | 08 |
+| `#121212` | 09, 14, 24, 27, 29, 54, 60 |
+| `#1F1F1D` | 10, 20, 34, 42, 44, 53, 55, 61 |
+| `#17191A` | 11, 12, 30, 39, 45, 47, 49, 51, 58 |
+| `#F1E8C7` | 19 |
+
+Spacing scale (gap, padding, margin, border-radius go to the nearest step): 0, 2, 4, 8, 12, 16, 22, 32, 48, 64 px.
 
 Sizes change in place with `.size--xxxs` to `.size--xxxxl`. The card's parts are the platform's own classes:
 `.mk-card` (with `.mk-mark-1`, `.mk-mark-2` or `.mk-mark-3` for its class, and `.mk-on` once hired), `.mk-head`,

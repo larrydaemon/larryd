@@ -5,11 +5,14 @@ import json
 import pathlib
 import sys
 
-from . import __version__, doctor, knowledge, mcp, new, place, runner, skills, submit
+from . import __version__, doctor, guide, knowledge, mcp, new, place, runner, skills, submit
+
+START = 'Start: larryd new <name> --from marketplace, then read <name>/CLAUDE.md (or larryd guide)'
 
 
 def parser():
-    p = argparse.ArgumentParser(prog='larryd', description='LARRYD. Your server has a daemon. Your agents should have one too. Build, test and ship AI agents with Claude Code.')
+    p = argparse.ArgumentParser(prog='larryd', description='LARRYD. Your server has a daemon. Your agents should have one too. Build, test and ship AI agents with Claude Code.',
+                                epilog=f'The guide: {guide.path()} (larryd guide prints it).\n{START}', formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument('--version', action='version', version=f'larryd {__version__}')
     sub = p.add_subparsers(dest='command', required=True)
     n = sub.add_parser('new', help='make a new agent project')
@@ -36,6 +39,7 @@ def parser():
     c.add_argument('--json', action='store_true', help='the result as JSON')
     c.add_argument('--no-browser', action='store_true', help='print the page\'s address instead of opening it')
     sub.add_parser('mcp', help='serve the tools to Claude Code (a local tool server on stdin/stdout)')
+    sub.add_parser('guide', help='print the whole guide (it ships in the package as GUIDE.md)')
     sub.add_parser('help', help='these commands; `larryd` alone starts the daemon (LARRYD\'s runtime on 127.0.0.1)')
     sub.add_parser('skills', help='list the skills an agent may declare, by hash')
     k = sub.add_parser('pack', help='check a knowledge pack and give its hash')
@@ -52,23 +56,34 @@ def main(argv=None):
         parser().print_help()
         return 0
     args = parser().parse_args(argv)
+    if args.command == 'guide':
+        print(guide.text(), end='')
+        return 0
     if args.command == 'new':
         try:
             root = new.make(args.name, example=args.example)
         except ValueError as no:
             print(f'larryd new: {no}', file=sys.stderr)
             return 1
-        print(f'made {root}/ · open it with Claude Code: cd {root} && claude')
+        print(f'made {root}/ · read {root}/CLAUDE.md first, then open it with Claude Code: cd {root} && claude')
         return 0
     if args.command == 'doctor':
-        notes = [] if args.json else doctor.conversions(args.path)   # what becomes the menu (the owner, 2026-10-06), said before --fix removes the sheet, so the author learns it
+        notes = [] if args.json else doctor.conversions(args.path)   # what the sheet's form changes: said before --fix writes it, so the author learns it
         if args.fix:
+            for note in notes:
+                print(f'CONVERTED {note}')
             for change in doctor.fix(args.path):
                 print(f'FIXED {change}')
         problems = doctor.check(args.path)
         print(json.dumps(doctor.as_json(problems), indent=2) if args.json else doctor.report(args.path, problems))
-        for note in notes:
-            print(f'CONVERTED {note}')
+        if not args.json:
+            left = doctor.conversions(args.path)   # read from the files as they are now: after --fix, the written sheet
+            for note in left:
+                print(f'WILL CONVERT {note}')
+            if left:
+                print('run `larryd doctor --fix` to write these (your original is kept in .larryd/doctor_backup/)')
+            elif args.fix and notes:
+                print('the card sheet is in the platform\'s form: nothing left to convert')
         if args.badge:
             root = pathlib.Path(args.path).resolve()
             if root.is_dir():

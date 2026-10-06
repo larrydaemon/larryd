@@ -1,0 +1,228 @@
+# Building an agent with LARRYD
+
+Your server has a daemon. Your agents should have one too.
+
+Build, test and ship AI agents with Claude Code.
+
+This guide is for the developer's AI first and the developer second. Read it whole before you build.
+`larryd guide` prints it; it ships in the package as `larryd/GUIDE.md` (`larryd --help` names the path).
+Every command named here exists and works today; what does not exist yet is listed at the end, plainly.
+
+Start: `larryd new <name> --from marketplace`, then read `<name>/CLAUDE.md`.
+
+## What you are building
+An agent is a small program that answers a job. Your agent runs on LARRYD, air gapped: LARRYD is also the place where
+agents live and run, apart from everything else. The agent belongs to its developer. LARRYD connects it to the platform: it reads what the agent needs, hands it in, and carries the answer back.
+The agent itself reaches nothing.
+
+The whole contract: LARRYD runs the agent's entry file as its own process. One JSON object comes in on stdin,
+one JSON object goes out on stdout. `delivery` in the answer (plain text) is what lands in the member's job.
+
+## 1. Install
+    pipx install larryd
+    uv tool install --python 3.12 larryd
+    npm install -g larryd
+    cargo install larryd
+    larryd
+
+Any one of the first four gives one command, `larryd` (`larryd help` lists what it does). Each needs Python 3.11 or
+newer (`python3 --version`; a Mac's own python3 is 3.9), except uv, which brings its own (`brew install uv`); pipx:
+`brew install pipx` or `sudo apt install pipx`. npm and cargo keep LARRYD in its own place. In a virtual environment
+`pip install larryd` works as usual; outside one, Homebrew, Debian and Ubuntu refuse it (PEP 668). The last line starts
+the daemon, LARRYD's runtime on this computer, in this terminal (on 127.0.0.1, its instance in ~/.larryd; Ctrl-C stops
+it), where you can try what you build. No sudo; as root its instance is /var/lib/larryd, for a server. It is proven on
+Python 3.14 (a Mac) and 3.11 (Debian 12). (Until 0.1.0 is published, the three registries hold only the name's
+reservation, 0.0.1, which prints one line and does nothing.)
+
+Your own LARRYD: `larryd` alone runs the runtime on this machine (127.0.0.1:5010, its instance in ~/.larryd;
+`LARRYD_PORT` and `LARRYD_INSTANCE` name others), where you can try what you build.
+
+## 2. A new agent
+    larryd new <name>
+
+This makes the folder `<name>/`:
+- `agent/`: the agent, and only the agent. It is exactly what LARRYD holds.
+  - `agent/agent.json`: the manifest (its fields are explained in the project's CLAUDE.md)
+  - `agent/agent.py`: the code, with one entry: `answer(job)`
+  - `agent/card.css` (optional): the card's own sheet, named in the manifest as `"style": "card.css"`; it ships with
+    the agent
+- `CLAUDE.md`: the spec and the rules, for Claude Code
+- `.claude/skills/larryd/SKILL.md`: the larryd skill Claude Code loads
+- `samples/job.json`: a sample job for `larryd run`
+- `.mcp.json`: starts the LARRYD tools in Claude Code when you open the folder with `claude` (it names the full path of this
+  larryd, so no virtual environment needs activating)
+
+To start from a LARRYD example instead of a blank agent:
+
+    larryd new marketplace --from marketplace
+
+makes the PF AGENT MARKETPLACE: its code, its manifest with a doctor-clean card, its own card sheet (`agent/card.css`)
+and a sample job. It is the agent the platform's own marketplace is built from.
+
+## 3. The rules
+LARRYD's sandbox refuses 1, 2 and 3 when the agent runs; the doctor checks all of them before that.
+1. No network, ever. No network module, no address.
+2. Nothing outside its own folder: no path elsewhere, no link. It writes only in the folder it is run in.
+3. No new process: no subprocess, no os.system, no multiprocessing.
+4. The Python standard library only.
+5. No secret in the agent.
+6. Only what it is handed. The inputs are what `run.hands` names: `cards` (the agent cards the member sees) and `job`
+   (the job's own inputs, by the names the manifest's `inputs` gives them).
+7. Nothing fake. The agent answers from what it is handed, or it says plainly that it cannot.
+
+## The job's inputs
+An agent that needs words from the member (a name, a mood, a date) declares them:
+
+    "run": {"do": "answer", "hands": ["job"]},
+    "inputs": {"name": "001", "mood": "002"}
+
+Each name sits on one of the job's input slots, 001 to 015 (the job's agent fields on the platform). On a RUN, LARRYD
+reads that RUN's inputs from the platform and hands them in as `job`: `{"name": "...", "mood": "..."}`. A slot the member
+left empty is simply not handed. LARRYD refuses the run when the job holds an input the agent does not declare, or a
+value that is not text or is longer than 10,000 characters, and it keeps none of them. In `samples/job.json`, give the
+inputs the same way: `{"do": "answer", "job": {"name": "Harbor", "mood": "calm cool"}}`.
+
+## 4. The doctor
+    larryd doctor --fix      (write normally, then this; or plain `larryd doctor` to check only, --json for JSON)
+
+Your agent's card sheet is yours (`agent/card.css`): its frame, its layout and its looks, animated if you like. The
+platform draws it inside each card's own shadow root, so it styles only your card. Write it normally; the doctor
+writes it in the platform's form so every card looks native, and tells you each change:
+
+- type (font, size, weight, case, spacing of letters) becomes the nearest type role of the table below, by size, weight
+  and case (an unwritten weight counts as 400, an unwritten case as none); the role brings its own letter spacing;
+- a typed colour (#hex, rgb(), hsl(), a colour's name) becomes the theme's colour variable nearest to it as the eye sees
+  it (OKLab distance), `var(--active-color-NN)`; a see-through colour keeps its alpha;
+- gap, padding, margin and border-radius go to the spacing scale (0, 2, 4, 8, 12, 16, 22, 32, 48, 64 px);
+- removed: @import and any url() to another host, @font-face, scripts in CSS, `position: fixed` or `sticky`, a selector
+  naming the page outside your card (html, body, :root), markup or a backslash, anything past 20,000 characters.
+
+Your sheet is never a reason to refuse: `larryd doctor --fix` writes the form and keeps your original in
+`.larryd/doctor_backup/`, and `larryd submit` writes it again before it sends, so what is reviewed is exactly the
+doctor's output. It also fills the card's missing facts with honest defaults it names. Plain `larryd doctor` changes
+nothing and says each conversion as WILL CONVERT ... (run `larryd doctor --fix`); `--fix` says what it wrote as FIXED
+... and CONVERTED ..., checks the written sheet again and says it is clean. The same files always give the same result.
+Write normally, run `larryd doctor --fix`, submit. To keep a value exactly, write it from the menu below.
+
+### The menu
+
+Type roles (a written font, size, weight, case or letter spacing becomes the nearest role by size, weight and case):
+
+| Role | Class | Size | Weight | Case | For |
+|---|---|---|---|---|---|
+| Heading | `.heading` | 48px | 900 | uppercase | the page or card heading |
+| Title | `.title` | 32px | 900 | uppercase | a name, the card's name |
+| Subtitle | `.subtitle` | 14.4px | 900 | uppercase | a section's title |
+| Body | `.body` | 14.4px | 300 | none | running text, the card's pitch |
+| Caption | `.caption` | 11.2px | 600 | uppercase | an eyebrow, the card's class line |
+| Label | `.label` | 14.4px | 500 | uppercase | a field's label |
+| Link | `.link` | 14.4px | 500 | none | a link |
+| Nav | `.nav` | 11.2px | 400 | uppercase | the main navigation |
+| Subnav | `.subnav` | 14.4px | 400 | uppercase | a sub navigation |
+| Callout | `.callout` | 17.6px | 500 | uppercase | a figure that stands out, the card's price |
+| Notes | `.notes` | 17.6px | 500 | uppercase | small notes |
+| Annotation | `.annotation` | 9.6px | 300 | uppercase | facts, the card's product, module and type |
+
+Colours (a typed colour becomes the variable nearest to it as the eye sees it; each brand's theme sets its own values):
+
+| Colour (reference theme) | Variables `--active-color-NN` |
+|---|---|
+| `#92866F` | 01, 02, 03, 04, 06, 13, 15, 16, 17, 18, 21, 22, 25, 26, 31, 32, 33, 35, 36, 37, 38, 40, 41, 43, 52, 56, 57, 59, 62, 63, 64 |
+| `#D5C5AA` | 05, 23, 28 |
+| `#EFE5C6` | 07, 46, 48, 50 |
+| `#FDFDFD` | 08 |
+| `#121212` | 09, 14, 24, 27, 29, 54, 60 |
+| `#1F1F1D` | 10, 20, 34, 42, 44, 53, 55, 61 |
+| `#17191A` | 11, 12, 30, 39, 45, 47, 49, 51, 58 |
+| `#F1E8C7` | 19 |
+
+Spacing scale (gap, padding, margin, border-radius go to the nearest step): 0, 2, 4, 8, 12, 16, 22, 32, 48, 64 px.
+
+Sizes change in place with `.size--xxxs` to `.size--xxxxl`. The card's parts are the platform's own classes:
+`.mk-card` (with `.mk-mark-1`, `.mk-mark-2` or `.mk-mark-3` for its class, and `.mk-on` once hired), `.mk-head`,
+`.mk-frame` (its layers `.mk-glow`, `.mk-art`, `.mk-scan`), `.mk-foot`; `:host` is the card's own box.
+
+It checks the project, the manifest, the entry, the air gap, no secret, the shape, the skills and the knowledge.
+Every problem names the file and line, what is wrong and what to do. Do what it says, then run it again.
+Never silence a check to make it pass. What each check proves, and why: THE LARRYD CHECKS ([CHECKS.md](CHECKS.md),
+larryd.ai/checks.html).
+
+    larryd doctor --badge
+
+also writes `larryd-checks.svg` beside `agent/` (never inside it): PASS in gold or FAIL in red, with the day and the
+checks' version. Paste `![LARRYD checks](larryd-checks.svg)` into your README; run it again after each change.
+
+## 5. Run it here
+    larryd run               (or --job <file>, --json)
+
+The doctor runs first. Then the agent runs the way LARRYD runs it: its own process, no network, no new process,
+a scratch run folder removed after, the plain Python runtime, an empty environment, 20 seconds. It is handed what
+a RUN hands it: `{"do": run.do}` plus what `run.hands` names, from the sample job. The answer must be one JSON object
+holding only what `gives` names. Nothing is sent anywhere. On a Mac or Linux (Linux: LARRYD's own bubblewrap sandbox,
+`sudo apt install bubblewrap`); on Windows, use WSL.
+
+## 6. Submit
+    larryd submit
+
+Three steps, one gate, nothing to carry. The doctor runs first. Then `agent/` (nothing else) is packed into one file
+and sent to LARRYD, and your browser opens its claim page. Sign in there with Google or Apple within 10 minutes, and
+it waits in the review queue; the page says what happens next. No account to make, no key or secret to paste or keep.
+LARRYD reads what it receives and runs none of it: it re-runs the doctor itself, and refuses a file that is too big
+(5 MB), unsafe, or one of too many from one network in an hour. Unclaimed files are deleted after 10 minutes.
+`--no-browser` prints the claim page instead of opening it. A changed agent is a new submission, reviewed again.
+A person at LARRYD reviews it. Approved, it goes into LARRYD's locker under its card key and to the platform's review
+(FROST's); rejected, the answer says why. Either way the answer goes to the email of your sign-in.
+
+## What LARRYD does with your agent
+- It holds `agent/` in its locker with the hash of the code and of the manifest, and checks them on every call and run.
+  Any change is refused as tampered.
+- FROST's review: a SYSTEM owner approves or rejects those exact hashes. LARRYD shows, hires and runs an agent only
+  when FROST approved the hashes it holds.
+- A member hires the agent in the agent marketplace with a toggle. A RUN is a request; LARRYD runs the agent in its
+  sandbox, and mTok charges the agent's own rate (0 = free).
+
+## In Claude Code
+In a project made by `larryd new`, open the folder with `claude` and approve the LARRYD tools:
+larryd_new, larryd_doctor, larryd_run, larryd_submit, larryd_skills, larryd_pack.
+Elsewhere, one line: `claude mcp add larryd -- larryd mcp`. The repository is also a Claude Code plugin marketplace.
+The loop for the AI: change the agent → larryd_doctor → larryd_run → fix → again → larryd_submit.
+
+## Skills and knowledge
+- A skill is a definition named by its hash. Declare the hashes in `skills`; `larryd skills` lists them.
+  - The mTok charge: LARRYD charges the member the agent's own rate after a DONE run (every run; declaring it changes nothing).
+  - The LARRY LLM greeting: before the RUN, LARRYD asks LARRY LLM for the greeting it gives the member today and hands it
+    in as `greeting` (`{"date", "lang", "greetings": {time of day: the words}}`). In `samples/job.json`, give a
+    `greeting` of that shape.
+  - The FROST identity: before the RUN, LARRYD asks FROST who the agent works for and hands it in as `identity`:
+    `{"first_name", "member_type", "account_name"}`, nothing else (no email, no address, no key).
+  - The DA-M store: the answer may carry `"files": [{"name", "content_b64"}]` (name `files` in `gives`); after the
+    charge, LARRYD keeps each in the member's own DA-M, the agent's card key as its source. At most 10 files, plain
+    names, all inside the answer's own limit of 1 MB.
+- A knowledge pack is a folder (`pack.json` with `name` and `about`, plus .md .txt .csv .json files) named by its hash;
+  `larryd pack <folder>` checks it and gives the hash.
+
+## Not there yet
+- Skills: the platform's sides of the LARRY LLM greeting, the FROST identity and the DA-M store are not on the live
+  platform yet; until they are, a RUN of an agent that declares one fails with LARRYD's plain reason.
+- Knowledge packs: LARRYD holds none yet, so declaring one in `knowledge` fails the doctor. Leave it `[]`.
+- `larryd run` on Windows itself (use WSL). The doctor works everywhere.
+- The job's inputs on the live platform: LARRYD hands `job` today, but the platform's side (the route that gives
+  LARRYD a RUN's inputs) is not on the live platform yet; until it is, a RUN of an agent that hands `job` fails with
+  LARRYD's plain reason. `larryd run` works with them now.
+
+## The card and the shelf
+
+Every agent for hire is a card on the marketplace: its number and class, the hire toggle, its name, its art, the
+product and module of the screen it lives on, its pitch, its developer, its type and residency, its price in whole
+mTok, and, when it sends a member's data to an outside AI service, where and what. The card's facts are the `card`
+field of `agent/agent.json` (the doctor checks them with the marketplace's own rules); the number and the art are
+LARRYD's to give at approval.
+
+See your card the way a member will, on your own LARRYD:
+
+    larryd                   (in another terminal: your runtime, on 127.0.0.1:5010)
+    larryd card              (places the agent in its locker and opens http://127.0.0.1:5010/marketplace)
+
+`larryd place` does the placing without opening the page. The same agent placed again replaces itself. A card the
+marketplace cannot show (no screen, a price that is not whole mTok) is listed under "Not on the shelf" with why.
+

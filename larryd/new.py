@@ -1,16 +1,20 @@
 """`larryd new <name>`: makes the agent's project folder in the shape (shape.py), ready for Claude Code."""
 import json
+import os
 import pathlib
 import re
+import shutil
+import sys
 from importlib import resources
 
-from . import shape
+from . import shape, sheet
 
 NAME = re.compile(r'^[A-Za-z][A-Za-z0-9_-]{0,62}$')
 
 # the LARRYD tools that exist, in the order a developer uses them; the project's documents name only these
 TOOLS = (
     ('larryd new <name>', 'makes a new agent project like this one'),
+    ('larryd guide', 'prints the whole guide (it ships in the package as GUIDE.md; `larryd --help` names its path)'),
     ('larryd doctor', 'checks the agent before submission; every problem says what is wrong and what to do (--json for the result as JSON)'),
     ('larryd run', 'runs the agent here the way LARRYD runs it (no network, no new process, a scratch run folder, a time limit), '
                    'with samples/job.json or --job <file>; on a Mac or Linux'),
@@ -25,11 +29,21 @@ TOOLS = (
     ('larryd mcp', 'serves these tools to Claude Code (larryd_new, larryd_doctor, larryd_run, larryd_submit, larryd_skills, '
                    'larryd_pack, larryd_card); this project\'s .mcp.json starts it'),
 )
-MCP = {'mcpServers': {'larryd': {'command': 'larryd', 'args': ['mcp']}}}
+MCP = {'mcpServers': {'larryd': {'command': 'larryd', 'args': ['mcp']}}}   # the plugin's: larryd on PATH
+
+
+def mcp_config():
+    """A project's .mcp.json: this larryd by its absolute path, so Claude Code starts it with no venv activated and no
+    PATH set; when no larryd script sits beside this Python (npm, cargo), this Python runs the module itself."""
+    here = pathlib.Path(sys.executable).parent / ('larryd.exe' if os.name == 'nt' else 'larryd')
+    found = str(here) if here.is_file() else shutil.which('larryd')
+    server = {'command': os.path.abspath(found), 'args': ['mcp']} if found else {'command': os.path.abspath(sys.executable), 'args': ['-m', 'larryd', 'mcp']}
+    return {'mcpServers': {'larryd': server}}
 
 
 def _kit(name):
-    return resources.files('larryd').joinpath('kit', name).read_text()
+    """A kit template (kit/<name>.template), the text `new` fills; never read as it is."""
+    return resources.files('larryd').joinpath('kit', name + '.template').read_text()
 
 
 def skill():
@@ -77,9 +91,9 @@ def make(name, where='.', example=None):
         f'{shape.AGENT}/{shape.MANIFEST}': json.dumps(manifest(name), indent=2) + '\n',
         f'{shape.AGENT}/agent.py': _kit('agent.py').format(name=name),
         shape.SAMPLE: _kit('job.json').format(),
-        'CLAUDE.md': _kit('CLAUDE.md').format(name=name, fields=fields, hands=', '.join(shape.HANDS), tools=tools),
+        'CLAUDE.md': _kit('CLAUDE.md').format(name=name, fields=fields, hands=', '.join(shape.HANDS), tools=tools, sheet=sheet.table()),
         shape.SKILL: skill(),
-        '.mcp.json': json.dumps(MCP, indent=2) + '\n',
+        '.mcp.json': json.dumps(mcp_config(), indent=2) + '\n',
     }
     if example:   # an example agent: its own code, manifest and files replace the plain ones; its card keeps its own facts
         if example not in EXAMPLES:

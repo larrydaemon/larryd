@@ -1,13 +1,13 @@
-"""THE AGENT MARKETPLACE: the Pokémon-like collection. It is handed the cards the harness shows (each with the member's
+"""THE AGENT MARKETPLACE: a collection of cards. It is handed the agent cards the member may see (each with the member's
 hired state, whether the member may hire it, and the product whose subscription it needs when not) and answers them
-as the original's cards, in order, with the counts and the filters; values only, never words (the platform says them
-in the member's language). It never reaches anything itself. RUN asks for the report."""
+as cards, in order, with the counts and the filters; values only, never words (the platform says them in the member's
+language). It never reaches anything itself. RUN asks for the report."""
 import json
 import os
 import sys
 
 FILTERS = ('product', 'module', 'type', 'residency', 'class')
-STYLE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'card.css')   # the card's own look (the owner, 2026-10-06): the agent's, never the core's
+STYLE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'card.css')   # the card's own look, named in agent.json as "style"
 
 
 def style():

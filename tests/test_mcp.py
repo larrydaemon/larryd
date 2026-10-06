@@ -114,7 +114,13 @@ def test_the_plugin_skill_is_the_projects_skill():
 
 def test_the_plugin_and_the_project_start_the_same_server(tmp_path):
     assert json.loads((REPO / 'plugin' / '.mcp.json').read_text()) == new.MCP
-    assert json.loads((new.make('p', tmp_path) / '.mcp.json').read_text()) == new.MCP
+    made = json.loads((new.make('p', tmp_path) / '.mcp.json').read_text())['mcpServers']['larryd']
+    # the project's names THIS larryd by its full path (frost-92, rc9: "larryd not on PATH" outside the venv): the same server
+    assert pathlib.Path(made['command']).is_absolute() and pathlib.Path(made['command']).is_file()
+    assert made['args'] == ['mcp'] if pathlib.Path(made['command']).name == 'larryd' else made['args'] == ['-m', 'larryd', 'mcp']
+    reply = subprocess.run([made['command'], *made['args']], input='{"jsonrpc": "2.0", "id": 1, "method": "tools/list"}\n',
+                           capture_output=True, text=True, timeout=30, env={'PATH': '/nonexistent'})
+    assert 'larryd_doctor' in reply.stdout, reply.stderr
 
 
 def test_the_marketplace_points_at_the_plugin():

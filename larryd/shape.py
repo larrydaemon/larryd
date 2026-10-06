@@ -6,6 +6,7 @@ An agent project is a folder:
     agent/                         THE AGENT: exactly what PF HANZO holds in its locker
         agent.json                 the manifest
         agent.py                   the code, one entry
+        card.css                   the card's own sheet, when it has one (named by "style")
 PF HANZO runs the agent as its own process with no network, one JSON object in on stdin, one JSON object out on stdout."""
 
 AGENT = 'agent'
@@ -25,6 +26,7 @@ FIELDS = {
     'gives': 'the list of what its answer holds (its outputs); "delivery" is what lands in the member\'s job',
     'skills': 'the list of skill hashes the agent uses (empty when none; `larryd skills` lists the skills that exist)',
     'knowledge': 'the list of knowledge pack hashes the agent needs (empty when none; `larryd pack` gives a pack its hash)',
+    'style': 'the card\'s own sheet, a .css file name inside agent/, e.g. "card.css" (optional; it ships with the agent)',
     'inputs': 'only with "job" in run.hands: the job\'s inputs by name, each on one of the job\'s slots 001-015, e.g. {"mood": "001"}',
 }
 FIELDS['card'] = ('the card the marketplace shows, as the member sees it: {class, pitch, price, type, residency, screen, product, '
@@ -44,7 +46,7 @@ CARD = {
 }
 SCREEN = r'[a-z][a-z0-9]{1,15}/[a-z][a-z0-9]{1,15}'   # <species>/<page>
 MOST_PITCH = 140                                      # characters on the card
-OPTIONAL = ('inputs',)
+OPTIONAL = ('inputs', 'style')
 PACK = 'pack.json'   # a knowledge pack: a folder of plain text files with pack.json {"name", "about"}
 PACK_FIELDS = ('name', 'about')
 PACK_KINDS = {'.json', '.txt', '.md', '.csv'}

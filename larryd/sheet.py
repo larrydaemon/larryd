@@ -10,7 +10,8 @@ Content-Security-Policy: that isolation is the second guard, this is the first.
 REWRITTEN (the platform's own menu, so agents look native):
   TYPE      font, font-family, font-size, font-weight, font-style, line-height, letter-spacing, word-spacing,
             text-transform: the nearest role of THE GLOBAL FONT CATALOG (that role's own variables)
-  COLOUR    a typed colour (#hex, rgb(), hsl(), a colour's name): the theme's nearest colour slot, var(--active-color-NN)
+  COLOUR    a typed colour (#hex, rgb(), hsl(), a colour's name): the theme's perceptually nearest colour variable
+            (OKLab distance), var(--active-color-NN); a see-through colour keeps its alpha (color-mix with transparent)
   SPACING   gap, padding, margin, border-radius (and their sides): each length to the nearest step of the scale
 REMOVED (each said):
   REACH     @import; url() to another host (a scheme or //, data: included)
@@ -121,34 +122,68 @@ def _px(value):
     return float(m.group(1)) * (16 if m.group(2) in ('rem', 'em') else 1) if m else None
 
 
-def _rgb(token, cat):
+def _rgba(token):
+    """-> (r, g, b, alpha 0..1) of a typed colour, or None."""
     t = token.lower()
     if t in NAMED:
-        return NAMED[t]
+        return NAMED[t] + (1.0,)
     if t.startswith('#'):
         h = t[1:]
-        h = ''.join(c * 2 for c in h[:3]) if len(h) in (3, 4) else h[:6]
-        return tuple(int(h[k:k + 2], 16) for k in (0, 2, 4)) if len(h) == 6 else None
+        h = ''.join(c * 2 for c in h) if len(h) in (3, 4) else h
+        if len(h) not in (6, 8):
+            return None
+        return tuple(int(h[k:k + 2], 16) for k in (0, 2, 4)) + ((int(h[6:8], 16) / 255) if len(h) == 8 else 1.0,)
     nums = re.findall(r'[\d.]+%?', t)
+    alpha = 1.0
+    if len(nums) >= 4:
+        a = nums[3]
+        alpha = min(1.0, float(a[:-1]) / 100 if a.endswith('%') else float(a))
     if t.startswith('rgb') and len(nums) >= 3:
-        return tuple(int(float(n[:-1]) * 2.55) if n.endswith('%') else int(float(n)) for n in nums[:3])
+        return tuple(min(255, int(float(n[:-1]) * 2.55) if n.endswith('%') else int(float(n))) for n in nums[:3]) + (alpha,)
     if t.startswith('hsl') and len(nums) >= 3:
         import colorsys
         h, s, light = float(nums[0].rstrip('%')) / 360, float(nums[1].rstrip('%')) / 100, float(nums[2].rstrip('%')) / 100
-        return tuple(int(round(c * 255)) for c in colorsys.hls_to_rgb(h, light, s))
+        return tuple(int(round(c * 255)) for c in colorsys.hls_to_rgb(h, light, s)) + (alpha,)
     return None
 
 
-def _colours(value, cat, said, where):
-    slots = {k: tuple(int(v[i:i + 2], 16) for i in (1, 3, 5)) for k, v in cat['colours'].items()}
+def _rgb(token, cat=None):
+    rgba = _rgba(token)
+    return rgba[:3] if rgba else None
 
+
+def oklab(rgb):
+    """sRGB 0-255 -> OKLab (L, a, b): the space where a distance is what an eye sees (Björn Ottosson, 2020)."""
+    def linear(c):
+        c /= 255
+        return c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
+    r, g, b = (linear(c) for c in rgb)
+    l = (0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b) ** (1 / 3)
+    m = (0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b) ** (1 / 3)
+    s = (0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b) ** (1 / 3)
+    return (0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s,
+            1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s,
+            0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s)
+
+
+def nearest_colour(rgb, cat):
+    """-> (the theme's colour variable nearest to rgb by OKLab distance, its hex, the distance); a tie goes to the lowest number."""
+    seen = oklab(rgb)
+    best = min(cat['colours'].items(), key=lambda kv: sum((x - y) ** 2 for x, y in zip(oklab(tuple(int(kv[1][i:i + 2], 16) for i in (1, 3, 5))), seen)))
+    far = sum((x - y) ** 2 for x, y in zip(oklab(tuple(int(best[1][i:i + 2], 16) for i in (1, 3, 5))), seen)) ** 0.5
+    return best[0], best[1], far
+
+
+def _colours(value, cat, said, where):
     def nearest(m):
-        rgb = _rgb(m.group(0), cat)
-        if rgb is None:
+        rgba = _rgba(m.group(0))
+        if rgba is None:
             return m.group(0)
-        slot = min(slots, key=lambda k: sum((a - b) ** 2 for a, b in zip(slots[k], rgb)))
-        said.append(f'{where}: {m.group(0)} -> var({slot})')
-        return f'var({slot})'
+        slot, hexa, far = nearest_colour(rgba[:3], cat)
+        alpha = round(rgba[3] * 100)
+        new = f'var({slot})' if alpha >= 100 else f'color-mix(in srgb, var({slot}) {alpha}%, transparent)'
+        said.append(f'{where}: {m.group(0)} -> {new} (the theme\'s nearest colour, {hexa} in the reference theme, distance {far:.2f})')
+        return new
     return COLOUR.sub(nearest, value)
 
 
@@ -167,11 +202,11 @@ def _spacing(prop, value, said, where):
 
 def _type(written, cat, said, where):
     roles = cat['roles']
-    size, wt, case = _px(written.get('font-size')), written.get('font-weight', ''), written.get('text-transform')
-    wt = {'bold': 700, 'bolder': 800, 'normal': 400, 'lighter': 300}.get(wt, int(wt) if wt.isdigit() else None)
-    role = min(roles, key=lambda r: (abs(roles[r]['size'] - size) if size is not None else 0) + (abs(roles[r]['weight'] - wt) / 50 if wt else 0)
-               + (6 if case and case != roles[r]['case'] else 0))
-    said.append(f'{where}: {"; ".join(f"{k}: {v}" for k, v in written.items())} -> the {role} role')
+    size, wt, case = _px(written.get('font-size')), written.get('font-weight', '400'), written.get('text-transform', 'none')   # unwritten: CSS's own defaults
+    wt = {'bold': 700, 'bolder': 800, 'normal': 400, 'lighter': 300}.get(wt, int(wt) if wt.isdigit() else 400)
+    role = min(roles, key=lambda r: (abs(roles[r]['size'] - size) if size is not None else 0) + abs(roles[r]['weight'] - wt) / 50
+               + (6 if case != roles[r]['case'] else 0))
+    said.append(f'{where}: {"; ".join(f"{k}: {v}" for k, v in written.items())} -> the {role} role (its own font, size, weight, case and letter spacing)')
     return [f'font-family: var(--font-{role})', f'font-size: var(--font-{role}-sz)', f'font-weight: var(--font-{role}-wt)', f'text-transform: var(--font-{role}-tt)']
 
 
@@ -269,3 +304,19 @@ def rewrite(text, cat=None):
     while out and len('\n'.join(out)) + 1 > CAP:
         said.append(f'{out.pop()[:40]}: removed (the sheet is over {CAP} characters)')
     return ('\n'.join(out) + '\n') if out else '', said
+
+
+def table(cat=None):
+    """THE MENU as Markdown, one text for the guide and every project's CLAUDE.md: the type roles, the theme's colour
+    variables and the spacing scale, the values a sheet is converted to."""
+    cat = cat or catalog()
+    roles = ['| Role | Class | Size | Weight | Case | For |', '|---|---|---|---|---|---|'] + [
+        f'| {r.capitalize()} | `.{v["class"]}` | {v["size"]:g}px | {v["weight"]} | {v["case"]} | {cat["for"].get(r, "")} |' for r, v in cat['roles'].items()]
+    shades = {}
+    for name, hexa in cat['colours'].items():
+        shades.setdefault(hexa.upper(), []).append(name.rsplit('-', 1)[1])
+    colours = ['| Colour (reference theme) | Variables `--active-color-NN` |', '|---|---|'] + [
+        f'| `{hexa}` | {", ".join(nums)} |' for hexa, nums in shades.items()]
+    return '\n'.join(['Type roles (a written font, size, weight, case or letter spacing becomes the nearest role by size, weight and case):', '']
+                     + roles + ['', 'Colours (a typed colour becomes the variable nearest to it as the eye sees it; each brand\'s theme sets its own values):', '']
+                     + colours + ['', f'Spacing scale (gap, padding, margin, border-radius go to the nearest step): {", ".join(str(x) for x in SPACING)} px.'])

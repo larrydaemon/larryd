@@ -1,15 +1,16 @@
 {
   "name": "PF AGENT MARKETPLACE",
   "entry": "agent.py",
-  "about": "The collection: every card the harness shows (LIVE, a screen, a whole mTok rate, in the locker and verified), laid out as the original's cards, with the member's hired state; its RUN delivers the collection report.",
+  "style": "card.css",
+  "about": "The collection: every agent card the member may see (approved, on a screen, a whole mTok rate, held and verified), laid out as cards in order, with the member's hired state; its RUN delivers the collection report.",
   "does": [
     "collection",
     "report"
   ],
   "reads": [
-    "the LIVE agent cards (wid /api/agnt/cards)",
-    "the member's hired agents (wid /api/agnt/hired)",
-    "the account's subscriptions (mTok /mtok/balance)"
+    "the approved agent cards (the platform's agent cards)",
+    "the member's hired agents (the platform's hired list)",
+    "the account's subscriptions (the mTok balance)"
   ],
   "calls": [
     "collection"

@@ -4,8 +4,9 @@ You are building one agent. It runs on LARRYD, air gapped (LARRYD is also the pl
 run, apart from everything else), owned by its developer. The platform reaches it only through LARRYD; the agent itself reaches nothing. Read this whole file before you change anything.
 
 ## What an agent is
-- The folder `agent/` is the agent. It is exactly what LARRYD holds in its locker: the manifest `agent/agent.json`
-  and the code. Nothing else in this project goes to LARRYD.
+- The folder `agent/` is the agent. It is exactly what LARRYD holds in its locker: the manifest `agent/agent.json`,
+  the code, and the card's own sheet when it has one (`agent/card.css`, named in the manifest as `"style": "card.css"`).
+  Nothing else in this project goes to LARRYD.
 - LARRYD runs the entry (`agent/agent.py`) as its own process. One JSON object comes in on stdin, one JSON object
   goes out on stdout. That is the whole contract.
 - The job it is handed: `{{"do": "<one of does>", ...the inputs named in run.hands}}`.
@@ -26,5 +27,14 @@ run, apart from everything else), owned by its developer. The platform reaches i
 7. Nothing fake. The agent answers from what it is handed, or it says plainly that it cannot.
 8. Plain words. Names as they are: LARRYD, FROST, mTok, DA-M, LARRY LLM.
 
+## The card's sheet (`agent/card.css`, optional)
+Write it normally. `larryd doctor` says what it will convert (WILL CONVERT ...); `larryd doctor --fix` writes it in the
+platform's form (your original kept in `.larryd/doctor_backup/`), and `larryd submit` does the same before it sends.
+Nothing in a sheet ever fails a check. The values it is converted to:
+
+{sheet}
+
 ## The tools
 {tools}
+
+The whole guide: `larryd guide`.

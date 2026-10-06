@@ -1,5 +1,5 @@
 {
- "about": "THE GLOBAL FONT CATALOG and the colour slots (the owner, 2026-10-06): an agent's card text picks a ROLE CLASS, its colours a theme variable; written type and typed colours are converted to the nearest of these. Reference values: the Positive Feedback theme; each brand's sheet carries its own.",
+ "about": "The type roles and the colour variables: an agent's card text picks a role class, its colours a theme variable; written type and typed colours are converted to the nearest of these. Reference values: the Positive Feedback theme; each brand's theme carries its own.",
  "roles": {
   "heading": {
    "size": 48.0,

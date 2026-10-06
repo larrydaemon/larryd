@@ -16,7 +16,9 @@ def _new(args):
 
 def _doctor(args):
     problems = doctor.check(args.get('path') or '.')
-    return doctor.as_json(problems), False
+    out = doctor.as_json(problems)
+    out['will_convert'] = doctor.conversions(args.get('path') or '.')   # the card sheet's form, said (never a failure): larryd doctor --fix writes it
+    return out, False
 
 
 def _run(args):

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "larryd"
-version = "0.1.3rc9"
+version = "0.1.3rc10"
 description = "Your server has a daemon. Your agents should have one too. Build, test and ship AI agents with Claude Code."
 readme = "README.md"
 keywords = ["ai-agents", "claude-code", "mcp", "cli", "sandbox"]
@@ -33,7 +33,7 @@ larryd = "larryd"
 larryd_runtime = "server/hanzo/app"
 
 [tool.setuptools.package-data]
-larryd = ["kit/*", "kit/**/*", "skills.json", "submit_door.json"]
+larryd = ["kit/*", "kit/**/*", "skills.json", "submit_door.json", "GUIDE.md"]
 larryd_runtime = ["schemas/*.json", "agents/marketplace/agent.json", "agents/marketplace/agent.py", "web/*.html"]
 
 [tool.pytest.ini_options]
