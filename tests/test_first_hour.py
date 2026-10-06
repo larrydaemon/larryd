@@ -13,7 +13,7 @@ from larryd import cli, doctor, guide, new, sheet
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
 PACKAGE = REPO / 'larryd'
-INTERNAL = re.compile(r'\bthe owner\b|harness|the original|\bwid\b|hanzo|frost-|2026', re.I)
+INTERNAL = re.compile(r'\bthe owner\b|harness|the original|\bwid\b|frost-|2026', re.I)
 
 
 def made(tmp_path, example='marketplace'):

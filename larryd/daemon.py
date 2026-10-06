@@ -12,7 +12,7 @@ import shutil
 import socket
 import sys
 
-PORT = 5010   # the runtime's own port (its schemas' hanzo.json); LARRYD_PORT names another
+PORT = 5010   # the runtime's own port (its schemas' runtime.json); LARRYD_PORT names another
 
 
 def instance_dir():
@@ -38,7 +38,7 @@ def prepare(instance, runtime):
     """The instance, made once and kept: nothing is overwritten that is already there."""
     for sub in ('', 'secrets', 'logs', 'agents'):
         _private_dir(instance / sub)
-    link = instance / 'secrets' / 'hanzo_link'
+    link = instance / 'secrets' / 'runtime_link'
     if not link.is_file() or not link.read_text().strip():
         fd = os.open(link, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
         with os.fdopen(fd, 'w') as fh:

@@ -1,5 +1,5 @@
 """larryd.ai (website/, served as is from /var/www/larryd): the install lines are the docs' lines in the owner's order,
-the page never says the runtime's internal name, and every file it points at is in the tree."""
+and every file it points at is in the tree."""
 import pathlib
 import re
 
@@ -14,12 +14,6 @@ def test_the_install_lines_in_the_owners_order():
     at = [PAGE.find(f'<code>{line}</code>') for line in LINES]
     assert all(i >= 0 for i in at), dict(zip(LINES, at))
     assert at == sorted(at)
-
-
-def test_larryd_only():
-    for path in SITE.rglob('*'):
-        if path.suffix in ('.html', '.css', '.js'):
-            assert 'hanzo' not in path.read_text().lower(), path
 
 
 # ---------------------------------------------------------------- the page's one spine (the owner's review, 2026-09-30)

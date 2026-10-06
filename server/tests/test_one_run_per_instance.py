@@ -120,7 +120,7 @@ class SlotNeverLeaks(unittest.TestCase):
         self.assertTrue(old)
         proc = self._old_run(slot, old)
         slot.taken_at -= slot.most_seconds + 1   # held long past the run's own limit plus the margin
-        with self.assertLogs('hanzo', level='WARNING') as said:
+        with self.assertLogs('runtime', level='WARNING') as said:
             new = slot.take()
         self.assertTrue(new)
         self.assertTrue(any('reclaimed' in line and 'confirmed gone' in line for line in said.output))
@@ -137,7 +137,7 @@ class SlotNeverLeaks(unittest.TestCase):
         slot = self.app.config['slot']
         old = slot.take()
         slot.taken_at -= slot.most_seconds + 1
-        with self.assertLogs('hanzo', level='ERROR'):
+        with self.assertLogs('runtime', level='ERROR'):
             self.assertIsNone(slot.take())
         self.assertTrue(slot.stuck())
         r = self.app.test_client().get('/api/health', headers=self._health_headers())
@@ -162,15 +162,15 @@ class SlotNeverLeaks(unittest.TestCase):
         slot.give_back(t2)
 
     def test_a_timed_out_run_leaves_no_folder_behind(self):
-        before = {p.name for p in pathlib.Path(tempfile.gettempdir()).glob('hanzo_*')}
+        before = {p.name for p in pathlib.Path(tempfile.gettempdir()).glob('runtime_*')}
         with tempfile.TemporaryDirectory() as a:
             pathlib.Path(a, 'agent.py').write_text('while True:\n    pass\n')
             sandbox.run(a, 'agent.py', {}, seconds=1)
-        after = {p.name for p in pathlib.Path(tempfile.gettempdir()).glob('hanzo_*')}
+        after = {p.name for p in pathlib.Path(tempfile.gettempdir()).glob('runtime_*')}
         self.assertEqual(after - before, set())
 
     def test_leftover_run_folders_are_swept_at_start(self):
-        old = pathlib.Path(tempfile.mkdtemp(prefix='hanzo_run_'))
+        old = pathlib.Path(tempfile.mkdtemp(prefix='runtime_run_'))
         (old / 'input.json').write_text('{"left": "behind"}')
         with tempfile.TemporaryDirectory() as t:
             host.create_app(t, secret=SECRET)
@@ -250,7 +250,7 @@ class SlotFailsClosed(unittest.TestCase):
             go.wait()
             tokens.append(slot.take())
         threads = [threading.Thread(target=reclaimer) for _ in range(8)]
-        with self.assertLogs('hanzo', level='WARNING'):
+        with self.assertLogs('runtime', level='WARNING'):
             [t.start() for t in threads]
             [t.join() for t in threads]
         self.assertEqual(len([t for t in tokens if t]), 1)

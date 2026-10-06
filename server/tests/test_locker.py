@@ -65,7 +65,7 @@ class LockerTest(unittest.TestCase):
         locker.add(self.db, self.root, 'MAGT_TEST_0001', 'echo')
         _agent(self.tmp.name, 'outside')
         con = sqlite3.connect(self.db)
-        con.execute("UPDATE hanzo_locker SET folder = '../outside'")
+        con.execute("UPDATE runtime_locker SET folder = '../outside'")
         con.commit()
         con.close()
         self.assertEqual(locker.verify(self.db, self.root, 'MAGT_TEST_0001'), (False, 'tampered: the folder is outside the locker'))
@@ -126,10 +126,10 @@ class BothKeysLinked(unittest.TestCase):
 
     def test_an_old_locker_gets_the_column(self):
         con = sqlite3.connect(self.db)
-        con.execute('DROP TABLE hanzo_locker')
-        con.execute('CREATE TABLE hanzo_locker ("agent_key" TEXT PRIMARY KEY, "name" TEXT NOT NULL, "folder" TEXT NOT NULL, "code_sha256" TEXT NOT NULL, '
+        con.execute('DROP TABLE runtime_locker')
+        con.execute('CREATE TABLE runtime_locker ("agent_key" TEXT PRIMARY KEY, "name" TEXT NOT NULL, "folder" TEXT NOT NULL, "code_sha256" TEXT NOT NULL, '
                     '"manifest_sha256" TEXT NOT NULL, "registered_at" TEXT NOT NULL)')
-        con.execute("INSERT INTO hanzo_locker VALUES ('MAGT_AAAAAAAAAAAA_0001', 'ECHO', 'echo', 'x', 'y', 'now')")
+        con.execute("INSERT INTO runtime_locker VALUES ('MAGT_AAAAAAAAAAAA_0001', 'ECHO', 'echo', 'x', 'y', 'now')")
         con.commit()
         con.close()
         store.open_store(self.tmp.name)   # the schema's new column added, the row kept

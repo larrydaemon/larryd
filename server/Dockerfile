@@ -12,10 +12,10 @@ RUN apk upgrade --no-cache && apk add --no-cache bubblewrap \
 WORKDIR /srv
 COPY requirements.txt requirements-cloud.txt ./
 RUN pip install --no-cache-dir -r requirements.txt -r requirements-cloud.txt
-COPY hanzo ./hanzo
+COPY runtime ./runtime
 RUN mkdir -p /srv/instance /srv/instance/secrets && chown -R larryd:larryd /srv/instance
 USER larryd
 ENV PYTHONUNBUFFERED=1 LARRYD_INSTANCE=/srv/instance LARRYD_HOST=0.0.0.0 LARRYD_KEYS_DIR=/keys LARRYD_OUTBOUND_DIR=/out \
     LARRYD_NONCES=firestore LARRYD_RECORDS=firestore LARRYD_LOCKERS=larryd-runtime-lockers LARRYD_JOB=larryd-runtime-job \
-    LARRYD_REGION=us-central1 HANZO_ENV=cloud.pf
-CMD ["python", "hanzo/app/web/app.py"]
+    LARRYD_REGION=us-central1 LARRYD_ENV=cloud.pf
+CMD ["python", "runtime/app/web/app.py"]

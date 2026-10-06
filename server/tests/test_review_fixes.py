@@ -179,9 +179,9 @@ class H1RecordsAndLockers(CloudApp):
 
     def test_an_error_carrying_data_is_kept_as_its_code_only(self):
         records = run_records.FirestoreRecords(col=self.runs)
-        records.record('job', 'AGNT_000000000001_0001', 'FAILED', "HANZO could not read the platform: the member's notes say 'secret plan'")
+        records.record('job', 'AGNT_000000000001_0001', 'FAILED', "LARRYD could not read the platform: the member's notes say 'secret plan'")
         doc = next(iter(self.runs.docs.values()))
-        self.assertEqual(doc['error_code'], 'HANZO_COULD_NOT_READ_THE_PLATFORM')
+        self.assertEqual(doc['error_code'], 'LARRYD_COULD_NOT_READ_THE_PLATFORM')
         self.assertNotIn('secret', json.dumps(doc, default=str))
 
     def test_the_lockers_come_from_the_bucket_verified(self):
@@ -201,12 +201,12 @@ class H1RecordsAndLockers(CloudApp):
         bucket_lockers.BucketLockers(bucket=self.bucket).publish(MARKET, row, package, role='marketplace')
         bucket_lockers.BucketLockers(bucket=self.bucket).link(MARKET, 'MAGT_00000000BB02_0002')   # as place() keeps it at submission
         later = self.make('instance-2')
-        self.assertEqual(locker.held(str(pathlib.Path(self.dir.name) / 'instance-2' / 'hanzo.db'), 'MAGT_00000000BB02_0002')['agent_key'], MARKET)
+        self.assertEqual(locker.held(str(pathlib.Path(self.dir.name) / 'instance-2' / 'runtime.db'), 'MAGT_00000000BB02_0002')['agent_key'], MARKET)
 
     def test_a_locker_whose_files_are_not_what_was_approved_is_not_held(self):
         package, row = marketplace_package()
         bucket_lockers.BucketLockers(bucket=self.bucket).publish(MARKET, {**row, 'code_sha256': '0' * 64}, package, role='marketplace')
-        with self.assertLogs('hanzo', level='ERROR'):
+        with self.assertLogs('runtime', level='ERROR'):
             app = self.make()
         self.assertEqual(app.config['held_from_bucket'], 0)
         self.assertEqual(json.loads(self.call(app, '/health').data)['locker'], 0)

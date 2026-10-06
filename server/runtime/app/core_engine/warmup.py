@@ -10,7 +10,7 @@ import ssl
 import time
 import urllib.parse
 
-LOG = logging.getLogger('hanzo')
+LOG = logging.getLogger('runtime')
 IN_A_ROW = 3
 MOST_SECONDS = 60
 TRY_SECONDS = 3   # one handshake's limit

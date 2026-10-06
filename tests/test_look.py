@@ -13,8 +13,8 @@ def test_the_menu_is_one_fixed_list_and_the_runtime_holds_the_same():
     m = look.menu(cat)
     assert m['accent'][0] == 'active-color-01' and len(m['accent']) == 64
     assert m['radius'] == [f'step-{i}' for i in range(10)] and m['effect'] == ['none', 'crt', 'wellness', 'glitch']
-    runtime = json.loads((REPO / 'server' / 'hanzo' / 'app' / 'schemas' / 'look.json').read_text())
-    assert runtime == look.menu(cat), 'regenerate: python -c "import json; from larryd import look; print(json.dumps(look.menu(), indent=1))" > server/hanzo/app/schemas/look.json'
+    runtime = json.loads((REPO / 'server' / 'runtime' / 'app' / 'schemas' / 'look.json').read_text())
+    assert runtime == look.menu(cat), 'regenerate: python -c "import json; from larryd import look; print(json.dumps(look.menu(), indent=1))" > server/runtime/app/schemas/look.json'
 
 
 def test_properties_point_at_live_variables_never_a_resolved_value():
@@ -58,7 +58,7 @@ def test_effects_from_the_sheet_s_words():
 def test_the_runtime_card_template_uses_the_same_fixed_list():
     import re
     cat = sheet.catalog()
-    web = REPO / 'server' / 'hanzo' / 'app' / 'web'
+    web = REPO / 'server' / 'runtime' / 'app' / 'web'
     css = (web / 'agent_card.css').read_text()
     assert dict(re.findall(r'--(step-\d): (\d+)px', css)) == {k: str(v) for k, v in cat['steps'].items()}
     theme = (web / 'reference_theme.css').read_text()

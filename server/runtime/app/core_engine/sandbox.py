@@ -170,8 +170,8 @@ def run(folder, entry, given, seconds=20, on_start=None):
     (start_new_session); on_start(pid) is told it before the run is fed, so the slot can kill the whole group if it
     ever has to; on the time limit the whole group is killed and waited for."""
     agent = os.path.realpath(folder)
-    run_dir = os.path.realpath(tempfile.mkdtemp(prefix='hanzo_run_'))   # private (0o700), this run's only place
-    out_dir = os.path.realpath(tempfile.mkdtemp(prefix='hanzo_out_'))   # its answer, outside the folder the agent can write
+    run_dir = os.path.realpath(tempfile.mkdtemp(prefix='runtime_run_'))   # private (0o700), this run's only place
+    out_dir = os.path.realpath(tempfile.mkdtemp(prefix='runtime_out_'))   # its answer, outside the folder the agent can write
     try:
         try:
             if sys.platform == 'darwin' and os.path.isfile(SANDBOX_EXEC):
@@ -225,5 +225,5 @@ def run(folder, entry, given, seconds=20, on_start=None):
 
 def sweep():
     """At an instance's start: any run's folders left by a run cut off before its own finally."""
-    for p in pathlib.Path(tempfile.gettempdir()).glob('hanzo_[ro][ua][nt]_*'):
+    for p in pathlib.Path(tempfile.gettempdir()).glob('runtime_[ro][ua][nt]_*'):
         shutil.rmtree(p, ignore_errors=True)

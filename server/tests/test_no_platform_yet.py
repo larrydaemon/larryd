@@ -1,4 +1,4 @@
-"""A RUNTIME WITH NO PLATFORM YET (the LARRYD server before the platform has one): no address is declared, so HANZO's
+"""A RUNTIME WITH NO PLATFORM YET (the LARRYD server before the platform has one): no address is declared, so the runtime's
 own door answers, and every call that needs the platform is refused in its own plain words; nothing crashes."""
 import datetime
 import pathlib
@@ -28,7 +28,7 @@ class NoPlatformYet(unittest.TestCase):
         return r.status_code, r.get_json()
 
     def test_its_own_door_answers(self):
-        self.assertEqual(self.call('GET', '/health', {}), (200, {'office': 'hanzo', 'locker': 0, 'runs': 0}))
+        self.assertEqual(self.call('GET', '/health', {}), (200, {'office': 'runtime', 'locker': 0, 'runs': 0}))
 
     def test_a_call_that_needs_the_platform_says_why_it_cannot(self):
         from core_engine import locker

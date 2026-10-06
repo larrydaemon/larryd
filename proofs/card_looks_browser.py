@@ -12,7 +12,7 @@ import threading
 
 HERE = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(HERE / 'server' / 'tests'))
-sys.path.insert(0, str(HERE / 'server' / 'hanzo' / 'app'))
+sys.path.insert(0, str(HERE / 'server' / 'runtime' / 'app'))
 import test_card_look as t  # noqa: E402
 from test_preview import GOOD_CARD, SECRET, _agent, _zip  # noqa: E402
 from web import app as host  # noqa: E402

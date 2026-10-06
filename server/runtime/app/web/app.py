@@ -1,4 +1,4 @@
-"""HANZO'S HOST: the /api door, and nothing else. Every call must be signed with HANZO's secret (core_engine/signing.py);
+"""THE RUNTIME'S HOST: the /api door, and nothing else. Every call must be signed with the runtime's secret (core_engine/signing.py);
 an unsigned, stale or wrongly signed call is refused (401) before any route runs. (A developer's agent comes in through
 LARRYD's submit door and the owner's review, then `place` below; never through this door.) The routes hand the call to the
 harness; a RUN is accepted at once (202) and runs on its own thread, its result written back to the platform.
@@ -27,7 +27,7 @@ sys.path.insert(0, str(APP))
 
 from core_engine import callers, harness as lanes_harness, intake, jobs as long_runs, locker, lockers as bucket_lockers, look as card_look, platform, preview, records as run_records, sandbox, signing, slot as one_slot, store, warmup  # noqa: E402
 
-CONFIG = json.loads((APP / 'schemas' / 'hanzo.json').read_text())
+CONFIG = json.loads((APP / 'schemas' / 'runtime.json').read_text())
 INSTANCE = pathlib.Path(os.environ['LARRYD_INSTANCE']) if os.environ.get('LARRYD_INSTANCE') else APP.parent / 'instance'   # the daemon names it
 DEVELOPER = 'LARRYD_DEVELOPER'   # the daemon sets it to 1 on a developer's computer; a server runs this file itself, without it
 
@@ -47,7 +47,7 @@ KEY = re.compile(r'[A-Z]{4}_[0-9A-F]{12}_[0-9A-F]{4}')   # a key as the platform
 
 def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, developer=False, keys=None, nonces=None, cloud=None,
                retry_seconds=RETRY_IN_REQUEST):
-    """agents: the locker's folder (default HANZO's own; a test gives a scratch one). developer: the developer's runtime
+    """agents: the locker's folder (default the runtime's own; a test gives a scratch one). developer: the developer's runtime
     (the marketplace page; the platform's answers from the instance when no address is declared).
     keys: the hardened call (Cloud Run): {key id: [versions]} of the callers. cloud: Cloud Run's parts (the runtime design):
     {'outbound': callers.Outbound, 'records': run records, 'lockers': BucketLockers or None, 'claims': job claims,
@@ -62,7 +62,7 @@ def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, deve
         if outbound is None or not callers_known or any(c not in outbound.slots() for c in callers_known):
             raise SystemExit('the runtime does not start without its own outbound key for every slot that may call it')
     elif not secret:
-        raise SystemExit(f"HANZO does not start without its secret '{CONFIG['secret']['name']}'")
+        raise SystemExit(f"LARRYD does not start without its secret '{CONFIG['secret']['name']}'")
     db = store.open_store(instance)
     locker_dir = APP / 'agents' if agents is None else pathlib.Path(agents)
     lockers = cloud.get('lockers')
@@ -90,7 +90,7 @@ def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, deve
     running, lock = set(), threading.Lock()
     slot = one_slot.Slot(CONFIG['run']['seconds'] + 60)   # ONE RUN PER INSTANCE: above the run's own hard limit, plus a minute
     sandbox.sweep()   # a run's folders left by a stopped instance are removed before anything runs
-    app = Flask('hanzo', template_folder=str(APP / 'web'))
+    app = Flask('runtime', template_folder=str(APP / 'web'))
     app.config['harness'] = h
     app.config['harnesses'] = harnesses
     app.config['slot'] = slot
@@ -144,7 +144,7 @@ def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, deve
     def failed(error):   # nothing of an exception is ever echoed to a caller (the security review, 2026-10-06)
         if isinstance(error, HTTPException):
             return jsonify({'refused': error.name}), error.code   # a 404 or 405 stays itself, with its plain name only
-        logging.getLogger('hanzo').error('a call failed: %s on %s', type(error).__name__, request.path)   # the kind and the door only, never a run's data
+        logging.getLogger('runtime').error('a call failed: %s on %s', type(error).__name__, request.path)   # the kind and the door only, never a run's data
         return jsonify({'refused': 'the runtime could not answer'}), 500
 
     @app.get('/api/health')
@@ -404,7 +404,7 @@ def catch_up(app):
         began = time.monotonic()
         status, body = h.client.get('wid', '/jobs/queued')
         if caller:   # the instance's first call back to that slot: its answer and how long it took (no data)
-            logging.getLogger('hanzo').warning('catch-up: %s answered %s in %.1f s', caller, status, time.monotonic() - began)
+            logging.getLogger('runtime').warning('catch-up: %s answered %s in %.1f s', caller, status, time.monotonic() - began)
         for j in body.get('jobs', []) if status == 200 else []:
             app.config['start'](j['account'], j['scope'], j['member'], j['job_key'], int(j['run']), caller)
     return status
@@ -430,13 +430,13 @@ def cloud_parts():
 
 
 def main(argv):
-    """python hanzo/app/web/app.py                                   the host
-    python hanzo/app/web/app.py submit <key>                        an agent HANZO holds, to FROST's review (its key, its exact hashes, its manifest)
-    python hanzo/app/web/app.py place <card key> <file.larryd> [marketplace]   an agent the owner approved: into the locker (and, on Cloud Run, the lockers bucket), then to FROST's review
-    python hanzo/app/web/app.py review <card key>...                what HANZO records for those agents, with FROST's word on the hashes it holds
-    python hanzo/app/web/app.py job <slot> <account> <scope> <member> <job key> <run>   a Cloud Run job execution: one RUN, its result to that slot
-    python hanzo/app/web/app.py callbacks <slot> <n>                Cloud Run: the warm-up, the first call back to that slot and n more (statuses and times)
-    python hanzo/app/web/app.py selftest                            Cloud Run: the marketplace agent run once in the sandbox, its record written"""
+    """python runtime/app/web/app.py                                   the host
+    python runtime/app/web/app.py submit <key>                        an agent the runtime holds, to FROST's review (its key, its exact hashes, its manifest)
+    python runtime/app/web/app.py place <card key> <file.larryd> [marketplace]   an agent the owner approved: into the locker (and, on Cloud Run, the lockers bucket), then to FROST's review
+    python runtime/app/web/app.py review <card key>...                what the runtime records for those agents, with FROST's word on the hashes it holds
+    python runtime/app/web/app.py job <slot> <account> <scope> <member> <job key> <run>   a Cloud Run job execution: one RUN, its result to that slot
+    python runtime/app/web/app.py callbacks <slot> <n>                Cloud Run: the warm-up, the first call back to that slot and n more (statuses and times)
+    python runtime/app/web/app.py selftest                            Cloud Run: the marketplace agent run once in the sandbox, its record written"""
     side = os.environ.get(CONFIG['environment_variable'], 'localhost.rnd').split('.')[-1]
     secret_file = INSTANCE / 'secrets' / CONFIG['secret']['name']
     secret = secret_file.read_text().strip() if secret_file.is_file() else ''
