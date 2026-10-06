@@ -13,7 +13,7 @@ def card(**over):
     base = {'key': 'MAGT_AAAAAAAAAAAA_0001', 'number': '1', 'class': 'MARK I AGENT (NORMAL)', 'name': 'The Agent Marketplace',
             'screen': 'larryd/agnt/home', 'product': 'LARRYD', 'product_slug': 'larryd', 'module': 'AGENT', 'pitch': 'Every agent, one toggle.',
             'developer': 'Positive Feedback', 'price': '0', 'image_dam_key': '', 'type': 'OFF-THE-SHELF', 'residency': 'INTERNAL',
-            'status': 'LIVE', 'hired': False, 'hireable': True, 'reason': ''}
+            'status': 'APPROVED', 'hired': False, 'hireable': True, 'reason': ''}
     base.update(over)
     return base
 

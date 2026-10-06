@@ -1,6 +1,6 @@
 """DATA STAYS IN wid, NEVER BACK TO THE RUNTIME (the owner, 2026-09-28). runtime.db holds only what the runtime itself needs: the
 locker (key, hashes, manifest's name, folder), runtime_runs (lane, the agent's key, job key, run, state, times, charged,
-a plain reason). The inputs of a run live in memory and in its run folder (removed after); its result goes back to wid
+a plain reason, and the caller's account and member KEYS: a run names its caller, never a name or a value). The inputs of a run live in memory and in its run folder (removed after); its result goes back to wid
 and is not kept. A failed agent's words never reach a reason: only the kind of failure."""
 import json
 import pathlib
@@ -13,7 +13,7 @@ from _here import APP
 from core_engine import harness, locker, sandbox, store
 
 ALLOWED = {'runtime_locker': ['agent_key', 'name', 'folder', 'code_sha256', 'manifest_sha256', 'registered_at', 'card_key'],   # card_key: the platform's card for it, linked at approval (a key, no data)
-           'runtime_runs': ['id', 'lane', 'agent_key', 'job_key', 'run', 'state', 'reason', 'started_at', 'finished_at', 'charged']}
+           'runtime_runs': ['id', 'lane', 'agent_key', 'job_key', 'run', 'state', 'reason', 'started_at', 'finished_at', 'charged', 'account', 'member']}   # the caller's keys (a run names its caller)
 PLANTED = 'Zanzibar-7731-private-pitch'   # a value only the input records carry
 
 
@@ -57,7 +57,7 @@ class NoDataKept(unittest.TestCase):
     def test_a_full_run_keeps_no_input_value(self):
         card = {'key': 'MAGT_SCRATCH00001_0001', 'number': '1', 'class': 'MARK II SUPER AGENT (HARNESS)', 'name': 'Planted Name ' + PLANTED,
                 'screen': 'larryd/agnt/home', 'product': 'LARRYD', 'product_slug': 'larryd', 'module': 'Agents', 'pitch': PLANTED,
-                'developer': PLANTED, 'price': '0', 'image_dam_key': '', 'type': 'OFF-THE-SHELF', 'residency': 'INTERNAL', 'status': 'LIVE'}
+                'developer': PLANTED, 'price': '0', 'image_dam_key': '', 'type': 'OFF-THE-SHELF', 'residency': 'INTERNAL', 'status': 'APPROVED'}
         hired = [{'agent_key': card['key'], 'board': card['screen'], 'shell_id': 1, 'on': True, 'job_key': 'MJOB_SCRATCH00001_0001'}]
         client = Recorder()
         h = harness.Harness(self.db, self.agents, client)
@@ -68,8 +68,12 @@ class NoDataKept(unittest.TestCase):
         for path in pathlib.Path(self.tmp.name, 'instance').rglob('*'):
             if path.is_file():
                 body = path.read_bytes()
-                for value in (PLANTED, 'agent in the collection', 'ACCT_' + 'A' * 12, 'MCON_' + 'B' * 12):
+                for value in (PLANTED, 'agent in the collection'):
                     self.assertNotIn(value.encode(), body, f'{path.name} keeps {value!r}')
+        con = sqlite3.connect(self.db)
+        self.assertEqual(con.execute("SELECT account, member FROM runtime_runs WHERE lane = 'job'").fetchall(),
+                         [('ACCT_' + 'A' * 12 + '_0001', 'MCON_' + 'B' * 12 + '_0002')])   # the caller, by its keys only
+        con.close()
         self.assertEqual(list(pathlib.Path(tempfile.gettempdir()).glob('runtime_run_*')), [])   # the run's folder is gone
 
     def test_a_failed_agents_words_never_reach_a_reason(self):

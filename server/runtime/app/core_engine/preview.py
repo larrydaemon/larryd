@@ -84,7 +84,7 @@ class Local:
                 given = manifest.get('card') if isinstance(manifest.get('card'), dict) else {}
                 facts = {k: str(given.get(k) or '') for k in CARD_KEYS}
                 facts['number'] = str(n)
-            out.append({'key': row['agent_key'], 'name': manifest.get('name') or row['name'], 'status': 'LIVE', 'image_dam_key': '',
+            out.append({'key': row['agent_key'], 'name': manifest.get('name') or row['name'], 'status': 'APPROVED', 'image_dam_key': '',
                         **facts, 'product_slug': slug(facts['product'])})
         return out
 

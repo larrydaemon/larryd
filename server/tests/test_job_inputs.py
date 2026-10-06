@@ -18,7 +18,7 @@ ACCOUNT, SCOPE, MEMBER = 'ACCT_' + 'A' * 12 + '_0001', 'SCRATCH', 'MCON_' + 'B' 
 PLANTED = 'Zanzibar-7731-private-mood'
 CARD = {'key': KEY, 'number': '2', 'class': 'MARK I AGENT (NORMAL)', 'name': 'Echo', 'screen': 'larryd/agnt/home', 'product': 'LARRYD',
         'product_slug': 'larryd', 'module': 'Agents', 'pitch': '', 'developer': '', 'price': '0', 'image_dam_key': '', 'type': '',
-        'residency': '', 'status': 'LIVE'}
+        'residency': '', 'status': 'APPROVED'}
 HIRED = [{'agent_key': KEY, 'board': CARD['screen'], 'shell_id': 1, 'on': True, 'job_key': JOB}]
 
 
@@ -172,6 +172,6 @@ class ARevokedAgentsQueuedJob(Echo):
         self.assertNotIn('/jobs/inputs', [route for _o, route, _d in wid.said])
 
     def test_its_card_hidden_it_is_refused(self):
-        state, wid = self.queued_run([], True)   # the catalog shows only APPROVED (and LIVE) cards: a revoked card is not in it
+        state, wid = self.queued_run([], True)   # the catalog shows only APPROVED cards: a revoked card is not in it
         self.assertEqual(state, 'REFUSED')
         self.assertNotIn('/jobs/inputs', [route for _o, route, _d in wid.said])

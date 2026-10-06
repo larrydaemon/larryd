@@ -357,12 +357,13 @@ def _marketplace_pages(app, h, instance, token):
 
 
 def place(app, agent_key, data, role=''):
-    """An approved agent file into the locker (<intake folder>/<card key>/), then to FROST's review. -> what was held, and
+    """An approved agent file into the locker (<intake folder>/<key>/, or marketplace/<key>/ for the marketplace role), then to FROST's review. -> what was held, and
     FROST's review or why FROST did not take it (the agent stays held; `submit <key>` sends it again)."""
     h, conf = app.config['harness'], CONFIG['intake']
     try:
         files = intake.check(intake.from_zip(data, conf['most_files'], conf['most_bytes']), conf['most_files'], conf['most_bytes'])
-        row = intake.receive(h.db, h.agents, conf['folder'], agent_key, files)
+        group = lanes_harness.MARKETPLACE if role == 'marketplace' else conf['folder']   # the marketplace keeps its own folder (as the bucket's sync files it)
+        row = intake.receive(h.db, h.agents, group, agent_key, files)
     except intake.Refused as no:
         raise SystemExit(f'refused ({no.status}): {no.reason}')
     held = {'agent_key': agent_key, 'code_sha256': row['code_sha256'], 'manifest_sha256': row['manifest_sha256']}

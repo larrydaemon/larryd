@@ -1,4 +1,4 @@
-"""THE GATE: one set of rules for every agent, used by both lanes. A card is SHOWN only when it can really run (LIVE,
+"""THE GATE: one set of rules for every agent, used by both lanes. A card is SHOWN only when it can really run (APPROVED,
 a screen, a whole mTok rate, in the locker and verified); a member may HIRE it when entitled; it may RUN only when
 also hired and switched on. Each NO carries its plain reason."""
 import re
@@ -13,8 +13,8 @@ def rate(card):
 
 
 def shown(card, verified):
-    if card.get('status') != 'LIVE':
-        return False, 'the card is not LIVE'
+    if card.get('status') != 'APPROVED':
+        return False, 'the card is not APPROVED'
     if not card.get('screen'):
         return False, 'the card names no screen'
     if rate(card) is None:

@@ -7,7 +7,7 @@ from core_engine import gate
 def card(**over):
     base = {'key': 'MAGT_AAAAAAAAAAAA_0001', 'number': '1', 'class': 'MARK I AGENT (NORMAL)', 'name': 'THE AGENT MARKETPLACE',
             'screen': 'larryd/agnt/home', 'product': 'LARRYD', 'product_slug': 'larryd', 'module': 'AGENT', 'pitch': 'p',
-            'developer': 'd', 'price': '0', 'image_dam_key': '', 'type': 'OFF-THE-SHELF', 'residency': 'INTERNAL', 'status': 'LIVE'}
+            'developer': 'd', 'price': '0', 'image_dam_key': '', 'type': 'OFF-THE-SHELF', 'residency': 'INTERNAL', 'status': 'APPROVED'}
     base.update(over)
     return base
 
@@ -26,7 +26,7 @@ class ShownTest(unittest.TestCase):
         self.assertEqual(gate.shown(card(), (True, '')), (True, ''))
 
     def test_what_is_not_shown(self):
-        self.assertEqual(gate.shown(card(status='DRAFT'), (True, '')), (False, 'the card is not LIVE'))
+        self.assertEqual(gate.shown(card(status='DRAFT'), (True, '')), (False, 'the card is not APPROVED'))
         self.assertEqual(gate.shown(card(screen=''), (True, '')), (False, 'the card names no screen'))
         self.assertEqual(gate.shown(card(price='$1/run'), (True, '')), (False, 'the price is not a whole mTok rate'))
         self.assertEqual(gate.shown(card(), (False, 'not in the locker')), (False, 'not in the locker'))
@@ -48,7 +48,7 @@ class MayRunTest(unittest.TestCase):
         ok = (True, '')
         self.assertEqual(gate.may_run(card(), ok, hired_on=True, groups=[]), (True, ''))
         self.assertEqual(gate.may_run(card(), ok, hired_on=False, groups=[]), (False, 'not hired, or switched off'))
-        self.assertEqual(gate.may_run(card(status='SUSPENDED'), ok, hired_on=True, groups=[]), (False, 'the card is not LIVE'))
+        self.assertEqual(gate.may_run(card(status='SUSPENDED'), ok, hired_on=True, groups=[]), (False, 'the card is not APPROVED'))
         self.assertEqual(gate.may_run(card(), (False, 'tampered: the code changed'), hired_on=True, groups=[]), (False, 'tampered: the code changed'))
         self.assertEqual(gate.may_run(card(price='5', product_slug='paceshift', product='PACE SHIFT'), ok, hired_on=True, groups=[]),
                          (False, 'needs the PACE SHIFT subscription'))

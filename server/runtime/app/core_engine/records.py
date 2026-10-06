@@ -57,8 +57,9 @@ class SqliteRecords:
         at = _now().isoformat(timespec='seconds')
         con = sqlite3.connect(self.db)
         try:
-            con.execute('INSERT INTO runtime_runs (lane, agent_key, job_key, run, state, reason, started_at, finished_at, charged) VALUES (?,?,?,?,?,?,?,?,?)',
-                        (lane, agent_key, job_key, int(run), state, error_code(reason), at, at, int(charged)))
+            con.execute('INSERT INTO runtime_runs (lane, agent_key, job_key, run, state, reason, started_at, finished_at, charged, account, member) '
+                        'VALUES (?,?,?,?,?,?,?,?,?,?,?)',
+                        (lane, agent_key, job_key, int(run), state, error_code(reason), at, at, int(charged), account or '', member or ''))
             con.commit()
         finally:
             con.close()

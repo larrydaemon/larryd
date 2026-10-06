@@ -11,7 +11,7 @@ OK = (True, '')
 def card(key, **over):
     base = {'key': key, 'number': '1', 'class': 'MARK I AGENT (NORMAL)', 'name': key, 'screen': 'larryd/agnt/home', 'product': 'LARRYD',
             'product_slug': 'larryd', 'module': 'AGENT', 'pitch': '', 'developer': '', 'price': '0', 'image_dam_key': '',
-            'type': 'OFF-THE-SHELF', 'residency': 'INTERNAL', 'status': 'LIVE'}
+            'type': 'OFF-THE-SHELF', 'residency': 'INTERNAL', 'status': 'APPROVED'}
     base.update(over)
     return base
 

@@ -19,7 +19,7 @@ WHO = {'first_name': 'Ann', 'member_type': 'user', 'account_name': 'Scratch Acco
 KEY, JOB = 'MAGT_00000000D0B2_0001', 'MJOB_00000000D0B2_0001'
 ACCOUNT, SCOPE, MEMBER = 'ACCT_' + 'A' * 12 + '_0001', 'SCRATCH', 'MCON_' + 'B' * 12 + '_0002'
 CARD = {'key': KEY, 'name': 'Echo', 'screen': 'larryd/agnt/home', 'product': 'LARRYD', 'product_slug': 'larryd', 'module': 'Agents',
-        'price': '0', 'status': 'LIVE'}
+        'price': '0', 'status': 'APPROVED'}
 HIRED = [{'agent_key': KEY, 'board': CARD['screen'], 'shell_id': 1, 'on': True, 'job_key': JOB}]
 RUN_OF = {'account': ACCOUNT, 'scope': SCOPE, 'member': MEMBER, 'job_key': JOB, 'run': '1'}
 SAID = {'date': '2026-09-30', 'lang': 'en', 'greetings': {'morning': 'Up with the sun', 'afternoon': 'Good afternoon', 'evening': 'Good evening', 'night': 'Good night'}}

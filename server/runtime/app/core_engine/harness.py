@@ -113,15 +113,19 @@ class Harness:
                                                           'manifest_sha256': row['manifest_sha256'], 'manifest': locker.manifest(self.agents, row['folder'])})
 
     def marketplace_key(self):
+        """The marketplace's key ON THE PLATFORM: the card key FROST minted when one is linked (the platform's cards are
+        keyed by it), else the runtime's own. A placed or bucket marketplace (marketplace/<key>) comes before the image's own
+        (marketplace/), and a linked one before both."""
         con = sqlite3.connect(self.db)
         try:
-            row = con.execute('SELECT agent_key FROM runtime_locker WHERE folder = ? OR folder LIKE ? ORDER BY folder = ? DESC',
-                              (MARKETPLACE, MARKETPLACE + '/%', MARKETPLACE)).fetchone()   # the image's own, or one held from the lockers bucket
+            row = con.execute("SELECT agent_key, COALESCE(card_key, '') FROM runtime_locker WHERE folder = ? OR folder LIKE ? "
+                              "ORDER BY COALESCE(card_key, '') != '' DESC, folder != ? DESC, registered_at DESC",
+                              (MARKETPLACE, MARKETPLACE + '/%', MARKETPLACE)).fetchone()
         finally:
             con.close()
         if row is None:
             raise Refused(503, 'the marketplace is not in the locker')
-        return row[0]
+        return row[1] or row[0]
 
     def review_state(self, keys):
         """What the runtime records for these agents (the owner's `review` command): held or not, FROST's word on the exact
@@ -179,7 +183,7 @@ class Harness:
         cards, hired, groups, verify = self.facts(account, scope, member)
         card = self._card(cards, agent_key)
         if card is None:
-            raise Refused(404, 'the agent has no LIVE card')
+            raise Refused(404, 'the agent has no APPROVED card')
         ok, why = gate.may_run(card, verify(agent_key), lanes.hired_on(hired, agent_key), groups)
         if not ok:
             self._record('call', agent_key, 'REFUSED', why, account=account, member=member)
@@ -256,7 +260,7 @@ class Harness:
         key = shell['agent_key']
         card = self._card(cards, key)
         if card is None:
-            return self._end(account, scope, member, key, job_key, run, 'REFUSED', 'the agent has no LIVE card')
+            return self._end(account, scope, member, key, job_key, run, 'REFUSED', 'the agent has no APPROVED card')
         ok, why = gate.may_run(card, verify(key), shell.get('on') is True, groups)
         if not ok:
             return self._end(account, scope, member, key, job_key, run, 'REFUSED', why)

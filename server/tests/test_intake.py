@@ -236,11 +236,11 @@ class Intake(unittest.TestCase):
         self.h.client = Frost(older=True)
         self.assertEqual(self.h.review_state([KEY])['agents'][0]['review'], 'not approved')
 
-    def test_a_hire_is_a_row_with_the_agents_key_only(self):
+    def test_a_hire_is_a_row_naming_its_caller_by_keys(self):
         class Hires(harness.Harness):
             """The platform's facts given in this process (what the lanes are proven with live), to see what a hire records."""
             def facts(self, account, scope, member):
-                card = {'key': KEY, 'status': 'LIVE', 'screen': 'larryd/agnt/home', 'price': '', 'product': 'LARRYD', 'product_slug': 'larryd',
+                card = {'key': KEY, 'status': 'APPROVED', 'screen': 'larryd/agnt/home', 'price': '', 'product': 'LARRYD', 'product_slug': 'larryd',
                         'name': 'M', 'module': 'AGENT'}
                 return [card], [], [], lambda key: (True, '')
 
@@ -255,9 +255,9 @@ class Intake(unittest.TestCase):
         con = sqlite3.connect(self.db)
         rows = con.execute("SELECT * FROM runtime_runs WHERE lane = 'hire' ORDER BY id").fetchall()
         con.close()
-        self.assertEqual([(r[1], r[2], r[5]) for r in rows], [('hire', KEY, 'ON'), ('hire', KEY, 'OFF')])
-        self.assertNotIn('ACCT_000000000001_0001', repr(rows))
-        self.assertNotIn('MCON_000000000002_0002', repr(rows))
+        self.assertEqual([(r[1], r[2], r[5], r[10], r[11]) for r in rows],
+                         [('hire', KEY, 'ON', 'ACCT_000000000001_0001', 'MCON_000000000002_0002'),
+                          ('hire', KEY, 'OFF', 'ACCT_000000000001_0001', 'MCON_000000000002_0002')])   # the caller, by its keys
 
     # ---------------------------------------------------------------- the old door is gone
     def test_the_old_developer_door_is_gone(self):

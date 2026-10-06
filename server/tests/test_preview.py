@@ -167,7 +167,7 @@ class LocalAnswers(unittest.TestCase):
         status, cards = self.local.get('wid', '/agnt/cards', {})
         self.assertEqual(status, 200)
         (card,) = cards['cards']
-        self.assertEqual((card['key'], card['status'], card['screen'], card['product_slug'], card['number']), (preview.MARKETPLACE_KEY, 'LIVE', 'agnt/home', 'larryd', '0'))
+        self.assertEqual((card['key'], card['status'], card['screen'], card['product_slug'], card['number']), (preview.MARKETPLACE_KEY, 'APPROVED', 'agnt/home', 'larryd', '0'))
         self.assertEqual(self.local.get('wid', '/agnt/hired', {'account': 'developer'}), (200, {'hired': []}))
         self.assertEqual(self.local.post('wid', '/agnt/hire', {'agent_key': preview.MARKETPLACE_KEY})[1]['already'], False)
         self.assertEqual(self.local.get('wid', '/agnt/hired', {})[1]['hired'][0]['on'], True)
