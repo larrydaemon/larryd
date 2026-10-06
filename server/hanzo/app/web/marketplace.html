@@ -41,20 +41,8 @@ a { color: var(--hot); }
 .hidden-list li { margin: 4px 0; }
 .refused { padding: 16px; border: 1px solid var(--warn); border-radius: 10px; color: var(--warn); display: flex; flex-direction: column; gap: 12px; }
 .button { display: inline-block; padding: 8px 14px; border: 1px solid var(--hot); border-radius: 8px; background: transparent; color: var(--hot); font: inherit; cursor: pointer; }
-/* the named looks, drawn by this page as the platform draws them (no agent sheet: plans/AGENT_CARD_LOOKS_PROPOSAL_20261006.md on the platform) */
-.mk-frame { position: relative; display: grid; place-items: center; overflow: hidden; isolation: isolate; }
-.mk-frame > * { grid-area: 1 / 1; }
-.mk-glow, .mk-scan { width: 100%; height: 100%; pointer-events: none; }
-.mk-glow { z-index: 0; } .mk-initials { z-index: 1; } .mk-scan { z-index: 2; }
-.look-crt .mk-scan { background: linear-gradient(180deg, transparent 0%, rgba(120, 255, 120, 0.07) 48%, transparent 56%), repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.28) 0 1px, transparent 1px 3px); background-size: 100% 220%, 100% 100%; animation: look-crt-roll 6s linear infinite; }
-.look-wellness .mk-glow { background: radial-gradient(circle at 30% 35%, var(--hot) 0%, transparent 55%), radial-gradient(circle at 72% 68%, #fdfdfd 0%, transparent 55%); opacity: 0.35; filter: blur(18px); animation: look-wellness-drift 14s ease-in-out infinite alternate; }
-.look-glitch .mk-scan { background: linear-gradient(115deg, transparent 30%, rgba(255, 255, 255, 0.18) 45%, transparent 60%); background-size: 260% 100%; mix-blend-mode: screen; animation: look-glitch-foil 4.5s ease-in-out infinite; }
-@keyframes look-crt-roll { from { background-position: 0 0, 0 0; } to { background-position: 0 -220%, 0 0; } }
-@keyframes look-wellness-drift { from { transform: scale(0.88); } to { transform: scale(1); } }
-@keyframes look-glitch-foil { 0% { background-position: 120% 0; } 100% { background-position: -120% 0; } }
-@media (prefers-reduced-motion: reduce) { .mk-scan, .mk-glow { animation: none; } }
 </style>
-
+{% if A and A.style %}<style>{{ A.style|safe }}</style>{% endif %}{# the agent's own card sheet (the owner, 2026-10-06) #}
 </head>
 <body>
 <div class="wrap">
@@ -72,7 +60,7 @@ a { color: var(--hot); }
   {% if no %}<div class="caption mk-verdict">{{ no }}</div>{% endif %}
  </div>
  <div class="mk-grid">{% for c in A.cards %}
-  {% set k = (c['class'] or '')|upper %}{% set look = 'look-glitch' if 'MARK III' in k else 'look-wellness' if 'MARK II' in k else 'look-crt' if 'MARK I' in k else '' %}<article class="{{ ['mk-card', look, 'mk-on' if c.hired else '']|select|join(' ') }}" data-agent="{{ c.key }}" data-on="{{ '1' if c.hired else '0' }}">
+  {% set k = (c['class'] or '')|upper %}{% set mark = 3 if 'MARK III' in k else 2 if 'MARK II' in k else 1 if 'MARK I' in k else 0 %}<article class="mk-card mk-mark-{{ mark }}{{ ' mk-on' if c.hired }}" data-agent="{{ c.key }}" data-on="{{ '1' if c.hired else '0' }}">
    <div class="mk-head">
     <div class="mk-id">{% if c.number is not none %}<span class="caption">No. {{ '%03d' % c.number }}</span>{% endif %}<span class="annotation">{{ c['class'] }}</span></div>
     <div class="mk-hire">{% if c.hireable or c.hired %}<form method="post" action="/marketplace/hire" class="mk-form"><input type="hidden" name="token" value="{{ token }}"><input type="hidden" name="key" value="{{ c.key }}"><input type="hidden" name="value" value="{{ 'off' if c.hired else 'on' }}"><button class="toggle" aria-pressed="{{ 'true' if c.hired else 'false' }}" title="Hire"><span class="toggle__knob"></span></button></form>{% endif %}<span class="annotation">Hire</span></div>

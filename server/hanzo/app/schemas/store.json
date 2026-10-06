@@ -28,6 +28,10 @@
         [
           "registered_at",
           "TEXT NOT NULL"
+        ],
+        [
+          "card_key",
+          "TEXT"
         ]
       ]
     },

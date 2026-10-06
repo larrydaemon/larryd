@@ -1,5 +1,5 @@
 """THE LOCKER: the agents HANZO holds. An agent is a folder inside the locker (its manifest agent.json + its code) and
-one hanzo_locker row binding the key of its card on the platform to that folder and the sha256 of both. Every call and
+one hanzo_locker row binding the runtime's own key for it (and, once approved, the key of its card on the platform) to that folder and the sha256 of both. Every call and
 run verifies the folder against the row first; any change, an added file or a link is TAMPERED and refused."""
 import datetime
 import hashlib
@@ -59,13 +59,27 @@ def add(db, root, agent_key, folder):
 
 
 def held(db, agent_key):
+    """The locker row of an agent, by the runtime's own key or by the key of its card on the platform (linked at approval)."""
     con = sqlite3.connect(db)
     con.row_factory = sqlite3.Row
     try:
-        row = con.execute('SELECT * FROM hanzo_locker WHERE agent_key = ?', (agent_key,)).fetchone()
+        row = con.execute('SELECT * FROM hanzo_locker WHERE agent_key = ? OR (card_key = ? AND card_key != \'\') ORDER BY agent_key = ? DESC',
+                          (agent_key, agent_key, agent_key)).fetchone()
         return dict(row) if row else None
     finally:
         con.close()
+
+
+def link(db, agent_key, card_key):
+    """BOTH KEYS SAVED AND LINKED (the owner, 2026-10-06): the runtime mints its own key for the agent; the platform mints
+    its card's key at approval and tells the runtime here. -> True when the agent is held (and now linked)."""
+    con = sqlite3.connect(db)
+    try:
+        n = con.execute('UPDATE hanzo_locker SET card_key = ? WHERE agent_key = ?', (card_key, agent_key)).rowcount
+        con.commit()
+    finally:
+        con.close()
+    return n == 1
 
 
 def verify(db, root, agent_key):

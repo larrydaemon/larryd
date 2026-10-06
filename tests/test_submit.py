@@ -50,7 +50,7 @@ def test_the_doctor_comes_first_and_nothing_is_sent(door, project):
 
 def test_the_door_refusing_is_said_with_what_to_do(door, project, monkeypatch):
     import types
-    monkeypatch.setattr(submit, 'doctor', types.SimpleNamespace(check=lambda root: [], asdict=None))   # this side's doctor let it through; the door's own doctor still reads it
+    monkeypatch.setattr(submit, 'doctor', types.SimpleNamespace(check=lambda root: [], asdict=None, fix_sheets=lambda root: []))   # this side's doctor let it through; the door's own doctor still reads it
     code = project / 'agent' / 'agent.py'
     code.write_text(code.read_text() + '\nimport socket\n')
     with pytest.raises(submit.Refused) as no:

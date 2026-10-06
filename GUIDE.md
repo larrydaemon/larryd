@@ -50,8 +50,8 @@ To start from a LARRYD example instead of a blank agent:
 
     larryd new marketplace --from marketplace
 
-makes the PF AGENT MARKETPLACE: its code, its manifest with a doctor-clean card, its picks from the platform's menu
-(`agent/classes.json`) and a sample job. It is the agent the platform's own marketplace is built from.
+makes the PF AGENT MARKETPLACE: its code, its manifest with a doctor-clean card, its own card sheet (`agent/card.css`)
+and a sample job. It is the agent the platform's own marketplace is built from.
 
 ## 3. The rules
 LARRYD's sandbox refuses 1, 2 and 3 when the agent runs; the doctor checks all of them before that.
@@ -79,14 +79,21 @@ inputs the same way: `{"do": "answer", "job": {"name": "Harbor", "mood": "calm c
 ## 4. The doctor
     larryd doctor --fix      (write normally, then this; or plain `larryd doctor` to check only, --json for JSON)
 
-The platform takes NO stylesheet and NO style attribute from an agent: a card only names classes from the platform's
-menu, and the platform draws everything itself (its type, its colours, its looks). So write normally, in CSS or inline
-styles, then run `--fix`: it turns each sheet (`agent/*.css`) and each `style="..."` into the menu's classes, writes
-the picks to `agent/classes.json` (`{"card": "stack gap-s pad-m"}`), removes the sheet and keeps your originals in
-`.larryd/doctor_backup/`. Type becomes the nearest type role, layout the layout steps, a look you drew (CRT scanlines,
-a wellness glow, a glitch) the platform's own named look; colours are the theme's own, so there is nothing to write;
-everything else is dropped and said. It also fills the card's missing facts with honest defaults it names, and prints
-each change (FIXED ...). The same files always give the same result. Write normally, run `larryd doctor --fix`, submit.
+Your agent's card sheet is yours (`agent/card.css`): its frame, its layout and its looks, animated if you like. The
+platform draws it inside each card's own shadow root, so it styles only your card. Write it normally; the doctor
+writes it in the platform's form so every card looks native, and tells you each change:
+
+- type (font, size, weight, case, spacing of letters) becomes the nearest type role of the catalog below;
+- a typed colour (#hex, rgb(), hsl(), a colour's name) becomes the theme's nearest colour, `var(--active-color-NN)`;
+- gap, padding, margin and border-radius go to the spacing scale (0, 2, 4, 8, 12, 16, 22, 32, 48, 64 px);
+- removed: @import and any url() to another host, @font-face, scripts in CSS, `position: fixed` or `sticky`, a selector
+  naming the page outside your card (html, body, :root), markup or a backslash, anything past 20,000 characters.
+
+Your sheet is never a reason to refuse: `larryd doctor --fix` writes the form and keeps your original in
+`.larryd/doctor_backup/`, and `larryd submit` writes it again before it sends, so what is reviewed is exactly the
+doctor's output. It also fills the card's missing facts with honest defaults it names, and prints each change (FIXED
+...; what the form changes is said as CONVERTED ...). The same files always give the same result. Write normally, run
+`larryd doctor --fix`, submit.
 
 ### The menu
 
@@ -108,10 +115,9 @@ Type: the platform's own type roles, the standard names, each with its own font,
 | Notes | `.notes` | small notes |
 | Annotation | `.annotation` | facts, the card's product, module and type |
 
-Sizes: `size--xxxs` to `size--xxxxl`. Layout: `stack` (a column), `row`, `gap-xs` `gap-s` `gap-m` `gap-l`, `pad-xs` to
-`pad-l`, `align-start` `align-center` `align-end`, `justify-start` `justify-center` `justify-end` `justify-between`,
-`cols-1` to `cols-4`. Looks: `look-crt`, `look-wellness`, `look-glitch`, `look-block` (a card's look comes from its
-class: MARK I is CRT, MARK II Wellness, MARK III Glitch). Any other name is dropped by the platform and by `--fix`.
+Sizes change in place with `.size--xxxs` to `.size--xxxxl`. The card's parts are the platform's own classes:
+`.mk-card` (with `.mk-mark-1`, `.mk-mark-2` or `.mk-mark-3` for its class, and `.mk-on` once hired), `.mk-head`,
+`.mk-frame` (its layers `.mk-glow`, `.mk-art`, `.mk-scan`), `.mk-foot`; `:host` is the card's own box.
 
 It checks the project, the manifest, the entry, the air gap, no secret, the shape, the skills and the knowledge.
 Every problem names the file and line, what is wrong and what to do. Do what it says, then run it again.

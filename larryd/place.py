@@ -53,6 +53,7 @@ def _post(url, data, timeout=30):
 
 def place(root):
     """-> {ok, agent_key, sha256, held, marketplace}. Refused with what is wrong and what to do."""
+    doctor.fix_sheets(root)   # the card sheet in the platform's form, as submit writes it (never a reason to refuse)
     problems = doctor.check(root)
     if problems:
         raise Refused('the doctor found problems; LARRYD would not hold this agent', 'fix each one (`larryd doctor`), then place it again',

@@ -32,6 +32,10 @@ class BucketLockers:
             json.dumps({**{k: row[k] for k in ('name', 'code_sha256', 'manifest_sha256')}, **({'role': role} if role else {})}),
             content_type='application/json')
 
+    def link(self, agent_key, card_key):
+        """The card's key the platform minted at approval, kept beside the agent in the bucket, so every instance links it."""
+        self.bucket.blob(f'{agent_key}/card.json').upload_from_string(json.dumps({'card_key': card_key}), content_type='application/json')
+
     def sync(self, db, agents, conf):
         """Every agent in the bucket into this instance's locker, verified. -> the number held."""
         held = 0
@@ -54,6 +58,9 @@ class BucketLockers:
                 finally:
                     con.close()
                 continue
+            card = self.bucket.blob(f'{key}/card.json')
+            if card.exists():
+                locker.link(db, key, json.loads(card.download_as_bytes()).get('card_key', ''))
             ok, _why = locker.verify(db, agents, key)
             held += 1 if ok else 0
         return held

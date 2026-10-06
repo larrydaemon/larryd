@@ -90,8 +90,8 @@ class Harness:
             ok, why = locker.verify(self.db, self.agents, agent_key)
             if not ok:
                 return ok, why
-            row = locker.held(self.db, agent_key)
-            if (agent_key, row['code_sha256'], row['manifest_sha256']) not in approved:
+            row = locker.held(self.db, agent_key)   # by its card's key too: FROST approved the runtime's own key
+            if (row['agent_key'], row['code_sha256'], row['manifest_sha256']) not in approved:
                 return False, 'not approved by FROST'
             return True, ''
         return verify

@@ -12,6 +12,7 @@ import json
 import logging
 import os
 import pathlib
+import re
 import secrets
 import sys
 import threading
@@ -23,7 +24,7 @@ from werkzeug.exceptions import HTTPException
 APP = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(APP))
 
-from core_engine import callers, harness as lanes_harness, intake, jobs as long_runs, lockers as bucket_lockers, platform, preview, records as run_records, sandbox, signing, slot as one_slot, store  # noqa: E402
+from core_engine import callers, harness as lanes_harness, intake, jobs as long_runs, locker, lockers as bucket_lockers, platform, preview, records as run_records, sandbox, signing, slot as one_slot, store  # noqa: E402
 
 CONFIG = json.loads((APP / 'schemas' / 'hanzo.json').read_text())
 INSTANCE = pathlib.Path(os.environ['LARRYD_INSTANCE']) if os.environ.get('LARRYD_INSTANCE') else APP.parent / 'instance'   # the daemon names it
@@ -36,6 +37,9 @@ def _utc_now():
 
 NEEDS = ('account', 'scope', 'member')
 MAX_BODY = 64 * 1024   # a signed call's body; anything larger is refused unread
+
+
+KEY = re.compile(r'[A-Z]{4}_[0-9A-F]{12}_[0-9A-F]{4}')   # a key as the platform's one generator writes it
 
 
 def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, developer=False, keys=None, nonces=None, cloud=None):
@@ -172,6 +176,22 @@ def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, deve
             if str(d['on']) not in ('on', 'off'):
                 raise lanes_harness.Refused(400, 'on is "on" or "off"')
             return harness_for().hire(d['account'], d['scope'], d['member'], d['agent_key'], str(d['on']) == 'on')
+        return answered(work)
+
+    @app.post('/api/agents/card')
+    def card():
+        """THE APPROVAL'S CARD KEY (the owner, 2026-10-06: both keys saved and linked): the platform, after FROST approved an
+        agent, tells the runtime which card key shows it: {agent_key (the runtime's own), card_key (the platform's)}."""
+        def work():
+            d = request.get_json(silent=True) or {}
+            agent_key, card_key = str(d.get('agent_key') or ''), str(d.get('card_key') or '')
+            if not (KEY.fullmatch(agent_key) and KEY.fullmatch(card_key)):
+                raise lanes_harness.Refused(400, 'agent_key and card_key are keys')
+            if not locker.link(db, agent_key, card_key):
+                raise lanes_harness.Refused(404, 'not in the locker')
+            if lockers is not None:
+                lockers.link(agent_key, card_key)
+            return {'linked': True}
         return answered(work)
 
     @app.post('/api/agents/defaults')

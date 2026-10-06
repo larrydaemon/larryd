@@ -18,7 +18,7 @@ def parser():
     d = sub.add_parser('doctor', help='check the agent before submission')
     d.add_argument('path', nargs='?', default='.', help='the agent project (default: here)')
     d.add_argument('--json', action='store_true', help='the result as JSON')
-    d.add_argument('--fix', action='store_true', help='turn the agent\'s sheets and inline styles into the platform\'s menu of classes, fill the card (originals kept in .larryd/doctor_backup/), then check again')
+    d.add_argument('--fix', action='store_true', help='write the agent\'s card sheet in the platform\'s form, fill the card (originals kept in .larryd/doctor_backup/), then check again')
     d.add_argument('--badge', action='store_true', help=f'also write {doctor.BADGE} beside agent/: PASS or FAIL, the day, the checks\' version, for your README')
     r = sub.add_parser('run', help='run the agent here, the way LARRYD runs it, with a sample job')
     r.add_argument('path', nargs='?', default='.', help='the agent project (default: here)')
@@ -120,7 +120,7 @@ def _said(out):
         lines = [f'larryd submit: {out["wrong"]}. What to do: {out["todo"]}']
         return '\n'.join(lines + [doctor.Problem(**p).text() for p in out.get('problems', [])])
     where = 'opened in your browser' if out['opened'] else 'open it in your browser'
-    return (f'larryd submit: sent ({out["sha256"][:16]}). Sign in with Google or Apple to submit it, within {out["minutes"]} minutes:\n'
+    return ''.join(f'FIXED {c}\n' for c in out.get('sheets', [])) + (f'larryd submit: sent ({out["sha256"][:16]}). Sign in with Google or Apple to submit it, within {out["minutes"]} minutes:\n'
             f'{out["claim"]}   ({where})')
 
 

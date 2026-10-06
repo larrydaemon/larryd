@@ -12,7 +12,7 @@ import unittest
 from _here import APP
 from core_engine import harness, locker, sandbox, store
 
-ALLOWED = {'hanzo_locker': ['agent_key', 'name', 'folder', 'code_sha256', 'manifest_sha256', 'registered_at'],
+ALLOWED = {'hanzo_locker': ['agent_key', 'name', 'folder', 'code_sha256', 'manifest_sha256', 'registered_at', 'card_key'],   # card_key: the platform's card for it, linked at approval (a key, no data)
            'hanzo_runs': ['id', 'lane', 'agent_key', 'job_key', 'run', 'state', 'reason', 'started_at', 'finished_at', 'charged']}
 PLANTED = 'Zanzibar-7731-private-pitch'   # a value only the input records carry
 
