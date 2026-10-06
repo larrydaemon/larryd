@@ -498,7 +498,8 @@ def conversions(root):
     return notes
 
 
-UNSAFE_DECL = re.compile(r'.*(url\s*\(|expression\s*\(|javascript:|behaviou?r\s*:|-moz-binding|!\s*important)|position\s*:\s*(fixed|sticky|absolute)'
+UNSAFE_DECL = re.compile(r'.*(url\s*\(|expression\s*\(|javascript:|behaviou?r\s*:|-moz-binding|!\s*important|drop-shadow\s*\()|position\s*:|outline-offset\s*:'
+                         r'|transform\s*:.*scale[xy]?\(\s*(-|[1-9]\d*\.?\d*[1-9]|[2-9]|1\.0*[1-9])|box-shadow\s*:(?!.*inset)'
                          r'|margin[\w-]*\s*:.*-\d|transform\s*:.*(translate|matrix|rotate|skew|perspective)|(inset|top|left|right|bottom|content|translate|offset[\w-]*)\s*:'
                          r'|z-index\s*:\s*(-|\d{3,}|1[1-9]|[2-9]\d)', re.I | re.S)   # what the platform's menu never keeps: off the card, over the page, or reaching out
 UNSAFE_SELECTOR = re.compile(r'\[|#|\*|::|\(|:(has|not|is|where|visited|link|root|focus-within|nth-[\w-]+|before|after)\b', re.I)   # the platform keeps classes, its elements, the combinators and :hover :focus-visible :first-child :last-child only

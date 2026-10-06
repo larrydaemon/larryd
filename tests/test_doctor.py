@@ -362,15 +362,16 @@ def test_fix_keeps_only_the_platforms_menu(tmp_path):
     sheet = root / 'agent' / 'card.css'
     with open(sheet, 'a') as fh:
         fh.write('\ninput[value^="a"] { opacity: 0 }\n.q::before, .ok { opacity: 0.5 }\n.r:has(.s) { opacity: 0 }\n'
-                 '.t { position: absolute; top: -9px; margin-left: -40px; transform: translate(-999px, 0); z-index: 999; opacity: 1 }\n')
+                 '.t { position: absolute; top: -9px; margin-left: -40px; transform: translate(-999px, 0); z-index: 999; opacity: 1 }\n'
+                 '.u { position: relative; transform: scale(1.5); filter: drop-shadow(0 0 9px var(--active-color-01)); box-shadow: 0 0 30px var(--active-color-01); opacity: 1 }\n')
     said = doctor.conversions(root)
     for line in ('input[value^="a"]', '.q::before', '.r:has(.s)', 'position: absolute', 'margin-left: -40px', 'transform: translate(-999px, 0)', 'z-index: 999'):
         assert any(line in n for n in said), (line, said)
     doctor.fix(root)
     text = sheet.read_text()
-    for gone in ('[value', '::before', ':has(', 'absolute', 'top: -9px', '-40px', 'translate(-999px', 'z-index: 999'):
+    for gone in ('[value', '::before', ':has(', 'absolute', 'top: -9px', '-40px', 'translate(-999px', 'z-index: 999', 'position: relative', 'scale(1.5)', 'drop-shadow', '0 0 30px'):
         assert gone not in text, gone
-    assert '.ok { opacity: 0.5 }' in text and '.t { opacity: 1 }' in text
+    assert '.ok { opacity: 0.5 }' in text and '.t { opacity: 1 }' in text and '.u { opacity: 1 }' in text
     assert doctor.fix(root) == []
 
 
