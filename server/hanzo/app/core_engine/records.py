@@ -11,7 +11,7 @@ import sqlite3
 KEEP_DAYS = 396   # 13 months: past a year of billing disputes
 KEY = re.compile(r'^[A-Z]{4}_[0-9A-F]{12}_[0-9A-F]{4}$')   # a platform key, as the platform mints it
 LANES = ('call', 'hire', 'job', 'selftest')
-STATES = ('DONE', 'FAILED', 'REFUSED', 'ON', 'OFF', 'INTERRUPTED')
+STATES = ('DONE', 'FAILED', 'REFUSED', 'ON', 'OFF', 'INTERRUPTED', 'CALLBACK_FAILED')   # CALLBACK_FAILED: the run ended, its result never reached the platform
 CALLERS = ('', 'slot-a', 'slot-b', 'proof', 'selftest')
 DOMAIN = re.compile(r'^[a-z0-9.-]{1,253}$')
 
