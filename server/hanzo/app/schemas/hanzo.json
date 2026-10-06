@@ -2,22 +2,64 @@
   "about": "PF HANZO's own config. HANZO is air gapped: its ONLY link to the platform is HTTP to the addresses below, signed with the secret named here. No path, file, database or module of the platform is ever named.",
   "office": "hanzo",
   "environment_variable": "HANZO_ENV",
-  "ports": {"rnd": 5010, "pf": 5010},
+  "ports": {
+    "rnd": 5010,
+    "pf": 5010
+  },
   "host": "127.0.0.1",
   "platform": {
     "about": "where HANZO calls the platform, per side (the platform's global_config offices: rnd = the stage, pf = live)",
-    "wid": {"rnd": "http://127.0.0.1:5004", "pf": "http://127.0.0.1:5005"},
-    "cc": {"rnd": "http://127.0.0.1:5007", "pf": "http://127.0.0.1:5007"},
-    "fs": {"rnd": "http://127.0.0.1:5008", "pf": "http://127.0.0.1:5008"},
-    "lryllm": {"rnd": "http://127.0.0.1:5009", "pf": "http://127.0.0.1:5009"},
-    "so": {"rnd": "http://127.0.0.1:5006", "pf": "http://127.0.0.1:5006"}
+    "wid": {
+      "rnd": "http://127.0.0.1:5004",
+      "pf": "http://127.0.0.1:5005"
+    },
+    "cc": {
+      "rnd": "http://127.0.0.1:5007",
+      "pf": "http://127.0.0.1:5007"
+    },
+    "fs": {
+      "rnd": "http://127.0.0.1:5008",
+      "pf": "http://127.0.0.1:5008"
+    },
+    "lryllm": {
+      "rnd": "http://127.0.0.1:5009",
+      "pf": "http://127.0.0.1:5009"
+    },
+    "so": {
+      "rnd": "http://127.0.0.1:5006",
+      "pf": "http://127.0.0.1:5006"
+    }
   },
   "callers": {
     "about": "the offices that may call HANZO's /api (X-Office), each checked with the secret",
-    "offices": ["wid"]
+    "offices": [
+      "wid"
+    ]
   },
-  "secret": {"name": "hanzo_link", "purpose": "signs every call between the platform and HANZO; each side keeps its own copy in its own instance"},
-  "intake": {"about": "an agent the owner approved from LARRYD's review queue (one .larryd file) becomes a locker folder <folder>/<card key>/ (the host's place command)", "folder": "dev", "most_files": 200, "most_bytes": 5000000},
+  "secret": {
+    "name": "hanzo_link",
+    "purpose": "signs every call between the platform and HANZO; each side keeps its own copy in its own instance"
+  },
+  "intake": {
+    "about": "an agent the owner approved from LARRYD's review queue (one .larryd file) becomes a locker folder <folder>/<card key>/ (the host's place command)",
+    "folder": "dev",
+    "most_files": 200,
+    "most_bytes": 5000000
+  },
   "signed_window_seconds": 60,
-  "run": {"seconds": 20}
+  "run": {
+    "seconds": 20
+  },
+  "slots": {
+    "about": "Cloud Run (the LARRYD runtime design): the one runtime serves both slots; a call's key id names the slot that called, and the runtime calls back THAT slot, at <host>/<office>, with its own key for that slot (the slots' nginx lets in the runtime's one outbound address)",
+    "slot-a": "https://frost-a.positivefeedback.ai",
+    "slot-b": "https://frost-b.positivefeedback.ai",
+    "offices": [
+      "wid",
+      "cc",
+      "fs",
+      "lryllm",
+      "so"
+    ]
+  }
 }

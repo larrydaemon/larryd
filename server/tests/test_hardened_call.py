@@ -25,8 +25,12 @@ class HardenedCallTest(unittest.TestCase):
         self.now = datetime.datetime(2026, 10, 6, 12, 0, 0, tzinfo=datetime.timezone.utc)
         inst = pathlib.Path(self.dir.name) / 'instance'
         inst.mkdir()
+        self.out_dir = pathlib.Path(self.dir.name) / 'out'
+        for slot in ('slot-a', 'slot-b'):   # the runtime's own key back to each slot (it refuses to start without them)
+            (self.out_dir / slot).mkdir(parents=True)
+            (self.out_dir / slot / 'v1').write_text(secrets.token_hex(32))
         self.client = host.create_app(str(inst), secret='', now=lambda: self.now, keys=self.keys,
-                                      nonces=callers.MemoryNonces()).test_client()
+                                      nonces=callers.MemoryNonces(), cloud={'outbound': callers.Outbound(self.out_dir)}).test_client()
 
     def tearDown(self):
         self.dir.cleanup()

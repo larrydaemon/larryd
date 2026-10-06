@@ -14,6 +14,7 @@ import os
 import pathlib
 import re
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
@@ -67,19 +68,37 @@ runpy.run_path(entry, run_name="__main__")
 
 
 def _linux_runtime():
-    """What the agent may read of the Python runtime: the binary, its standard library, its shared libraries."""
+    """What the agent may read of the Python runtime: the binary, its standard library, its shared libraries. On a
+    glibc system those sit under /usr/lib/<arch>; on Alpine (musl, the runtime's image) the loader and the system's
+    libraries are /lib and /usr/lib, and Python's own (libpython, its compiled standard library) /usr/local/lib."""
     import sysconfig
     stdlib = os.path.realpath(sysconfig.get_paths()['stdlib'])
     arch = sysconfig.get_config_var('MULTIARCH') or 'x86_64-linux-gnu'
-    return [PYTHON, stdlib, f'/usr/lib/{arch}', '/usr/lib64']
+    libdir = os.path.realpath(sysconfig.get_config_var('LIBDIR') or '/usr/local/lib')
+    return [PYTHON, stdlib, libdir, f'/usr/lib/{arch}', '/usr/lib64']
+
+
+_SYSTEM_LIBS = ('/lib', '/lib64', '/usr/lib')
+
+
+def _linux_libs():
+    """bwrap's arguments for the system's library folders: a folder that is a link on the host is the same link inside;
+    a real folder (Alpine's /lib, where musl's loader lives) is bound read-only."""
+    out = []
+    for path in _SYSTEM_LIBS:
+        if os.path.islink(path):
+            out += ['--symlink', os.readlink(path), path]
+        elif os.path.isdir(path):
+            out += ['--ro-bind', path, path]
+    return out
 
 
 def _linux_command(agent, run, entry):
     cmd = [BWRAP, '--unshare-all', '--die-with-parent', '--new-session', '--clearenv',
            '--setenv', 'PATH', '/usr/bin:/bin', '--setenv', 'HOME', run, '--setenv', 'TMPDIR', run, '--setenv', 'LC_CTYPE', 'C.UTF-8',
-           '--dev', '/dev', '--symlink', 'usr/lib', '/lib', '--symlink', 'usr/lib64', '/lib64']
+           '--dev', '/dev'] + _linux_libs()
     for path in _linux_runtime():
-        if os.path.exists(path):
+        if os.path.exists(path) and not any(path == lib or path.startswith(lib + '/') for lib in _SYSTEM_LIBS if os.path.isdir(lib) and not os.path.islink(lib)):
             cmd += ['--ro-bind', path, path]
     cmd += ['--ro-bind', agent, agent, '--bind', run, run,
             '--remount-ro', '/',   # bwrap's own root (a tmpfs holding the mount points) read-only: the run folder is the one place to write
@@ -138,8 +157,18 @@ def _kind(stderr, code):
     return m.group(1) + (f': {m.group(2).strip()}' if m.group(2) else '')
 
 
-def run(folder, entry, given, seconds=20):
-    """-> (state, answer, reason): ('DONE', {...}, '') or ('FAILED', None, why)."""
+def _kill_group(pid):
+    """The run's whole process group (its own session: the sandbox and anything under it), killed and waited for."""
+    try:
+        os.killpg(pid, signal.SIGKILL)
+    except (ProcessLookupError, PermissionError):
+        pass
+
+
+def run(folder, entry, given, seconds=20, on_start=None):
+    """-> (state, answer, reason): ('DONE', {...}, '') or ('FAILED', None, why). The run is its own process group
+    (start_new_session); on_start(pid) is told it before the run is fed, so the slot can kill the whole group if it
+    ever has to; on the time limit the whole group is killed and waited for."""
     agent = os.path.realpath(folder)
     run_dir = os.path.realpath(tempfile.mkdtemp(prefix='hanzo_run_'))   # private (0o700), this run's only place
     out_dir = os.path.realpath(tempfile.mkdtemp(prefix='hanzo_out_'))   # its answer, outside the folder the agent can write
@@ -154,17 +183,32 @@ def run(folder, entry, given, seconds=20):
             linux = sys.platform.startswith('linux')
             out_path, err_path = os.path.join(out_dir, 'out'), os.path.join(out_dir, 'err')
             with open(out_path, 'w') as out, open(err_path, 'w') as err:
-                done = subprocess.run(command, input=json.dumps(given), stdout=out, stderr=err, text=True, timeout=seconds,
-                                      cwd=run_dir, preexec_fn=limits if linux else None,
-                                      env={'PATH': '/usr/bin:/bin', 'HOME': run_dir, 'TMPDIR': run_dir, 'LC_CTYPE': 'UTF-8'})
+                child = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=out, stderr=err, text=True, cwd=run_dir,
+                                         preexec_fn=limits if linux else None, start_new_session=True,
+                                         env={'PATH': '/usr/bin:/bin', 'HOME': run_dir, 'TMPDIR': run_dir, 'LC_CTYPE': 'UTF-8'})
+                try:
+                    if on_start:
+                        on_start(child.pid)
+                    child.communicate(json.dumps(given), timeout=seconds)
+                except subprocess.TimeoutExpired:
+                    _kill_group(child.pid)
+                    child.wait()
+                    return 'FAILED', None, f'over the time limit ({seconds} s)'
+                except BaseException:
+                    _kill_group(child.pid)
+                    child.wait()
+                    raise
+                finally:
+                    if on_start:
+                        on_start(None)   # the run's process is gone: the slot holds no process any more
             stdout = open(out_path).read(MOST_BYTES + 2)
             stderr = open(err_path).read(MOST_BYTES)
         except subprocess.TimeoutExpired:
             return 'FAILED', None, f'over the time limit ({seconds} s)'
         if len(stdout) > MOST_BYTES:
             return 'FAILED', None, 'the answer is too long'
-        if done.returncode != 0:
-            return 'FAILED', None, _kind(stderr, done.returncode)
+        if child.returncode != 0:
+            return 'FAILED', None, _kind(stderr, child.returncode)
         try:
             answer = json.loads(stdout)
         except ValueError:

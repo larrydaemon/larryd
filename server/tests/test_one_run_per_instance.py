@@ -5,6 +5,7 @@ and output are capped by the runtime's own limits, not only by Cloud Run's setti
 import datetime
 import os
 import pathlib
+import subprocess
 import sys
 import tempfile
 import threading
@@ -105,19 +106,51 @@ class SlotNeverLeaks(unittest.TestCase):
     def tearDown(self):
         self.tmp.cleanup()
 
+    def _old_run(self, slot, token):
+        """A stand-in for a hung sandboxed run: its own process group, attached to the slot as a real run is."""
+        proc = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(60)'], start_new_session=True)
+        self.addCleanup(lambda: (proc.poll() is None and proc.kill(), proc.wait()))
+        threading.Thread(target=proc.wait, daemon=True).start()   # as a real run's own thread waits on its sandbox
+        slot.attach(token, proc.pid)
+        return proc
+
     def test_a_slot_held_past_its_limit_is_reclaimed_and_logged(self):
         slot = self.app.config['slot']
         old = slot.take()
         self.assertTrue(old)
+        proc = self._old_run(slot, old)
         slot.taken_at -= slot.most_seconds + 1   # held long past the run's own limit plus the margin
         with self.assertLogs('hanzo', level='WARNING') as said:
             new = slot.take()
         self.assertTrue(new)
-        self.assertTrue(any('reclaimed' in line for line in said.output))
+        self.assertTrue(any('reclaimed' in line and 'confirmed gone' in line for line in said.output))
+        proc.wait(5)
+        self.assertIsNotNone(proc.returncode)    # the old run was killed BEFORE the slot was handed over
         slot.give_back(old)                      # the late run's give-back gives nothing back
         self.assertIsNone(slot.take())           # the new owner still holds it
         slot.give_back(new)
         self.assertTrue(slot.take())
+
+    def test_a_stale_slot_with_no_run_process_is_never_handed_over(self):
+        """H4 (the independent review, 2026-10-06): a holder that is the runtime's own code (no process to kill) may still
+        be alive, so the slot is refused, not reclaimed, and the instance reports itself stuck for the health check."""
+        slot = self.app.config['slot']
+        old = slot.take()
+        slot.taken_at -= slot.most_seconds + 1
+        with self.assertLogs('hanzo', level='ERROR'):
+            self.assertIsNone(slot.take())
+        self.assertTrue(slot.stuck())
+        r = self.app.test_client().get('/api/health', headers=self._health_headers())
+        self.assertEqual(r.status_code, 503)
+        slot.give_back(old)
+        self.assertFalse(slot.stuck())
+
+    def _health_headers(self):
+        at = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='seconds')
+        return {'X-Office': signing.sign(SECRET, '/health', {}, at), 'X-Office-At': at}
+
+    def test_the_reclaim_limit_sits_above_the_runs_own_hard_limit(self):
+        self.assertGreater(self.app.config['slot'].most_seconds, host.CONFIG['run']['seconds'])
 
     def test_giving_back_twice_never_fails(self):
         slot = self.app.config['slot']
@@ -205,7 +238,12 @@ class SlotFailsClosed(unittest.TestCase):
 
     def test_two_reclaimers_of_one_stale_slot_get_one_token(self):
         slot = self.app.config['slot']
-        self.assertTrue(slot.take())
+        t = slot.take()
+        self.assertTrue(t)
+        proc = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(60)'], start_new_session=True)
+        self.addCleanup(lambda: (proc.poll() is None and proc.kill(), proc.wait()))
+        threading.Thread(target=proc.wait, daemon=True).start()
+        slot.attach(t, proc.pid)
         slot.taken_at -= slot.most_seconds + 1
         tokens, go = [], threading.Barrier(8)
         def reclaimer():

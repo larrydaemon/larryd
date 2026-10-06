@@ -4,6 +4,7 @@ JSON body, as the platform's offices do; the route is signed without the /api pr
 import datetime
 import json
 import pathlib
+import secrets
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -19,17 +20,32 @@ def addresses(config, side, instance):
 
 
 class Client:
-    def __init__(self, addresses, secret, timeout=10):
+    """outbound + slot: the hardened scheme (Cloud Run): the call to that slot signed with the runtime's own key for it,
+    a key id, a nonce and the moment (the same 60-second window the platform checks). Without them, the laptop's shared
+    secret. No call is ever signed with an empty key: it is refused before it leaves."""
+    def __init__(self, addresses, secret, timeout=10, outbound=None, slot=None):
         self.addresses = dict(addresses)
         self.secret = secret
         self.timeout = timeout
+        self.outbound, self.slot = outbound, slot
+
+    def _headers(self, route, data, at):
+        if self.outbound is not None:
+            key_id, key = self.outbound.key(self.slot)
+            nonce = secrets.token_hex(16)
+            return {'X-Office-Key': key_id, 'X-Office-Nonce': nonce, 'X-Office-At': at,
+                    'X-Office': signing.sign_hardened(key, route, data, at, nonce)}
+        return {'X-Office': signing.sign(self.secret, route, data, at), 'X-Office-At': at}
 
     def _send(self, office, method, route, data):
         base = self.addresses.get(office)
         if not base:
             return 0, {'refused': f'{office} has no address here'}   # an undeclared office is never called: a plain refusal
         at = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='seconds')
-        headers = {'X-Office': signing.sign(self.secret, route, data, at), 'X-Office-At': at}
+        try:
+            headers = self._headers(route, data, at)
+        except (ValueError, LookupError):
+            return 0, {'refused': f'no key to sign a call to {office}'}   # fail closed: nothing unsigned ever leaves
         url = base + '/api' + route
         body = None
         if method == 'GET':
