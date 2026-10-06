@@ -27,10 +27,14 @@ class Keys:
                 found = {}
                 if self.folder.is_dir():
                     for f in sorted(self.folder.iterdir()):
-                        if f.is_file() and not f.name.startswith('.'):
-                            secret = f.read_text().strip()
-                            if secret:
-                                found[f.name] = secret
+                        if f.name.startswith('.'):
+                            continue
+                        # a key is a file named by its id, or (Cloud Run: one secret per folder) a folder named by its id
+                        # holding the secret's one file
+                        inner = [g for g in sorted(f.iterdir()) if g.is_file() and not g.name.startswith('.')] if f.is_dir() else [f]
+                        secret = inner[0].read_text().strip() if inner else ''
+                        if secret:
+                            found[f.name] = secret
                 self.keys, self.read_at = found, self.clock()
             return dict(self.keys)
 

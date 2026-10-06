@@ -60,6 +60,13 @@ class HardenedCallTest(unittest.TestCase):
         r = self.client.get('/api/health', headers={'X-Office': signing.sign(self.a, '/health', {}, at), 'X-Office-At': at})
         self.assertEqual(r.status_code, 401)
 
+    def test_a_key_mounted_as_a_folder_is_read(self):
+        (self.keys_dir / 'slot-c').mkdir()
+        c = secrets.token_hex(32)
+        (self.keys_dir / 'slot-c' / 'key').write_text(c)
+        self.tick[0] += callers.KEY_CACHE_SECONDS
+        self.assertEqual(self.call('slot-c', c).status_code, 200)
+
     def test_a_destroyed_key_stops_within_the_cache(self):
         self.assertEqual(self.call('slot-a', self.a).status_code, 200)
         (self.keys_dir / 'slot-a').unlink()
