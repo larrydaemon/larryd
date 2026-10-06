@@ -201,8 +201,10 @@ def run(folder, entry, given, seconds=20, on_start=None):
                 finally:
                     if on_start:
                         on_start(None)   # the run's process is gone: the slot holds no process any more
-            stdout = open(out_path).read(MOST_BYTES + 2)
-            stderr = open(err_path).read(MOST_BYTES)
+            with open(out_path) as f:
+                stdout = f.read(MOST_BYTES + 2)
+            with open(err_path) as f:
+                stderr = f.read(MOST_BYTES)
         except subprocess.TimeoutExpired:
             return 'FAILED', None, f'over the time limit ({seconds} s)'
         if len(stdout) > MOST_BYTES:
