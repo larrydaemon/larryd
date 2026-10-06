@@ -82,8 +82,7 @@ class HostLanes(unittest.TestCase):
             if row:
                 break
             time.sleep(0.05)
-        self.assertEqual(row, ('job', 'MJOB_000000000009_0009', 1, 'FAILED',
-                               'HANZO could not read the platform: wid does not answer · the platform did not take the result: wid does not answer'))
+        self.assertEqual(row, ('job', 'MJOB_000000000009_0009', 1, 'FAILED', 'HANZO_COULD_NOT_READ_THE_PLATFORM'))   # the error's code, never its text
 
 
 if __name__ == '__main__':

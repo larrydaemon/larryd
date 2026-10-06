@@ -116,7 +116,7 @@ class JobInputs(unittest.TestCase):
         con = __import__('sqlite3').connect(self.db)
         reason = con.execute("SELECT reason FROM hanzo_runs WHERE lane = 'job' ORDER BY id DESC").fetchone()[0]
         con.close()
-        self.assertTrue(reason.startswith("HANZO could not read the job's inputs: wid does not answer"), reason)
+        self.assertEqual(reason, 'HANZO_COULD_NOT_READ_THE_JOB', reason)   # the error's code, never its text
         wid = Wid({}, status=400)
         self.assertEqual(self.run_with(wid), 'FAILED')
         self.assertIn('RUN 1 is already DONE', self.results(wid)[-1]['log'])

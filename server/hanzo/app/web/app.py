@@ -420,7 +420,7 @@ def selftest(app):
     folder = APP / 'agents' / 'marketplace'
     manifest = json.loads((folder / 'agent.json').read_text())
     state, answer, reason = sandbox.run(folder, manifest['entry'], {'do': (manifest.get('calls') or ['collection'])[0], 'cards': []}, h.seconds)
-    h.records.record('selftest', 'image:marketplace', state, reason, caller='selftest')
+    h.records.record('selftest', '', state, reason, caller='selftest')   # no platform key: the image's own agent
     return {'state': state, 'reason': reason, 'answer_keys': sorted(answer) if isinstance(answer, dict) else []}
 
 if __name__ == '__main__':

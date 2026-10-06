@@ -154,13 +154,32 @@ class CloudApp(unittest.TestCase):
 class H1RecordsAndLockers(CloudApp):
     def test_a_runs_record_is_in_firestore_and_survives_a_fresh_instance(self):
         app = self.make('one')
-        app.config['harnesses']['slot-a']._record('call', 'AGNT_000000000001_0001', 'REFUSED', 'scratch', account='ACCT_X', member='MCON_X')
+        app.config['harnesses']['slot-a']._record('call', 'AGNT_000000000001_0001', 'REFUSED', 'scratch', account='ACCT_00000000000A_000A', member='MCON_00000000000B_000B')
         fresh = self.make('two')   # another instance: nothing of the first one's disk
         self.assertEqual(fresh.config['records'].count('AGNT_000000000001_0001', 'call'), 1)
         doc = next(iter(self.runs.docs.values()))
-        self.assertEqual((doc['caller'], doc['account'], doc['member'], doc['state']), ('slot-a', 'ACCT_X', 'MCON_X', 'REFUSED'))
+        self.assertEqual((doc['caller'], doc['account'], doc['member'], doc['state']), ('slot-a', 'ACCT_00000000000A_000A', 'MCON_00000000000B_000B', 'REFUSED'))
         self.assertGreater(doc['expire_at'] - doc['started_at'], datetime.timedelta(days=390))   # kept 13 months
-        self.assertNotIn('runs', json.loads(self.call(fresh, '/health').data) if False else {})
+
+    def test_a_record_with_any_other_field_is_refused(self):
+        """The security review (2026-10-06): the design's fields only, an allow list on write."""
+        records = run_records.FirestoreRecords(col=self.runs)
+        for extra in ({'input': 'what the run was handed'}, {'output': 'x'}, {'nonce': 'n'}, {'headers': {}}):
+            with self.assertRaises(ValueError):
+                records.record('call', 'AGNT_000000000001_0001', 'DONE', **extra)
+        for bad in ({'account': 'jane@example.com'}, {'member': 'Jane Doe'}, {'caller': 'evil'}, {'egress_refused': ['http://x/y?q=1']}):
+            with self.assertRaises(ValueError):
+                records.record('call', 'AGNT_000000000001_0001', 'DONE', **bad)
+        self.assertEqual(self.runs.docs, {})
+        records.record('call', 'AGNT_000000000001_0001', 'REFUSED', egress_refused=['example.com'])
+        self.assertEqual(tuple(next(iter(self.runs.docs.values()))), run_records.FirestoreRecords.FIELDS)
+
+    def test_an_error_carrying_data_is_kept_as_its_code_only(self):
+        records = run_records.FirestoreRecords(col=self.runs)
+        records.record('job', 'AGNT_000000000001_0001', 'FAILED', "HANZO could not read the platform: the member's notes say 'secret plan'")
+        doc = next(iter(self.runs.docs.values()))
+        self.assertEqual(doc['error_code'], 'HANZO_COULD_NOT_READ_THE_PLATFORM')
+        self.assertNotIn('secret', json.dumps(doc, default=str))
 
     def test_the_lockers_come_from_the_bucket_verified(self):
         package, row = marketplace_package()
@@ -215,7 +234,7 @@ class H2Outbound(CloudApp):
         get = lambda d, k: next(v for kk, v in d.items() if kk.lower() == k.lower())  # noqa: E731
         key = (self.out_dir / 'slot-a' / 'v1').read_text()
         for d in h:
-            self.assertEqual(get(d, 'X-Office-Key'), 'runtime')
+            self.assertEqual(get(d, 'X-Office-Key'), 'runtime-to-slot-a')
             self.assertRegex(get(d, 'X-Office-Nonce'), r'^[0-9a-f]{32}$')
             self.assertEqual(get(d, 'X-Office'), signing.sign_hardened(key, '/jobs/result', {'a': 1}, get(d, 'X-Office-At'), get(d, 'X-Office-Nonce')))
         self.assertNotEqual(get(h[0], 'X-Office-Nonce'), get(h[1], 'X-Office-Nonce'))
@@ -232,10 +251,10 @@ class H3H4Jobs(CloudApp):
     def test_a_long_run_is_claimed_once_and_started_as_a_job_never_a_thread(self):
         app = self.make()
         before = threading.active_count()
-        d = {'account': 'ACCT_X', 'scope': 'S', 'member': 'MCON_X', 'job_key': 'JOB_1', 'run': '3'}
+        d = {'account': 'ACCT_00000000000A_000A', 'scope': 'S', 'member': 'MCON_00000000000B_000B', 'job_key': 'MJOB_000000000001_0001', 'run': '3'}
         r = self.call(app, '/jobs/run', d, 'POST')
         self.assertEqual((r.status_code, json.loads(r.data)['already']), (202, False))
-        self.assertEqual(self.started, [['job', 'slot-a', 'ACCT_X', 'S', 'MCON_X', 'JOB_1', '3']])
+        self.assertEqual(self.started, [['job', 'slot-a', 'ACCT_00000000000A_000A', 'S', 'MCON_00000000000B_000B', 'MJOB_000000000001_0001', '3']])
         self.assertEqual(threading.active_count(), before)              # nothing runs here after the answer
         self.assertIsNotNone(app.config['slot'].take())                 # and the slot is free
         r = self.call(self.make('another'), '/jobs/run', d, 'POST')    # the same run, sent to another instance
@@ -243,7 +262,7 @@ class H3H4Jobs(CloudApp):
         self.assertEqual(len(self.started), 1)
 
     def test_the_catch_up_on_two_new_instances_starts_a_queued_run_once(self):
-        queued = {'jobs': [{'account': 'ACCT_X', 'scope': 'S', 'member': 'MCON_X', 'job_key': 'JOB_Q', 'run': 1}]}
+        queued = {'jobs': [{'account': 'ACCT_00000000000A_000A', 'scope': 'S', 'member': 'MCON_00000000000B_000B', 'job_key': 'MJOB_00000000000A_000A', 'run': 1}]}
         for name in ('one', 'two'):
             app = self.make(name)
             for h in app.config['harnesses'].values():

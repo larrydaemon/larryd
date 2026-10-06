@@ -51,7 +51,9 @@ class FirestoreClaims:
 
 class CloudRunJobs:
     """Starts the job execution with the run's arguments (the Cloud Run Admin API, the service's own identity from the
-    metadata server; no key is ever made)."""
+    metadata server; no key is ever made). The job's command is python; the arguments (which replace the job's own) are
+    the runtime's file and then the run's."""
+    ENTRY = 'hanzo/app/web/app.py'
     METADATA = 'http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token'
 
     def __init__(self, project, region, job, opener=urllib.request.urlopen):
@@ -64,7 +66,7 @@ class CloudRunJobs:
 
     def start(self, args):
         url = f'https://run.googleapis.com/v2/projects/{self.project}/locations/{self.region}/jobs/{self.job}:run'
-        body = json.dumps({'overrides': {'containerOverrides': [{'args': list(args)}]}}).encode('utf-8')
+        body = json.dumps({'overrides': {'containerOverrides': [{'args': [self.ENTRY] + list(args)}]}}).encode('utf-8')
         req = urllib.request.Request(url, data=body, method='POST',
                                      headers={'Authorization': 'Bearer ' + self._token(), 'Content-Type': 'application/json'})
         with self.open(req, timeout=15) as r:

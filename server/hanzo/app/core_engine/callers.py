@@ -49,8 +49,9 @@ def read_versions(folder):
 
 class Outbound:
     """THE RUNTIME'S OWN KEYS, for its calls back INTO the platform (the owner's "API only, both ways"): one per slot, a
-    folder named by the slot ('slot-a', 'slot-b', the same names as the inbound keys) holding its mounted versions; a
-    call to a slot is signed with that slot's NEWEST version (the last file by name) under the key id RUNTIME_KEY_ID.
+    folder named by the caller ('slot-a', 'slot-b', 'proof': the same names as the inbound keys) holding its mounted
+    versions; a call to it is signed with its NEWEST version (the last file by name) under the key id 'runtime-to-<caller>'
+    (the platform's offices accept only those ids, 2026-10-06).
     The runtime refuses to start on Cloud Run without them (no call is ever signed with an empty key)."""
     def __init__(self, folder):
         self.folder = pathlib.Path(folder)
@@ -59,13 +60,13 @@ class Outbound:
         versions = read_versions(self.folder).get(slot) or []
         if not versions:
             raise LookupError(f'no outbound key for {slot}')
-        return RUNTIME_KEY_ID, versions[-1]
+        return RUNTIME_KEY_PREFIX + slot, versions[-1]
 
     def slots(self):
         return sorted(read_versions(self.folder))
 
 
-RUNTIME_KEY_ID = 'runtime'
+RUNTIME_KEY_PREFIX = 'runtime-to-'
 
 
 class MemoryNonces:
