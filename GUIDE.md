@@ -50,8 +50,8 @@ To start from a LARRYD example instead of a blank agent:
 
     larryd new marketplace --from marketplace
 
-makes the PF AGENT MARKETPLACE: its code, its manifest with a doctor-clean card, its card sheet (`agent/card.css`)
-and a sample job. It is the agent the platform's own marketplace is built from.
+makes the PF AGENT MARKETPLACE: its code, its manifest with a doctor-clean card, its picks from the platform's menu
+(`agent/classes.json`) and a sample job. It is the agent the platform's own marketplace is built from.
 
 ## 3. The rules
 LARRYD's sandbox refuses 1, 2 and 3 when the agent runs; the doctor checks all of them before that.
@@ -79,20 +79,19 @@ inputs the same way: `{"do": "answer", "job": {"name": "Harbor", "mood": "calm c
 ## 4. The doctor
     larryd doctor --fix      (write normally, then this; or plain `larryd doctor` to check only, --json for JSON)
 
-`--fix` rewrites your own files to the platform's form and then checks again: your card sheet's type becomes the
-platform's type roles, your colours the theme's own colour variables, habit tags (h1, p, small, a...) the roles they
-mean, anything off the platform's menu is removed and said (an outside address, an @import, an attribute or id or star
-selector, a pseudo-element such as ::before, :has or :not, any position, top/left/inset, a translate, a scale above 1,
-a negative margin, a drop-shadow, a shadow that is not inset, a z-index over 10): nothing on a card paints outside its box, and the card's missing facts are
-filled with honest defaults it names. The platform builds your sheet from that same menu, so what the doctor
-removes would never reach a card. Layers over the art are the platform's own: `.mk-glow` behind it, `.mk-scan` in front, and
-the class is a class on the card (`.mk-mark-1`, `.mk-mark-2`, `.mk-mark-3`). It prints each change (FIXED ...) and keeps your originals in
-`.larryd/doctor_backup/`. The same files always give the same result. Write normally, run `larryd doctor --fix`, submit.
+The platform takes NO stylesheet and NO style attribute from an agent: a card only names classes from the platform's
+menu, and the platform draws everything itself (its type, its colours, its looks). So write normally, in CSS or inline
+styles, then run `--fix`: it turns each sheet (`agent/*.css`) and each `style="..."` into the menu's classes, writes
+the picks to `agent/classes.json` (`{"card": "stack gap-s pad-m"}`), removes the sheet and keeps your originals in
+`.larryd/doctor_backup/`. Type becomes the nearest type role, layout the layout steps, a look you drew (CRT scanlines,
+a wellness glow, a glitch) the platform's own named look; colours are the theme's own, so there is nothing to write;
+everything else is dropped and said. It also fills the card's missing facts with honest defaults it names, and prints
+each change (FIXED ...). The same files always give the same result. Write normally, run `larryd doctor --fix`, submit.
 
-### The card's type and colours: pick from the menu
+### The menu
 
-An agent never writes type: its card's text wears the platform's own type roles, the standard names, each with its own
-font, weight, size and spacing per brand (THE GLOBAL FONT CATALOG). Pick the role's class:
+Type: the platform's own type roles, the standard names, each with its own font, weight, size and spacing per brand
+(THE GLOBAL FONT CATALOG):
 
 | Role | Class | For |
 |---|---|---|
@@ -109,9 +108,10 @@ font, weight, size and spacing per brand (THE GLOBAL FONT CATALOG). Pick the rol
 | Notes | `.notes` | small notes |
 | Annotation | `.annotation` | facts, the card's product, module and type |
 
-Sizes change in place with `.size--xxxs` to `.size--xxxxl`. Colours are the theme's own variables, `var(--active-color-01)`
-to `var(--active-color-64)` (or `color-mix()` of them with transparent), never a typed colour. What you write anyway is
-converted to the nearest of these (`CONVERTED ...` lines), so you learn the menu.
+Sizes: `size--xxxs` to `size--xxxxl`. Layout: `stack` (a column), `row`, `gap-xs` `gap-s` `gap-m` `gap-l`, `pad-xs` to
+`pad-l`, `align-start` `align-center` `align-end`, `justify-start` `justify-center` `justify-end` `justify-between`,
+`cols-1` to `cols-4`. Looks: `look-crt`, `look-wellness`, `look-glitch`, `look-block` (a card's look comes from its
+class: MARK I is CRT, MARK II Wellness, MARK III Glitch). Any other name is dropped by the platform and by `--fix`.
 
 It checks the project, the manifest, the entry, the air gap, no secret, the shape, the skills and the knowledge.
 Every problem names the file and line, what is wrong and what to do. Do what it says, then run it again.

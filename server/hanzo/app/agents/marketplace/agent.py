@@ -7,13 +7,13 @@ import os
 import sys
 
 FILTERS = ('product', 'module', 'type', 'residency', 'class')
-STYLE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'card.css')   # the card's own look (the owner, 2026-10-06): the agent's, never the core's
+PICKS = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'classes.json')   # the card's picks from the platform's menu (the owner, 2026-10-06): no sheet, the platform draws the look
 
 
-def style():
-    """The card's sheet, as this agent ships it (the platform refuses one that reaches anywhere)."""
-    with open(STYLE, encoding='utf-8') as fh:
-        return fh.read()
+def picks():
+    """The classes this agent names for its cards (only the platform's menu is kept there; its look comes from the card's class)."""
+    with open(PICKS, encoding='utf-8') as fh:
+        return json.load(fh).get('card', '')
 
 
 def _number(number):
@@ -37,14 +37,15 @@ def _order(card):
 
 
 def collection(cards):
-    cards = sorted(cards, key=_order)
+    cards, mine = sorted(cards, key=_order), picks()
     out = [{'key': c['key'], 'number': _number(c.get('number')), 'class': c.get('class') or '', 'name': c['name'], 'initials': _initials(c['name']),
             'image_dam_key': c.get('image_dam_key') or '', 'product': c['product'], 'module': c['module'], 'pitch': c.get('pitch') or '',
             'developer': c.get('developer') or '', 'type': c.get('type') or '', 'residency': c.get('residency') or '',
             'screen': c.get('screen') or '', 'sends_to': c.get('sends_to') or '', 'data_sent': c.get('data_sent') or '',
-            'rate': _rate(c.get('price')), 'hired': bool(c.get('hired')), 'hireable': bool(c.get('hireable')), 'needs': c.get('needs') or ''}
+            'rate': _rate(c.get('price')), 'hired': bool(c.get('hired')), 'hireable': bool(c.get('hireable')), 'needs': c.get('needs') or '',
+            'classes': mine}
            for c in cards]
-    return {'cards': out, 'total': len(out), 'hired': sum(1 for c in out if c['hired']), 'style': style(),
+    return {'cards': out, 'total': len(out), 'hired': sum(1 for c in out if c['hired']),
             'filters': {f: sorted({c[f] for c in cards if c.get(f)}) for f in FILTERS}}
 
 

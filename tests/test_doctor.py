@@ -303,76 +303,86 @@ def test_the_command(agent, capsys):
     assert 'FAIL the air gap · agent/agent.py line' in capsys.readouterr().out
 
 
-# THE MARKETPLACE EXAMPLE AND THE CARD SHEET (the owner, 2026-10-06): a stranger can start from the marketplace agent,
-# its card sheet passes the doctor, written type and typed colours are converted (said, never failed), a sheet that
-# reaches out fails.
+# THE MARKETPLACE EXAMPLE AND THE MENU (the owner, 2026-10-06: "we have a full menu, they pick from our definitions; the
+# doctor fixes it"): the platform takes no stylesheet and no style attribute; a card names classes from the menu only.
+SHEET = """/* written normally */
+.mk-panel .mk-card { display: flex; flex-direction: column; gap: 10px; padding: 14px; border: 2px solid #ff0000; position: fixed }
+h1 { font-size: 40px; font-weight: 900; color: #fdfdfd }
+.mk-panel .mk-mark-1 .mk-scan { background: repeating-linear-gradient(0deg, red 0 1px, transparent 1px 3px); animation: roll 6s infinite }
+@import "x.css";
+@keyframes roll { from { opacity: 0 } to { opacity: 1 } }
+"""
+
+
 def test_the_marketplace_example_is_doctor_clean(tmp_path):
     from larryd import new as larryd_new
     root = larryd_new.make('marketplace', tmp_path, example='marketplace')
-    assert (root / 'agent' / 'card.css').is_file()
+    assert not list((root / 'agent').glob('*.css'))
+    assert json.loads((root / 'agent' / 'classes.json').read_text()) == {'card': 'stack gap-s pad-m'}
     assert doctor.check(root) == []
 
 
-def test_written_type_and_colour_are_converted_and_said(tmp_path):
+def test_a_stylesheet_fails_and_says_the_fix(tmp_path):
     from larryd import new as larryd_new
     root = larryd_new.make('m', tmp_path, example='marketplace')
-    with open(root / 'agent' / 'card.css', 'a') as fh:
-        fh.write('\nh1 { font-size: 40px; font-weight: 900 } .x { color: #fdfdfd }\n')
-    assert doctor.check(root) == []
-    notes = doctor.conversions(root)
-    assert any(n.startswith('.heading:') and '-> class' in n for n in notes), notes
-    assert any('#fdfdfd -> var(--active-color-08)' in n for n in notes), notes
+    (root / 'agent' / 'card.css').write_text(SHEET)
+    found = [p for p in doctor.check(root) if 'takes no stylesheet' in p.wrong]
+    assert found and 'larryd doctor --fix' in found[0].todo
 
 
-def test_a_sheet_that_reaches_out_fails(tmp_path):
+def test_an_inline_style_fails(tmp_path):
     from larryd import new as larryd_new
     root = larryd_new.make('m', tmp_path, example='marketplace')
-    with open(root / 'agent' / 'card.css', 'a') as fh:
-        fh.write('\n.x { background: url(https://elsewhere.example/x.png) }\n')
-    assert any(p.check == 'the shape' and 'reaches out' in p.wrong for p in doctor.check(root))
+    (root / 'agent' / 'notes.md').write_text('<div style="display: flex; gap: 8px">x</div>\n')
+    assert any('inline style' in p.wrong for p in doctor.check(root))
 
 
-# THE DOCTOR FIXES (the owner, 2026-10-06: "instead of just doctor it fixes it too"): each fix kind, then a clean doctor.
-def test_fix_rewrites_the_sheet_and_the_card_then_the_doctor_is_clean(tmp_path):
+def test_a_class_off_the_menu_fails(tmp_path):
     from larryd import new as larryd_new
     root = larryd_new.make('m', tmp_path, example='marketplace')
-    sheet = root / 'agent' / 'card.css'
-    with open(sheet, 'a') as fh:
-        fh.write('\n@import "x.css";\nh1 { font-size: 40px; font-weight: 900; color: #fdfdfd }\n.z { position: fixed; background: url(https://x.example/a.png); opacity: 1 }\n')
+    (root / 'agent' / 'classes.json').write_text(json.dumps({'card': 'stack evil btn'}))
+    assert any('not on the platform\'s menu: btn, evil' in p.wrong for p in doctor.check(root))
+
+
+def test_the_conversions_are_said(tmp_path):
+    from larryd import new as larryd_new
+    root = larryd_new.make('m', tmp_path, example='marketplace')
+    (root / 'agent' / 'card.css').write_text(SHEET)
+    said = doctor.conversions(root)
+    assert any('card -> class "stack gap-s pad-m"' in n for n in said), said
+    assert any('font-size: 40px; font-weight: 900 -> heading' in n for n in said), said
+    assert any('position: fixed -> dropped' in n for n in said), said
+    assert any('@import' in n and 'dropped' in n for n in said), said
+    assert any('look-crt' in n for n in said), said
+
+
+def test_fix_turns_the_sheet_and_styles_into_the_menu_then_the_doctor_is_clean(tmp_path):
+    from larryd import new as larryd_new
+    root = larryd_new.make('m', tmp_path, example='marketplace')
+    (root / 'agent' / 'card.css').write_text(SHEET)
+    (root / 'agent' / 'notes.md').write_text('<div style="display: grid; grid-template-columns: repeat(2, 1fr); padding: 20px">x</div>\n')
     manifest = json.loads((root / 'agent' / 'agent.json').read_text())
     del manifest['card']['price']
     (root / 'agent' / 'agent.json').write_text(json.dumps(manifest))
     assert doctor.check(root)   # unclean before
     changed = doctor.fix(root)
-    assert any('card.css' in c for c in changed) and any("price = '0'" in c for c in changed), changed
-    text = sheet.read_text()
-    assert '.heading {' in text and 'var(--font-heading-sz)' in text and 'var(--active-color-08)' in text
-    assert 'url(' not in text and '@import' not in text and 'fixed' not in text and 'font-size: 40px' not in text
-    assert (root / '.larryd' / 'doctor_backup' / 'card.css').is_file()
+    assert any('card.css: turned into the menu' in c for c in changed) and any("price = '0'" in c for c in changed), changed
+    assert not (root / 'agent' / 'card.css').exists()
+    assert (root / '.larryd' / 'doctor_backup' / 'card.css').read_text() == SHEET   # the original kept
+    picks = json.loads((root / 'agent' / 'classes.json').read_text())
+    assert picks['card'] == 'stack gap-s pad-m' and picks['heading'] == 'heading' and 'look-crt' in picks['scan'], picks
+    assert (root / 'agent' / 'notes.md').read_text() == '<div class="cols-2 pad-l">x</div>\n'
     assert doctor.check(root) == []
     assert doctor.fix(root) == []   # deterministic: fixed once, nothing more to change
 
 
-def test_fix_keeps_only_the_platforms_menu(tmp_path):
-    """The security review's second pass (2026-10-06): the platform BUILDS the card sheet from a short menu (classes and
-    combinators; no attribute, id, star, pseudo-element or :has; no position but relative; no translate; no negative
-    margin), so the doctor says each such line and --fix removes it before submission, the rest kept as written."""
+def test_fix_drops_a_class_off_the_menu(tmp_path):
     from larryd import new as larryd_new
     root = larryd_new.make('m', tmp_path, example='marketplace')
-    sheet = root / 'agent' / 'card.css'
-    with open(sheet, 'a') as fh:
-        fh.write('\ninput[value^="a"] { opacity: 0 }\n.q::before, .ok { opacity: 0.5 }\n.r:has(.s) { opacity: 0 }\n'
-                 '.t { position: absolute; top: -9px; margin-left: -40px; transform: translate(-999px, 0); z-index: 999; opacity: 1 }\n'
-                 '.u { position: relative; transform: scale(1.5); filter: drop-shadow(0 0 9px var(--active-color-01)); box-shadow: 0 0 30px var(--active-color-01); opacity: 1 }\n')
-    said = doctor.conversions(root)
-    for line in ('input[value^="a"]', '.q::before', '.r:has(.s)', 'position: absolute', 'margin-left: -40px', 'transform: translate(-999px, 0)', 'z-index: 999'):
-        assert any(line in n for n in said), (line, said)
+    (root / 'agent' / 'classes.json').write_text(json.dumps({'card': 'stack evil btn', 'x': 'nothing'}))
     doctor.fix(root)
-    text = sheet.read_text()
-    for gone in ('[value', '::before', ':has(', 'absolute', 'top: -9px', '-40px', 'translate(-999px', 'z-index: 999', 'position: relative', 'scale(1.5)', 'drop-shadow', '0 0 30px'):
-        assert gone not in text, gone
-    assert '.ok { opacity: 0.5 }' in text and '.t { opacity: 1 }' in text and '.u { opacity: 1 }' in text
-    assert doctor.fix(root) == []
+    assert json.loads((root / 'agent' / 'classes.json').read_text()) == {'card': 'stack'}
+    assert doctor.check(root) == []
 
 
 # THE FIXER NEVER WRITES THROUGH A LINK (the security review, 2026-10-06).
@@ -381,7 +391,6 @@ def test_fix_never_writes_through_a_linked_sheet(tmp_path):
     root = larryd_new.make('m', tmp_path, example='marketplace')
     outside = tmp_path / 'precious.css'
     outside.write_text('h1 { font-size: 40px }\n')
-    (root / 'agent' / 'card.css').unlink()
     (root / 'agent' / 'card.css').symlink_to(outside)
     changed = doctor.fix(root)
     assert outside.read_text() == 'h1 { font-size: 40px }\n'
@@ -395,12 +404,11 @@ def test_fix_never_writes_through_a_linked_backup_folder(tmp_path):
     elsewhere.mkdir()
     (root / '.larryd').mkdir()
     (root / '.larryd' / 'doctor_backup').symlink_to(elsewhere)
-    with open(root / 'agent' / 'card.css', 'a') as fh:
-        fh.write('\nh1 { font-size: 40px }\n')
+    (root / 'agent' / 'card.css').write_text('h1 { font-size: 40px }\n')
     with pytest.raises(PermissionError):
         doctor.fix(root)
     assert list(elsewhere.iterdir()) == []
-    assert 'font-size: 40px' in (root / 'agent' / 'card.css').read_text()   # nothing changed when the backup cannot be made
+    assert (root / 'agent' / 'card.css').read_text() == 'h1 { font-size: 40px }\n'   # nothing changed when the backup cannot be made
 
 
 def test_fix_never_follows_a_linked_manifest(tmp_path):
@@ -417,7 +425,6 @@ def test_fix_never_follows_a_linked_manifest(tmp_path):
 def test_the_backup_folder_is_private(tmp_path):
     from larryd import new as larryd_new
     root = larryd_new.make('m', tmp_path, example='marketplace')
-    with open(root / 'agent' / 'card.css', 'a') as fh:
-        fh.write('\nh1 { font-size: 40px }\n')
+    (root / 'agent' / 'card.css').write_text('h1 { font-size: 40px }\n')
     doctor.fix(root)
     assert oct((root / '.larryd' / 'doctor_backup').stat().st_mode & 0o777) == '0o700'

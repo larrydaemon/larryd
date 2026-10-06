@@ -18,7 +18,7 @@ def parser():
     d = sub.add_parser('doctor', help='check the agent before submission')
     d.add_argument('path', nargs='?', default='.', help='the agent project (default: here)')
     d.add_argument('--json', action='store_true', help='the result as JSON')
-    d.add_argument('--fix', action='store_true', help='rewrite the card sheets and the card to the platform\'s form (originals kept in .larryd/doctor_backup/), then check again')
+    d.add_argument('--fix', action='store_true', help='turn the agent\'s sheets and inline styles into the platform\'s menu of classes, fill the card (originals kept in .larryd/doctor_backup/), then check again')
     d.add_argument('--badge', action='store_true', help=f'also write {doctor.BADGE} beside agent/: PASS or FAIL, the day, the checks\' version, for your README')
     r = sub.add_parser('run', help='run the agent here, the way LARRYD runs it, with a sample job')
     r.add_argument('path', nargs='?', default='.', help='the agent project (default: here)')

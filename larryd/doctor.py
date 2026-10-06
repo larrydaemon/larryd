@@ -49,11 +49,9 @@ SECRET_TEXT = (
     (re.compile(r'\bAIza[0-9A-Za-z_-]{35}\b'), 'a Google API key'),
     (re.compile(r'(?i)\b\w*(secret|password|passwd|token|api_?key|private_?key)\w*["\']?\s*[:=]\s*["\'][^"\'\s]{8,}["\']'), 'a secret written into the code'),
 )
-KINDS = {'.py', '.json', '.txt', '.md', '.csv', '.css'}   # .css: the agent's own card sheet (the owner, 2026-10-06), checked to reach nowhere
-SHEET_TYPE = re.compile(r'(^|[;{\s])(font(-[a-z-]+)?|line-height|letter-spacing|text-transform|word-spacing)\s*:|@font-face', re.I)   # the owner, 2026-10-06: an agent picks the platform's type classes, never writes type
-SHEET_COLOUR = re.compile(r'#[0-9a-f]{3,8}\b|\b(rgba?|hsla?|hwb|lab|lch|oklab|oklch)\s*\(', re.I)   # a colour is the theme's own variable, never typed
-TYPE_CLASSES = 'heading, title, subtitle, caption, label, callout, annotation, body, link, subnav and the sizes size--xxxs to size--xxxxl'
-SHEET_REACHES = re.compile(r'url\s*\(|@import|expression\s*\(|javascript:|<|\\', re.I)   # the platform's own refusal, the same words
+KINDS = {'.py', '.json', '.txt', '.md', '.csv', '.css'}   # .css: written normally, then turned into the menu's classes by --fix
+STYLE_ATTR = re.compile(r'''\bstyle\s*=\s*(\\?["'])(.*?)\1''', re.S)   # an inline style, in any of the agent's files
+CLASSES = 'classes.json'   # the agent's picks from the platform's menu: {"<a part of its card>": "<menu classes>"}
 
 
 @dataclass
@@ -332,9 +330,16 @@ def _shape(root, f):
                 except UnicodeDecodeError:
                     f.add(c, where, 'it is not plain UTF-8 text', 'save it as UTF-8 text, or take it out of agent/')
                 else:
-                    if path.suffix == '.css' and (SHEET_REACHES.search(text) or len(text) > 20000):
-                        f.add(c, where, 'the card sheet reaches out (an address, a load, a script, markup or an escape) or is over 20,000 characters',
-                              'keep the sheet to plain rules over the card\'s own classes; the platform refuses a sheet that reaches anywhere')
+                    if path.suffix == '.css':
+                        f.add(c, where, 'the platform takes no stylesheet: a card only names classes from its menu',
+                              'run `larryd doctor --fix`: it turns the sheet into the menu\'s classes (agent/classes.json) and keeps the original in .larryd/doctor_backup/')
+                    elif STYLE_ATTR.search(text):
+                        f.add(c, where, 'an inline style: the platform strips every style attribute',
+                              'run `larryd doctor --fix`: it turns each style into the menu\'s classes')
+                    elif path.name == CLASSES and path.parent == root / shape.AGENT:
+                        off = _off_menu(text)
+                        if off:
+                            f.add(c, where, f'not on the platform\'s menu: {", ".join(off)}', 'run `larryd doctor --fix`: it keeps the menu\'s classes only')
 
         elif not path.is_dir():
             f.add(c, where, 'it is not a plain file or folder', 'remove it from agent/')
@@ -461,90 +466,133 @@ def _catalog():
     return json.loads(resources.files('larryd').joinpath('kit', 'catalog.json').read_text())
 
 
-def conversions(root):
-    """-> [str]: each conversion the platform will make of the agent's card sheets (the owner, 2026-10-06: "if they write
-    anything it can get converted automatically"), so the author learns THE GLOBAL FONT CATALOG: written type -> the
-    nearest role (by size, weight and case, against the reference catalog), a typed colour -> the nearest colour slot."""
-    cat, notes = _catalog(), []
-    roles = cat['roles']
-    slots = {k: tuple(int(v[i:i + 2], 16) for i in (1, 3, 5)) for k, v in cat['colours'].items()}
-    px = lambda v: (lambda m: float(m.group(1)) * (16 if m.group(2) in ('rem', 'em') else 1) if m else None)(re.fullmatch(r'\s*([\d.]+)\s*(px|rem|em)?\s*', v or ''))
-    for path in _files(pathlib.Path(root).resolve() / shape.AGENT):
-        if path.suffix != '.css' or not path.is_file():
-            continue
-        text = re.sub(r'/\*.*?\*/', '', path.read_text(), flags=re.S)
-        for selector, body in re.findall(r'([^{}]+)\{([^{}]*)\}', text):
-            selector = raw = re.sub(r'/\*.*?\*/', '', selector, flags=re.S)
-            selector = re.sub(r'(?<![\w.#:-])(h1|h2|h3|h4|p|small|label|a|nav|blockquote|aside|code|pre)\b(?![\w-])', lambda m: '.' + ELEMENTS[m.group(1)], selector)   # the habits, said quietly as the catalog's roles
-            written = {k.strip().lower(): v.strip() for k, v in (d.split(':', 1) for d in body.split(';') if ':' in d)}
-            for part in raw.split(','):
-                if UNSAFE_SELECTOR.search(part):
-                    notes.append(f'{part.strip()}: a selector off the platform\'s menu -> removed (classes and the combinators only; an attribute, id, star or pseudo-element is never kept)')
-            for k, v in written.items():
-                if UNSAFE_DECL.match(f'{k}: {v}'):
-                    notes.append(f'{selector.strip()}: {k}: {v} -> removed (it would leave the card, cover the page or reach out)')
-            typ = {k: v for k, v in written.items() if k in ('font-size', 'font-weight', 'text-transform', 'font-family', 'font', 'line-height', 'letter-spacing', 'font-style') and not v.startswith('var(')}
-            if typ:
-                size, wt = px(typ.get('font-size')), typ.get('font-weight', '')
-                wt = {'bold': 700, 'normal': 400}.get(wt, int(wt) if wt.isdigit() else None)
-                case = typ.get('text-transform')
-                role = min(roles, key=lambda r: (abs(roles[r]['size'] - size) if size is not None else 0) + (abs(roles[r]['weight'] - wt) / 50 if wt else 0) + (6 if case and case != roles[r]['case'] else 0))
-                notes.append(f'{selector.strip()}: {"; ".join(f"{k}: {v}" for k, v in typ.items())} -> class {role}')
-            for token in re.findall(r'#[0-9a-fA-F]{6}\b|#[0-9a-fA-F]{3}\b', body):
-                h = token[1:] if len(token) == 7 else ''.join(c * 2 for c in token[1:])
-                rgb = tuple(int(h[i:i + 2], 16) for i in (0, 2, 4))
-                slot = min(slots, key=lambda k: sum((a - b) ** 2 for a, b in zip(slots[k], rgb)))
-                notes.append(f'{selector.strip()}: {token} -> var({slot})')
-    return notes
+def _menu():
+    return set(_catalog()['classes'])
 
 
-UNSAFE_DECL = re.compile(r'.*(url\s*\(|expression\s*\(|javascript:|behaviou?r\s*:|-moz-binding|!\s*important|drop-shadow\s*\()|position\s*:|outline-offset\s*:'
-                         r'|transform\s*:.*scale[xy]?\(\s*(-|[1-9]\d*\.?\d*[1-9]|[2-9]|1\.0*[1-9])|box-shadow\s*:(?!.*inset)'
-                         r'|margin[\w-]*\s*:.*-\d|transform\s*:.*(translate|matrix|rotate|skew|perspective)|(inset|top|left|right|bottom|content|translate|offset[\w-]*)\s*:'
-                         r'|z-index\s*:\s*(-|\d{3,}|1[1-9]|[2-9]\d)', re.I | re.S)   # what the platform's menu never keeps: off the card, over the page, or reaching out
-UNSAFE_SELECTOR = re.compile(r'\[|#|\*|::|\(|:(has|not|is|where|visited|link|root|focus-within|nth-[\w-]+|before|after)\b', re.I)   # the platform keeps classes, its elements, the combinators and :hover :focus-visible :first-child :last-child only
+def _off_menu(text):
+    """The class names in a classes.json that are not on the menu (or ['the file is not {name: classes}'])."""
+    try:
+        data = json.loads(text)
+    except ValueError:
+        return ['the file is not JSON']
+    if not isinstance(data, dict) or not all(isinstance(v, str) for v in data.values()):
+        return ['the file is not {"part": "classes"}']
+    menu = _menu()
+    return sorted({w for v in data.values() for w in v.split() if w not in menu})
 
 
-def _fix_sheet(text, cat):
-    """A card sheet in the platform's form: habit tags as the catalog's roles, written type as the nearest role's own
-    variables, typed colours as the nearest slot, @import and @font-face and anything unsafe removed. Deterministic."""
-    roles = cat['roles']
-    slots = {k: tuple(int(v[i:i + 2], 16) for i in (1, 3, 5)) for k, v in cat['colours'].items()}
-    px = lambda v: (lambda m: float(m.group(1)) * (16 if m.group(2) in ('rem', 'em') else 1) if m else None)(re.fullmatch(r'\s*([\d.]+)\s*(px|rem|em)?\s*', v or ''))
-    text = re.sub(r'@import[^;]*;', '', text)
-    text = re.sub(r'@font-face\s*\{[^}]*\}', '', text)
+def _px(value):
+    m = re.fullmatch(r'\s*(-?[\d.]+)\s*(px|rem|em)?\s*', value or '')
+    return float(m.group(1)) * (16 if m.group(2) in ('rem', 'em') else 1) if m else None
 
-    def colour(m):
-        h = m.group(0)[1:]
-        h = ''.join(c * 2 for c in h) if len(h) == 3 else h[:6]
-        rgb = tuple(int(h[i:i + 2], 16) for i in (0, 2, 4))
-        return 'var(' + min(slots, key=lambda k: sum((a - b) ** 2 for a, b in zip(slots[k], rgb))) + ')'
 
-    def rule(m):
-        selector, body = m.group(1), m.group(2)
-        if selector.strip().startswith('@') or re.fullmatch(r'\s*(from|to|\d{1,3}%)(\s*,\s*(from|to|\d{1,3}%))*\s*', selector):
-            return m.group(0)
-        lead = re.match(r'\s*(?:/\*.*?\*/\s*)*', selector, re.S).group(0)   # the author's comments before the rule stay as written
-        kept = [part for part in selector[len(lead):].split(',') if not UNSAFE_SELECTOR.search(part)]   # a selector off the menu is never kept
-        if not kept:
-            return lead.rstrip() + '\n' if lead.strip() else ''
-        selector = lead + re.sub(r'(?<![\w.#:-])(h1|h2|h3|h4|p|small|label|a|nav|blockquote|aside|code|pre)\b(?![\w-])', lambda e: '.' + ELEMENTS[e.group(1)], ','.join(kept))
-        keep, typ = [], {}
-        for d in body.split(';'):
-            if ':' not in d:
-                continue
+def _nearest(px, steps):
+    return min(steps, key=lambda k: abs(steps[k] - px))
+
+
+GAPS = {'xs': 4, 's': 8, 'm': 14, 'l': 22}   # the platform's layout steps (the proposal: plans/AGENT_CARD_LOOKS_PROPOSAL_20261006.md)
+TYPE = ('font', 'font-family', 'font-size', 'font-weight', 'font-style', 'line-height', 'letter-spacing', 'text-transform')
+
+
+def to_classes(written, where=''):
+    """Written CSS declarations ("display: flex; gap: 10px; font-size: 40px ...") and the part's own name -> (the menu's
+    classes, [what was said]). Type -> the nearest role of THE GLOBAL FONT CATALOG; layout -> the steps (stack, row,
+    gap-*, pad-*, align-*, justify-*, cols-N); a look named or drawn (CRT scanlines, a wellness glow, a glitch) -> the
+    platform's own look-*; a colour -> the theme's own (nothing to write); everything else is dropped and said. Deterministic."""
+    cat = _catalog()
+    roles, out, said = cat['roles'], [], []
+    decls = {}
+    for d in written.split(';'):
+        if ':' in d:
             k, v = (x.strip() for x in d.split(':', 1))
-            if k.lower() in ('font', 'font-family', 'font-size', 'font-weight', 'font-style', 'line-height', 'letter-spacing', 'text-transform'):
-                typ[k.lower()] = v
-            elif not UNSAFE_DECL.match(f'{k}: {v}'):
-                keep.append(k + ': ' + re.sub(r'#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?\b|#[0-9a-fA-F]{3}\b', colour, v))
-        if typ:
-            size, wt, case = px(typ.get('font-size')), typ.get('font-weight', ''), typ.get('text-transform')
-            wt = {'bold': 700, 'normal': 400}.get(wt, int(wt) if wt.isdigit() else None)
-            r = min(roles, key=lambda x: (abs(roles[x]['size'] - size) if size is not None else 0) + (abs(roles[x]['weight'] - wt) / 50 if wt else 0) + (6 if case and case != roles[x]['case'] else 0))
-            keep += [f'font-family: var(--font-{r})', f'font-size: var(--font-{r}-sz)', f'font-weight: var(--font-{r}-wt)', f'text-transform: var(--font-{r}-tt)']
-        return selector.rstrip() + ' { ' + '; '.join(keep) + ' }' if keep else ''
-    return re.sub(r'([^{}]+)\{([^{}]*)\}', rule, text)
+            if k:
+                decls[k.lower()] = v
+    typ = {k: v for k, v in decls.items() if k in TYPE}
+    if typ:
+        size, wt, case = _px(typ.get('font-size')), typ.get('font-weight', ''), typ.get('text-transform')
+        wt = {'bold': 700, 'normal': 400}.get(wt, int(wt) if wt.isdigit() else None)
+        role = min(roles, key=lambda r: (abs(roles[r]['size'] - size) if size is not None else 0) + (abs(roles[r]['weight'] - wt) / 50 if wt else 0) + (6 if case and case != roles[r]['case'] else 0))
+        out.append(role)
+        said.append(f'{"; ".join(f"{k}: {v}" for k, v in typ.items())} -> {role}')
+    display, direction = decls.get('display', '').lower(), decls.get('flex-direction', '').lower()
+    if display in ('flex', 'inline-flex'):
+        out.append('stack' if direction.startswith('column') else 'row')
+    elif display in ('grid', 'inline-grid'):
+        cols = decls.get('grid-template-columns', '')
+        m = re.search(r'repeat\(\s*(\d+)', cols)
+        n = int(m.group(1)) if m else 3 if 'auto-fill' in cols or 'auto-fit' in cols else len(cols.split()) or 1
+        out.append(f'cols-{max(1, min(4, n))}')
+    if _px(decls.get('gap', '').split()[0] if decls.get('gap') else '') is not None:
+        out.append('gap-' + _nearest(_px(decls['gap'].split()[0]), GAPS))
+    if decls.get('padding') and _px(decls['padding'].split()[0]) is not None:
+        out.append('pad-' + _nearest(_px(decls['padding'].split()[0]), GAPS))
+    align = {'flex-start': 'align-start', 'start': 'align-start', 'center': 'align-center', 'flex-end': 'align-end', 'end': 'align-end'}.get(decls.get('align-items', '').lower())
+    justify = {'flex-start': 'justify-start', 'start': 'justify-start', 'center': 'justify-center', 'flex-end': 'justify-end', 'end': 'justify-end',
+               'space-between': 'justify-between'}.get(decls.get('justify-content', '').lower())
+    out += [c for c in (align, justify) if c]
+    text = (where + ' ' + written).lower()
+    look = ('look-glitch' if re.search(r'glitch|mark-?3|foil|flicker|jitter', text) else
+            'look-wellness' if re.search(r'wellness|mark-?2|breathe|drift|blur\(', text) else
+            'look-crt' if re.search(r'\bcrt\b|mark-?1|scan|repeating-linear-gradient\(\s*0deg', text) else
+            'look-block' if re.search(r'block|repeating-linear-gradient\(\s*90deg', text) else '')
+    if look and ('animation' in decls or 'background' in decls or 'filter' in decls or 'look' in where.lower()):
+        out.append(look)
+        said.append(f'{where.strip() or "the part"}: its look -> {look} (the platform draws it)')
+    kept_keys = set(TYPE) | {'display', 'flex-direction', 'grid-template-columns', 'gap', 'padding', 'align-items', 'justify-content'}
+    for k, v in decls.items():
+        if k not in kept_keys and not (look and k in ('animation', 'background', 'filter', 'background-size', 'mix-blend-mode', 'opacity')):
+            said.append(f'{k}: {v} -> dropped (the platform draws the card; colours are the theme\'s own)')
+    seen = []
+    for c in out:
+        if c not in seen:
+            seen.append(c)
+    return ' '.join(seen), said
+
+
+def _part(selector):
+    """A rule's selector as the part of the card it names: its last class (or tag), without the agent's own prefixes."""
+    words = re.findall(r'[.]?[A-Za-z][\w-]*', re.sub(r'::?[\w-]+(\([^)]*\))?|\[[^\]]*\]', '', selector.split(',')[0]))
+    name = (words[-1] if words else 'card').lstrip('.')
+    return ELEMENTS.get(name, re.sub(r'^mk-', '', name))   # a habit tag said as the role it means
+
+
+def _sheet_classes(text):
+    """A whole stylesheet -> ({part: classes}, [said]): each rule converted (to_classes), @-rules said and dropped."""
+    text = re.sub(r'/\*.*?\*/', '', text, flags=re.S)
+    parts, said = {}, []
+    for at in re.findall(r'@(?:import|font-face|keyframes|media|supports|namespace|layer)[^{;]*', text):
+        said.append(f'{at.strip()} -> dropped (the platform draws its own looks and motion)')
+    text = re.sub(r'@(?:keyframes|media|supports|layer)[^{]*\{(?:[^{}]*\{[^{}]*\})*[^{}]*\}', '', text)
+    text = re.sub(r'@[^{;]*;', '', text)
+    for selector, body in re.findall(r'([^{}]+)\{([^{}]*)\}', text):
+        part = _part(selector.strip())
+        classes, notes = to_classes(body, selector.strip())
+        said += [f'{selector.strip()}: {n}' for n in notes]
+        if classes:
+            merged = (parts.get(part, '') + ' ' + classes).split()
+            parts[part] = ' '.join(dict.fromkeys(merged))
+    return parts, said
+
+
+def conversions(root):
+    """-> [str]: what `larryd doctor --fix` will make of the agent's sheets and inline styles (the owner, 2026-10-06:
+    "if they write anything it can get converted automatically"), so the author learns the platform's menu."""
+    notes = []
+    for path in _files(pathlib.Path(root).resolve() / shape.AGENT):
+        if not path.is_file() or path.suffix not in KINDS:
+            continue
+        try:
+            text = path.read_text()
+        except UnicodeDecodeError:
+            continue
+        if path.suffix == '.css':
+            parts, said = _sheet_classes(text)
+            notes += [f'{path.name}: {n}' for n in said] + [f'{path.name}: {p} -> class "{c}"' for p, c in sorted(parts.items())]
+        for m in STYLE_ATTR.finditer(text):
+            classes, said = to_classes(m.group(2))
+            notes += [f'{path.name}: style="{m.group(2)}" -> class="{classes}"'] + [f'{path.name}: {n}' for n in said]
+    return notes
 
 
 def _inside(root, path):
@@ -591,25 +639,57 @@ def _backup(root, path):
 
 def fix(root):
     """`larryd doctor --fix` (the owner, 2026-10-06: "instead of just doctor it fixes it too"): rewrites the developer's
-    own card sheets to the platform's form (fix_sheet) and fills the card's missing facts with honest defaults it names;
+    own sheets and inline styles into the platform's menu of classes (agent/classes.json) and fills the card's missing facts with honest defaults it names;
     the originals are kept in .larryd/doctor_backup/. -> [str]: what it changed (and what it would not touch: a link, a
     path outside the project). Deterministic: the same files give the same result. Never writes through a link."""
     root = pathlib.Path(os.path.realpath(root))
     agent, changed, cat = root / shape.AGENT, [], _catalog()
     if not _inside(root, agent):
         return [f'{agent}: a link or outside the project: nothing fixed']
+    picks = {}
     for path in _files(agent):
-        if path.suffix != '.css':
+        if not path.is_file() and not path.is_symlink() or path.suffix not in KINDS:
             continue
         if not _inside(root, path) or not path.is_file():
-            changed.append(f'{path.relative_to(root)}: a link, left as it is (not written)')
+            if path.suffix == '.css' or path.is_symlink():
+                changed.append(f'{path.relative_to(root)}: a link, left as it is (not written)')
             continue
-        old = path.read_text()
-        new = _fix_sheet(old, cat)
-        if new != old:
+        try:
+            old = path.read_text()
+        except UnicodeDecodeError:
+            continue
+        if path.suffix == '.css':
+            parts, _said = _sheet_classes(old)
+            for part, classes in parts.items():
+                picks[part] = ' '.join(dict.fromkeys((picks.get(part, '') + ' ' + classes).split()))
+            _backup(root, path)
+            if not _inside(root, path):
+                raise PermissionError(f'{path} is a link or outside the project: not removed')
+            os.unlink(path)
+            changed.append(f'{path.relative_to(root)}: turned into the menu\'s classes (agent/{CLASSES}); the sheet removed, kept in .larryd/doctor_backup/')
+        elif STYLE_ATTR.search(old):
+            new = STYLE_ATTR.sub(lambda m: f'class={m.group(1)}{to_classes(m.group(2))[0]}{m.group(1)}', old)
             _backup(root, path)
             _write(root, path, new)
-            changed.append(f'{path.relative_to(root)}: written in the catalog\'s roles and the theme\'s colours, anything unsafe removed')
+            changed.append(f'{path.relative_to(root)}: each inline style turned into the menu\'s classes')
+    target = agent / CLASSES
+    if target.is_symlink() or (target.exists() and not _inside(root, target)):
+        changed.append(f'{target.relative_to(root)}: a link, left as it is (not written)')
+    else:
+        try:
+            have = json.loads(target.read_text()) if target.is_file() else {}
+        except ValueError:
+            have = {}
+        have = {k: v for k, v in have.items() if isinstance(k, str) and isinstance(v, str)} if isinstance(have, dict) else {}
+        menu = _menu()
+        merged = {k: ' '.join(w for w in dict.fromkeys((have.get(k, '') + ' ' + picks.get(k, '')).split()) if w in menu) for k in sorted(set(have) | set(picks))}
+        merged = {k: v for k, v in merged.items() if v}
+        text = json.dumps(merged, indent=2, sort_keys=True) + '\n'
+        if (merged or target.exists()) and (not target.is_file() or target.read_text() != text):
+            if target.is_file():
+                _backup(root, target)
+            _write(root, target, text)
+            changed.append(f'{target.relative_to(root)}: the menu\'s classes only')
     manifest = agent / shape.MANIFEST
     if manifest.is_file() and _inside(root, manifest):
         try:

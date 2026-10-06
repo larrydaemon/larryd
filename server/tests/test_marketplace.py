@@ -1,6 +1,5 @@
 """THE AGENT MARKETPLACE, run as it really runs: in the sandbox, from its locker folder."""
 import json
-import re
 import unittest
 
 from _here import APP
@@ -34,7 +33,7 @@ class CollectionTest(unittest.TestCase):
             'initials': 'TA', 'image_dam_key': '', 'product': 'LARRYD', 'module': 'AGENT', 'pitch': 'Every agent, one toggle.',
             'developer': 'Positive Feedback', 'type': 'OFF-THE-SHELF', 'residency': 'INTERNAL',
             'screen': 'larryd/agnt/home', 'sends_to': '', 'data_sent': '', 'rate': 0,
-            'hired': False, 'hireable': True, 'needs': ''}])
+            'hired': False, 'hireable': True, 'needs': '', 'classes': 'stack gap-s pad-m'}])
 
     def test_counts_and_order_come_from_the_cards(self):
         cards = [card(key='K3', number='3', hired=True), card(key='K1', number='1'), card(key='K2', number='', name='PF Night Watch')]
@@ -56,7 +55,6 @@ class CollectionTest(unittest.TestCase):
 
     def test_an_empty_collection_is_empty(self):
         out = run({'do': 'collection', 'cards': []})
-        self.assertTrue(out.pop('style'))   # the card's own sheet comes with every collection
         self.assertEqual(out, {'cards': [], 'total': 0, 'hired': 0,
                          'filters': {'product': [], 'module': [], 'type': [], 'residency': [], 'class': []}})
 
@@ -91,18 +89,9 @@ class Gives(unittest.TestCase):
 
 
 class TheCardsOwnLook(unittest.TestCase):
-    """Owner 2026-10-06: the card's frame, type and class look (Mark I CRT, Mark II Wellness, Mark III Glitch) are the
-    agent's own sheet, never the platform's; a sheet that reaches anywhere would be refused by the platform."""
-    def test_the_collection_carries_the_agents_own_sheet_with_the_three_marks(self):
-        sheet = re.sub(r'/\*.*?\*/', '', run({'do': 'collection', 'cards': [card()]})['style'], flags=re.S)   # its words aside
-        for mark in ('.mk-mark-1 ', '.mk-mark-2 ', '.mk-mark-3 '):
-            self.assertIn(mark, sheet)
-        for never in ('[', '::', ':has(', 'position: absolute', 'translate', '; content:', '{ content:'):   # the platform's menu: classes only, no layer escapes
-            self.assertNotIn(never, sheet)
-        self.assertIn('.mk-panel', sheet)
-
-    def test_the_sheet_reaches_nowhere(self):
-        sheet = run({'do': 'collection', 'cards': []})['style'].lower()
-        for reach in ('url(', '@import', 'expression(', 'javascript:'):
-            self.assertNotIn(reach, sheet)
-
+    """The owner, 2026-10-06 ("we have a full menu, they pick from our definitions"): the agent ships no sheet; each card
+    names the menu's classes it picked (classes.json), and the platform draws the look from the card's class."""
+    def test_the_collection_carries_no_sheet_and_the_cards_picks(self):
+        out = run({'do': 'collection', 'cards': [card()]})
+        self.assertNotIn('style', out)
+        self.assertEqual(out['cards'][0]['classes'], 'stack gap-s pad-m')
