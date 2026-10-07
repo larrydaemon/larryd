@@ -33,6 +33,7 @@
     "price": "0",
     "type": "OFF-THE-SHELF",
     "residency": "INTERNAL",
+    "authorization": "PUBLIC",
     "screen": "agnt/home",
     "product": "LARRYD",
     "module": "AGENT",

@@ -255,7 +255,8 @@ The card's allowed values:
 |---|---|
 | class | MARK I AGENT (NORMAL) (effect crt); MARK II SUPER AGENT (HARNESS) (effect wellness); MARK III QUANTUM AI (AGENTIC CODE) (effect glitch) |
 | type | OFF-THE-SHELF, DEVELOPER |
-| residency | INTERNAL, EXTERNAL, BOTH (where it runs; who may hire it is set at authorization) |
+| residency | INTERNAL, EXTERNAL, BOTH (where it runs) |
+| authorization | PUBLIC, PRIVATE (who may hire it: your starting setting; the platform's authorize panel can change it at any time after, and a PRIVATE agent's owning account is entered there) |
 | product | INVOICE MAPS, AGENCY MGMT, PACE SHIFT, LARRYD |
 | price | a whole number of mTok per run: 3 or "3"; "0" is free |
 

@@ -64,7 +64,7 @@ def manifest(name):
         'skills': [],
         'knowledge': [],
         'card': {'class': 'MARK I AGENT (NORMAL)', 'pitch': f'What {name} does for the member, in one line.', 'price': '0',
-                 'type': 'OFF-THE-SHELF', 'residency': 'INTERNAL', 'screen': 'agnt/home', 'product': 'LARRYD', 'module': 'AGENT',
+                 'type': 'OFF-THE-SHELF', 'residency': 'INTERNAL', 'authorization': 'PUBLIC', 'screen': 'agnt/home', 'product': 'LARRYD', 'module': 'AGENT',
                  'developer': 'Independent developer', 'sends_to': '', 'data_sent': ''},
     }
 

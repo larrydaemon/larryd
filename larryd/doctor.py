@@ -378,11 +378,11 @@ def _card(root, card, f):
     def text(k):
         return isinstance(facts.get(k), str)
 
-    for k in ('class', 'pitch', 'type', 'residency', 'product', 'module', 'developer'):
+    for k in ('class', 'pitch', 'type', 'residency', 'authorization', 'product', 'module', 'developer'):
         if k in facts and not (text(k) and facts[k].strip()):
             f.add(c, where, f'card "{k}" is empty or not text', f'set card "{k}" to {shape.CARD[k]}')
     lists = sheet.catalog()['card']
-    for k, allowed in (('class', list(lists['class'])), ('type', lists['type']), ('residency', lists['residency']), ('product', lists['products'])):
+    for k, allowed in (('class', list(lists['class'])), ('type', lists['type']), ('residency', lists['residency']), ('authorization', lists['authorization']), ('product', lists['products'])):
         if text(k) and facts[k].strip() and facts[k].strip().upper() not in allowed:
             f.add(c, where, f'card "{k}" is "{facts[k]}", not one the platform knows', f'use one of: {", ".join(allowed)}')
     effect = lists['class'].get(facts['class'].strip().upper()) if text('class') else None
@@ -608,7 +608,7 @@ def fix(root):
             data = None
         if isinstance(data, dict):
             card = data.setdefault('card', {})
-            defaults = {'class': 'MARK I AGENT (NORMAL)', 'price': '0', 'type': 'OFF-THE-SHELF', 'residency': 'INTERNAL', 'screen': 'agnt/home',
+            defaults = {'class': 'MARK I AGENT (NORMAL)', 'price': '0', 'type': 'OFF-THE-SHELF', 'residency': 'INTERNAL', 'authorization': 'PUBLIC', 'screen': 'agnt/home',
                         'product': 'LARRYD', 'module': 'AGENT', 'developer': 'Independent developer', 'sends_to': '', 'data_sent': '',
                         'pitch': f"What {data.get('name') or 'this agent'} does for the member, in one line."}
             missing = [k for k in defaults if k not in card]

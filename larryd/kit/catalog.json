@@ -215,7 +215,7 @@
   ]
  },
  "card": {
-  "about": "The card's allowed values, the platform's own fixed lists (its agent class, type and residency lists; its screens: each module's home, list and card, and each product's dashboard larry/home, at app/<species>/<page>). Who may hire (public or one private account) is set at authorization, never in the manifest.",
+  "about": "The card's allowed values, the platform's own fixed lists (its agent class, type and residency lists; its screens: each module's home, list and card, and each product's dashboard larry/home, at app/<species>/<page>). Who may hire (\"authorization\": PUBLIC or PRIVATE) is the developer's starting setting; the platform's authorize panel can change it at any time after, and a PRIVATE agent's owning account is entered there.",
   "class": {
    "MARK I AGENT (NORMAL)": "crt",
    "MARK II SUPER AGENT (HARNESS)": "wellness",
@@ -433,6 +433,10 @@
     "product": "any",
     "module": "the product's dashboard"
    }
-  }
+  },
+  "authorization": [
+   "PUBLIC",
+   "PRIVATE"
+  ]
  }
 }

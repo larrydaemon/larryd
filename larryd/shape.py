@@ -39,6 +39,8 @@ CARD = {
     'type': 'OFF-THE-SHELF or DEVELOPER',
     'residency': 'INTERNAL (it runs on LARRYD), EXTERNAL or BOTH; who may hire it (every account, or one private account) is '
                  'set when it is authorized, never here',
+    'authorization': 'who may hire it, your starting setting: PUBLIC (every account) or PRIVATE (one account); the platform\'s '
+                     'authorize panel can change it at any time after, and a PRIVATE agent\'s owning account is entered there',
     'screen': 'the screen it lives on, <species>/<page> (its address is app/<species>/<page>): a module\'s home, list or card, '
               'e.g. cont/card, or a product\'s dashboard larry/home; the list is in CLAUDE.md',
     'product': 'the product that screen belongs to: INVOICE MAPS, AGENCY MGMT, PACE SHIFT or LARRYD',

@@ -166,3 +166,20 @@ def test_the_allowed_values_are_in_the_guide_and_every_project(tmp_path):
     assert table in (new.make('vals', tmp_path) / 'CLAUDE.md').read_text()
     for name in ('MARK I AGENT (NORMAL)', 'OFF-THE-SHELF', 'INTERNAL', 'cont/card', 'larry/home', 'agnt/home'):
         assert name in table
+
+
+def test_authorization_is_the_developer_s_starting_setting(tmp_path):
+    """The owner: the developer sets the original setting; the authorize panel can change it at any time after."""
+    root = new.make('auth', tmp_path)
+    assert _manifest(root)[1]['card']['authorization'] == 'PUBLIC' and doctor.check(root) == []
+    assert doctor.check(_with_card(tmp_path, 'priv', {'authorization': 'PRIVATE'})) == []
+    wrong = [p.wrong for p in doctor.check(_with_card(tmp_path, 'odd', {'authorization': 'SECRET'}))]
+    assert wrong == ['card "authorization" is "SECRET", not one the platform knows']
+    path, manifest = _manifest(root)
+    del manifest['card']['authorization']
+    path.write_text(json.dumps(manifest))
+    assert any('card "authorization" is missing' in p.wrong for p in doctor.check(root))
+    doctor.fix(root)
+    assert _manifest(root)[1]['card']['authorization'] == 'PUBLIC' and doctor.check(root) == []
+    from larryd import sheet
+    assert 'the platform\'s authorize panel can change it at any time after' in sheet.card_table()

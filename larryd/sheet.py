@@ -204,7 +204,9 @@ def card_table(cat=None):
     lines = ['| Field | Allowed values |', '|---|---|',
              '| class | ' + '; '.join(f'{k} (effect {v})' for k, v in card['class'].items()) + ' |',
              '| type | ' + ', '.join(card['type']) + ' |',
-             '| residency | ' + ', '.join(card['residency']) + ' (where it runs; who may hire it is set at authorization) |',
+             '| residency | ' + ', '.join(card['residency']) + ' (where it runs) |',
+             '| authorization | ' + ', '.join(card['authorization']) + ' (who may hire it: your starting setting; the platform\'s authorize '
+             'panel can change it at any time after, and a PRIVATE agent\'s owning account is entered there) |',
              '| product | ' + ', '.join(card['products']) + ' |',
              '| price | a whole number of mTok per run: 3 or "3"; "0" is free |', '',
              '| Screen (<species>/<page>, at app/<species>/<page>) | Product | Module |', '|---|---|---|']
