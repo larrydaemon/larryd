@@ -370,3 +370,13 @@ class TheOfflineCard(unittest.TestCase):
         from core_engine import view
         self.assertEqual(view.refused(self.html(offline=True)), '')
         self.assertEqual(run({'do': 'collection', 'cards': [final(offline=True)]})['cards'][0]['offline'], True)
+
+
+class TheMarkLine(unittest.TestCase):
+    """The card says its Mark and nothing more (the owner's design: "the top should just be Mark I")."""
+    def test_the_platforms_long_class_names_show_as_the_mark_alone(self):
+        for cls, shown in (('MARK I AGENT (NORMAL)', 'Mark I'), ('MARK II SUPER AGENT (HARNESS)', 'Mark II'), ('MARK III QUANTUM AI (AGENTIC CODE)', 'Mark III'), ('Mark II', 'Mark II')):
+            h = run({'do': 'collection', 'cards': [final(**{'class': cls})]})['view']['html']
+            self.assertIn(f'<span class="mk-caption" data-part="class">{shown}</span>', h, cls)
+            for never in ('AGENT (NORMAL)', 'SUPER AGENT', 'QUANTUM', 'HARNESS', 'AGENTIC'):
+                self.assertNotIn(never, h, cls)

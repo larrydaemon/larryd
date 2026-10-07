@@ -125,11 +125,12 @@ def _card(c, simple=False):
     # platform's disclosure, held by its own test); an agent that sends nothing out shows nothing.
     extra = (f'<div class="mk-caption mk-sends">Sends data to {e(c["sends_to"])}' + (f': {e(c["data_sent"])}' if c['data_sent'] else '') + '</div>') if c['sends_to'] else ''
     mark = next((n for n, word in ((3, 'MARK III'), (2, 'MARK II'), (1, 'MARK I')) if c['class'].upper().startswith(word)), 0)   # the class picks the box's animation: I CRT, II Wellness, III Glitch
+    label = {1: 'Mark I', 2: 'Mark II', 3: 'Mark III'}.get(mark, c['class'])   # THE CARD SAYS ITS MARK AND NOTHING MORE (the owner's design: "the top should just be Mark I"), whatever longer name the platform's class carries
     rain = '<canvas class="mk-rain" aria-hidden="true"></canvas>' if mark == 3 and not simple else ''   # Mark III: the code rain's canvas (card.js), behind the cat; none in the SIMPLE view
     locked = ('<button type="button" class="toggle" aria-disabled="true" aria-pressed="' + ('true' if c['hired'] else 'false') + '" title="Locked"><span class="toggle__knob"></span></button>')
     hire = f'{locked}<span class="mk-annotation">Locked</span>' if c['offline'] else f'{toggle}<span class="mk-annotation">Hire</span>'
     return (f'<article class="agent-card{" mk-on" if c["hired"] else ""}{" mk-offline" if c["offline"] else ""}" data-agent="{e(c["key"])}" data-on="{"1" if c["hired"] else "0"}" data-mark="{mark}" data-wears="{e(c["wears"]) if c["wears"].isalnum() else ""}">'
-            f'<div class="mk-head"><div class="mk-id"><span class="mk-caption" data-part="class">{e(c["class"])}</span>'
+            f'<div class="mk-head"><div class="mk-id"><span class="mk-caption" data-part="class">{e(label)}</span>'
             f'<div class="mk-heading mk-name" data-part="name">{e(c["name"])}</div></div>'   # the name stands where the number stood: under the class, beside the hire toggle
             f'<div class="mk-hire">{hire}</div></div>'
             f'<div class="mk-frame">{rain}{art}<span class="mk-warm"></span>{number}</div>'
