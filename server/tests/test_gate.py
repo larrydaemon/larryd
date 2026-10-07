@@ -39,8 +39,9 @@ class EntitledTest(unittest.TestCase):
 
     def test_paid_needs_its_group(self):
         paid = card(price='10', product_slug='invoicemaps', product='INVOICE MAPS')
-        self.assertEqual(gate.entitled(paid, ['invoicemaps']), (True, ''))
-        self.assertEqual(gate.entitled(paid, ['paceshift']), (False, 'needs the INVOICE MAPS subscription'))
+        self.assertEqual(gate.entitled(paid, ['organize']), (True, ''))   # Invoice Maps' plan in mTok is Organize (the word under its name in the dock)
+        self.assertEqual(gate.entitled(paid, ['create']), (False, 'needs the INVOICE MAPS subscription'))   # Create is Pace Shift's
+        self.assertEqual(gate.entitled(paid, ['invoicemaps']), (False, 'needs the INVOICE MAPS subscription'))   # a plan is named by its own word, never the product's slug
 
 
 class MayRunTest(unittest.TestCase):

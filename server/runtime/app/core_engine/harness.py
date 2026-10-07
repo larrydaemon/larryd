@@ -371,7 +371,7 @@ class Harness:
         except _Stop as stop:
             return self._end(account, scope, member, key, job_key, run, stop.state, stop.reason)
         status, body = self.client.post('cc', '/mtok/use', {'account': account, 'member': member, 'agent_key': key,
-                                                            'job_key': f'{job_key}#{run}', 'agent_group': card['product_slug'], 'rate': str(gate.rate(card))})
+                                                            'job_key': f'{job_key}#{run}', 'agent_group': gate.group_of(card), 'rate': str(gate.rate(card))})
         if status != 200:
             return self._end(account, scope, member, key, job_key, run, 'FAILED',
                              f"not charged: {body.get('refused') or f'mTok answered {status}'}; the delivery is withheld")

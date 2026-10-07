@@ -51,29 +51,31 @@ if __name__ == '__main__':
 
 
 class OfflineIsForTheSubscription(unittest.TestCase):
-    """The owner, 2026-10-07: "the offline is for the subscription to work ... this is offline until someone buys a subscription to invoice maps"."""
-    def test_a_card_marked_offline_is_offline_only_without_its_products_subscription(self):
-        maps = card('MAPS', product='INVOICE MAPS', product_slug='invoicemaps', screen='locn/home', offline=True)
-        self.assertIs(lanes.assemble([maps], [], [], lambda k: OK)[0]['offline'], True)                     # no subscription: offline
-        self.assertIs(lanes.assemble([maps], [], ['paceshift'], lambda k: OK)[0]['offline'], True)          # another product's: still offline
-        self.assertIs(lanes.assemble([maps], [], ['invoicemaps'], lambda k: OK)[0]['offline'], False)       # its own product's: online
-        for not_marked in (False, None, 'true', 1):
-            self.assertIs(lanes.assemble([card('CAL', offline=not_marked)], [], [], lambda k: OK)[0]['offline'], False)   # never marked: never offline
-        self.assertIs(lanes.assemble([card('CAL')], [], [], lambda k: OK)[0]['offline'], False)
+    """The owner, 2026-10-07: "no subscription = offline and locked; they buy an invoice maps subscription = subscription; then can turn on or off whenever";
+    "all 4 products work the same". A product's subscription is its PLAN in mTok, the word under its name in the dock: Organize (Invoice Maps), Manage
+    (Agency Mgmt), Create (Pace Shift); the account's bought plans come as mTok's subscriptions' agent_group."""
+    PLANS = (('INVOICE MAPS', 'invoicemaps', 'organize'), ('AGENCY MGMT', 'agencymgmt', 'manage'), ('PACE SHIFT', 'paceshift', 'create'))
 
-    def test_with_the_subscription_the_card_says_subscription_never_without(self):
-        maps = card('MAPS', product='INVOICE MAPS', product_slug='invoicemaps', screen='locn/home', offline=True)
-        self.assertIs(lanes.assemble([maps], [], ['invoicemaps'], lambda k: OK)[0]['subscription'], True)
-        self.assertIs(lanes.assemble([maps], [], [], lambda k: OK)[0]['subscription'], False)       # no subscription: Offline, and the word Subscription is never shown
-        self.assertIs(lanes.assemble([card('CAL')], [], ['larryd'], lambda k: OK)[0]['subscription'], False)   # a free agent stays Free
-
-    def test_all_four_products_work_the_same(self):   # the owner, 2026-10-07: "all 4 products work the same"
-        products = (('INVOICE MAPS', 'invoicemaps'), ('AGENCY MGMT', 'agencymgmt'), ('PACE SHIFT', 'paceshift'), ('LARRYD', 'larryd'))
-        for name, slug in products:
+    def test_a_card_marked_offline_is_offline_until_its_products_plan_is_bought(self):
+        for name, slug, plan in self.PLANS:
             marked = card('X', product=name, product_slug=slug, offline=True)
-            without = lanes.assemble([marked], [], [s for _n, s in products if s != slug], lambda k: OK)[0]   # every OTHER product's subscription
-            with_it = lanes.assemble([marked], [], [slug], lambda k: OK)[0]
-            self.assertEqual((without['offline'], without['subscription']), (True, False), name)    # no subscription to ITS product: offline and locked
-            self.assertEqual((with_it['offline'], with_it['subscription']), (False, True), name)    # its own: Subscription, the toggle works
+            others = [p for _n, _s, p in self.PLANS if p != plan]
+            for bought, offline in (([], True), (others, True), ([slug], True), ([plan], False), (others + [plan], False)):   # the plan's name, never the product's slug
+                got = lanes.assemble([marked], [], bought, lambda k: OK)[0]
+                self.assertEqual((got['offline'], got['subscription']), (offline, not offline), (name, bought))
+
+    def test_never_marked_never_offline_and_a_free_agent_is_free_with_no_subscription(self):
+        for name, slug, plan in self.PLANS + (('LARRYD', 'larryd', ''),):
+            for not_marked in (False, None, 'true', 1):
+                self.assertIs(lanes.assemble([card('C', product=name, product_slug=slug, offline=not_marked)], [], [], lambda k: OK)[0]['offline'], False)
             free = lanes.assemble([card('F', product=name, product_slug=slug)], [], [], lambda k: OK)[0]
-            self.assertEqual((free['offline'], free['subscription'], free['needs']), (False, False, ''), name)   # a free agent: free with no subscription
+            self.assertEqual((free['offline'], free['subscription'], free['needs']), (False, False, ''), name)
+
+    def test_the_platforms_own_group_on_a_card_wins(self):   # when the platform hands the card's agent_group itself, that is the plan
+        marked = card('X', product='INVOICE MAPS', product_slug='invoicemaps', offline=True, agent_group='special')
+        self.assertIs(lanes.assemble([marked], [], ['organize'], lambda k: OK)[0]['offline'], True)
+        self.assertIs(lanes.assemble([marked], [], ['special'], lambda k: OK)[0]['offline'], False)
+
+    def test_a_product_with_no_plan_stays_offline_when_marked(self):   # LARRYD has no plan today: nothing can be bought to open it
+        marked = card('X', product='LARRYD', product_slug='larryd', offline=True)
+        self.assertIs(lanes.assemble([marked], [], ['organize', 'manage', 'create', 'larryd'], lambda k: OK)[0]['offline'], True)
