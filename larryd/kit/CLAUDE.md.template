@@ -12,7 +12,8 @@ run, apart from everything else), owned by its developer. The platform reaches i
 - Its answer: one JSON object. `delivery` (plain text) is what lands in the member's job.
 - The job's own inputs: with `"run": {{"do": "answer", "hands": ["job"]}}` and `"inputs": {{"name": "001", "mood": "002"}}`
   (each on one of the job's slots 001-015), the job also holds `"job": {{"name": "...", "mood": "..."}}`.
-  `samples/job_inputs.json` shows it: `larryd run --job samples/job_inputs.json`.
+  `samples/job_inputs.edit-me.json` shows it. Edit me: once your agent declares those inputs, give the file your input
+  names, rename it to `samples/job_inputs.json`, and run `larryd run --job samples/job_inputs.json`.
 
 ## The manifest (`agent/agent.json`)
 {fields}

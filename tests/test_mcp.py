@@ -156,3 +156,32 @@ def test_the_guide_and_the_readme_name_only_what_exists():
         named = set(re.findall(r'larryd ([a-z]+)', text)) - {'repository', 'tools', 'skill', 'the'}
         assert named <= real, (doc, named - real)
         assert set(re.findall(r'\blarryd_[a-z]+', text)) <= set(mcp.TOOLS), doc
+
+
+# frost-92's MCP-only path on rc17 (Z1, Z4, Z6)
+def test_larryd_doctor_fixes_with_fix_true(tmp_path):
+    root = new.make('mfix', tmp_path, example='marketplace')
+    (root / 'agent' / 'card.css').write_text('.mk-card { border-radius: 4px }\n')
+    out, failed = mcp.TOOLS['larryd_doctor'][0]({'path': str(root)})
+    todos = [p['todo'] for c in out['checks'] for p in c['problems']]
+    assert not failed and not out['ok'] and any('`larryd doctor --fix`, or larryd_doctor with "fix": true' in t for t in todos)
+    out, failed = mcp.TOOLS['larryd_doctor'][0]({'path': str(root), 'fix': True})
+    assert not failed and out['ok'] and any('moved to design/card.css' in c for c in out['fixed'])
+
+
+def test_larryd_new_takes_from(tmp_path):
+    out, failed = mcp.TOOLS['larryd_new'][0]({'name': 'fromx', 'where': str(tmp_path), 'from': 'marketplace'})
+    assert not failed and json.loads((tmp_path / 'fromx' / 'agent' / 'agent.json').read_text())['name'] == 'PF AGENT MARKETPLACE'
+    out, failed = mcp.TOOLS['larryd_new'][0]({'name': 'nope', 'where': str(tmp_path), 'from': 'nothing'})
+    assert failed and 'no example' in out['wrong']
+    assert mcp.TOOLS['larryd_new'][2]['properties']['from']['enum'] == list(new.EXAMPLES)
+
+
+def test_larryd_doctor_with_no_project_is_an_error_not_eight_passes(tmp_path):
+    out, failed = mcp.TOOLS['larryd_doctor'][0]({'path': str(tmp_path)})
+    assert failed and out['ok'] is False and 'checks' not in out and 'no agent project' in out['wrong']
+
+
+def test_larryd_doctor_warns_of_the_blank_s_placeholders(tmp_path):
+    out, failed = mcp.TOOLS['larryd_doctor'][0]({'path': str(new.make('ph', tmp_path))})
+    assert out['ok'] and len(out['warnings']) == 2 and all('larryd_submit refuses it' in w for w in out['warnings'])

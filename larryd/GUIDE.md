@@ -51,8 +51,9 @@ This makes the folder `<name>/`:
   - an agent ships no CSS: the card's look is the `"look"` record in `agent/agent.json` (section 4)
 - `CLAUDE.md`: the spec and the rules, for Claude Code
 - `.claude/skills/larryd/SKILL.md`: the larryd skill Claude Code loads
-- `samples/job.json`: a sample job for `larryd run`; `samples/job_inputs.json`: a job with its own inputs, for an agent
-  with `"job"` in `run.hands` (`larryd run --job samples/job_inputs.json`)
+- `samples/job.json`: a sample job for `larryd run`; `samples/job_inputs.edit-me.json`: a job with its own inputs, for
+  once the agent declares them (`"job"` in `run.hands`, `"inputs"`): give it your input names, rename it to
+  `job_inputs.json`, then `larryd run --job samples/job_inputs.json`
 - `.mcp.json`: starts the LARRYD tools in Claude Code when you open the folder with `claude` (it names the full path of this
   larryd, so no virtual environment needs activating)
 

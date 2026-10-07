@@ -12,6 +12,7 @@ from dataclasses import asdict, dataclass
 
 from . import knowledge, look, shape, sheet, skills
 
+FIX = '`larryd doctor --fix`, or larryd_doctor with "fix": true,'   # every todo that asks for the fixer names both doors
 CHECKS = ('the project', 'the manifest', 'the entry', 'the air gap', 'no secret', 'the shape', 'the skills', 'the knowledge')
 CHECKS_VERSION = '3'   # THE LARRYD CHECKS (CHECKS.md, larryd.ai/checks.html): a new or changed check raises it
 BADGE = 'larryd-checks.svg'   # `larryd doctor --badge` writes it beside agent/, never inside it (the shape keeps agent/ to its own kinds)
@@ -324,7 +325,7 @@ def _shape(root, f):
         elif path.is_file():
             if path.suffix.lower() == '.css':
                 f.add(c, where, 'agents ship no CSS: the card\'s look is the "look" record in agent.json',
-                      f'run `larryd doctor --fix`: it turns this sheet into the look record (the nearest names) and moves it to {DESIGN}/{path.name}')
+                      f'run {FIX[:-1]}: it turns this sheet into the look record (the nearest names) and moves it to {DESIGN}/{path.name}')
             elif path.suffix not in KINDS:
                 f.add(c, where, f'"{path.suffix or path.name}" is not a kind of file an agent holds',
                       f'keep only {", ".join(sorted(KINDS))} files in agent/; anything else stays outside it')
@@ -370,7 +371,7 @@ def _card(root, card, f):
         return
     for k in shape.CARD:
         if k not in facts:
-            f.add(c, where, f'card "{k}" is missing', f'add card "{k}": {shape.CARD[k]}' + (', or run `larryd doctor --fix` (fills PUBLIC)' if k == 'authorization' else ''))
+            f.add(c, where, f'card "{k}" is missing', f'add card "{k}": {shape.CARD[k]}' + (f', or run {FIX[:-1]} (fills PUBLIC)' if k == 'authorization' else ''))
     for k in facts:
         if k not in shape.CARD:
             f.add(c, where, f'"{k}" is not a card field', f'remove "{k}"; the card\'s fields are: {", ".join(shape.CARD)}')
@@ -389,7 +390,7 @@ def _card(root, card, f):
     held = card.get('look', {}).get('effect') if isinstance(card.get('look'), dict) else None
     if effect and held and held != effect:
         f.add(c, where, f'look "effect" is "{held}", but the class {facts["class"]} draws {effect}',
-              f'set look "effect" to "{effect}" (the class picks the effect), or run `larryd doctor --fix`')
+              f'set look "effect" to "{effect}" (the class picks the effect), or run {FIX[:-1]}')
     if text('pitch') and len(facts['pitch']) > shape.MOST_PITCH:
         f.add(c, where, f'card "pitch" is longer than {shape.MOST_PITCH} characters', 'say it in one line; the card has room for one')
     price = facts.get('price')
@@ -414,6 +415,30 @@ def _card(root, card, f):
             f.add(c, where, f'card "{k}" is not text', f'set card "{k}" to {shape.CARD[k]}')
     if text('sends_to') and facts['sends_to'].strip() and not (text('data_sent') and facts['data_sent'].strip()):
         f.add(c, where, 'card "sends_to" names an outside service, but "data_sent" says nothing', 'say in card "data_sent" what is sent there, in plain words')
+
+
+PLACEHOLDER = re.compile(r'^What .+ (answers, in one plain sentence|does for the member, in one line)\.$')   # the blank's own words
+
+
+def placeholders(root):
+    """-> [str]: the blank's placeholder words still in the manifest ("about", the card's "pitch"). A warning while
+    building (the doctor passes, larryd run works); larryd submit refuses until they say what the agent really does."""
+    try:
+        data = json.loads((pathlib.Path(root).resolve() / shape.AGENT / shape.MANIFEST).read_text())
+    except (OSError, ValueError):
+        return []
+    if not isinstance(data, dict):
+        return []
+    card = data.get('card') if isinstance(data.get('card'), dict) else {}
+    found = [('"about"', data.get('about')), ('card "pitch"', card.get('pitch'))]
+    return [f'{name} is still the blank\'s placeholder ("{text}"): say what your agent really does'
+            for name, text in found if isinstance(text, str) and PLACEHOLDER.match(text.strip())]
+
+
+def is_project(root):
+    """Is there an agent project here (a real agent/ holding agent.json)?"""
+    agent = pathlib.Path(root).resolve() / shape.AGENT
+    return agent.is_dir() and not agent.is_symlink() and (agent / shape.MANIFEST).is_file()
 
 
 def check(root):

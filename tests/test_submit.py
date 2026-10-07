@@ -27,7 +27,11 @@ def door(tmp_path, monkeypatch):
 
 @pytest.fixture
 def project(tmp_path):
-    return new.make('sub', tmp_path)
+    root = new.make('sub', tmp_path)
+    manifest = json.loads((root / 'agent' / 'agent.json').read_text())   # a developer's own words, not the blank's
+    manifest['about'], manifest['card']['pitch'] = 'Answers with a short greeting.', 'A short greeting for the member.'
+    (root / 'agent' / 'agent.json').write_text(json.dumps(manifest))
+    return root
 
 
 def _held(door):
@@ -50,7 +54,7 @@ def test_the_doctor_comes_first_and_nothing_is_sent(door, project):
 
 def test_the_door_refusing_is_said_with_what_to_do(door, project, monkeypatch):
     import types
-    monkeypatch.setattr(submit, 'doctor', types.SimpleNamespace(check=lambda root: [], asdict=None, fix_look=lambda root: []))   # this side's doctor let it through; the door's own doctor still reads it
+    monkeypatch.setattr(submit, 'doctor', types.SimpleNamespace(check=lambda root: [], asdict=None, fix_look=lambda root: [], placeholders=lambda root: []))   # this side's doctor let it through; the door's own doctor still reads it
     code = project / 'agent' / 'agent.py'
     code.write_text(code.read_text() + '\nimport socket\n')
     with pytest.raises(submit.Refused) as no:
@@ -97,3 +101,13 @@ def test_version(capsys):
     with pytest.raises(SystemExit) as done:
         cli.main(['--version'])
     assert done.value.code == 0 and capsys.readouterr().out == f'larryd {__version__}\n'
+
+
+def test_submit_refuses_the_blank_s_placeholder_words(tmp_path, monkeypatch):
+    """frost-92's MCP path (Z6): the doctor warns while building; submit refuses until the words are the agent's own."""
+    root = new.make('blank', tmp_path)
+    sent = []
+    monkeypatch.setattr(submit, 'send', lambda data: (sent.append(data), (201, {'claim': 'https://scratch.example/claim'}))[1])
+    with pytest.raises(submit.Refused) as no:
+        submit.submit(root, open_browser=False)
+    assert 'placeholder' in no.value.wrong and '"about" is still the blank' in no.value.todo and sent == []

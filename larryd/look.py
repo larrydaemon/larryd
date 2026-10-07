@@ -137,7 +137,7 @@ REASONS = (   # (properties, why they never become a name); the first that match
 )
 
 
-def _why(prop, selector, part, card):
+def _why(prop, selector, part, card, accent=''):
     if STATES.search(selector):
         return 'the template draws hover, focus and every other state'
     for props, why in REASONS:
@@ -146,7 +146,9 @@ def _why(prop, selector, part, card):
     if prop in sheet.TYPE:
         return f'no text part of the card here (the parts: {", ".join(sheet.catalog()["parts"])})' if part is None else 'the role brings its own type'
     if card and re.search(r'colou?r|background|border|fill|stroke', prop):
-        return 'one accent per card: the first colour on the card became it; the template draws the border and the ground'
+        if accent:   # never claimed unless an accent was written
+            return f'one accent per card: {accent} became it; the template draws the border and the ground'
+        return 'no colour the doctor can read here: transparent and currentColor are not colours; the template draws the border and the ground'
     if re.search(r'colou?r|background|border|fill|stroke', prop):
         if part is None:
             return 'colour is card-wide, the accent only; the class picks the effect, which draws its own layers'
@@ -260,12 +262,13 @@ def from_sheet(text, cat=None):
     if text_roles:
         look['text'] = text_roles
 
+    accent_from = f'{rules[found[0]][0]} {found[2]} {found[3] and "var(--" + found[3] + ")" or found[4]}' if found and look.get('accent') else ''
     dropped = [f'{at} -> no name on the menu ({why})' for at, why in ats]
     for n, (selector, decls, within) in enumerate(rules):
         groups = {}
         for k, (prop, value) in enumerate(decls):
             if (n, k) not in used:
-                groups.setdefault(_why(prop, selector, _part(selector), n in card), []).append(prop)
+                groups.setdefault(_why(prop, selector, _part(selector), n in card, accent_from), []).append(prop)
         where = f'{within} {selector}' if within else selector
         for why, props in groups.items():
             dropped.append(f'{where}: {", ".join(props)} -> no name on the menu ({why})')

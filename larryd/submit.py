@@ -53,6 +53,8 @@ TODO = {0: 'check this computer\'s network, then submit again',
 def submit(root, open_browser=True):
     sheets = doctor.fix_look(root)   # a design sheet becomes the look record first: CSS is never a reason to refuse
     problems = doctor.check(root)
+    if not problems and doctor.placeholders(root):
+        raise Refused('the manifest still says the blank\'s placeholder words', 'write what your agent really does: ' + '; '.join(doctor.placeholders(root)))
     if problems:
         raise Refused('the doctor found problems; LARRYD would not take this agent', 'fix each one (`larryd doctor`), then submit again',
                       problems=[doctor.asdict(p) for p in problems])

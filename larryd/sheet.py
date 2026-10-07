@@ -7,11 +7,9 @@ import re
 from importlib import resources
 
 TYPE = ('font', 'font-family', 'font-size', 'font-weight', 'font-style', 'line-height', 'letter-spacing', 'word-spacing', 'text-transform')
-NAMED = {'white': (255, 255, 255), 'black': (0, 0, 0), 'red': (255, 0, 0), 'green': (0, 128, 0), 'blue': (0, 0, 255), 'yellow': (255, 255, 0),
-         'orange': (255, 165, 0), 'purple': (128, 0, 128), 'pink': (255, 192, 203), 'gray': (128, 128, 128), 'grey': (128, 128, 128),
-         'silver': (192, 192, 192), 'navy': (0, 0, 128), 'teal': (0, 128, 128), 'lime': (0, 255, 0), 'cyan': (0, 255, 255),
-         'magenta': (255, 0, 255), 'aqua': (0, 255, 255), 'fuchsia': (255, 0, 255), 'maroon': (128, 0, 0), 'olive': (128, 128, 0)}
-COLOUR = re.compile(r'#[0-9a-fA-F]{3,8}\b|\b(?:rgba?|hsla?)\([^()]*\)|(?<![\w-])(?:' + '|'.join(NAMED) + r')(?![\w-])', re.I)
+NAMED = {k: tuple(int(v[i:i + 2], 16) for i in (1, 3, 5)) for k, v in
+         json.loads(resources.files('larryd').joinpath('kit', 'css_colours.json').read_text()).items()}   # every CSS named colour
+COLOUR = re.compile(r'#[0-9a-fA-F]{3,8}\b|\b(?:rgba?|hsla?)\([^()]*\)|(?<![\w-])(?:' + '|'.join(sorted(NAMED, key=len, reverse=True)) + r')(?![\w-])', re.I)
 
 
 def catalog():

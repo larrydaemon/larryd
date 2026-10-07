@@ -75,7 +75,7 @@ def test_plain_doctor_says_will_convert_and_changes_nothing(tmp_path, capsys):
     out = capsys.readouterr().out
     assert css.read_text() == GREY and (root / 'agent' / 'agent.json').read_text() == before and 'CONVERTED' not in out
     assert 'WILL CONVERT card.css: .mk-card: border-radius 20px -> radius step-6 (22px, the nearest step)' in out
-    assert 'run `larryd doctor --fix` to write these into the look record' in out
+    assert 'run `larryd doctor --fix`, or larryd_doctor with "fix": true to write these into the look record' in out
 
 
 def test_fix_says_what_it_did_then_the_agent_is_clean(tmp_path, capsys):
@@ -236,6 +236,8 @@ def test_the_unwritten_case_clause_only_where_no_case_was_written():
 
 def test_the_blank_ships_a_sample_with_the_job_s_own_inputs(tmp_path):
     root = new.make('withjob', tmp_path)
+    assert not (root / 'samples' / 'job_inputs.json').exists()
+    (root / 'samples' / 'job_inputs.edit-me.json').rename(root / 'samples' / 'job_inputs.json')   # what the developer does once inputs are declared
     sample = json.loads((root / 'samples' / 'job_inputs.json').read_text())
     assert sample == {'do': 'answer', 'job': {'name': 'Harbor', 'mood': 'calm cool'}}
     manifest = json.loads((root / 'agent' / 'agent.json').read_text())
@@ -247,4 +249,45 @@ def test_the_blank_ships_a_sample_with_the_job_s_own_inputs(tmp_path):
     from larryd import runner
     result = runner.run(root, str(root / 'samples' / 'job_inputs.json'))
     assert result.state == 'DONE' and runner.as_json(result)['answer'] == {'delivery': 'Harbor feels calm cool'}
-    assert 'samples/job_inputs.json' in (root / 'CLAUDE.md').read_text() and 'samples/job_inputs.json' in (PACKAGE / 'GUIDE.md').read_text()
+    assert 'samples/job_inputs.edit-me.json' in (root / 'CLAUDE.md').read_text() and 'samples/job_inputs.edit-me.json' in (PACKAGE / 'GUIDE.md').read_text()
+
+
+def test_every_sample_of_a_fresh_project_runs_done(tmp_path):
+    """frost-92's MCP path (Z5): a sample that names inputs the agent does not declare is named edit-me, never run as is."""
+    from larryd import runner
+    for example in (None, 'marketplace'):
+        root = new.make(f'fresh{bool(example)}', tmp_path, example=example)
+        samples = sorted((root / 'samples').glob('*.json'))
+        runnable = [p for p in samples if 'edit-me' not in p.name]
+        assert runnable and all(runner.run(root, str(p)).state == 'DONE' for p in runnable), runnable
+        assert (root / 'samples' / 'job_inputs.edit-me.json').is_file()
+
+
+def test_claude_md_names_this_larryd_by_its_full_path(tmp_path):
+    """Z2: the commands in CLAUDE.md, like .mcp.json, name the larryd that made the project."""
+    root = new.make('abs', tmp_path)
+    exe = new.command()
+    assert pathlib.Path(exe.split()[0]).is_absolute()
+    text = (root / 'CLAUDE.md').read_text()
+    assert f"This project's larryd: `{exe}`" in text and f'- `{exe} doctor`:' in text and f'- `{exe} run`:' in text
+
+
+def test_every_named_colour_is_read_and_the_accent_is_never_claimed_unwritten():
+    """Z3: tomato (and every CSS named colour, rgb(), hsl()) is a colour; a drop line names the accent only when one was written."""
+    from larryd import look
+    record, said, dropped = look.from_sheet('.mk-card { border: 1px solid tomato; background: white }')
+    assert record == {'accent': 'active-color-01'} and said[0].startswith('.mk-card: border tomato -> accent active-color-01')
+    assert dropped == ['.mk-card: background -> no name on the menu (one accent per card: .mk-card border tomato became it; '
+                       'the template draws the border and the ground)']
+    assert len(sheet.NAMED) == 148 and all(look.from_sheet(f'.mk-card {{ color: {n} }}')[0].get('accent') for n in sheet.NAMED)
+    assert look.from_sheet('.mk-card { color: rgb(255 99 71) }')[0]['accent'] and look.from_sheet('.mk-card { color: hsl(9, 100%, 64%) }')[0]['accent']
+    record, said, dropped = look.from_sheet('.mk-card { border: 1px solid transparent }')
+    assert record == {} and 'became it' not in dropped[0] and 'transparent and currentColor are not colours' in dropped[0]
+
+
+def test_plain_doctor_warns_of_the_blank_s_placeholders(tmp_path, capsys):
+    """Z6: a warning while building (the doctor still passes), a refusal at submit."""
+    root = new.make('words', tmp_path)
+    assert cli.main(['doctor', str(root)]) == 0
+    out = capsys.readouterr().out
+    assert 'WARN "about" is still the blank\'s placeholder' in out and 'WARN card "pitch" is still' in out and 'larryd submit refuses it' in out

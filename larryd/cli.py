@@ -77,11 +77,13 @@ def main(argv=None):
         problems = doctor.check(args.path)
         print(json.dumps(doctor.as_json(problems), indent=2) if args.json else doctor.report(args.path, problems))
         if not args.json:
+            for warn in doctor.placeholders(args.path):
+                print(f'WARN {warn} (larryd submit refuses it until then)')
             left = doctor.conversions(args.path)   # read from the files as they are now: after --fix, agent/ holds no sheet
             for verb, note in left:
                 print(f'WILL {verb} {note}')
             if left:
-                print('run `larryd doctor --fix` to write these into the look record (the sheet moves to design/)')
+                print(f'run {doctor.FIX[:-1]} to write these into the look record (the sheet moves to design/)')
             elif args.fix and notes:
                 print('agent/ holds no CSS: the look record is in agent.json, nothing left to convert')
         if args.badge:

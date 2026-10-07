@@ -41,6 +41,12 @@ def mcp_config():
     return {'mcpServers': {'larryd': server}}
 
 
+def command():
+    """This larryd, as a command line: its absolute path (or this Python running the module), the same one .mcp.json names."""
+    server = mcp_config()['mcpServers']['larryd']
+    return ' '.join([server['command']] + server['args'][:-1])
+
+
 def _kit(name):
     """A kit template (kit/<name>.template), the text `new` fills; never read as it is."""
     return resources.files('larryd').joinpath('kit', name + '.template').read_text()
@@ -69,6 +75,7 @@ def manifest(name):
     }
 
 
+EDIT_ME = 'samples/job_inputs.edit-me.json'   # rename to job_inputs.json once its names are your agent's inputs
 EXAMPLES = ('marketplace',)   # the example agents a project may start from (larryd/kit/examples/<name>/)
 
 
@@ -86,13 +93,17 @@ def make(name, where='.', example=None):
     if root.exists():
         raise ValueError(f'{root} already exists: pick another name, or work in that folder')
     fields = '\n'.join(f'- `{k}`: {v}' for k, v in shape.FIELDS.items())
-    tools = '\n'.join(f'- `{cmd}`: {what}' for cmd, what in TOOLS)
+    exe = command()
+    tools = (f'This project\'s larryd: `{exe}` (the one that made it; .mcp.json starts the same one). If `larryd` is not on '
+             f'your PATH, run each command below with that path.\n\n'
+             + '\n'.join(f'- `{cmd.replace("larryd", exe, 1)}`: {what}' for cmd, what in TOOLS))
     files = {
         f'{shape.AGENT}/{shape.MANIFEST}': json.dumps(manifest(name), indent=2) + '\n',
         f'{shape.AGENT}/agent.py': _kit('agent.py').format(name=name),
         shape.SAMPLE: _kit('job.json').format(),
-        # the job's own inputs, for an agent with "job" in run.hands and "inputs" {"name": "001", "mood": "002"}: larryd run --job samples/job_inputs.json
-        'samples/job_inputs.json': resources.files('larryd').joinpath('kit', 'job_inputs.json').read_text(),
+        # the job's own inputs, for once the agent declares them ("job" in run.hands, "inputs" {"name": "001", "mood": "002"}):
+        # its name says edit me, so every samples/*.json of a fresh project matches what the agent declares and runs DONE
+        EDIT_ME: resources.files('larryd').joinpath('kit', 'job_inputs.json').read_text(),
         'CLAUDE.md': _kit('CLAUDE.md').format(name=name, fields=fields, hands=', '.join(shape.HANDS), tools=tools, sheet=sheet.table(), card=sheet.card_table()),
         shape.SKILL: skill(),
         '.mcp.json': json.dumps(mcp_config(), indent=2) + '\n',

@@ -204,7 +204,7 @@ def test_a_missing_authorization_says_fix_fills_it(tmp_path):
     del manifest['card']['authorization']
     path.write_text(json.dumps(manifest))
     todo = next(p.todo for p in doctor.check(root) if 'authorization' in p.wrong)
-    assert todo.endswith('or run `larryd doctor --fix` (fills PUBLIC)')
+    assert todo.endswith('or run `larryd doctor --fix`, or larryd_doctor with "fix": true (fills PUBLIC)')
 
 
 def test_plain_doctor_says_the_class_picks_the_effect(tmp_path, capsys):
