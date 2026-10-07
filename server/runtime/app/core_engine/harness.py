@@ -197,7 +197,7 @@ class Harness:
         given = {**beside, 'do': calls[0], 'cards': handed}
         try:
             if wanted:
-                given['records'] = member_records.read(self._ask, wanted, account, scope, member)
+                given['records'] = member_records.read(self._ask, wanted, account, scope, member, agent_key)
         except Refused as no:
             self._record('call', agent_key, 'FAILED', f'the records could not be read: {no.reason}', account=account, member=member)
             raise Refused(no.status, f'the records could not be read: {no.reason}') from None
@@ -211,7 +211,7 @@ class Harness:
             answer = {k: v for k, v in answer.items() if k != 'writes'}
             reason = 'writes not carried: the call is not the member\'s confirmed act'
         if state == 'DONE' and answer.get('writes'):
-            state, answer, reason = self._written(held, manifest, wanted, given, answer, account, scope, member)
+            state, answer, reason = self._written(held, manifest, wanted, given, answer, account, scope, member, agent_key)
         self._record('call', agent_key, state, reason, account=account, member=member)
         if state != 'DONE':
             raise Refused(500, reason)
@@ -223,7 +223,7 @@ class Harness:
             LOG.warning('view dropped for %s: %s', agent_key, why)
         return {'agent_key': agent_key, 'title': card['name'], **answer}
 
-    def _written(self, held, manifest, wanted, given, answer, account, scope, member):
+    def _written(self, held, manifest, wanted, given, answer, account, scope, member, agent_key=''):
         """THE WRITES AN ANSWER ASKS FOR: checked against the declaration (one fault refuses them all), carried to wid's own
         doors for this member, then the agent runs ONCE MORE on the same page with the records as they are now and
         written = what wid said of each, so the page shows the truth (a new record with its key, a refused write said);
@@ -233,10 +233,10 @@ class Harness:
         writes, why = member_records.check(answer['writes'], wanted)
         if why:
             return 'FAILED', None, why
-        written = member_records.carry(self.client.post, writes, account, scope, member)
+        written = member_records.carry(self.client.post, writes, account, scope, member, agent_key)
         carried = f'{sum(1 for w in written if w["ok"])} of {len(written)} record write{"" if len(written) == 1 else "s"} carried'   # THE RECORD SAYS WHAT WAS WRITTEN, whatever happens after: the writes are on the platform now
         try:
-            given = {**given, 'records': member_records.read(self._ask, wanted, account, scope, member), 'written': written}
+            given = {**given, 'records': member_records.read(self._ask, wanted, account, scope, member, agent_key), 'written': written}
         except Refused as no:
             return 'FAILED', None, f'{carried}; the records could not be read back: {no.reason}'
         state, answer, reason = sandbox.run(self.agents / held['folder'], manifest['entry'], given, self.seconds, on_start=self.on_start)

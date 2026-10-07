@@ -254,3 +254,18 @@ class WhatTheRecordSays(unittest.TestCase):
         state, answer, reason = h._written({'folder': 'x'}, {'entry': 'agent.py', 'gives': []}, {'opns': ('read', 'add')}, {}, {'writes': [{'do': 'add', 'species': 'opns', 'values': {'a': 'b'}}]}, 'A', 'S', 'M')
         self.assertEqual((state, answer), ('FAILED', None))
         self.assertEqual(reason, '1 of 1 record write carried; the records could not be read back: wid is away')
+
+
+class EveryRecordCallNamesItsAgent(unittest.TestCase):
+    """wid's record doors let through only an approved agent the member hired, for what its card declares: every call names the agent's card key."""
+    def test_the_read_and_every_write_carry_the_agents_key(self):
+        seen = []
+        def ask(office, method, route, data):
+            seen.append((route, data.get('agent_key'))); return {'rows': [], 'total': 0}
+        def post(office, route, data):
+            seen.append((route, data.get('agent_key'))); return 200, {'key': 'MOPN_000000000001_0001'}
+        member_records.read(ask, {'opns': ('read',)}, 'A', 'S', 'M', 'MAGT_EB3A10BE9600_1266')
+        member_records.carry(post, [{'do': 'add', 'species': 'opns', 'key': '', 'values': {'a': 'b'}}, {'do': 'edit', 'species': 'opns', 'key': 'K', 'values': {'a': 'b'}},
+                                    {'do': 'remove', 'species': 'opns', 'key': 'K', 'values': {}}], 'A', 'S', 'M', 'MAGT_EB3A10BE9600_1266')
+        self.assertEqual([r for r, _k in seen], ['/agnt/records/list', '/agnt/records/add', '/agnt/records/edit', '/agnt/records/remove'])
+        self.assertEqual({k for _r, k in seen}, {'MAGT_EB3A10BE9600_1266'})

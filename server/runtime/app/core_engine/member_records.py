@@ -42,7 +42,7 @@ def key_of(row):
     return row.get('key') if isinstance(row.get('key'), str) else ''
 
 
-def read(ask, wanted, account, scope, member):
+def read(ask, wanted, account, scope, member, agent_key=''):
     """{species: [rows]} for every species declared with read, through wid's list door for this member, page by page
     up to MOST_ROWS; a refusal propagates (nothing is guessed when wid does not answer)."""
     out = {}
@@ -51,7 +51,7 @@ def read(ask, wanted, account, scope, member):
             continue
         rows, offset = [], 0
         while True:
-            body = ask('wid', 'GET', '/agnt/records/list', {'account': account, 'scope': scope, 'member': member, 'segment': species,
+            body = ask('wid', 'GET', '/agnt/records/list', {'account': account, 'scope': scope, 'member': member, 'agent_key': agent_key, 'segment': species,
                                                              'page': 'list', 'limit': str(PAGE), 'offset': str(offset)})
             got = [r for r in (body.get('rows') or []) if isinstance(r, dict)]
             rows += [{**r, 'key': key_of(r)} for r in got]
@@ -94,13 +94,13 @@ def check(writes, wanted):
     return out, ''
 
 
-def carry(post, writes, account, scope, member):
+def carry(post, writes, account, scope, member, agent_key=''):
     """Each checked write to wid's own door for this member, in order; -> written = [{do, species, key, ok, why}], a
     refused write said as wid said it, the next still carried (each is the member's own ask)."""
     written = []
     for w in writes:
         method, route = DOORS[w['do']]
-        data = {'account': account, 'scope': scope, 'member': member, 'segment': w['species']}
+        data = {'account': account, 'scope': scope, 'member': member, 'agent_key': agent_key, 'segment': w['species']}   # the agent's own card key: wid lets through only an approved agent the member hired, for what its card declares
         if w['do'] != 'add':
             data['key'] = w['key']
         if w['do'] != 'remove':

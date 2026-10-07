@@ -22,8 +22,8 @@ X-Office-At, inside the window (`core_engine/signing.py`; the platform's `office
 | wid | GET /agnt/hired | account, scope, member | hired: [{agent_key, board, shell_id, on, job_key}] |
 | wid | POST /agnt/hire, /agnt/unhire | account, scope, member, agent_key | {shell_id, job_key, board, already} / {removed} |
 | wid | GET /jobs/queued | nothing | jobs: [{account, scope, member, job_key, run}] |
-| wid | GET /agnt/records/list | account, scope, member, segment, page=list, limit, offset | rows: [the record's columns], total (an agent that declares `records`; `core_engine/member_records.py`) |
-| wid | POST /agnt/records/add, /agnt/records/edit, /agnt/records/remove | account, scope, member, segment, values / key | {key} / {key} / {removed}; a refusal as {error} or {refused} (carried to the agent as `written`) |
+| wid | GET /agnt/records/list | account, scope, member, agent_key (the agent's card key), segment, page=list, limit, offset | rows: [the record's columns], total (an agent that declares `records`; `core_engine/member_records.py`) |
+| wid | POST /agnt/records/add, /agnt/records/edit, /agnt/records/remove | account, scope, member, agent_key (the agent's card key), segment, values / key | {key} / {key} / {removed}; a refusal as {error} or {refused} (carried to the agent as `written`) |
 | wid | GET /jobs/inputs | account, scope, job_key, run | inputs: {slot: value} |
 | wid | POST /jobs/result | account, scope, job_key, run, state, log, delivery | {saved} |
 | cc | GET /mtok/balance | account | subscriptions: [{agent_group}] |
