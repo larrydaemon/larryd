@@ -208,7 +208,13 @@ def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, deve
         """-> True started, False already started (anywhere), None the instance is busy (the slot is held).
         Cloud Run: the run is claimed once across every instance, then started as its own Cloud Run job execution; this
         instance answers at once and runs nothing after its answer (no thread, the CPU is the request's only).
-        A laptop: the run goes on a thread here, holding the slot (no CPU limit there)."""
+        A laptop: the run goes on a thread here, holding the slot (no CPU limit there). In keys mode the run is always
+        THE CALLER's (its calls back to that slot): a caller with no harness here is refused before anything is taken."""
+        runner = h
+        if keys is not None:
+            runner = harnesses.get(caller)
+            if runner is None:
+                raise lanes_harness.Refused(403, f'no harness for the caller {caller!r} here')
         if job_starter is not None:
             if not claims.claim(job_key, run):
                 return False
@@ -224,7 +230,7 @@ def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, deve
 
         def go():
             try:
-                h.run_job(account, scope, member, job_key, run)
+                runner.run_job(account, scope, member, job_key, run)
             finally:
                 with lock:
                     running.discard((job_key, run))
@@ -251,7 +257,10 @@ def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, deve
         except lanes_harness.Refused as no:
             return jsonify({'refused': no.reason}), no.status
         caller = request.headers.get('X-Office-Key', '') if keys is not None else ''
-        started = start(d['account'], d['scope'], d['member'], d['job_key'], int(d['run']), caller)
+        try:
+            started = start(d['account'], d['scope'], d['member'], d['job_key'], int(d['run']), caller)
+        except lanes_harness.Refused as no:
+            return jsonify({'refused': no.reason}), no.status
         if started is None:
             return busy()
         return jsonify({'accepted': d['job_key'], 'run': int(d['run']), 'already': not started}), 202
