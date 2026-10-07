@@ -7,6 +7,7 @@ import os
 import pathlib
 import subprocess
 import sys
+import shutil
 import tempfile
 import threading
 import unittest
@@ -170,11 +171,20 @@ class SlotNeverLeaks(unittest.TestCase):
         self.assertEqual(after - before, set())
 
     def test_leftover_run_folders_are_swept_at_start(self):
+        """A leftover is OLD (a run cut off long ago); a folder made just now is a run in flight on this computer (another
+        instance's, a thread's) and the start of an instance never pulls it from under that run."""
+        import os, time
         old = pathlib.Path(tempfile.mkdtemp(prefix='runtime_run_'))
         (old / 'input.json').write_text('{"left": "behind"}')
-        with tempfile.TemporaryDirectory() as t:
-            host.create_app(t, secret=SECRET)
-        self.assertFalse(old.exists())
+        os.utime(old, (time.time() - 600, time.time() - 600))
+        fresh = pathlib.Path(tempfile.mkdtemp(prefix='runtime_run_'))
+        try:
+            with tempfile.TemporaryDirectory() as t:
+                host.create_app(t, secret=SECRET)
+            self.assertFalse(old.exists())
+            self.assertTrue(fresh.exists())
+        finally:
+            shutil.rmtree(fresh, ignore_errors=True)
 
     def test_a_run_folder_is_private(self):
         made = []

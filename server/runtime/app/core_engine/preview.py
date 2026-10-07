@@ -4,12 +4,14 @@ developer's agent carries its card facts; the number and the art are the platfor
 member's hires from one small file, every product subscribed, every held agent approved. The harness, the gate, the
 lanes and the sandbox run exactly as on the server; only the answers come from here. Never used when a platform
 address is declared, and never on a server: only the daemon a developer starts asks for it."""
+import datetime
 import json
 import pathlib
 import re
+import secrets
 import sqlite3
 
-from . import gate, locker
+from . import gate, locker, member_records
 
 ACCOUNT = SCOPE = MEMBER = 'developer'       # the one member of a developer's runtime
 BOARD = 'agnt/home'                          # the marketplace's own screen: a board's first visit places it there
@@ -97,6 +99,54 @@ class Local:
     def _save(self, keys):
         self.hired_file.write_text(json.dumps(sorted(set(keys))) + '\n')
 
+    # ------------------------------------------------------------------ the one member's records (an agent that declares "records")
+    def _records_file(self, species):
+        return self.place / f'records_{species}.json'
+
+    def _records(self, species):
+        """The developer's own records of a species, as the platform's list would give them: newest first, each with its
+        M key column; kept in one small file beside the hires. A developer may write the file by hand to try an agent."""
+        try:
+            rows = json.loads(self._records_file(species).read_text())
+        except (OSError, ValueError):
+            return []
+        return [r for r in rows if isinstance(r, dict)] if isinstance(rows, list) else []
+
+    def _records_door(self, method, route, data):
+        """wid's record doors for the runtime (/agnt/records/list, add, edit, remove), answered from the file: the same
+        shapes and refusals the platform's doors give, so an agent tried here behaves the same on the platform."""
+        species = str(data.get('segment') or '')
+        if not member_records.SPECIES.fullmatch(species):
+            return 404, {'refused': 'nothing by that key'}
+        rows, column = self._records(species), f'M{species[:3].upper()}_norm_key'
+        if (method, route) == ('GET', '/agnt/records/list'):
+            whole = lambda v: int(v) if str(v).isdigit() else 0
+            limit, offset = whole(data.get('limit', 50)) or 50, whole(data.get('offset', 0))
+            return 200, {'total': len(rows), 'rows': rows[offset:offset + limit], 'everything': len(rows), 'mine_count': len(rows), 'ties': {}}
+        key = str(data.get('key') or '')
+        if (method, route) == ('POST', '/agnt/records/remove'):
+            kept = [r for r in rows if r.get(column) != key]
+            if len(kept) == len(rows):
+                return 404, {'refused': 'nothing by that key'}
+            self._records_file(species).write_text(json.dumps(kept, indent=1) + '\n')
+            return 200, {'removed': key}
+        values = data.get('values')
+        if not (isinstance(values, dict) and all(isinstance(k, str) and isinstance(v, str) for k, v in values.items())):
+            return 400, {'error': 'values is {field: text}'}
+        if (method, route) == ('POST', '/agnt/records/add'):
+            key = f'M{species[:3].upper()}_{secrets.token_hex(6).upper()}_{secrets.token_hex(2).upper()}'
+            row = {**values, column: key, 'system_member_roles': MEMBER, 'system_created_at': datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='seconds')}
+            self._records_file(species).write_text(json.dumps([row] + rows, indent=1) + '\n')
+            return 200, {'key': key}
+        if (method, route) == ('POST', '/agnt/records/edit'):
+            row = next((r for r in rows if r.get(column) == key), None)
+            if row is None:
+                return 404, {'refused': 'nothing by that key'}
+            row.update(values)
+            self._records_file(species).write_text(json.dumps(rows, indent=1) + '\n')
+            return 200, {'key': key}
+        return 404, {'refused': f"the developer's runtime has no wid{route}"}
+
     # ------------------------------------------------------------------ the doors
     def get(self, office, route, data=None):
         return self._answer('GET', office, route, data or {})
@@ -125,6 +175,8 @@ class Local:
             return 200, {'removed': int(key in hired)}
         if (method, office, route) == ('GET', 'wid', '/jobs/queued'):
             return 200, {'jobs': []}
+        if office == 'wid' and route.startswith('/agnt/records/'):
+            return self._records_door(method, route, data)
         if (method, office, route) == ('GET', 'cc', '/mtok/balance'):
             groups = sorted({c['product_slug'] for c in cards.values() if c['product_slug']})
             return 200, {'account': ACCOUNT, 'balance': 0, 'subscriptions': [{'agent_group': g} for g in groups]}

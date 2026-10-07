@@ -437,3 +437,38 @@ def test_the_backup_folder_is_private(tmp_path):
     (root / 'agent' / 'card.css').write_text('h1 { font-size: 40px }\n')
     doctor.fix(root)
     assert oct((root / '.larryd' / 'doctor_backup').stat().st_mode & 0o777) == '0o700'
+
+
+# ---------------------------------------------------------------- the member's records
+def _records(agent, records, calls=('answer',)):
+    card = _card(agent)
+    card['records'] = records
+    card['calls'] = list(calls)
+    _write_card(agent, card)
+
+
+def test_a_declared_records_field_passes(agent):
+    _records(agent, {'opns': ['read', 'add', 'edit', 'remove']})
+    assert doctor.check(agent) == []
+
+
+@pytest.mark.parametrize('records, said', [
+    ('opns', 'not {species: [verbs]}'),
+    ({}, 'not {species: [verbs]}'),
+    ({'larry': ['read']}, 'not a module of the platform'),
+    ({'OPNS': ['read']}, 'not a module of the platform'),
+    ({'opns': []}, 'not a list of verbs'),
+    ({'opns': ['delete']}, 'not a list of verbs'),
+    ({'opns': 'read'}, 'not a list of verbs'),
+])
+def test_records_catches(agent, records, said):
+    _records(agent, records)
+    problems = [p for p in doctor.check(agent) if p.check == 'the manifest']
+    assert problems and any(said in p.wrong for p in problems), [p.wrong for p in problems]
+    assert all(p.todo for p in problems)
+
+
+def test_records_need_a_call(agent):
+    _records(agent, {'opns': ['read']}, calls=())
+    problems = [p.wrong for p in doctor.check(agent) if p.check == 'the manifest']
+    assert problems == ['"records" is declared, but "calls" is empty']

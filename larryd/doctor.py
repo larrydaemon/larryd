@@ -14,7 +14,7 @@ from . import knowledge, look, shape, sheet, skills
 
 FIX = '`larryd doctor --fix`, or larryd_doctor with "fix": true,'   # every todo that asks for the fixer names both doors
 CHECKS = ('the project', 'the manifest', 'the entry', 'the air gap', 'no secret', 'the shape', 'the skills', 'the knowledge')
-CHECKS_VERSION = '3'   # THE LARRYD CHECKS (CHECKS.md, larryd.ai/checks.html): a new or changed check raises it
+CHECKS_VERSION = '4'   # THE LARRYD CHECKS (CHECKS.md, larryd.ai/checks.html): a new or changed check raises it
 BADGE = 'larryd-checks.svg'   # `larryd doctor --badge` writes it beside agent/, never inside it (the shape keeps agent/ to its own kinds)
 GOLD, RED = '#FFB000', '#910E0D'   # the brand's gold (PASS) and red (FAIL)
 
@@ -154,6 +154,8 @@ def _manifest(root, f):
             f.add(c, where, '"inputs" puts two names on one slot', 'give each name its own slot, 001-015')
     elif 'inputs' in card:
         f.add(c, where, '"inputs" is declared, but run "hands" has no "job"', 'add "job" to run "hands", or take "inputs" out')
+    if 'records' in card:
+        _records(card, c, where, f)
     for k, what in (('skills', 'skills that exist (`larryd skills`)'), ('knowledge', 'knowledge packs (`larryd pack`)')):
         if k in card and not (isinstance(card[k], list) and all(isinstance(x, str) for x in card[k])):
             f.add(c, where, f'"{k}" is not a list of hashes', f'set "{k}" to [] or to the hashes of {what}')
@@ -420,6 +422,24 @@ def _card(root, card, f):
             f.add(c, where, f'card "{k}" is not text', f'set card "{k}" to {shape.CARD[k]}')
     if text('sends_to') and facts['sends_to'].strip() and not (text('data_sent') and facts['data_sent'].strip()):
         f.add(c, where, 'card "sends_to" names an outside service, but "data_sent" says nothing', 'say in card "data_sent" what is sent there, in plain words')
+
+
+def _records(card, c, where, f):
+    """"records": the member's records an agent reads and writes on a CALL: {species: [verbs]}, each species a module of the
+    platform (the screens table's codes), each verb one of read, add, edit, remove; only an agent that answers calls."""
+    asked = card['records']
+    species = sorted({s.split('/')[0] for s in sheet.catalog()['card']['screens'] if not s.startswith('larry/')})
+    shape_todo = 'set "records" to {"<species>": [verbs]}, e.g. {"opns": ["read", "add", "edit", "remove"]}'
+    if not (isinstance(asked, dict) and asked):
+        f.add(c, where, '"records" is not {species: [verbs]}', shape_todo)
+        return
+    for name, verbs in asked.items():
+        if not (isinstance(name, str) and name in species):
+            f.add(c, where, f'records names "{name}", not a module of the platform', f'use a module\'s code: {", ".join(species)}')
+        if not (isinstance(verbs, list) and verbs and all(isinstance(v, str) and v in shape.RECORD_VERBS for v in verbs)):
+            f.add(c, where, f'records "{name}" is not a list of verbs', f'list what the agent does with them, from: {", ".join(shape.RECORD_VERBS)}')
+    if not card.get('calls'):
+        f.add(c, where, '"records" is declared, but "calls" is empty', 'records are handed on a CALL (the member\'s screen): name the call in "calls", or take "records" out')
 
 
 PLACEHOLDER = re.compile(r'^What .+ (answers, in one plain sentence|does for the member, in one line)\.$')   # the blank's own words

@@ -14,7 +14,7 @@ import pathlib
 import re
 import sqlite3
 
-from . import gate, lanes, locker, look, records as run_records, sandbox, view
+from . import gate, lanes, locker, look, member_records, records as run_records, sandbox, view
 
 MARKETPLACE = 'marketplace'   # the one agent's locker folder: it answers the collection, hires, and places defaults
 SAMPLE_RATING = {'rating': '4.8', 'reviews': '212'}   # THE DESIGN'S SAMPLE, ON EVERY CARD, UNTIL A RATING SYSTEM EXISTS (the owner, 2026-10-07: "we can build that later, for now just keep them all the same as the design"): not a member's rating of anything; one line to take out ({} shows no strip)
@@ -192,20 +192,55 @@ class Harness:
             raise Refused(403, why)
         beside = {k: v for k, v in (beside or {}).items() if k in BESIDE and isinstance(v, dict)}   # the page's own, beside the cards; never over them
         handed = self._dressed(lanes.assemble(cards, hired, groups, verify, own=agent_key), beside.get('page') or {})
-        state, answer, reason = sandbox.run(self.agents / held['folder'], locker.manifest(self.agents, held['folder'])['entry'],
-                                            {**beside, 'do': calls[0], 'cards': handed}, self.seconds, on_start=self.on_start)
-        outside = _outside_gives(locker.manifest(self.agents, held['folder']), answer) if state == 'DONE' else ''
+        manifest = locker.manifest(self.agents, held['folder'])
+        wanted = member_records.declared(manifest)   # THE MEMBER'S RECORDS: only what the approved manifest declares, read and written through wid's own doors
+        given = {**beside, 'do': calls[0], 'cards': handed}
+        try:
+            if wanted:
+                given['records'] = member_records.read(self._ask, wanted, account, scope, member)
+        except Refused as no:
+            self._record('call', agent_key, 'FAILED', f'the records could not be read: {no.reason}', account=account, member=member)
+            raise Refused(no.status, f'the records could not be read: {no.reason}') from None
+        state, answer, reason = sandbox.run(self.agents / held['folder'], manifest['entry'], given, self.seconds, on_start=self.on_start)
+        outside = _outside_gives(manifest, answer) if state == 'DONE' else ''
         if outside:
             state, reason = 'FAILED', outside
+        if state == 'DONE' and answer.get('writes'):
+            state, answer, reason = self._written(held, manifest, wanted, given, answer, account, scope, member)
         self._record('call', agent_key, state, reason, account=account, member=member)
         if state != 'DONE':
             raise Refused(500, reason)
+        answer.pop('writes', None)
         self._looks(answer, verify)
         path = (beside.get('page') or {}).get('path')
         answer, why = view.checked(answer, path if isinstance(path, str) else '')   # the agent's own view, passed on only when it holds nothing that runs or reaches out
         if why:
             LOG.warning('view dropped for %s: %s', agent_key, why)
         return {'agent_key': agent_key, 'title': card['name'], **answer}
+
+    def _written(self, held, manifest, wanted, given, answer, account, scope, member):
+        """THE WRITES AN ANSWER ASKS FOR: checked against the declaration (one fault refuses them all), carried to wid's own
+        doors for this member, then the agent runs ONCE MORE on the same page with the records as they are now and
+        written = what wid said of each, so the page shows the truth (a new record with its key, a refused write said);
+        writes on that second run are ignored. -> (state, answer, reason)."""
+        if not wanted:
+            return 'FAILED', None, 'the answer carries writes, but the manifest declares no records'
+        writes, why = member_records.check(answer['writes'], wanted)
+        if why:
+            return 'FAILED', None, why
+        written = member_records.carry(self.client.post, writes, account, scope, member)
+        try:
+            given = {**given, 'records': member_records.read(self._ask, wanted, account, scope, member), 'written': written}
+        except Refused as no:
+            return 'FAILED', None, f'the records could not be read back: {no.reason}'
+        state, answer, reason = sandbox.run(self.agents / held['folder'], manifest['entry'], given, self.seconds, on_start=self.on_start)
+        outside = _outside_gives(manifest, answer) if state == 'DONE' else ''
+        if outside:
+            return 'FAILED', None, outside
+        if state != 'DONE':
+            return state, None, reason
+        carried = sum(1 for w in written if w['ok'])
+        return 'DONE', answer, f'{carried} of {len(written)} record write{"" if len(written) == 1 else "s"} carried'
 
     def _dressed(self, cards, page):
         """EACH CARD AS THE PAGE DRESSES IT, on this one call and kept nowhere: wears = the theme the page gives the card's product
