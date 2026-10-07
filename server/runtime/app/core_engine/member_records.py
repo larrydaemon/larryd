@@ -108,7 +108,10 @@ def carry(post, writes, account, scope, member):
         status, body = post('wid', route, data)
         body = body if isinstance(body, dict) else {}
         ok = status == 200
-        key = (body.get('key') if ok and w['do'] == 'add' else w['key']) or ''
-        written.append({'do': w['do'], 'species': w['species'], 'key': key if isinstance(key, str) else '', 'ok': ok,
-                        'why': '' if ok else str(body.get('refused') or body.get('error') or f'wid answered {status}')[:300]})
+        key = body.get('key') if ok and w['do'] == 'add' else w['key']
+        key = key if isinstance(key, str) and (not key or KEY.fullmatch(key)) else ''   # a key wid answers is a plain key or nothing
+        if ok and w['do'] == 'add' and not key:   # the platform took it but minted no record yet (partial data waits at its entry): said, never claimed
+            ok = False
+        written.append({'do': w['do'], 'species': w['species'], 'key': key, 'ok': ok,
+                        'why': '' if ok else str(body.get('refused') or body.get('error') or ('no record was made' if status == 200 else f'wid answered {status}'))[:300]})
     return written

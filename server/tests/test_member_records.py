@@ -214,3 +214,26 @@ class TheRead(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class WhatTheRecordSays(unittest.TestCase):
+    """A write is on the platform the moment it is carried: whatever happens after (the read back refused, the second run
+    failing), the run record says how many were carried; and a key wid answers is a plain key or nothing."""
+    def test_an_add_that_minted_no_record_is_not_claimed(self):
+        post = lambda office, route, data: (200, {'key': ''})
+        out = member_records.carry(post, [{'do': 'add', 'species': 'opns', 'key': '', 'values': {'a': 'b'}}], 'A', 'S', 'M')
+        self.assertEqual(out, [{'do': 'add', 'species': 'opns', 'key': '', 'ok': False, 'why': 'no record was made'}])
+        post = lambda office, route, data: (200, {'key': '../x'})
+        out = member_records.carry(post, [{'do': 'add', 'species': 'opns', 'key': '', 'values': {'a': 'b'}}], 'A', 'S', 'M')
+        self.assertEqual((out[0]['ok'], out[0]['key']), (False, ''))
+
+    def test_a_failed_second_run_still_records_the_writes_carried(self):
+        class Client:
+            def post(self, office, route, data):
+                return 200, {'key': 'MOPN_000000000009_0009'}
+        h = harness.Harness.__new__(harness.Harness)
+        h.client, h.seconds, h.on_start, h.agents = Client(), 20, None, pathlib.Path('/nonexistent')
+        h._ask = lambda *a: (_ for _ in ()).throw(harness.Refused(503, 'wid is away'))
+        state, answer, reason = h._written({'folder': 'x'}, {'entry': 'agent.py', 'gives': []}, {'opns': ('read', 'add')}, {}, {'writes': [{'do': 'add', 'species': 'opns', 'values': {'a': 'b'}}]}, 'A', 'S', 'M')
+        self.assertEqual((state, answer), ('FAILED', None))
+        self.assertEqual(reason, '1 of 1 record write carried; the records could not be read back: wid is away')

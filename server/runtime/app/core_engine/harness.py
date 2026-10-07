@@ -229,18 +229,18 @@ class Harness:
         if why:
             return 'FAILED', None, why
         written = member_records.carry(self.client.post, writes, account, scope, member)
+        carried = f'{sum(1 for w in written if w["ok"])} of {len(written)} record write{"" if len(written) == 1 else "s"} carried'   # THE RECORD SAYS WHAT WAS WRITTEN, whatever happens after: the writes are on the platform now
         try:
             given = {**given, 'records': member_records.read(self._ask, wanted, account, scope, member), 'written': written}
         except Refused as no:
-            return 'FAILED', None, f'the records could not be read back: {no.reason}'
+            return 'FAILED', None, f'{carried}; the records could not be read back: {no.reason}'
         state, answer, reason = sandbox.run(self.agents / held['folder'], manifest['entry'], given, self.seconds, on_start=self.on_start)
         outside = _outside_gives(manifest, answer) if state == 'DONE' else ''
         if outside:
-            return 'FAILED', None, outside
+            return 'FAILED', None, f'{carried}; the second run: {outside}'
         if state != 'DONE':
-            return state, None, reason
-        carried = sum(1 for w in written if w['ok'])
-        return 'DONE', answer, f'{carried} of {len(written)} record write{"" if len(written) == 1 else "s"} carried'
+            return state, None, f'{carried}; the second run: {reason}'
+        return 'DONE', answer, carried
 
     def _dressed(self, cards, page):
         """EACH CARD AS THE PAGE DRESSES IT, on this one call and kept nowhere: wears = the theme the page gives the card's product
