@@ -174,11 +174,14 @@
 .mk-simple .agent-card.mk-on::after { -webkit-backdrop-filter: none; backdrop-filter: none }
 .mk-simple .toggle, .mk-simple .toggle__knob { transition: none }
 /* THE CONTROLLER'S OWN FEW RULES (its shape and colours are the platform's controller's, from the page's sheets inside this shadow root): the first column the wide
-   one, the search's the narrow one; View beside My agents on one line; the picked sort link at the links' own small size; and a SELECTED small button in the
-   small button's own two colours, swapped (the owner, 2026-10-07: "the selected buttons are a opposite color combo"), here on this controller only. */
+   one, the search's the narrow one; View beside My agents on one line; the picked sort link at the links' own small size; and ON AND OFF TOLD BY ONE RULE ON EVERY THEME
+   (the owner, 2026-10-07: "normally black is off and color bright is on"): a button not selected is the theme's ground with its colour for words and line; the
+   selected one is that colour as its fill, the ground for its words. Said from the theme's two base slots (01, 09), never from a theme's own button slots: in some
+   themes those make a normal button a bright fill, and a swap then read as reversed. Here on this controller only. */
 .mk-ctl .wl-col--1 { flex: 1 1 0; width: auto }
 .mk-ctl .wl-col--3 { flex: none; width: 180px }
 .mk-ctl-row { display: flex; flex-wrap: wrap; gap: 0 24px }
 .mk-ctl .mk-sorted { font-size: .6rem }
-.mk-ctl .btn--small[aria-current] { color: var(--ui-sm-btn-bg); background-color: var(--ui-sm-btn-text) }
+.mk-ctl .btn--small { color: var(--active-color-01); background-color: var(--active-color-09); border-color: var(--active-color-01) }
+.mk-ctl .btn--small[aria-current] { color: var(--active-color-09); background-color: var(--active-color-01) }
 @media (max-width: 768px) { .mk-ctl .wl-col--3 { width: auto } }
