@@ -176,7 +176,7 @@
 /* AN OFFLINE CARD (the owner's design, approved in the lab 2026-10-07): its words at 35%, each text part by itself, so no line, border or picture dims with them;
    the toggle at 50% and never pressed; the two words that say its state, Locked and Offline, bright (the theme's highlight); its outer rounded frame at 35% (the
    border's line and the glow inside it). The cat's box, its glass border, its picture and its animation stay as they are. */
-.agent-card.mk-offline :is(.mk-id, .mk-info, .mk-flavour, .mk-credit, .mk-kind, .mk-sends, .mk-number > *) { opacity: .35 }
+.agent-card.mk-offline :is(.mk-name, .mk-info, .mk-flavour, .mk-credit, .mk-kind, .mk-sends, .mk-number > *) { opacity: .35 }
 .agent-card.mk-offline .mk-price { color: var(--active-color-01, inherit); opacity: 1 }   /* Offline: the very colour Free has on the other cards, at full strength */
 .agent-card.mk-offline .mk-flavour { color: var(--active-color-01, inherit) }   /* the pitch on an offline card: the theme's own colour dimmed (dim blue on a blue theme), never the near-white highlight dimmed to grey */
 .agent-card.mk-offline { border-color: color-mix(in srgb, var(--accent) 35%, transparent);
