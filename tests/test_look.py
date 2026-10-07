@@ -46,7 +46,7 @@ def test_a_colour_goes_to_the_nearest_the_eye_sees_not_the_nearest_number():
 
 def test_type_on_a_part_goes_to_the_nearest_role_and_elsewhere_is_said_dropped():
     record, said, dropped = look.from_sheet('.mk-price { font-size: 18px; font-weight: 500; text-transform: uppercase } .wrapper { font-size: 12px }')
-    assert record == {'text': {'price': 'callout'}} and 'nearest by case first, then size and weight' in said[0]
+    assert record == {'text': {'price': 'callout'}} and sheet.ROLE_RULE in said[0]
     assert dropped == ['.wrapper: font-size -> no name on the menu (no text part of the card here (the parts: number, class, name, info, pitch, developer, facts, price))']
 
 
@@ -81,7 +81,7 @@ FROST92 = """@import url("fonts.css");
 
 def test_every_value_is_named_or_dropped_with_why():
     record, said, dropped = look.from_sheet(FROST92)
-    assert record == {'accent': 'active-color-01', 'radius': 'step-6', 'space': 'step-3', 'text': {'name': 'subtitle', 'facts': 'subnav'}}
+    assert record == {'accent': 'active-color-01', 'radius': 'step-6', 'space': 'step-3', 'text': {'name': 'body', 'facts': 'body'}}
     assert any('font-style: italic -> text name' in s for s in said)
     for line in ('@import url("fonts.css") -> no name on the menu (the template loads every file itself)',
                  '@keyframes lift -> no name on the menu (the effect brings its own animation)',
@@ -97,3 +97,8 @@ def test_every_value_is_named_or_dropped_with_why():
     for selector, body in re.findall(r'^([^@{]+?)\s*\{([^}]*)\}', FROST92, re.M):
         for prop in re.findall(r'([a-z-]+)\s*:', body):
             assert any(s.startswith(selector) and prop in s for s in said + dropped), (selector, prop)
+
+
+def test_a_layer_s_colour_says_the_effect_draws_it():
+    _record, _said, dropped = look.from_sheet('.mk-glow { background: radial-gradient(circle, #D4C4A8 0%, transparent 60%) }')
+    assert dropped == ['.mk-glow: background -> no name on the menu (colour is card-wide, the accent only; the effect draws its own layers)']

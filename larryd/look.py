@@ -153,6 +153,8 @@ def _why(prop, selector, part, card):
     if card and re.search(r'colou?r|background|border|fill|stroke', prop):
         return 'one accent per card: the first colour on the card became it; the template draws the border and the ground'
     if re.search(r'colou?r|background|border|fill|stroke', prop):
+        if part is None:
+            return 'colour is card-wide, the accent only; the effect draws its own layers'
         return 'colour is card-wide, the accent only: a text part takes a role, never a colour'
     return 'not a name on the menu'
 
@@ -251,7 +253,7 @@ def from_sheet(text, cat=None):
         part = _part(selector)
         if not written or part is None:
             continue
-        role, how = sheet.nearest_role(written, cat), sheet.ROLE_RULE if 'text-transform' in written else sheet.ROLE_RULE_NO_CASE
+        role, how = sheet.nearest_role(written, cat, selector), sheet.ROLE_RULE
         text_roles[part] = role
         used.update((n, k) for k, (p, _v) in enumerate(decls) if p in written)
         said.append(f'{selector}: {"; ".join(f"{k}: {v}" for k, v in written.items())} -> text {part}: the {role} role ({how}; the role brings its own font, size, weight, style, case and letter spacing)')

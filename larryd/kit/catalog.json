@@ -191,5 +191,27 @@
   "developer": "the developer credit",
   "facts": "the type and residency",
   "price": "the price"
+ },
+ "only_for": {
+  "nav": [
+   "nav",
+   "menu",
+   "navigation"
+  ],
+  "subnav": [
+   "subnav",
+   "tabs",
+   "tab",
+   "navigation"
+  ],
+  "link": [
+   "link",
+   "a",
+   "href"
+  ],
+  "label": [
+   "label",
+   "field"
+  ]
  }
 }

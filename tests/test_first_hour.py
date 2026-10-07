@@ -90,11 +90,17 @@ def test_fix_says_what_it_did_then_the_agent_is_clean(tmp_path, capsys):
 
 
 # 6. the nearest name, as the eye sees it, and the menu written down from the one fixed list
-def test_a_written_case_counts_first_an_unwritten_one_not_at_all():
+def test_an_unwritten_case_is_none_and_a_purpose_role_is_never_chosen_unasked():
     cat = sheet.catalog()
-    assert sheet.nearest_role({'font-size': '0.85rem', 'letter-spacing': '0.08em'}, cat) == 'subnav'   # 13.6px, weight 400 counted
-    assert sheet.nearest_role({'font-size': '0.85rem', 'text-transform': 'none'}, cat) == 'body'      # a written case first
-    assert sheet.nearest_role({'font-size': '48px', 'font-weight': '300', 'text-transform': 'none'}, cat) == 'body'
+    # frost-92's rc13 price and pitch: never an uppercase role, never navigation
+    assert sheet.nearest_role({'font-size': '12px', 'font-weight': '400'}, cat, '.mk-price') == 'body'
+    assert sheet.nearest_role({'font-size': '15px', 'font-style': 'italic'}, cat, '.mk-pitch') == 'body'
+    assert sheet.nearest_role({'font-size': '30px', 'font-weight': '800', 'text-transform': 'uppercase'}, cat, '.mk-name') == 'title'
+    assert sheet.nearest_role({'font-size': '11px', 'font-weight': '400', 'text-transform': 'uppercase'}, cat, '.mk-price') == 'annotation'   # nav is as near, but a price is not navigation
+    assert sheet.nearest_role({'font-size': '11px', 'font-weight': '400', 'text-transform': 'uppercase'}, cat, '.mk-nav') == 'nav'   # it says it is navigation
+    assert sheet.nearest_role({'font-size': '14px', 'font-weight': '500'}, cat, '.mk-pitch') == 'body'
+    assert sheet.nearest_role({'font-size': '14px', 'font-weight': '500'}, cat, 'a.more') == 'link'
+    assert '(chosen only for a selector naming nav, menu, navigation)' in sheet.table()
 
 
 def test_the_menu_is_in_the_guide_and_every_project(tmp_path):
@@ -194,3 +200,9 @@ def test_fix_keeps_the_design_sheet_it_replaces(tmp_path, capsys):
     (root / 'agent' / 'card.css').write_text('.mk-card { border-radius: 8px }\n')
     doctor.fix(root)
     assert (root / '.larryd' / 'doctor_backup' / 'design' / 'card.css').read_text() == '.mk-card { border-radius: 4px }\n'   # always the one before
+
+
+def test_the_doctor_section_of_the_guide_wraps_like_the_rest():
+    text = (PACKAGE / 'GUIDE.md').read_text()
+    section = text[text.index('## 4. The doctor'):text.index('## 5.')]
+    assert [line for line in section.splitlines() if len(line) > 120 and not line.startswith('|')] == []

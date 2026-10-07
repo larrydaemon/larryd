@@ -101,21 +101,24 @@ drops anything else. A look the record does not name keeps the template's defaul
 Design in CSS if you like: write `agent/card.css` normally and run `larryd doctor --fix`. It maps each value to the
 nearest name on the menu and says each mapping (CONVERTED ...): the card's first colour to the theme colour variable
 nearest as the eye sees it (OKLab distance against the reference theme, done once; only the name is kept), its corner
-radius and its padding to the nearest step, written type on a part of the card to the nearest role (by case first, then
-size and weight), the sheet's animation words to the nearest effect. Every other value is said too, as DROPPED ... with
-why: colour is card-wide (the accent only), so a part's colour is dropped (a part takes a role, never a colour); gap and
-margin are dropped ("space" is the card's padding and the template sets the gaps from it); layout, position, hover and
-other states, shadows, transforms and transitions are the template's and the effect's; @import, @font-face and
-@keyframes never become a name. It writes the look record, moves the sheet to `design/card.css` (agents ship no CSS)
-and keeps your original manifest, and the design sheet it replaces, in `.larryd/doctor_backup/`. Plain `larryd doctor` changes nothing: while a sheet is in
-`agent/` it fails the shape and says what it WILL CONVERT and WILL DROP. `larryd place` and `larryd submit` convert it the same way
-first, so CSS is never a reason to refuse. --fix also fills the card's missing facts with honest defaults it names.
-The same files always give the same result.
+radius and its padding to the nearest step, written type on a part of the card to the nearest role (by case first, an
+unwritten case being none as in CSS, then size and weight; a role made for navigation, a link or a field's label only
+when the selector says so), the sheet's animation words to the nearest effect. Every other value is said too, as
+DROPPED ... with why: colour is card-wide (the accent only), so a part's colour is dropped (a part takes a role, never
+a colour); gap and margin are dropped ("space" is the card's padding and the template sets the gaps from it); layout,
+position, hover and other states, shadows, transforms and transitions are the template's and the effect's; @import,
+@font-face and @keyframes never become a name. It writes the look record, moves the sheet to `design/card.css` (agents
+ship no CSS) and keeps your original manifest, and the design sheet it replaces, in `.larryd/doctor_backup/`. Plain
+`larryd doctor` changes nothing: while a sheet is in `agent/` it fails the shape and says what it WILL CONVERT and
+WILL DROP. `larryd place` and `larryd submit` convert it the same way first, so CSS is never a reason to refuse. --fix
+also fills the card's missing facts with honest defaults it names. The same files always give the same result.
 
 ### The menu (a fixed list, the same for the doctor, this guide and the platform)
 
-"accent": a theme colour variable, `active-color-01` to `active-color-64`. The card follows the live theme (brand, light
-or dark), so the colours below are the reference theme's only; a designed colour goes to the nearest as the eye sees it.
+"accent": a theme colour variable, `active-color-01` to `active-color-64`. The card follows the live theme (brand,
+light
+or dark), so the colours below are the reference theme's only; a designed colour goes to the nearest as the eye sees
+it.
 
 | Colour (reference theme) | active-color-NN |
 |---|---|
@@ -128,7 +131,8 @@ or dark), so the colours below are the reference theme's only; a designed colour
 | `#17191A` | 11, 12, 30, 39, 45, 47, 49, 51, 58 |
 | `#F1E8C7` | 19 |
 
-"radius" is the card's corner, "space" its padding (the template sets the gaps inside from it); each is a step of the scale (a designed length goes to the nearest step; a tie rounds down):
+"radius" is the card's corner, "space" its padding (the template sets the gaps inside from it); each is a step of the
+scale (a designed length goes to the nearest step; a tie rounds down):
 
 | Step | step-0 | step-1 | step-2 | step-3 | step-4 | step-5 | step-6 | step-7 | step-8 | step-9 |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -136,7 +140,8 @@ or dark), so the colours below are the reference theme's only; a designed colour
 
 "effect": none, crt, wellness, glitch.
 
-"text": a part of the card and its type role (each part has a default; name only the ones you change). A part takes a role, never a colour: colour is card-wide, the accent only.
+"text": a part of the card and its type role (each part has a default; name only the ones you change). A part takes a
+role, never a colour: colour is card-wide, the accent only.
 
 | Part | Default role | What it is |
 |---|---|---|
@@ -149,7 +154,8 @@ or dark), so the colours below are the reference theme's only; a designed colour
 | facts | annotation | the type and residency |
 | price | callout | the price |
 
-The type roles (designed type on a part goes to the nearest role, nearest by case first, then size and weight; the role brings its own font, style and letter spacing):
+The type roles (designed type on a part goes to the nearest role, nearest by case first, an unwritten case being none
+as in CSS, then size and weight; the role brings its own font, style and letter spacing):
 
 | Role | Size | Weight | Case | For |
 |---|---|---|---|---|
@@ -158,10 +164,10 @@ The type roles (designed type on a part goes to the nearest role, nearest by cas
 | subtitle | 14.4px | 900 | uppercase | a section's title |
 | body | 14.4px | 300 | none | running text, the card's pitch |
 | caption | 11.2px | 600 | uppercase | an eyebrow, the card's class line |
-| label | 14.4px | 500 | uppercase | a field's label |
-| link | 14.4px | 500 | none | a link |
-| nav | 11.2px | 400 | uppercase | the main navigation |
-| subnav | 14.4px | 400 | uppercase | a sub navigation |
+| label | 14.4px | 500 | uppercase | a field's label (chosen only for a selector naming label, field) |
+| link | 14.4px | 500 | none | a link (chosen only for a selector naming link, a, href) |
+| nav | 11.2px | 400 | uppercase | the main navigation (chosen only for a selector naming nav, menu, navigation) |
+| subnav | 14.4px | 400 | uppercase | a sub navigation (chosen only for a selector naming subnav, tabs, tab, navigation) |
 | callout | 17.6px | 500 | uppercase | a figure that stands out, the card's price |
 | notes | 17.6px | 500 | uppercase | small notes |
 | annotation | 9.6px | 300 | uppercase | facts, the card's product, module and type |

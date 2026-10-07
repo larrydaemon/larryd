@@ -326,7 +326,7 @@ def test_a_shipped_sheet_fails_and_says_what_it_will_convert(tmp_path):
     problems = doctor.check(root)
     assert [p.check for p in problems] == ['the shape'] and 'agents ship no CSS' in problems[0].wrong and '--fix' in problems[0].todo
     said = doctor.conversions(root)
-    for line in ('-> accent active-color-', 'border-radius 20px -> radius step-6', 'padding 14px -> space step-4', '.mk-name: font-size: 40px; font-weight: 900 -> text name: the heading role'):
+    for line in ('-> accent active-color-', 'border-radius 20px -> radius step-6', 'padding 14px -> space step-4', '.mk-name: font-size: 40px; font-weight: 900 -> text name: the body role'):
         assert any(line in n for _verb, n in said), (line, said)
 
 
@@ -340,7 +340,7 @@ def test_fix_writes_the_record_moves_the_sheet_and_is_deterministic(tmp_path):
     changed = doctor.fix(root)
     assert any('moved to design/card.css' in c for c in changed) and any("price = '0'" in c for c in changed), changed
     look = json.loads((root / 'agent' / 'agent.json').read_text())['look']
-    assert look['radius'] == 'step-6' and look['space'] == 'step-4' and look['text'] == {'name': 'heading'} and look['accent'].startswith('active-color-')
+    assert look['radius'] == 'step-6' and look['space'] == 'step-4' and look['text'] == {'name': 'body'} and look['accent'].startswith('active-color-')
     assert (root / 'design' / 'card.css').read_text() == SHEET and not (root / 'agent' / 'card.css').exists()
     assert (root / '.larryd' / 'doctor_backup' / 'agent.json').is_file()
     assert doctor.check(root) == [] and doctor.fix(root) == []   # nothing left; the same files give the same result

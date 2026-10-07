@@ -138,19 +138,22 @@ def nearest_colour(rgb, cat):
     return best[0], best[1], far
 
 
-ROLE_RULE = 'nearest by case first, then size and weight'
-ROLE_RULE_NO_CASE = 'no case written: nearest by size and weight'
+ROLE_RULE = 'nearest by case first, an unwritten case being none as in CSS, then size and weight'
 
 
-def nearest_role(written, cat):
-    """The type role nearest to written type ({property: value}): a written case first (an uppercase line stays an
-    uppercase role), then size and weight (an unwritten weight counts as 400). A tie goes to the earlier role."""
-    roles = cat['roles']
+def nearest_role(written, cat, selector=''):
+    """The type role nearest to written type ({property: value}): the case first (an unwritten case is none, CSS's own
+    default, so an uppercase role is never chosen unasked), then size and weight (an unwritten weight counts as 400). A
+    role made for one purpose (navigation, a link, a field's label) is chosen only for text whose selector says it is
+    that. A tie goes to the earlier role."""
+    roles, only = cat['roles'], cat.get('only_for', {})
+    words = set(re.findall(r'[a-z]+', selector.lower()))
+    allowed = [r for r in roles if r not in only or words & set(only[r])]
     size, wt = _px(written.get('font-size')), written.get('font-weight', '400')
     wt = {'bold': 700, 'bolder': 800, 'normal': 400, 'lighter': 300}.get(wt, int(wt) if wt.isdigit() else 400)
-    case = written.get('text-transform')
-    return min(roles, key=lambda r: ((case is not None and case != roles[r]['case']),
-                                     (abs(roles[r]['size'] - size) if size is not None else 0) + abs(roles[r]['weight'] - wt) / 50))
+    case = written.get('text-transform', 'none')
+    return min(allowed, key=lambda r: (case != roles[r]['case'],
+                                       (abs(roles[r]['size'] - size) if size is not None else 0) + abs(roles[r]['weight'] - wt) / 50))
 
 
 def table(cat=None):
@@ -172,5 +175,8 @@ def table(cat=None):
     lines += [f'| {p} | {r} | {cat["part_for"][p]} |' for p, r in cat['parts'].items()]
     lines += ['', 'The type roles (designed type on a part goes to the nearest role, ' + ROLE_RULE + '; the role brings its own font, style and letter spacing):', '',
               '| Role | Size | Weight | Case | For |', '|---|---|---|---|---|']
-    lines += [f'| {r} | {v["size"]:g}px | {v["weight"]} | {v["case"]} | {cat["for"].get(r, "")} |' for r, v in cat['roles'].items()]
-    return '\n'.join(lines)
+    only = cat.get('only_for', {})
+    lines += [f'| {r} | {v["size"]:g}px | {v["weight"]} | {v["case"]} | {cat["for"].get(r, "")}'
+              f'{" (chosen only for a selector naming " + ", ".join(only[r]) + ")" if r in only else ""} |' for r, v in cat['roles'].items()]
+    import textwrap   # prose wrapped like the rest of the guide; a table row stays one line
+    return '\n'.join(line if line.startswith('|') or len(line) <= 118 else textwrap.fill(line, 118) for line in lines)
