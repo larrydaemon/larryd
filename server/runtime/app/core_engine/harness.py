@@ -301,6 +301,8 @@ class Harness:
         card = self._card(lanes.assemble(cards, hired, groups, verify), agent_key)
         if card is None:
             raise Refused(404, 'no such agent in the collection')
+        if on and card.get('offline') is True:   # AN OFFLINE AGENT IS NEVER HIRED, whatever a page draws or a caller sends: refused here, before the platform is asked (its own sink refuses it too)
+            raise Refused(403, 'offline')
         if on and not card['hireable']:
             raise Refused(403, card['reason'])
         done = self._ask('wid', 'POST', '/agnt/hire' if on else '/agnt/unhire', {'account': account, 'scope': scope, 'member': member, 'agent_key': agent_key})

@@ -263,6 +263,31 @@ class Intake(unittest.TestCase):
                          [('hire', OTHER, 'ON', 'ACCT_000000000001_0001', 'MCON_000000000002_0002'),
                           ('hire', OTHER, 'OFF', 'ACCT_000000000001_0001', 'MCON_000000000002_0002')])   # the caller, by its keys
 
+    def test_an_offline_agent_is_never_hired_whatever_the_page_draws(self):
+        asked = []
+
+        class Hires(harness.Harness):
+            def facts(self, account, scope, member):
+                card = {'key': KEY, 'status': 'APPROVED', 'screen': 'larryd/agnt/home', 'price': '', 'product': 'LARRYD', 'product_slug': 'larryd', 'name': 'M', 'module': 'AGENT'}
+                return ([card, {**card, 'key': 'DAGT_00000000000A_000A', 'name': 'Maps', 'screen': 'locn/home', 'offline': True},
+                         {**card, 'key': 'DAGT_00000000000B_000B', 'name': 'Calendar', 'screen': 'opns/home', 'offline': False}],
+                        [{'agent_key': KEY, 'on': True}], [], lambda key: (True, ''))
+
+            def marketplace_key(self):
+                return KEY
+
+            def _ask(self, office, method, route, data):
+                asked.append((route, data['agent_key']))
+                return {'done': route}
+        h = Hires(self.db, self.agents, client=None)
+        with self.assertRaises(harness.Refused) as no:
+            h.hire('ACCT_000000000001_0001', 'SCRATCH', 'MCON_000000000002_0002', 'DAGT_00000000000A_000A', True)
+        self.assertEqual((no.exception.status, no.exception.reason), (403, 'offline'))
+        self.assertEqual(asked, [])   # the platform was never asked
+        h.hire('ACCT_000000000001_0001', 'SCRATCH', 'MCON_000000000002_0002', 'DAGT_00000000000B_000B', True)
+        h.hire('ACCT_000000000001_0001', 'SCRATCH', 'MCON_000000000002_0002', 'DAGT_00000000000A_000A', False)   # letting an offline one go is never refused
+        self.assertEqual(asked, [('/agnt/hire', 'DAGT_00000000000B_000B'), ('/agnt/unhire', 'DAGT_00000000000A_000A')])
+
     # ---------------------------------------------------------------- the old door is gone
     def test_the_old_developer_door_is_gone(self):
         c = self.app.test_client()
