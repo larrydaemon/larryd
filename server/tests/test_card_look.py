@@ -124,3 +124,19 @@ class AnAgentNeverSpeaksForAnothersCard(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class TheTemplatesShape(unittest.TestCase):
+    """frost-92's rc16 picture: the price wrapped beside the tags, CRT was invisible in a still, the frames differed."""
+    sheet = (APP / 'web' / 'agent_card.css').read_text()
+
+    def test_the_price_never_wraps_the_tags_do(self):
+        self.assertIn('.mk-foot > [data-part="price"] { flex: none; white-space: nowrap }', self.sheet)
+        self.assertIn('.mk-foot > [data-part="facts"] { flex: 1 1 auto; min-width: 0 }', self.sheet)
+
+    def test_the_frame_is_one_fixed_shape(self):
+        self.assertIn('.mk-frame { flex: none; width: 100%; aspect-ratio: 1 / 1;', self.sheet)
+
+    def test_crt_shows_without_motion(self):
+        self.assertIn('.agent-card[data-effect="crt"] .mk-glow { background: radial-gradient(', self.sheet)
+        self.assertNotIn('var(--active-color-09) 28%', self.sheet)   # scanlines in the accent, seen on a dark frame

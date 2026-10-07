@@ -7,6 +7,7 @@ import hashlib
 import json
 import os
 import pathlib
+import time
 import urllib.error
 import urllib.request
 import webbrowser
@@ -36,7 +37,20 @@ def key_for(name):
     return f'DAGT_{digest[:12]}_{digest[12:16]}'
 
 
-def _post(url, data, timeout=30):
+WAIT = 6.0   # seconds `place` and `card` keep asking a runtime that is still starting, before saying none answers
+
+
+def _post(url, data, timeout=30, wait=None):
+    """POST once; a refused connection (a runtime still starting) is asked again every half second for WAIT seconds."""
+    end = time.monotonic() + (WAIT if wait is None else wait)
+    while True:
+        status, answer = _post_once(url, data, timeout)
+        if status or time.monotonic() >= end:
+            return status, answer
+        time.sleep(0.5)
+
+
+def _post_once(url, data, timeout):
     req = urllib.request.Request(url, data=data, method='POST', headers={'Content-Type': 'application/octet-stream', 'X-Larryd-Place': '1'})
     try:
         with urllib.request.urlopen(req, timeout=timeout) as r:

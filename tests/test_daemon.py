@@ -46,6 +46,8 @@ def test_the_daemon(tmp_path):
         line = daemon.stdout.readline()
         assert line.startswith(f"LARRYD's runtime listens on http://127.0.0.1:{port} (pid {daemon.pid})"), line
         assert f'its instance: {instance}' in line and f'stop it: Ctrl-C (or kill {daemon.pid})' in line
+        with urllib.request.urlopen(f'http://127.0.0.1:{port}/ready', timeout=2) as r:   # said only once it answers (frost-92's rc16 X1)
+            assert r.status == 200
         for _ in range(60):
             try:
                 status, body = get(port)
@@ -116,3 +118,15 @@ def test_the_runtimes_own_marketplace_is_placed_fresh_and_nothing_else_is_touche
     assert (mine / 'agent.json').read_text() == '{"name": "the developer\'s"}'
     daemon.prepare(instance, runtime)
     assert (instance / 'secrets' / 'runtime_link').read_text() == secret
+
+
+def test_the_listen_line_waits_for_ready(monkeypatch):
+    import io
+    from larryd import daemon as d
+    asked = []
+    monkeypatch.setattr(d, 'ready', lambda port, timeout=0.5: (asked.append(port), len(asked) >= 3)[1])
+    out = io.StringIO()
+    assert d.say_when_ready(5999, 'LISTENS', every=0.01, out=out) and out.getvalue() == 'LISTENS\n' and len(asked) == 3
+    monkeypatch.setattr(d, 'ready', lambda port, timeout=0.5: False)
+    out = io.StringIO()
+    assert not d.say_when_ready(5999, 'LISTENS', most=0.05, every=0.01, out=out) and out.getvalue() == ''

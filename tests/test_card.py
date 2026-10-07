@@ -92,10 +92,19 @@ def test_a_card_key_is_a_card_key_made_from_the_name():
 
 def test_place_says_to_start_larryd_when_none_answers(tmp_path, monkeypatch):
     monkeypatch.setenv('LARRYD_PORT', '1')   # nothing listens on port 1
+    monkeypatch.setattr(place, 'WAIT', 0.6)
     root = new.make('lonely', tmp_path)
     with pytest.raises(place.Refused) as no:
         place.place(root)
     assert 'no LARRYD runtime answers' in no.value.wrong and 'run `larryd`' in no.value.todo
+
+
+def test_place_asks_a_starting_runtime_again_before_giving_up(monkeypatch):
+    """frost-92's rc16 X1: `larryd card` right after `larryd` found none; a refused connection is asked again for WAIT seconds."""
+    answers = [(0, {'refused': 'no LARRYD runtime answers'})] * 2 + [(201, {'held': {}})]
+    monkeypatch.setattr(place, '_post_once', lambda url, data, timeout: answers.pop(0))
+    monkeypatch.setattr(place.time, 'sleep', lambda s: None)
+    assert place._post('http://127.0.0.1:1/x', b'') == (201, {'held': {}}) and answers == []
 
 
 def test_place_refuses_before_sending_when_the_doctor_finds_problems(tmp_path, monkeypatch):

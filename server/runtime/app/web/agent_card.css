@@ -13,7 +13,7 @@
 .mk-id { display: flex; flex-direction: column; gap: 2px }
 .mk-hire { display: flex; flex-direction: column; align-items: flex-end; gap: 4px }
 .mk-form { margin: 0 }
-.mk-frame { flex: 1 1 auto; min-height: 0; aspect-ratio: 1 / 1; position: relative; display: grid; place-items: center; border: 1px solid var(--accent); border-radius: calc(var(--radius) / 2); overflow: hidden; isolation: isolate }
+.mk-frame { flex: none; width: 100%; aspect-ratio: 1 / 1; position: relative; display: grid; place-items: center; border: 1px solid var(--accent); border-radius: calc(var(--radius) / 2); overflow: hidden; isolation: isolate }
 .mk-frame > * { grid-area: 1 / 1 }
 .mk-glow, .mk-scan { width: 100%; height: 100%; pointer-events: none }
 .mk-glow { z-index: 0 }
@@ -21,8 +21,11 @@
 .mk-art { width: 92%; height: 92%; object-fit: contain }
 .mk-initials { color: var(--accent) }
 .mk-scan { z-index: 2 }
-.mk-foot { display: flex; justify-content: space-between; align-items: baseline; margin-top: auto; padding-top: var(--space); border-top: 1px solid var(--accent) }
-.agent-card[data-effect="crt"] .mk-scan { background: linear-gradient(180deg, transparent 0%, color-mix(in srgb, var(--accent) 7%, transparent) 48%, transparent 56%), repeating-linear-gradient(0deg, color-mix(in srgb, var(--active-color-09) 28%, transparent) 0 1px, transparent 1px 3px); background-size: 100% 220%, 100% 100%; animation: mk-roll 6s linear infinite }
+.mk-foot { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space); margin-top: auto; padding-top: var(--space); border-top: 1px solid var(--accent) }
+.mk-foot > [data-part="facts"] { flex: 1 1 auto; min-width: 0 }
+.mk-foot > [data-part="price"] { flex: none; white-space: nowrap }
+.agent-card[data-effect="crt"] .mk-scan { background: linear-gradient(180deg, transparent 0%, color-mix(in srgb, var(--accent) 7%, transparent) 48%, transparent 56%), repeating-linear-gradient(0deg, color-mix(in srgb, var(--accent) 16%, transparent) 0 1px, transparent 1px 3px); background-size: 100% 220%, 100% 100%; animation: mk-roll 6s linear infinite }
+.agent-card[data-effect="crt"] .mk-glow { background: radial-gradient(ellipse at 50% 45%, color-mix(in srgb, var(--accent) 22%, transparent) 0%, color-mix(in srgb, var(--accent) 6%, transparent) 60%, transparent 100%) }
 .agent-card[data-effect="crt"] .mk-art { filter: drop-shadow(0 0 6px var(--accent)) }
 .agent-card[data-effect="wellness"] .mk-glow { background: radial-gradient(circle at 30% 35%, var(--accent) 0%, transparent 55%), radial-gradient(circle at 72% 68%, var(--active-color-08) 0%, transparent 55%); opacity: 0.35; filter: blur(18px); animation: mk-drift 14s ease-in-out infinite alternate }
 .agent-card[data-effect="wellness"] .mk-art { animation: mk-breathe 7s ease-in-out infinite }
@@ -34,4 +37,4 @@
 @keyframes mk-foil { 0% { background-position: 120% 0, 0 0, 0 0 } 100% { background-position: -120% 0, 0 0, 0 0 } }
 @keyframes mk-flicker { 0%, 100% { opacity: 1 } 47% { opacity: 0.6 } 48% { opacity: 1 } 83% { opacity: 0.75 } }
 @keyframes mk-jitter { 0%, 100% { transform: translate(0, 0) } 91% { transform: translate(1px, -1px) } 92% { transform: translate(-1px, 0) } 93% { transform: translate(0, 0) } }
-@media (prefers-reduced-motion: reduce) { .mk-scan, .mk-glow, .mk-art { animation: none } }
+@media (prefers-reduced-motion: reduce) { .agent-card[data-effect] .mk-scan, .agent-card[data-effect] .mk-glow, .agent-card[data-effect] .mk-art { animation: none } }   /* as specific as each effect's own rule, so it wins */
