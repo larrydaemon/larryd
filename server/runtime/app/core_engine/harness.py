@@ -14,7 +14,7 @@ import pathlib
 import re
 import sqlite3
 
-from . import gate, lanes, locker, look, records as run_records, sandbox
+from . import gate, lanes, locker, look, records as run_records, sandbox, view
 
 MARKETPLACE = 'marketplace'   # the one agent's locker folder: it answers the collection, hires, and places defaults
 HANDS = ('cards', 'job')      # what a RUN can be handed: the cards the member sees; the job's own inputs (read from wid, kept nowhere)
@@ -197,6 +197,9 @@ class Harness:
         if state != 'DONE':
             raise Refused(500, reason)
         self._looks(answer, verify)
+        answer, why = view.checked(answer)   # the agent's own view, passed on only when it holds nothing that runs or reaches out
+        if why:
+            LOG.warning('view dropped for %s: %s', agent_key, why)
         return {'agent_key': agent_key, 'title': card['name'], **answer}
 
     def _looks(self, answer, verify):

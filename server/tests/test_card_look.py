@@ -53,8 +53,8 @@ class TenLooksOnePage(unittest.TestCase):
     def tearDown(self):
         self.tmp.cleanup()
 
-    def cards(self):
-        return dict(re.findall(r'<article class="agent-card[^"]*" data-agent="([^"]+)"[^>]*data-look=\'([^\']*)\'', self.html))
+    def cards(self):   # each card's look rides on the answer (the platform's data); the marketplace's own view draws the cards
+        return {c['key']: json.dumps(c.get('look', {})) for c in self.client.get('/marketplace.json').get_json()['cards']}
 
     def test_each_card_wears_its_own_agents_record(self):
         cards = self.cards()
@@ -66,6 +66,7 @@ class TenLooksOnePage(unittest.TestCase):
         self.assertEqual(json.loads(self.cards()[KEYS[9]]), {'space': 'step-4', 'text': {'name': 'title'}})
         for raw in ('evil.example', '20px', '<script>alert', 'alert(', 'x;y', 'hack', '"shadow"'):
             self.assertNotIn(raw, self.html)
+            self.assertNotIn(raw, json.dumps(self.client.get('/marketplace.json').get_json()['cards']))
 
     def test_no_inline_style_anywhere_and_a_strict_policy(self):
         self.assertNotIn('style=', self.html)
@@ -73,12 +74,15 @@ class TenLooksOnePage(unittest.TestCase):
         self.assertIn("style-src 'self'", self.headers['Content-Security-Policy'])
         self.assertNotIn('unsafe-inline', self.headers['Content-Security-Policy'])
 
-    def test_every_card_is_in_its_own_shadow_root_with_the_template_sheet(self):
-        self.assertEqual(self.html.count('<template shadowrootmode="open">'), self.html.count('<article class="agent-card'))
-        self.assertEqual(self.html.count('href="/marketplace/agent_card.css"'), 10)   # the ten placed agents; the marketplace is the page, never a card inside itself
+    def test_the_view_is_the_marketplaces_own_in_one_shadow_root(self):   # the owner, 2026-10-07: the card lives in the agent
+        self.assertEqual(self.html.count('<template shadowrootmode="open">'), 1)
+        self.assertEqual(self.html.count('<article class="agent-card'), 10)   # the ten placed agents; the marketplace is the page, never a card inside itself
+        self.assertIn('href="/marketplace/view.css"', self.html)
+        self.assertEqual(self.client.get('/marketplace/view.css').get_data(as_text=True), (APP / 'agents' / 'marketplace' / 'card.css').read_text())
+        self.assertNotIn('<form', self.html.split('<template shadowrootmode="open">', 1)[1].split('</template>', 1)[0])
 
     def test_the_card_files_are_served_and_nothing_else(self):
-        for name in ('agent_card.css', 'agent_card.js', 'page.css', 'reference_theme.css'):
+        for name in ('page.css', 'reference_theme.css', 'view.js', 'view.css'):
             self.assertEqual(self.client.get(f'/marketplace/{name}').status_code, 200, name)
         self.assertEqual(self.client.get('/marketplace/app.py').status_code, 403)
 

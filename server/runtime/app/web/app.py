@@ -19,7 +19,7 @@ import threading
 import time
 from urllib.parse import quote
 
-from flask import Flask, jsonify, redirect, render_template, request, send_from_directory
+from flask import Flask, Response, jsonify, redirect, render_template, request, send_from_directory
 from werkzeug.exceptions import HTTPException
 
 APP = pathlib.Path(__file__).resolve().parent.parent
@@ -271,7 +271,7 @@ def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, deve
     return app
 
 
-CARD_FILES = ('agent_card.css', 'agent_card.js', 'page.css', 'reference_theme.css')
+CARD_FILES = ('page.css', 'reference_theme.css', 'view.js')
 # the shelf page under a strict policy: no inline style or script anywhere, so a card's look can only arrive by the
 # card script's style.setProperty, after its check against the menu
 STRICT = ("default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:; form-action 'self'; "
@@ -332,6 +332,17 @@ def _marketplace_pages(app, h, instance, token):
         if name not in CARD_FILES:
             return refused('no such file')
         return send_from_directory(pathlib.Path(__file__).resolve().parent, name, max_age=0)
+
+    @app.get('/marketplace/view.css')
+    def marketplace_view_sheet():
+        """The marketplace's own sheet (its card.css, in its view), served from this origin: the page's policy allows no inline style."""
+        if mine():
+            return refused(mine())
+        try:
+            answer, _not_shown = collection()
+        except lanes_harness.Refused as why:
+            return jsonify({'refused': why.reason}), why.status
+        return Response((answer.get('view') or {}).get('css', ''), mimetype='text/css', headers={'Cache-Control': 'no-store'})
 
     @app.get('/marketplace.json')
     def marketplace_json():

@@ -34,7 +34,7 @@ class CollectionTest(unittest.TestCase):
             'initials': 'TA', 'image_dam_key': '', 'product': 'LARRYD', 'module': 'AGENT', 'pitch': 'Every agent, one toggle.',
             'developer': 'Positive Feedback', 'type': 'OFF-THE-SHELF', 'residency': 'INTERNAL',
             'screen': 'larryd/agnt/home', 'sends_to': '', 'data_sent': '', 'rate': 0,
-            'hired': False, 'hireable': True, 'needs': ''}])
+            'hired': False, 'hireable': True, 'needs': '', 'art': ''}])
 
     def test_counts_and_order_come_from_the_cards(self):
         cards = [card(key='K3', number='3', hired=True), card(key='K1', number='1'), card(key='K2', number='', name='PF Night Watch')]
@@ -56,6 +56,7 @@ class CollectionTest(unittest.TestCase):
 
     def test_an_empty_collection_is_empty(self):
         out = run({'do': 'collection', 'cards': []})
+        self.assertEqual(out.pop('view')['css'], (FOLDER / 'card.css').read_text())
         self.assertEqual(out, {'cards': [], 'total': 0, 'hired': 0,
                          'filters': {'product': [], 'module': [], 'type': [], 'residency': [], 'class': []}})
 
@@ -89,9 +90,37 @@ class Gives(unittest.TestCase):
             self.assertLessEqual(set(answer), gives, do)
 
 
-class NoSheet(unittest.TestCase):
-    """Agents ship no CSS: the marketplace answers values only; each card's look is its own agent's record of names,
-    attached by the runtime from the held, approved manifest (harness.py), drawn by the one card template."""
-    def test_the_collection_carries_no_sheet(self):
-        self.assertNotIn('style', run({'do': 'collection', 'cards': [card()]}))
-        self.assertFalse(list(FOLDER.glob('*.css')))
+class TheAgentsOwnView(unittest.TestCase):
+    """The card lives in the agent (the owner, 2026-10-07): the collection carries its own view, the whole panel's markup
+    (one card per card handed, every value escaped, a hire button per card, no form) and its own sheet (card.css)."""
+    def test_one_card_per_card_handed_and_its_own_sheet(self):
+        cards = [card(key='K1', name='Weekly <Summary>', hired=True, price='3'), card(key='K2', number='2', name='Action Items')]
+        v = run({'do': 'collection', 'cards': cards})['view']
+        self.assertEqual(set(v), {'html', 'css'})
+        self.assertEqual(v['css'], (FOLDER / 'card.css').read_text())
+        self.assertEqual(v['html'].count('<article class="agent-card'), 2)
+        self.assertIn('Weekly &lt;Summary&gt;', v['html'])
+        self.assertNotIn('<Summary>', v['html'])
+        self.assertIn('data-hire="K1" aria-pressed="true"', v['html'])
+        self.assertIn('data-hire="K2" aria-pressed="false"', v['html'])
+        self.assertIn('3 mTok', v['html'])
+        self.assertNotIn('<form', v['html'])
+        self.assertIn('2 total in network · 1 hired', v['html'])
+
+    def test_the_marketplace_never_draws_itself(self):   # the runtime never hands it its own card; what it is handed is all it draws
+        v = run({'do': 'collection', 'cards': [card(key='OTHER')]})['view']
+        self.assertEqual(re.findall(r'data-agent="([^"]+)"', v['html']), ['OTHER'])
+
+    def test_the_view_passes_the_runtimes_check(self):
+        from core_engine import view
+        self.assertEqual(view.refused(run({'do': 'collection', 'cards': [card(), card(key='K2')]})['view']), '')
+
+    def test_the_sheet_is_in_the_agents_code_hash(self):   # FROST approves the sheet with the agent: a changed sheet is a changed agent
+        import shutil, tempfile, pathlib
+        from core_engine import locker
+        with tempfile.TemporaryDirectory() as tmp:
+            copy = pathlib.Path(tmp) / 'marketplace'
+            shutil.copytree(FOLDER, copy, ignore=shutil.ignore_patterns('__pycache__'))
+            before = locker._code_sha256(copy)
+            (copy / 'card.css').write_text((copy / 'card.css').read_text() + '\n.x { }\n')
+            self.assertNotEqual(before, locker._code_sha256(copy))
