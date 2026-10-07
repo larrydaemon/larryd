@@ -180,5 +180,14 @@ def table(cat=None):
     only = cat.get('only_for', {})
     lines += [f'| {r} | {v["size"]:g}px | {v["weight"]} | {v["case"]} | {cat["for"].get(r, "")}'
               f'{" (chosen only for a selector naming " + ", ".join(only[r]) + ")" if r in only else ""} |' for r, v in cat['roles'].items()]
-    import textwrap   # prose wrapped like the rest of the guide; a table row stays one line
-    return '\n'.join(line if line.startswith('|') or len(line) <= 118 else textwrap.fill(line, 118) for line in lines)
+    import textwrap   # prose re-flowed by whole paragraph like the rest of the guide; a table row stays one line
+    out, para = [], []
+    for line in lines + ['']:
+        if line and not line.startswith('|'):
+            para.append(line)
+            continue
+        if para:
+            out.append(textwrap.fill(' '.join(para), 118))
+            para = []
+        out.append(line)
+    return '\n'.join(out[:-1])

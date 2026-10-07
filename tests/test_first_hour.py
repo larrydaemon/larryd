@@ -205,3 +205,23 @@ def test_the_doctor_section_of_the_guide_wraps_like_the_rest():
     text = (PACKAGE / 'GUIDE.md').read_text()
     section = text[text.index('## 4. The doctor'):text.index('## 5.')]
     assert [line for line in section.splitlines() if len(line) > 120 and not line.startswith('|')] == []
+
+
+# rc15's rerun: prose is re-flowed by whole paragraph (no word left alone on a line); a part's rules cascade first
+def test_no_short_line_inside_a_paragraph_of_the_doctor_section_and_the_menu():
+    text = (PACKAGE / 'GUIDE.md').read_text()
+    section = text[text.index('## 4. The doctor'):text.index('## 5.')]
+    for para in section.split('\n\n'):
+        lines = para.split('\n')
+        if any(line.startswith(('    ', '|', '#', '-')) for line in lines):
+            continue
+        assert all(len(line) >= 40 for line in lines[:-1]), lines
+
+
+def test_a_part_s_rules_cascade_then_map_once():
+    from larryd import look
+    record, said, dropped = look.from_sheet('.mk-name { font-family: Inter, sans-serif; font-size: 30px; font-weight: 800; text-transform: uppercase }\n'
+                                            '.mk-name { font-size: 40px; font-weight: 900 }\n')
+    assert record == {'text': {'name': 'heading'}} and dropped == []   # 40px, 900, uppercase: what the browser draws
+    assert len(said) == 1 and said[0].startswith('.mk-name (2 rules merged as the browser cascades them, the later wins): '
+                                                 'font-family: Inter, sans-serif; text-transform: uppercase; font-size: 40px; font-weight: 900 -> text name: the heading role')

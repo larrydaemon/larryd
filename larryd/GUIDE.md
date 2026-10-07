@@ -117,9 +117,8 @@ always give the same result.
 ### The menu (a fixed list, the same for the doctor, this guide and the platform)
 
 "accent": a theme colour variable, `active-color-01` to `active-color-64`. The card follows the live theme (brand,
-light
-or dark), so the colours below are the reference theme's only; a designed colour goes to the nearest as the eye sees
-it.
+light or dark), so the colours below are the reference theme's only; a designed colour goes to the nearest as the eye
+sees it.
 
 | Colour (reference theme) | active-color-NN |
 |---|---|

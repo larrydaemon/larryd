@@ -245,18 +245,29 @@ def from_sheet(text, cat=None):
         look['effect'] = best
         said.append(f'the sheet\'s animation and layers -> effect {best} (read from its words: {", ".join(sorted(set(m.group(0).lower() for m in EFFECT_WORDS[best].finditer(text))))})')
 
-    text_roles = {}
+    text_roles, merged = {}, {}   # per part: its type as the browser cascades it (source order, the later wins per property)
     for n, (selector, decls, _within) in enumerate(rules):
-        if STATES.search(selector):
-            continue
-        written = {p: v for p, v in decls if p in sheet.TYPE and not v.startswith('var(--font-')}
         part = _part(selector)
-        if not written or part is None:
+        if STATES.search(selector) or part is None:
             continue
-        role, how = sheet.nearest_role(written, cat, selector), sheet.ROLE_RULE
+        written = [(k, p, v) for k, (p, v) in enumerate(decls) if p in sheet.TYPE and not v.startswith('var(--font-')]
+        if not written:
+            continue
+        mine = merged.setdefault(part, {'selectors': [], 'type': {}})
+        if selector not in mine['selectors']:
+            mine['selectors'].append(selector)
+        mine['rules'] = mine.get('rules', 0) + 1
+        for k, p, v in written:
+            mine['type'].pop(p, None)   # re-inserted: the declaration order shows what the browser keeps
+            mine['type'][p] = v
+            used.add((n, k))
+    for part, mine in merged.items():
+        selectors = ', '.join(mine['selectors'])
+        role = sheet.nearest_role(mine['type'], cat, selectors)
         text_roles[part] = role
-        used.update((n, k) for k, (p, _v) in enumerate(decls) if p in written)
-        said.append(f'{selector}: {"; ".join(f"{k}: {v}" for k, v in written.items())} -> text {part}: the {role} role ({how}; the role brings its own font, size, weight, style, case and letter spacing)')
+        cascade = f' ({mine["rules"]} rules merged as the browser cascades them, the later wins)' if mine['rules'] > 1 else ''
+        said.append(f'{selectors}{cascade}: {"; ".join(f"{k}: {v}" for k, v in mine["type"].items())} -> text {part}: the {role} role '
+                    f'({sheet.ROLE_RULE}; the role brings its own font, size, weight, style, case and letter spacing)')
     if text_roles:
         look['text'] = text_roles
 
