@@ -177,15 +177,23 @@ def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, deve
         if not access_granted(d):
             raise lanes_harness.Refused(403, NOT_GRANTED)
 
-    @app.get('/api/agents/answer')
+    @app.route('/api/agents/answer', methods=['GET', 'POST'])
     def answer():
+        """GET: the agent's answer for the member's screen. POST (a JSON body, signed whole like every POST door): the same, and
+        the body may hand the agent what the page asks beside its cards: find (the controller's search, sort and filters), themes
+        (each theme a card may wear) and page (the page's own already-loaded logos); each a JSON object, else left out."""
         token = slot.take()   # the slot first, atomically, before any of the agent's code
         if not token:
             return busy()
         run_with = harness_for()
         run_with.on_start = lambda pid: slot.attach(token, pid)   # the run's process group, so a reclaim can kill it whole
+
+        def work():
+            d = given('agent_key')
+            beside = {k: d[k] for k in lanes_harness.BESIDE if isinstance(d.get(k), dict)} if request.method == 'POST' else {}
+            return run_with.answer(*(d[k] for k in NEEDS + ('agent_key',)), beside=beside)
         try:
-            return answered(lambda: run_with.answer(*(given('agent_key')[k] for k in NEEDS + ('agent_key',))))
+            return answered(work)
         finally:
             run_with.on_start = None
             slot.give_back(token)

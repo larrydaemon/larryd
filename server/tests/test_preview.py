@@ -67,7 +67,7 @@ class DeveloperMarketplace(unittest.TestCase):
     def test_the_first_visit_places_the_marketplace_and_the_page_is_it_never_a_card_inside_itself(self):
         html = self.page()   # the marketplace is the page (the owner, 2026-10-06): never a card inside itself
         self.assertIn('THE AGENT MARKETPLACE', html)
-        self.assertIn('0 total in network · 0 hired', html)
+        self.assertNotIn('total in network', html)   # the platform's controller says the totals (the final card)
         self.assertNotIn(f'data-agent="{preview.MARKETPLACE_KEY}"', html)
         self.assertNotIn('No. 000', html)
         j = self.client.get('/marketplace.json').get_json()
@@ -78,10 +78,10 @@ class DeveloperMarketplace(unittest.TestCase):
         self.assertEqual(r.status_code, 201, r.get_data(as_text=True))
         self.assertEqual(r.get_json()['held']['name'], 'Scratch agent')
         html = self.page()
-        for said in ('Scratch agent', 'Says hi.', 'Invoice Maps · CONTACTS', 'Developer · Scratch Dev', '▸ OFF-THE-SHELF ▸ INTERNAL', 'No. 001',
+        for said in ('Scratch agent', 'Says hi.', 'Invoice Maps · CONTACTS', 'Developer · Scratch Dev', '<span class="mk-annotation mk-kind">Agent</span>',
                      'lives on cont/card', f'data-agent="{KEY_A}" data-on="0"'):
             self.assertIn(said, html)
-        self.assertIn('1 total in network · 0 hired', html)
+        self.assertEqual(html.count('<article class="agent-card'), 1)
         self.assertNotIn(f'data-agent="{preview.MARKETPLACE_KEY}"', html)
         self.assertEqual(self.toggle(html, KEY_A, True), '/marketplace')
         j = self.client.get('/marketplace.json').get_json()
@@ -141,16 +141,13 @@ class DeveloperMarketplace(unittest.TestCase):
         self.assertEqual(self.client.post(f'/marketplace/place?key={KEY_A}', data=sneaky, content_type='application/octet-stream').status_code, 403)
         self.assertEqual(self.client.get('/marketplace.json').get_json()['total'], 0)
 
-    def test_the_marketplace_let_go_can_be_hired_again_from_the_page(self):
+    def test_the_marketplace_is_always_on_it_cannot_be_let_go(self):   # the owner, 2026-10-07: "all people will get this turned on and no option to turn this agent off"
         self.place(KEY_A, _agent('Scratch agent', GOOD_CARD))   # a card's form carries the page's token
         html = self.page()
-        self.toggle(html, preview.MARKETPLACE_KEY, False)
+        self.assertIn('?no=', self.toggle(html, preview.MARKETPLACE_KEY, False))   # refused, and said
         r = self.client.get('/marketplace')
-        self.assertEqual(r.status_code, 403)
-        page = r.get_data(as_text=True)
-        self.assertIn('Hire the marketplace again', page)
-        self.toggle(page, preview.MARKETPLACE_KEY, True)
-        self.assertIn('1 total in network · 0 hired', self.page())
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.get_data(as_text=True).count('<article class="agent-card'), 1)
 
 
 class LocalAnswers(unittest.TestCase):

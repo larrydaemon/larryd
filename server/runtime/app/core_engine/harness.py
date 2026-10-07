@@ -17,6 +17,8 @@ import sqlite3
 from . import gate, lanes, locker, look, records as run_records, sandbox, view
 
 MARKETPLACE = 'marketplace'   # the one agent's locker folder: it answers the collection, hires, and places defaults
+SAMPLE_RATING = {'rating': '4.8', 'reviews': '212'}   # THE DESIGN'S SAMPLE, ON EVERY CARD, UNTIL A RATING SYSTEM EXISTS (the owner, 2026-10-07: "we can build that later, for now just keep them all the same as the design"): not a member's rating of anything; one line to take out ({} shows no strip)
+BESIDE = ('find', 'themes', 'page')   # what an ANSWER call may hand the agent beside its cards (the page's own: its controller's asks, the themes a card may wear, its loaded logos); each a JSON object
 HANDS = ('cards', 'job')      # what a RUN can be handed: the cards the member sees; the job's own inputs (read from wid, kept nowhere)
 SLOT = re.compile(r'^0(0[1-9]|1[0-5])$')   # a job's agent input slots, as wid's jobs species holds them: data_job_001 .. data_job_015
 MOST_INPUT = 10_000           # characters in one input
@@ -174,7 +176,7 @@ class Harness:
         return next((c for c in cards if c['key'] == key), None)
 
     # ---------------------------------------------------------------- the CALL lane: an agent answers now
-    def answer(self, account, scope, member, agent_key):
+    def answer(self, account, scope, member, agent_key, beside=None):
         """An agent's answer for the member's screen: only an agent that answers calls, passing the gate itself."""
         held = locker.held(self.db, agent_key)
         calls = locker.manifest(self.agents, held['folder']).get('calls') if held else None
@@ -188,8 +190,10 @@ class Harness:
         if not ok:
             self._record('call', agent_key, 'REFUSED', why, account=account, member=member)
             raise Refused(403, why)
+        beside = {k: v for k, v in (beside or {}).items() if k in BESIDE and isinstance(v, dict)}   # the page's own, beside the cards; never over them
+        handed = self._dressed(lanes.assemble(cards, hired, groups, verify, own=agent_key), beside.get('page') or {})
         state, answer, reason = sandbox.run(self.agents / held['folder'], locker.manifest(self.agents, held['folder'])['entry'],
-                                            {'do': calls[0], 'cards': lanes.assemble(cards, hired, groups, verify, own=agent_key)}, self.seconds, on_start=self.on_start)
+                                            {**beside, 'do': calls[0], 'cards': handed}, self.seconds, on_start=self.on_start)
         outside = _outside_gives(locker.manifest(self.agents, held['folder']), answer) if state == 'DONE' else ''
         if outside:
             state, reason = 'FAILED', outside
@@ -197,10 +201,31 @@ class Harness:
         if state != 'DONE':
             raise Refused(500, reason)
         self._looks(answer, verify)
-        answer, why = view.checked(answer)   # the agent's own view, passed on only when it holds nothing that runs or reaches out
+        path = (beside.get('page') or {}).get('path')
+        answer, why = view.checked(answer, path if isinstance(path, str) else '')   # the agent's own view, passed on only when it holds nothing that runs or reaches out
         if why:
             LOG.warning('view dropped for %s: %s', agent_key, why)
         return {'agent_key': agent_key, 'title': card['name'], **answer}
+
+    def _dressed(self, cards, page):
+        """EACH CARD AS THE PAGE DRESSES IT, on this one call and kept nowhere: wears = the theme the page gives the card's product
+        (page.wears), art = that theme's picture (page.arts), developer_site = the agent's OWN manifest's card.developer_site from its
+        locker (plain https to a named host, else none). The rating is the design's one sample on every card (SAMPLE_RATING), never a card's own claim."""
+        wears = page.get('wears') if isinstance(page.get('wears'), dict) else {}
+        arts = page.get('arts') if isinstance(page.get('arts'), dict) else {}
+        out = []
+        for c in cards:
+            worn = wears.get(c.get('product'))
+            worn = worn if isinstance(worn, str) and worn.isalnum() else ''
+            art = arts.get(worn) if worn else ''
+            held = locker.held(self.db, c['key'])
+            try:
+                site = ((locker.manifest(self.agents, held['folder']).get('card') or {}).get('developer_site') if held else '') or ''
+            except (OSError, ValueError, AttributeError):   # a manifest that cannot be read names no site
+                site = ''
+            out.append({**{k: v for k, v in c.items() if k not in ('rating', 'reviews')}, **SAMPLE_RATING, 'wears': worn, 'art': art if isinstance(art, str) else '',
+                        'developer_site': site if view.link_address(site) else ''})
+        return out
 
     def _looks(self, answer, verify):
         """EACH CARD'S LOOK IS ITS OWN AGENT'S: the record of names from that agent's held manifest, only while FROST
@@ -219,6 +244,8 @@ class Harness:
     def hire(self, account, scope, member, agent_key, on):
         """THE MARKETPLACE'S HIRE: only a card in the collection the member may hire; the marketplace itself can always be hired again."""
         key = self.marketplace_key()
+        if agent_key == key and not on:   # THE MARKETPLACE IS ALWAYS ON (the owner, 2026-10-07: "all people will get this turned on and no option to turn this agent off")
+            raise Refused(403, 'the marketplace is always on')
         cards, hired, groups, verify = self.facts(account, scope, member)
         mcard = self._card(cards, key)
         if mcard is None:

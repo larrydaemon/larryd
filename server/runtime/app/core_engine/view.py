@@ -10,10 +10,50 @@ import urllib.parse
 
 CDN_HOST, CDN_PATH = 'storage.googleapis.com', '/positivefeedback-cdn/'
 MAX_HTML, MAX_CSS = 200 * 1024, 100 * 1024
-TAGS = frozenset('div span section article header footer p b strong i em small img button ul ol li h1 h2 h3 h4 h5 h6 br hr figure figcaption'.split())
-ATTRS = frozenset(('class', 'title', 'alt', 'role', 'type', 'src', 'loading'))
+TAGS = frozenset('div span section article header footer p b strong i em small img button ul ol li h1 h2 h3 h4 h5 h6 br hr figure figcaption a canvas form input'.split())
+ATTRS = frozenset(('class', 'title', 'alt', 'role', 'type', 'src', 'loading', 'href', 'target', 'rel', 'method', 'action', 'name', 'value', 'placeholder'))
+LINK = {'target': '_blank', 'rel': 'noopener noreferrer'}   # a link out: a new tab that cannot reach back, always both
+_HOST = re.compile(r'(?=.{1,253}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}')
 SHEET_NEVER = ('@import', 'expression(', 'image-set(', 'src(', 'behavior', 'javascript:')
 _URL = re.compile(r'url\(\s*([\'"]?)(.*?)\1\s*\)', re.I | re.S)
+
+
+def link_address(address):
+    """Is this a plain https address to a NAMED host (a link a card may draw: a developer's website)? No user, no port, no number for a host,
+    nothing that hides or breaks out."""
+    if not isinstance(address, str) or not address or len(address) > 2048 or any(c.isspace() or ord(c) < 32 or c in '"\'<>\\`' for c in address):
+        return False
+    try:
+        parts = urllib.parse.urlsplit(address)
+        port = parts.port
+    except ValueError:
+        return False
+    return parts.scheme == 'https' and not parts.username and not parts.password and port is None and bool(_HOST.fullmatch(parts.netloc.lower()))
+
+
+_PATH = re.compile(r'/(?!/)[A-Za-z0-9_./~-]*')
+_QUERY = re.compile(r'[A-Za-z0-9_.~%+&=-]*')
+_THEMES = re.compile(r'/themes/[A-Za-z0-9_-]+(?:/[A-Za-z0-9_-]+)*\.[A-Za-z0-9]+')
+
+
+def page_address(address, path):
+    """Is this THE PAGE ITSELF, changed only in its query (a controller's link: the page's own path, then at most a plain query)? Never another path,
+    another site, a fragment or anything that hides."""
+    if not path or not isinstance(path, str) or not _PATH.fullmatch(path) or '..' in path or not isinstance(address, str):
+        return False
+    if address == path:
+        return True
+    return address.startswith(path + '?') and bool(_QUERY.fullmatch(address[len(path) + 1:]))
+
+
+def package_address(address):
+    """Is this a file of the look's own package, served by the page's own site (/themes/<plain path>: the dock's logos are package files, not the
+    CDN's)? Plain names and one extension: no "..", no "%", no query, nothing that walks or hides."""
+    return isinstance(address, str) and bool(_THEMES.fullmatch(address))
+
+
+def picture_address(address):
+    return cdn_address(address) or package_address(address)
 
 
 def cdn_address(address):
@@ -36,9 +76,9 @@ def cdn_address(address):
 
 
 class _Check(html.parser.HTMLParser):
-    def __init__(self):
+    def __init__(self, path=''):
         super().__init__(convert_charrefs=True)
-        self.why = ''
+        self.why, self.path, self.forms = '', path, 0
 
     def _no(self, why):
         if not self.why:
@@ -47,17 +87,41 @@ class _Check(html.parser.HTMLParser):
     def handle_starttag(self, tag, attrs):
         if tag not in TAGS:
             return self._no(f'the view\'s markup holds a <{tag}> element')
+        had = {name: (value or '') for name, value in attrs}
+        if len(had) != len(attrs):
+            return self._no('an attribute written twice')
+        if tag == 'a':   # A LINK: either THE PAGE ITSELF with its query changed (no target, no rel), or A LINK OUT (href, target and rel all three, exactly)
+            same = page_address(had.get('href'), self.path) and 'target' not in had and 'rel' not in had
+            out = link_address(had.get('href')) and all(had.get(k) == v for k, v in LINK.items())
+            if not (same or out):
+                return self._no('a link that is neither the page itself nor https to a named host in a new tab, noopener noreferrer')
+        if tag == 'form':   # A SEARCH: a GET to the page itself, nothing else
+            if had.get('method') != 'get' or not self.path or had.get('action') != self.path or set(had) - {'method', 'action', 'class'}:
+                return self._no('a form that is not a GET to the page itself')
+            self.forms += 1
+        if tag == 'input':   # a search's word, or a kept one: inside a form, text or hidden, a plain name
+            if not self.forms or had.get('type') not in ('text', 'hidden') or not re.fullmatch(r'[a-z_]{1,32}', had.get('name', '')) \
+                    or set(had) - {'type', 'name', 'value', 'placeholder', 'class'}:
+                return self._no('an input that is not a plain text or hidden word of a search')
         for name, value in attrs:
             value = value if value is not None else ''
             if name.startswith(('data-', 'aria-')) and re.fullmatch(r'(data|aria)-[a-z0-9-]+', name):
                 continue
             if name not in ATTRS:
                 return self._no(f'the view\'s markup holds the attribute {name}')
-            if name == 'type' and (tag != 'button' or value != 'button'):
-                return self._no('a type other than a plain button')
+            if name == 'type' and tag == 'input':
+                continue
+            if name == 'type' and (tag != 'button' or value not in ('button', 'submit') or (value == 'submit' and not self.forms)):
+                return self._no('a type other than a plain button, or a search\'s own submit')
+            if name in ('method', 'action') and tag != 'form':
+                return self._no(f'{name} on a <{tag}>')
+            if name in ('name', 'value', 'placeholder') and tag != 'input':
+                return self._no(f'{name} on a <{tag}>')
             if name in ('src', 'loading') and tag != 'img':
                 return self._no(f'{name} on a <{tag}>')
-            if name == 'src' and not cdn_address(value):
+            if name in ('href', 'target', 'rel') and tag != 'a':
+                return self._no(f'{name} on a <{tag}>')
+            if name == 'src' and not picture_address(value):
                 return self._no('the view\'s markup reaches outside our CDN')
             if name == 'loading' and value not in ('lazy', 'eager'):
                 return self._no('a loading other than lazy or eager')
@@ -67,6 +131,8 @@ class _Check(html.parser.HTMLParser):
     def handle_endtag(self, tag):
         if tag not in TAGS:
             self._no(f'the view\'s markup holds a </{tag}> element')
+        if tag == 'form':
+            self.forms = max(0, self.forms - 1)
 
     def handle_comment(self, data):
         self._no('the view\'s markup holds a comment')
@@ -81,8 +147,8 @@ class _Check(html.parser.HTMLParser):
         self._no('the view\'s markup holds a declaration')
 
 
-def _markup(markup):
-    check = _Check()
+def _markup(markup, path=''):
+    check = _Check(path)
     try:
         check.feed(markup)
         check.close()
@@ -103,13 +169,13 @@ def _sheet(sheet):
     if flat.count('url(') != len(_URL.findall(sheet)):
         return 'the view\'s sheet holds a url( it cannot read'
     for _q, address in _URL.findall(sheet):
-        if not cdn_address(address.strip()):
+        if not picture_address(address.strip()):
             return 'the view\'s sheet reaches outside our CDN'
     return ''
 
 
-def refused(view):
-    """Why this view may not be drawn, or '' when it may."""
+def refused(view, path=''):
+    """Why this view may not be drawn, or '' when it may. path: the page's own path (the one address a controller's links and search may name)."""
     if not isinstance(view, dict) or set(view) - {'html', 'css'} or not all(isinstance(view.get(k, ''), str) for k in ('html', 'css')):
         return 'a view is {html, css}, two texts'
     markup, sheet = view.get('html', ''), view.get('css', '')
@@ -117,14 +183,14 @@ def refused(view):
         return 'the view\'s markup is over 200 KB'
     if len(sheet.encode('utf-8')) > MAX_CSS:
         return 'the view\'s sheet is over 100 KB'
-    return _markup(markup) or _sheet(sheet)
+    return _markup(markup, path) or _sheet(sheet)
 
 
-def checked(answer):
+def checked(answer, path=''):
     """The answer with its view passed on, or dropped whole when refused (-> (answer, why))."""
     if not isinstance(answer, dict) or 'view' not in answer:
         return answer, ''
-    why = refused(answer['view'])
+    why = refused(answer['view'], path)
     if why:
         answer = {k: v for k, v in answer.items() if k != 'view'}
     return answer, why

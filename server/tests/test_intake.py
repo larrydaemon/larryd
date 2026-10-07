@@ -242,7 +242,7 @@ class Intake(unittest.TestCase):
             def facts(self, account, scope, member):
                 card = {'key': KEY, 'status': 'APPROVED', 'screen': 'larryd/agnt/home', 'price': '', 'product': 'LARRYD', 'product_slug': 'larryd',
                         'name': 'M', 'module': 'AGENT'}
-                return [card], [], [], lambda key: (True, '')
+                return [card, {**card, 'key': OTHER, 'name': 'O', 'screen': 'cont/card'}], [{'agent_key': KEY, 'on': True}], [], lambda key: (True, '')   # the marketplace is on, as always
 
             def marketplace_key(self):
                 return KEY
@@ -250,14 +250,18 @@ class Intake(unittest.TestCase):
             def _ask(self, office, method, route, data):
                 return {'done': route}
         h = Hires(self.db, self.agents, client=None)
-        h.hire('ACCT_000000000001_0001', 'SCRATCH', 'MCON_000000000002_0002', KEY, True)
-        h.hire('ACCT_000000000001_0001', 'SCRATCH', 'MCON_000000000002_0002', KEY, False)
+        OTHER = 'DAGT_000000000009_0009'   # a card of the collection: the marketplace itself is always on and cannot be let go (the owner, 2026-10-07)
+        h.hire('ACCT_000000000001_0001', 'SCRATCH', 'MCON_000000000002_0002', OTHER, True)
+        h.hire('ACCT_000000000001_0001', 'SCRATCH', 'MCON_000000000002_0002', OTHER, False)
+        with self.assertRaises(harness.Refused) as no:
+            h.hire('ACCT_000000000001_0001', 'SCRATCH', 'MCON_000000000002_0002', KEY, False)
+        self.assertEqual((no.exception.status, no.exception.reason), (403, 'the marketplace is always on'))
         con = sqlite3.connect(self.db)
         rows = con.execute("SELECT * FROM runtime_runs WHERE lane = 'hire' ORDER BY id").fetchall()
         con.close()
         self.assertEqual([(r[1], r[2], r[5], r[10], r[11]) for r in rows],
-                         [('hire', KEY, 'ON', 'ACCT_000000000001_0001', 'MCON_000000000002_0002'),
-                          ('hire', KEY, 'OFF', 'ACCT_000000000001_0001', 'MCON_000000000002_0002')])   # the caller, by its keys
+                         [('hire', OTHER, 'ON', 'ACCT_000000000001_0001', 'MCON_000000000002_0002'),
+                          ('hire', OTHER, 'OFF', 'ACCT_000000000001_0001', 'MCON_000000000002_0002')])   # the caller, by its keys
 
     # ---------------------------------------------------------------- the old door is gone
     def test_the_old_developer_door_is_gone(self):
