@@ -197,3 +197,6 @@
 .mk-ctl .btn--small[aria-current] { color: var(--toggle-knob-on, var(--active-color-09)); background-color: var(--toggle-on, var(--active-color-05, var(--active-color-01))); border-color: var(--toggle-on, var(--active-color-05, var(--active-color-01))) }
 @media (max-width: 768px) { .mk-ctl .wl-col--3 { width: auto } }
 .mk-name { min-height: 2.3em }   /* THE BOXES LINE UP ACROSS A ROW (the owner, 2026-10-07): the name always keeps the room of two lines (2 x its 1.15 line), so a one-line name and a two-line name leave the cat's box at the same height */
+.mk-credit { margin-top: auto }
+.mk-credit + .mk-foot { margin-top: 0 }   /* THE DEVELOPER LINE HAS A FIXED PLACE (the owner, 2026-10-07): it stands just above the foot on every card, so it lines up across a row whatever the length of the pitch above it */
+.mk-name { display: flex; align-items: flex-end }   /* A SHORT NAME SITS AT THE BOTTOM OF ITS ROOM (the owner, 2026-10-07: "bottom justified to look good"): a one-line name stands just above the box, the blank line above it */
