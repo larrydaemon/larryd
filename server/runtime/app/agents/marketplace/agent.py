@@ -81,7 +81,7 @@ def collection(cards, themes=None, find=None, page=None):
             'developer': c.get('developer') or '', 'developer_site': _site(c.get('developer_site')), 'type': c.get('type') or '', 'residency': c.get('residency') or '',
             'screen': c.get('screen') or '', 'sends_to': c.get('sends_to') or '', 'data_sent': c.get('data_sent') or '',
             'rate': _rate(c.get('price')), 'hired': bool(c.get('hired')), 'hireable': bool(c.get('hireable')), 'needs': c.get('needs') or '',
-            'art': c.get('art') or '', 'wears': c.get('wears') or '', 'rating': _rating(c), 'offline': c.get('offline') is True}
+            'art': c.get('art') or '', 'wears': c.get('wears') or '', 'rating': _rating(c), 'offline': c.get('offline') is True, 'subscription': c.get('subscription') is True}
            for c in cards]
     answer = {'cards': out, 'total': everything, 'hired': hired, 'shown': len(out),
               'filters': {f: sorted({c[f] for c in cards if c.get(f)}) for f in FILTERS}}
@@ -114,6 +114,8 @@ def _card(c, simple=False):
     # AN OFFLINE CARD (the owner's design, 2026-10-07; the platform says which: card.offline): the toggle stays, dimmed and locked (no data-hire: the platform's
     # hire never reaches it), the word Locked where Hire stood; Offline where the price stood; Informational only where Agent stood; the sheet dims the rest
     kind = 'Agent'
+    if c['subscription']:   # an agent that comes with its product's subscription, for an account that has it: the word Subscription where the price stands (the owner, 2026-10-07)
+        price = 'Subscription'
     if c['offline']:
         price, kind = 'Offline', 'Informational only'
     developer = (f'<a class="mk-site" href="{e(c["developer_site"])}" target="_blank" rel="noopener noreferrer">{e(c["developer"])}</a>'   # the developer's name opens the developer's own website
