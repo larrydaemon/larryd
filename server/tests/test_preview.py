@@ -79,8 +79,10 @@ class DeveloperMarketplace(unittest.TestCase):
         self.assertEqual(r.get_json()['held']['name'], 'Scratch agent')
         html = self.page()
         for said in ('Scratch agent', 'Says hi.', 'Invoice Maps · CONTACTS', 'Developer · Scratch Dev', '<span class="mk-annotation mk-kind">Agent</span>',
-                     'lives on cont/card', f'data-agent="{KEY_A}" data-on="0"'):
+                     f'data-agent="{KEY_A}" data-on="0"'):
             self.assertIn(said, html)
+        for never in ('lives on', 'Needs the', 'Sends data to'):   # (this agent sends nothing out)   # the card carries no line the owner did not design
+            self.assertNotIn(never, html)
         self.assertEqual(html.count('<article class="agent-card'), 1)
         self.assertNotIn(f'data-agent="{preview.MARKETPLACE_KEY}"', html)
         self.assertEqual(self.toggle(html, KEY_A, True), '/marketplace')

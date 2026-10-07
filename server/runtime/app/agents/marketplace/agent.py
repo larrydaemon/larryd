@@ -115,10 +115,10 @@ def _card(c, simple=False):
                  if c['developer_site'] else e(c['developer']))
     toggle = (f'<button type="button" class="toggle" data-hire="{e(c["key"])}" aria-pressed="{"true" if c["hired"] else "false"}" title="Hire">'
               '<span class="toggle__knob"></span></button>')
-    extra = ''.join([
-        f'<div class="mk-caption mk-needs">Needs the {e(c["needs"])} subscription</div>' if c['needs'] else '',
-        (f'<div class="mk-caption mk-sends">Sends data to {e(c["sends_to"])}' + (f': {e(c["data_sent"])}' if c['data_sent'] else '') + '</div>') if c['sends_to'] else '',
-        f'<div class="mk-annotation mk-home">lives on {e(c["screen"])}</div>' if c['screen'] else ''])
+    # THE CARD CARRIES NO LINE THE OWNER DID NOT DESIGN (the owner, 2026-10-07: "these extra little notes ... i never asked for that ever"): no "lives on" and
+    # no "needs" on its face. ONE NOTE STAYS, and only on an agent that sends a member's data to an outside service: where it goes and what is sent (the
+    # platform's disclosure, held by its own test); an agent that sends nothing out shows nothing.
+    extra = (f'<div class="mk-caption mk-sends">Sends data to {e(c["sends_to"])}' + (f': {e(c["data_sent"])}' if c['data_sent'] else '') + '</div>') if c['sends_to'] else ''
     mark = next((n for n, word in ((3, 'MARK III'), (2, 'MARK II'), (1, 'MARK I')) if c['class'].upper().startswith(word)), 0)   # the class picks the box's animation: I CRT, II Wellness, III Glitch
     rain = '<canvas class="mk-rain" aria-hidden="true"></canvas>' if mark == 3 and not simple else ''   # Mark III: the code rain's canvas (card.js), behind the cat; none in the SIMPLE view
     return (f'<article class="agent-card{" mk-on" if c["hired"] else ""}" data-agent="{e(c["key"])}" data-on="{"1" if c["hired"] else "0"}" data-mark="{mark}" data-wears="{e(c["wears"]) if c["wears"].isalnum() else ""}">'
