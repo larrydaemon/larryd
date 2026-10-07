@@ -103,8 +103,8 @@ class OnTheDevelopersRuntime(unittest.TestCase):
         self.records.parent.mkdir(parents=True, exist_ok=True)
         self.records.write_text(json.dumps(rows))
 
-    def ask(self, **search):
-        body = {**self.who, 'page': {'path': PATH, 'search': search}}
+    def ask(self, confirmed=True, **search):   # act: the platform's mark that this call is the member's own confirmed act (a POST it checked); only then is a write carried
+        body = {**self.who, 'page': {'path': PATH, 'search': search}, **({'act': True} if confirmed else {})}
         at = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='seconds')
         return self.client.post('/api/agents/answer', json=body, headers={'X-Office': signing.sign(SECRET, '/agents/answer', body, at), 'X-Office-At': at})
 
@@ -172,6 +172,23 @@ class OnTheDevelopersRuntime(unittest.TestCase):
         self.assertEqual(r.status_code, 500)
         self.assertIn('declares no records', r.get_json()['refused'])
         self.assertEqual(self.rows(), [])
+
+    def test_a_page_merely_opened_never_writes(self):   # the review, 2026-10-07: a link or an address is not the member's act
+        self.place({'opns': ['read', 'add', 'edit', 'remove']})
+        self.seed([{'MOPN_norm_key': 'MOPN_000000000001_0001', 'identity_operations_headline': 'Kept'}])
+        before = self.rows()
+        for call in (lambda: self.ask(confirmed=False, act='book', day='2026-11-03', topic='Forged'), lambda: self.ask(confirmed=False, act='remove', key='MOPN_000000000001_0001')):
+            r = call()
+            self.assertEqual(r.status_code, 200, r.get_data(as_text=True)[:200])
+            self.assertNotIn('writes', r.get_json())
+            self.assertIsNone(r.get_json().get('written'))   # nothing was carried, so nothing is said of a write
+        self.assertEqual(self.rows(), before)
+        who = self.who
+        at = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='seconds')
+        for act in ('true', 1, 'yes', {'x': 1}):   # only a JSON true, only on the POST
+            body = {**who, 'page': {'path': PATH, 'search': {'act': 'book', 'day': '2026-11-03', 'topic': 'Forged'}}, 'act': act}
+            self.client.post('/api/agents/answer', json=body, headers={'X-Office': signing.sign(SECRET, '/agents/answer', body, at), 'X-Office-At': at})
+        self.assertEqual(self.rows(), before)
 
     def test_writes_on_the_second_run_are_ignored(self):
         self.place({'opns': ['read', 'add', 'edit', 'remove']})

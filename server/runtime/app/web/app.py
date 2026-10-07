@@ -191,7 +191,8 @@ def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, deve
         def work():
             d = given('agent_key')
             beside = {k: d[k] for k in lanes_harness.BESIDE if isinstance(d.get(k), dict)} if request.method == 'POST' else {}
-            return run_with.answer(*(d[k] for k in NEEDS + ('agent_key',)), beside=beside)
+            return run_with.answer(*(d[k] for k in NEEDS + ('agent_key',)), beside=beside,
+                                   act=request.method == 'POST' and d.get('act') is True)   # the member's own confirmed act: only the platform says so, on a POST, as a JSON true
         try:
             return answered(work)
         finally:

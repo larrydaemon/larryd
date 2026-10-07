@@ -176,7 +176,7 @@ class Harness:
         return next((c for c in cards if c['key'] == key), None)
 
     # ---------------------------------------------------------------- the CALL lane: an agent answers now
-    def answer(self, account, scope, member, agent_key, beside=None):
+    def answer(self, account, scope, member, agent_key, beside=None, act=False):
         """An agent's answer for the member's screen: only an agent that answers calls, passing the gate itself."""
         held = locker.held(self.db, agent_key)
         calls = locker.manifest(self.agents, held['folder']).get('calls') if held else None
@@ -205,6 +205,11 @@ class Harness:
         outside = _outside_gives(manifest, answer) if state == 'DONE' else ''
         if outside:
             state, reason = 'FAILED', outside
+        if state == 'DONE' and answer.get('writes') and not act:
+            # A WRITE IS CARRIED ONLY ON THE MEMBER'S OWN CONFIRMED ACT (the review, 2026-10-07): the platform marks the call (act: true, on a POST it
+            # checked with the member's own token); a page merely opened, by any address or link, never writes, changes or removes a record
+            answer = {k: v for k, v in answer.items() if k != 'writes'}
+            reason = 'writes not carried: the call is not the member\'s confirmed act'
         if state == 'DONE' and answer.get('writes'):
             state, answer, reason = self._written(held, manifest, wanted, given, answer, account, scope, member)
         self._record('call', agent_key, state, reason, account=account, member=member)
