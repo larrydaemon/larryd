@@ -291,3 +291,16 @@ def test_plain_doctor_warns_of_the_blank_s_placeholders(tmp_path, capsys):
     assert cli.main(['doctor', str(root)]) == 0
     out = capsys.readouterr().out
     assert 'WARN "about" is still the blank\'s placeholder' in out and 'WARN card "pitch" is still' in out and 'larryd submit refuses it' in out
+
+
+# frost-92's stranger read of the guide: what is live, the platform, mTok, data and residency, a glossary
+def test_the_guide_says_today_the_platform_mtok_and_a_glossary():
+    text = (PACKAGE / 'GUIDE.md').read_text()
+    for heading in ('> **Today.**', '## The platform in one minute', '## mTok', '## What the card says about data and where the agent runs', '## Glossary'):
+        assert heading in text, heading
+    assert 'Payouts to developers\nare not there yet' in text or 'Payouts to developers are not there yet' in text.replace('\n', ' ')
+    for word in ('**FROST**', '**DA-M**', '**LARRY LLM**', '**locker**', '**card key**', '**claim page**', '**CALL and RUN**',
+                 '**MARK classes**', '**species**', '**product**', '**module**', '**screen**'):
+        assert word in text, word
+    assert 'larryd.ai/checks.html' not in text and '10 per address per hour' in text
+    assert 'Start: `larryd new <name>` for a blank agent' in text

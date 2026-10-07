@@ -92,7 +92,7 @@ def _manifest(root, f):
         f.add('the manifest', where, f'it is not readable JSON ({type(e).__name__})', 'write agent.json as one JSON object; `larryd new` shows the shape')
         return None
     if not isinstance(card, dict):
-        f.add('the manifest', where, 'it is not one JSON object', 'write agent.json as one JSON object with the fields in CLAUDE.md')
+        f.add('the manifest', where, 'it is not one JSON object', 'write agent.json as one JSON object with the manifest\'s fields (`larryd guide`, section 2)')
         return None
     c = 'the manifest'
     for k in shape.NEEDED:
@@ -403,7 +403,7 @@ def _card(root, card, f):
             f.add(c, where, f'card "screen" is "{screen}", the screen\'s address', f'write it without app/: "{screen[4:]}"')
         elif screen not in screens:
             f.add(c, where, f'card "screen" is "{facts["screen"]}", not a screen of the platform',
-                  'use <species>/<page>: a module\'s home, list or card, e.g. cont/card, agnt/home, or a product\'s dashboard larry/home (the list is in CLAUDE.md)')
+                  'use <species>/<page>: a module\'s home, list or card, e.g. cont/card, agnt/home, or a product\'s dashboard larry/home (the card\'s values table: `larryd guide`)')
         elif text('product') and screens[screen]['product'] != 'any' and facts['product'].strip().upper() in lists['products'] and facts['product'].strip().upper() != screens[screen]['product']:
             f.add(c, where, f'card "screen" {screen} is a {screens[screen]["product"]} screen, but "product" is {facts["product"]}',
                   f'set card "product" to {screens[screen]["product"]}, or pick a screen of {facts["product"]}')

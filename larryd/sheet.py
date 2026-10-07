@@ -163,8 +163,9 @@ def table(cat=None):
     shades = {}
     for name, hexa in cat['colours'].items():
         shades.setdefault(hexa.upper(), []).append(name.rsplit('-', 1)[1])
-    lines = ['"accent": a theme colour variable, `active-color-01` to `active-color-64`. The card follows the live theme (brand, light',
-             'or dark), so the colours below are the reference theme\'s only; a designed colour goes to the nearest as the eye sees it.', '',
+    lines = ['"accent": a theme colour variable, `active-color-01` to `active-color-64`. The number names a slot that every theme fills',
+             'with its own colour, in each brand and in light and dark: the same number is the same slot everywhere, so the card follows',
+             'the live theme. The colours below are the reference theme\'s only; a designed colour goes to the nearest as the eye sees it.', '',
              '| Colour (reference theme) | active-color-NN |', '|---|---|']
     lines += [f'| `{hexa}` | {", ".join(nums)} |' for hexa, nums in shades.items()]
     lines += ['', '"radius" is the card\'s corner, "space" its padding (the template sets the gaps inside from it); each is a step of the scale (a designed length goes to the nearest step; a tie rounds down):', '',

@@ -26,7 +26,7 @@ FIELDS = {
     'skills': 'the list of skill hashes the agent uses (empty when none; `larryd skills` lists the skills that exist)',
     'knowledge': 'the list of knowledge pack hashes the agent needs (empty when none; `larryd pack` gives a pack its hash)',
     'look': 'the card\'s look, names only (optional): {"accent": a theme colour variable, "radius": a step, "space": a step, '
-            '"effect": none, crt, wellness or glitch, "text": {"<part>": "<role>"}}; the menu is in CLAUDE.md',
+            '"effect": none, crt, wellness or glitch, "text": {"<part>": "<role>"}}; the menu: `larryd guide`, section 4',
     'inputs': 'only with "job" in run.hands: the job\'s inputs by name, each on one of the job\'s slots 001-015, e.g. {"mood": "001"}',
 }
 FIELDS['card'] = ('the card the marketplace shows, as the member sees it: {class, pitch, price, type, residency, screen, product, '
@@ -42,7 +42,7 @@ CARD = {
     'authorization': 'who may hire it, your starting setting: PUBLIC (every account) or PRIVATE (one account); the platform\'s '
                      'authorize panel can change it at any time after, and a PRIVATE agent\'s owning account is entered there',
     'screen': 'the screen it lives on, <species>/<page> (its address is app/<species>/<page>): a module\'s home, list or card, '
-              'e.g. cont/card, or a product\'s dashboard larry/home; the list is in CLAUDE.md',
+              'e.g. cont/card, or a product\'s dashboard larry/home; the card\'s values table: `larryd guide`',
     'product': 'the product that screen belongs to: INVOICE MAPS, AGENCY MGMT, PACE SHIFT or LARRYD',
     'module': 'the module that screen is in, by the platform\'s own name, e.g. Contacts (cont/...) or Agents (agnt/...)',
     'developer': 'who made it, as the card credits it: your name or company',

@@ -8,12 +8,31 @@ This guide is for the developer's AI first and the developer second. Read it who
 `larryd guide` prints it; it ships in the package as `larryd/GUIDE.md` (`larryd --help` names the path).
 Every command named here exists and works today; what does not exist yet is listed at the end, plainly.
 
-Start: `larryd new <name> --from marketplace`, then read `<name>/CLAUDE.md`.
+Start: `larryd new <name>` for a blank agent (or `larryd new <name> --from marketplace` for the example), then read
+`<name>/CLAUDE.md`.
+
+> **Today.** Works now, on your own computer: install from a package or index you were given, make an agent
+> (`larryd new`), check it (`larryd doctor`), run it (`larryd run`), and see its card on your own LARRYD
+> (`larryd card`).
+>
+> Not live yet: the public install (the registries hold only the name's reservation), `larryd submit` opening with the
+> platform, RUNs that hand the job's own inputs on the platform, and the platform's sides of the skills (the LARRY LLM
+> greeting, the FROST identity, the DA-M store). Each is said again where it comes up, and listed under "Not there yet".
+
+## The platform in one minute
+LARRYD agents work for members of Positive Feedback, the platform. An account is a company; a member is a person in
+it. The platform's products (Invoice Maps, Agency Mgmt, Pace Shift, LARRYD) each have modules (Contacts, Invoices,
+Media, Agents, ...), and every screen is named `<species>/<page>` (its address is `app/<species>/<page>`, e.g.
+`app/cont/card`). Your agent lives on one screen. Its card appears in the agent marketplace, where a member hires it
+with the card's hire toggle; once hired, it is ready to switch on in the member's settings. A member's work is a job;
+a RUN asks your agent to work on one, and its answer (`delivery`) lands in that job. Each RUN costs the member the
+agent's price in mTok (see below).
 
 ## What you are building
-An agent is a small program that answers a job. Your agent runs on LARRYD, air gapped: LARRYD is also the place where
-agents live and run, apart from everything else. The agent belongs to its developer. LARRYD connects it to the platform: it reads what the agent needs, hands it in, and carries the answer back.
-The agent itself reaches nothing.
+An agent today is a deterministic Python program: given the same job, it gives the same answer. "AI" here means it is
+built with Claude Code; the agent itself calls no model. Your agent runs inside LARRYD, sealed off: no network, no files
+outside its own run, no other programs. LARRYD connects it to the platform: it reads what the agent needs, hands it in,
+and carries the answer back. The agent belongs to its developer.
 
 The whole contract: LARRYD runs the agent's entry file as its own process. One JSON object comes in on stdin,
 one JSON object goes out on stdout. `delivery` in the answer (plain text) is what lands in the member's job.
@@ -54,7 +73,8 @@ This makes the folder `<name>/`:
 - `samples/job.json`: a sample job for `larryd run`; `samples/job_inputs.edit-me.json`: a job with its own inputs, for
   once the agent declares them (`"job"` in `run.hands`, `"inputs"`): give it your input names, rename it to
   `job_inputs.json`, then `larryd run --job samples/job_inputs.json`
-- `.mcp.json`: starts the LARRYD tools in Claude Code when you open the folder with `claude` (it names the full path of this
+- `.mcp.json`: starts the LARRYD tools in Claude Code when you open the folder with `claude` (it names the full path
+  of this
   larryd, so no virtual environment needs activating)
 
 To start from a LARRYD example instead of a blank agent:
@@ -71,7 +91,8 @@ LARRYD's sandbox refuses 1, 2 and 3 when the agent runs; the doctor checks all o
 3. No new process: no subprocess, no os.system, no multiprocessing.
 4. The Python standard library only.
 5. No secret in the agent.
-6. Only what it is handed. The inputs are what `run.hands` names: `cards` (the agent cards the member sees) and `job`
+6. Only what it is handed. The inputs are what `run.hands` names: `cards` (the agent cards the member sees; for agents
+   that show the marketplace) and `job`
    (the job's own inputs, by the names the manifest's `inputs` gives them).
 7. Nothing fake. The agent answers from what it is handed, or it says plainly that it cannot.
 
@@ -82,10 +103,12 @@ An agent that needs words from the member (a name, a mood, a date) declares them
     "inputs": {"name": "001", "mood": "002"}
 
 Each name sits on one of the job's input slots, 001 to 015 (the job's agent fields on the platform). On a RUN, LARRYD
-reads that RUN's inputs from the platform and hands them in as `job`: `{"name": "...", "mood": "..."}`. A slot the member
+reads that RUN's inputs from the platform and hands them in as `job`: `{"name": "...", "mood": "..."}`. A slot the
+member
 left empty is simply not handed. LARRYD refuses the run when the job holds an input the agent does not declare, or a
-value that is not text or is longer than 10,000 characters, and it keeps none of them. In `samples/job.json`, give the
-inputs the same way: `{"do": "answer", "job": {"name": "Harbor", "mood": "calm cool"}}`.
+value that is not text or is longer than 10,000 characters, and it keeps none of them. In a sample job (the project's
+`samples/job_inputs.edit-me.json`, renamed to `job_inputs.json` once its names are yours), give the inputs the same
+way: `{"do": "answer", "job": {"name": "Harbor", "mood": "calm cool"}}`.
 
 ## 4. The doctor
     larryd doctor --fix      (write normally, then this; or plain `larryd doctor` to check only, --json for JSON)
@@ -100,28 +123,35 @@ the live theme (`--accent: var(--active-color-04)`), so your card follows the br
 value must be a name on the menu below; the platform checks it again at submission and when it draws the card, and
 drops anything else. A look the record does not name keeps the template's default.
 
-Design in CSS if you like: write `agent/card.css` normally and run `larryd doctor --fix`. It maps each value to the
-nearest name on the menu and says each mapping (CONVERTED ...): the card's first colour to the theme colour variable
-nearest as the eye sees it (OKLab distance against the reference theme, done once; only the name is kept), its corner
-radius and its padding to the nearest step, written type on a part of the card to the nearest role (by size and
-weight, a different case costing 6px, an unwritten case being none as in CSS; a role made for navigation, a link or a
-field's label only when the selector says so), never an effect: the card's class picks it (Mark I crt, Mark II
-wellness, Mark III glitch), and the sheet's animation and layers are dropped. Every other value is said too, as
-DROPPED ... with why: colour is card-wide (the accent only), so a part's colour is dropped (a part takes a role, never
-a colour); gap and margin are dropped ("space" is the card's padding and the template sets the gaps from it); layout,
-position, hover and other states are the template's; shadows, transforms, transitions and @keyframes belong to the
-effect the class picks; @import, @font-face and @keyframes never become a name. It writes the look record, moves the
-sheet to `design/card.css` (agents ship no CSS) and keeps your original manifest, and the design sheet it replaces, in
-`.larryd/doctor_backup/`. Plain `larryd doctor` changes nothing: while a sheet is in `agent/` it fails the shape and
-says what it WILL CONVERT and WILL DROP. `larryd place` and `larryd submit` convert it the same way first, so CSS is
-never a reason to refuse. --fix also fills the card's missing facts with honest defaults it names. The same files
-always give the same result.
+Design in CSS if you like: write `agent/card.css` normally and run `larryd doctor --fix`.
+
+- It maps each value to the nearest name on the menu and says each mapping (CONVERTED ...):
+  - the card's first colour to the theme colour variable nearest as the eye sees it (OKLab distance against the
+    reference theme, done once; only the name is kept);
+  - its corner radius and its padding to the nearest step;
+  - written type on a part of the card to the nearest role (by size and weight, a different case costing 6px, an
+    unwritten case being none as in CSS; a role made for navigation, a link or a field's label only when the selector
+    says so).
+- Never an effect: the card's class picks it (Mark I crt, Mark II wellness, Mark III glitch).
+- Every other value is said too, as DROPPED ... with why:
+  - colour is card-wide (the accent only), so a part's colour is dropped: a part takes a role, never a colour;
+  - gap and margin: "space" is the card's padding, and the template sets the gaps from it;
+  - layout, position, hover and other states are the template's;
+  - shadows, transforms, transitions and animation belong to the effect the class picks;
+  - @import, @font-face and @keyframes never become a name.
+- It writes the look record, moves the sheet to `design/card.css` (agents ship no CSS), and keeps your original
+  manifest, and the design sheet it replaces, in `.larryd/doctor_backup/`.
+- Plain `larryd doctor` changes nothing: while a sheet is in `agent/` it fails the shape and says what it WILL CONVERT
+  and WILL DROP. `larryd place` and `larryd submit` convert it the same way first, so CSS is never a reason to refuse.
+- `--fix` also fills the card's missing facts with honest defaults it names. The same files always give the same
+  result.
 
 ### The menu (a fixed list, the same for the doctor, this guide and the platform)
 
-"accent": a theme colour variable, `active-color-01` to `active-color-64`. The card follows the live theme (brand,
-light or dark), so the colours below are the reference theme's only; a designed colour goes to the nearest as the eye
-sees it.
+"accent": a theme colour variable, `active-color-01` to `active-color-64`. The number names a slot that every theme
+fills with its own colour, in each brand and in light and dark: the same number is the same slot everywhere, so the
+card follows the live theme. The colours below are the reference theme's only; a designed colour goes to the nearest
+as the eye sees it.
 
 | Colour (reference theme) | active-color-NN |
 |---|---|
@@ -178,7 +208,7 @@ The type roles (designed type on a part goes to the nearest role, nearest by siz
 It checks the project, the manifest, the entry, the air gap, no secret, the shape, the skills and the knowledge.
 Every problem names the file and line, what is wrong and what to do. Do what it says, then run it again.
 Never silence a check to make it pass. What each check proves, and why: THE LARRYD CHECKS ([CHECKS.md](CHECKS.md),
-larryd.ai/checks.html).
+beside this guide in the package).
 
     larryd doctor --badge
 
@@ -197,11 +227,17 @@ holding only what `gives` names. Nothing is sent anywhere. On a Mac or Linux (Li
 ## 6. Submit
     larryd submit
 
-Three steps, one gate, nothing to carry. The doctor runs first. Then `agent/` (nothing else) is packed into one file
-and sent to LARRYD, and your browser opens its claim page. Sign in there with Google or Apple within 10 minutes, and
-it waits in the review queue; the page says what happens next. No account to make, no key or secret to paste or keep.
-LARRYD reads what it receives and runs none of it: it re-runs the doctor itself, and refuses a file that is too big
-(5 MB), unsafe, or one of too many from one network in an hour. Unclaimed files are deleted after 10 minutes.
+Not live yet: until LARRYD opens submissions with the platform, `larryd submit` says it cannot reach the door. When
+it is open, three steps, nothing to carry:
+
+1. The doctor runs (and converts a design sheet, as `--fix` does); a problem stops it here.
+2. `agent/` (nothing else) is packed into one file and sent to LARRYD.
+3. Your browser opens the claim page: sign in there with Google or Apple within 10 minutes, and the agent waits in the
+   review queue; the page says what happens next.
+
+No account to make, no key or secret to paste or keep. LARRYD reads what it receives and runs none of it: it re-runs
+the doctor itself, and refuses a file that is too big (5 MB), unsafe, or the eleventh from one address within an hour
+(10 per address per hour). Unclaimed files are deleted after 10 minutes.
 `--no-browser` prints the claim page instead of opening it. A changed agent is a new submission, reviewed again.
 A person at LARRYD reviews it. Approved, it goes into LARRYD's locker under its card key and to the platform's review
 (FROST's); rejected, the answer says why. Either way the answer goes to the email of your sign-in.
@@ -209,10 +245,28 @@ A person at LARRYD reviews it. Approved, it goes into LARRYD's locker under its 
 ## What LARRYD does with your agent
 - It holds `agent/` in its locker with the hash of the code and of the manifest, and checks them on every call and run.
   Any change is refused as tampered.
-- FROST's review: a SYSTEM owner approves or rejects those exact hashes. LARRYD shows, hires and runs an agent only
+- FROST's review: a SYSTEM owner (the platform's own people) approves or rejects those exact hashes. LARRYD shows,
+  hires and runs an agent only
   when FROST approved the hashes it holds.
 - A member hires the agent in the agent marketplace with a toggle. A RUN is a request; LARRYD runs the agent in its
   sandbox, and mTok charges the agent's own rate (0 = free).
+
+## mTok
+mTok is the platform's usage unit: members' accounts hold it, and a RUN of your agent costs the member its price, a
+whole number of mTok you set per run in the card (`"price"`, 0 = free), charged after a DONE run. Payouts to developers
+are not there yet: nothing here promises a money value or a share.
+
+## What the card says about data and where the agent runs
+- `sends_to` and `data_sent`: the agent itself never reaches out. When the platform sends a member's data to an outside
+  AI service for the agent, `sends_to` names that service and `data_sent` says what is sent; the platform asks the
+  member before anything goes out. An agent that sends nothing leaves both `""`.
+- `residency` is one of the platform's own values: INTERNAL, EXTERNAL or BOTH. Every agent made with LARRYD runs inside
+  LARRYD, so write INTERNAL. EXTERNAL and BOTH are on the platform's list for agents that run elsewhere; LARRYD runs
+  none of those today.
+- `authorization`: who may hire it, PUBLIC (every account) or PRIVATE (one account). It is your starting setting; the
+  platform's authorize panel (in FROST) can change it at any time after, and a PRIVATE agent's owning account is
+  entered there.
+- `developer`: who made it, as the card credits it: your name, or your company's.
 
 ## In Claude Code
 In a project made by `larryd new`, open the folder with `claude` and approve the LARRYD tools:
@@ -222,8 +276,10 @@ The loop for the AI: change the agent → larryd_doctor → larryd_run → fix �
 
 ## Skills and knowledge
 - A skill is a definition named by its hash. Declare the hashes in `skills`; `larryd skills` lists them.
-  - The mTok charge: LARRYD charges the member the agent's own rate after a DONE run (every run; declaring it changes nothing).
-  - The LARRY LLM greeting: before the RUN, LARRYD asks LARRY LLM for the greeting it gives the member today and hands it
+  - The mTok charge: LARRYD charges the member the agent's own rate after a DONE run (every run; declaring it changes
+    nothing).
+  - The LARRY LLM greeting: before the RUN, LARRYD asks LARRY LLM for the greeting it gives the member today and hands
+    it
     in as `greeting` (`{"date", "lang", "greetings": {time of day: the words}}`). In `samples/job.json`, give a
     `greeting` of that shape.
   - The FROST identity: before the RUN, LARRYD asks FROST who the agent works for and hands it in as `identity`:
@@ -235,6 +291,9 @@ The loop for the AI: change the agent → larryd_doctor → larryd_run → fix �
   `larryd pack <folder>` checks it and gives the hash.
 
 ## Not there yet
+- The public install: until 0.1.0 is published, the registries hold only the name's reservation (0.0.1).
+- `larryd submit` with the platform: the door is not open yet.
+- Payouts in mTok to developers.
 - Skills: the platform's sides of the LARRY LLM greeting, the FROST identity and the DA-M store are not on the live
   platform yet; until they are, a RUN of an agent that declares one fails with LARRYD's plain reason.
 - Knowledge packs: LARRYD holds none yet, so declaring one in `knowledge` fails the doctor. Leave it `[]`.
@@ -294,3 +353,22 @@ See your card the way a member will, on your own LARRYD:
 `larryd place` does the placing without opening the page. The same agent placed again replaces itself. A card the
 marketplace cannot show (no screen, a price that is not whole mTok) is listed under "Not on the shelf" with why.
 
+## Glossary
+- **FROST**: the platform's identity and security office: who a member is, what they may do, the review of agents and
+  the authorize panel.
+- **DA-M**: the platform's file store: a member's files (the DA-M store skill keeps an answer's files there).
+- **LARRY LLM**: one of the platform's offices; for agents, it gives the greeting a member is given today (the LARRY LLM
+  greeting skill).
+- **locker**: where LARRYD holds an approved agent: its `agent/` files, with the hashes of its code and manifest.
+- **card key**: the key the platform gives an agent's card at approval; LARRYD finds the agent by it.
+- **claim page**: the page `larryd submit` opens, where you sign in with Google or Apple to submit the file you sent.
+- **CALL and RUN**: the two lanes. A CALL answers at once on the member's screen (the names in `"calls"`); a RUN is a
+  request on a job, run in the sandbox, whose `delivery` lands in the job and which costs the agent's price.
+- **MARK classes**: the platform's three agent classes, MARK I AGENT (NORMAL), MARK II SUPER AGENT (HARNESS) and MARK
+  III
+  QUANTUM AI (AGENTIC CODE). On the card the class picks the effect: Mark I crt, Mark II wellness, Mark III glitch.
+- **species**: the first half of a screen's name, its module's short code (`cont` for Contacts, `agnt` for Agents).
+- **product**: one of the platform's products: Invoice Maps, Agency Mgmt, Pace Shift, LARRYD.
+- **module**: a part of a product (Contacts, Invoices, Agents, ...), with its home, list and card screens.
+- **screen**: `<species>/<page>`, e.g. `cont/card`; its address in the app is `app/<species>/<page>`. An agent lives on
+  one screen.

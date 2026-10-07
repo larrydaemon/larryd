@@ -51,7 +51,7 @@ def check(look, cat=None):
                 elif role not in m['roles']:
                     wrong.append((f'look text "{part}": "{role}" is not a type role', f'use one of: {", ".join(m["roles"])}'))
         elif v not in m[k]:
-            shown = ', '.join(m[k]) if k != 'accent' else 'active-color-01 to active-color-64 (the table in CLAUDE.md)'
+            shown = ', '.join(m[k]) if k != 'accent' else 'active-color-01 to active-color-64 (the menu: `larryd guide`, section 4)'
             wrong.append((f'look "{k}": {json_text(v)} is not a name on the menu', f'use one of: {shown} (a name, never a raw colour or length)'))
     return wrong
 
