@@ -267,7 +267,7 @@ def from_sheet(text, cat=None):
         text_roles[part] = role
         cascade = f' ({mine["rules"]} rules merged as the browser cascades them, the later wins)' if mine['rules'] > 1 else ''
         said.append(f'{selectors}{cascade}: {"; ".join(f"{k}: {v}" for k, v in mine["type"].items())} -> text {part}: the {role} role '
-                    f'({sheet.ROLE_RULE}; the role brings its own font, size, weight, style, case and letter spacing)')
+                    f'({sheet.ROLE_RULE_CASED if "text-transform" in mine["type"] else sheet.ROLE_RULE}; the role brings its own font, size, weight, style, case and letter spacing)')
     if text_roles:
         look['text'] = text_roles
 

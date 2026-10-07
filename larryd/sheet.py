@@ -139,7 +139,8 @@ def nearest_colour(rgb, cat):
 
 
 CASE_COST = 6   # px: what a case that differs from the written one (unwritten = none, as in CSS) adds to a role's distance
-ROLE_RULE = 'nearest by size and weight, a different case costing 6px (an unwritten case is none, as in CSS)'
+ROLE_RULE_CASED = 'nearest by size and weight, a different case costing 6px'
+ROLE_RULE = 'nearest by size and weight, a different case costing 6px (an unwritten case is none, as in CSS)'   # the menu's words; a part with no case written
 
 
 def nearest_role(written, cat, selector=''):

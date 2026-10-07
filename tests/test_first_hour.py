@@ -225,3 +225,10 @@ def test_a_part_s_rules_cascade_then_map_once():
     assert record == {'text': {'name': 'heading'}} and dropped == []   # 40px, 900, uppercase: what the browser draws
     assert len(said) == 1 and said[0].startswith('.mk-name (2 rules merged as the browser cascades them, the later wins): '
                                                  'font-family: Inter, sans-serif; text-transform: uppercase; font-size: 40px; font-weight: 900 -> text name: the heading role')
+
+
+def test_the_unwritten_case_clause_only_where_no_case_was_written():
+    from larryd import look
+    _r, said, _d = look.from_sheet('.mk-name { font-size: 30px; text-transform: uppercase }\n.mk-pitch { font-size: 15px }\n')
+    assert 'unwritten case' not in said[0] and 'a different case costing 6px;' in said[0]
+    assert '(an unwritten case is none, as in CSS)' in said[1]

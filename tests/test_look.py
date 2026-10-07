@@ -46,7 +46,7 @@ def test_a_colour_goes_to_the_nearest_the_eye_sees_not_the_nearest_number():
 
 def test_type_on_a_part_goes_to_the_nearest_role_and_elsewhere_is_said_dropped():
     record, said, dropped = look.from_sheet('.mk-price { font-size: 18px; font-weight: 500; text-transform: uppercase } .wrapper { font-size: 12px }')
-    assert record == {'text': {'price': 'callout'}} and sheet.ROLE_RULE in said[0]
+    assert record == {'text': {'price': 'callout'}} and sheet.ROLE_RULE_CASED in said[0] and 'unwritten' not in said[0]
     assert dropped == ['.wrapper: font-size -> no name on the menu (no text part of the card here (the parts: number, class, name, info, pitch, developer, facts, price))']
 
 
