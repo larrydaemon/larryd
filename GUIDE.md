@@ -135,6 +135,28 @@ nothing is carried. The declaration is in the manifest's hash: FROST approves wh
 agent itself. A RUN is handed no records; a CALL is handed `records` only. On your own LARRYD the records live in one
 small file (`~/.larryd/preview/records_<species>.json`), which you may write by hand to try an agent.
 
+## The app's own parts in a view
+An agent's view draws with the platform's own classes (they work inside the view: the page's sheets stand in it), so a view
+reads like the app. Buttons: `btn btn--small` (a selected one carries `aria-current="true"`), a row of them in
+`wl-btnrow`, a form's field `sub-search-input`, a controller `sub-controller-box` with its `wl-cols` columns and
+`wl-divider`, the glass box `sub-controller-box wl-glass` with `wl-panel` inside, the type roles (`subtitle`, `emphasis`,
+`body`, `caption`, `annotation`, `label wl-label`).
+
+THE CIRCLES, one standard platform-wide: every round control is `<a class="btn btn--small round">` (or a `button`) with
+ONE plain-text glyph inside and no rule of the agent's own on it (the themes give the look: no fill at rest, the glass
+sheen, the border and glyph in the button colour; the fill, dark words, glow and lift on hover):
+
+| Circle | The glyph | Written |
+|---|---|---|
+| back, previous | `<` | `&lt;` |
+| forward, next | `>` | `&gt;` |
+| close | `X` | `X` |
+| run, play | `▶` | `&#9654;` |
+| up | `▲` | `&#9650;` |
+| down | `▼` | `&#9660;` |
+| add | `+` | `+` |
+| remove | `−` | `&#8722;` |
+
 ## 4. The doctor
     larryd doctor --fix      (write normally, then this; or plain `larryd doctor` to check only, --json for JSON)
 
