@@ -64,14 +64,14 @@ class DeveloperMarketplace(unittest.TestCase):
         self.assertEqual(r.status_code, 302)
         return r.headers['Location']
 
-    def test_the_first_visit_places_the_marketplace_and_the_page_shows_it_hired(self):
-        html = self.page()
+    def test_the_first_visit_places_the_marketplace_and_the_page_is_it_never_a_card_inside_itself(self):
+        html = self.page()   # the marketplace is the page (the owner, 2026-10-06): never a card inside itself
         self.assertIn('THE AGENT MARKETPLACE', html)
-        self.assertIn('1 total in network · 1 hired', html)
-        self.assertIn('aria-pressed="true"', html)
-        self.assertIn('No. 000', html)
+        self.assertIn('0 total in network · 0 hired', html)
+        self.assertNotIn(f'data-agent="{preview.MARKETPLACE_KEY}"', html)
+        self.assertNotIn('No. 000', html)
         j = self.client.get('/marketplace.json').get_json()
-        self.assertEqual((j['total'], j['hired'], j['cards'][0]['key'], j['not_shown']), (1, 1, preview.MARKETPLACE_KEY, []))
+        self.assertEqual((j['total'], j['hired'], j['cards'], j['not_shown']), (0, 0, [], []))
 
     def test_a_placed_agent_is_a_card_whose_toggle_hires_and_lets_go(self):
         r = self.place(KEY_A, _agent('Scratch agent', GOOD_CARD))
@@ -81,21 +81,22 @@ class DeveloperMarketplace(unittest.TestCase):
         for said in ('Scratch agent', 'Says hi.', 'Invoice Maps · CONTACTS', 'Developer · Scratch Dev', '▸ OFF-THE-SHELF ▸ INTERNAL', 'No. 001',
                      'lives on cont/card', f'data-agent="{KEY_A}" data-on="0"'):
             self.assertIn(said, html)
-        self.assertIn('2 total in network · 1 hired', html)
+        self.assertIn('1 total in network · 0 hired', html)
+        self.assertNotIn(f'data-agent="{preview.MARKETPLACE_KEY}"', html)
         self.assertEqual(self.toggle(html, KEY_A, True), '/marketplace')
         j = self.client.get('/marketplace.json').get_json()
-        self.assertEqual(j['hired'], 2)
+        self.assertEqual(j['hired'], 1)
         self.assertTrue(next(c for c in j['cards'] if c['key'] == KEY_A)['hired'])
         self.assertIn(f'data-agent="{KEY_A}" data-on="1"', self.page())
         self.toggle(self.page(), KEY_A, False)
-        self.assertEqual(self.client.get('/marketplace.json').get_json()['hired'], 1)
+        self.assertEqual(self.client.get('/marketplace.json').get_json()['hired'], 0)
 
     def test_the_same_agent_placed_again_replaces_itself(self):
         self.place(KEY_A, _agent('Scratch agent', GOOD_CARD))
         self.place(KEY_A, _agent('Scratch agent', {**GOOD_CARD, 'pitch': 'Says hello now.'}))
         j = self.client.get('/marketplace.json').get_json()
         self.assertEqual([c['pitch'] for c in j['cards'] if c['key'] == KEY_A], ['Says hello now.'])
-        self.assertEqual(j['total'], 2)
+        self.assertEqual(j['total'], 1)
 
     def test_a_card_the_gate_cannot_show_is_listed_with_why(self):
         self.place(KEY_B, _agent('No card'))
@@ -103,7 +104,7 @@ class DeveloperMarketplace(unittest.TestCase):
         j = self.client.get('/marketplace.json').get_json()
         self.assertEqual({n['name']: n['why'] for n in j['not_shown']},
                          {'No card': 'the card names no screen', 'Odd price': 'the price is not a whole mTok rate'})
-        self.assertEqual(j['total'], 1)
+        self.assertEqual(j['total'], 0)
         html = self.page()
         self.assertIn('Not on the shelf', html)
         self.assertIn('Odd price: the price is not a whole mTok rate', html)
@@ -116,13 +117,15 @@ class DeveloperMarketplace(unittest.TestCase):
         self.assertEqual((card['sends_to'], card['data_sent']), ('An outside model', 'the contact\'s city'))
 
     def test_a_stale_form_is_told_so_and_nothing_changes(self):
+        self.place(KEY_A, _agent('Scratch agent', GOOD_CARD))
         self.page()
-        r = self.client.post('/marketplace/hire', data={'token': 'not-the-token', 'key': preview.MARKETPLACE_KEY, 'value': 'off'})
+        r = self.client.post('/marketplace/hire', data={'token': 'not-the-token', 'key': KEY_A, 'value': 'on'})
         self.assertEqual(r.status_code, 302)
         self.assertIn('stale', r.headers['Location'])
-        self.assertEqual(self.client.get('/marketplace.json').get_json()['hired'], 1)
+        self.assertEqual(self.client.get('/marketplace.json').get_json()['hired'], 0)
 
     def test_a_refused_hire_is_said_on_the_page(self):
+        self.place(KEY_A, _agent('Scratch agent', GOOD_CARD))   # a card's form carries the page's token
         html = self.page()
         where = self.toggle(html, 'DAGT_FFFFFFFFFFFF_FFFF', True)
         self.assertIn('could%20not%20be%20hired', where)
@@ -136,9 +139,10 @@ class DeveloperMarketplace(unittest.TestCase):
         sneaky = _zip(_agent('Sneaky', GOOD_CARD))
         self.assertEqual(self.client.post(f'/marketplace/place?key={KEY_A}', data=sneaky, content_type='text/plain').status_code, 403)
         self.assertEqual(self.client.post(f'/marketplace/place?key={KEY_A}', data=sneaky, content_type='application/octet-stream').status_code, 403)
-        self.assertEqual(self.client.get('/marketplace.json').get_json()['total'], 1)
+        self.assertEqual(self.client.get('/marketplace.json').get_json()['total'], 0)
 
     def test_the_marketplace_let_go_can_be_hired_again_from_the_page(self):
+        self.place(KEY_A, _agent('Scratch agent', GOOD_CARD))   # a card's form carries the page's token
         html = self.page()
         self.toggle(html, preview.MARKETPLACE_KEY, False)
         r = self.client.get('/marketplace')
@@ -146,7 +150,7 @@ class DeveloperMarketplace(unittest.TestCase):
         page = r.get_data(as_text=True)
         self.assertIn('Hire the marketplace again', page)
         self.toggle(page, preview.MARKETPLACE_KEY, True)
-        self.assertIn('1 hired', self.page())
+        self.assertIn('1 total in network · 0 hired', self.page())
 
 
 class LocalAnswers(unittest.TestCase):

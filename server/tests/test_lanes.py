@@ -27,6 +27,10 @@ class AssembleTest(unittest.TestCase):
                          [('FREE', True, True, ''), ('PAID', False, False, 'needs the PACE SHIFT subscription')])
         self.assertEqual([c['needs'] for c in out], ['', 'PACE SHIFT'])
 
+    def test_an_agent_is_never_handed_its_own_card(self):
+        out = lanes.assemble([card('MARKET'), card('WEEKLY')], [], [], lambda k: OK, own='MARKET')
+        self.assertEqual([c['key'] for c in out], ['WEEKLY'])
+
     def test_a_subscription_opens_its_group(self):
         cards = [card('PAID', price='10', product_slug='paceshift', product='PACE SHIFT')]
         self.assertEqual(lanes.assemble(cards, [], ['paceshift'], lambda k: OK)[0]['hireable'], True)

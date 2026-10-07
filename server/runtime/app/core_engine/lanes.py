@@ -11,9 +11,11 @@ def groups(balance):
     return sorted({s['agent_group'] for s in (balance or {}).get('subscriptions') or [] if s.get('agent_group')})
 
 
-def assemble(cards, hired, subscribed, verify):
+def assemble(cards, hired, subscribed, verify, own=''):
     out = []
     for c in cards:
+        if c['key'] == own:   # an agent is never handed its own card: the marketplace is the page, never a card inside itself (the owner, 2026-10-06)
+            continue
         if not gate.shown(c, verify(c['key']))[0]:
             continue
         may, why = gate.entitled(c, subscribed)

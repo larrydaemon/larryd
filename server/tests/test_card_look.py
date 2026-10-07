@@ -75,7 +75,7 @@ class TenLooksOnePage(unittest.TestCase):
 
     def test_every_card_is_in_its_own_shadow_root_with_the_template_sheet(self):
         self.assertEqual(self.html.count('<template shadowrootmode="open">'), self.html.count('<article class="agent-card'))
-        self.assertGreaterEqual(self.html.count('href="/marketplace/agent_card.css"'), 11)
+        self.assertEqual(self.html.count('href="/marketplace/agent_card.css"'), 10)   # the ten placed agents; the marketplace is the page, never a card inside itself
 
     def test_the_card_files_are_served_and_nothing_else(self):
         for name in ('agent_card.css', 'agent_card.js', 'page.css', 'reference_theme.css'):

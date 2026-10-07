@@ -189,7 +189,7 @@ class Harness:
             self._record('call', agent_key, 'REFUSED', why, account=account, member=member)
             raise Refused(403, why)
         state, answer, reason = sandbox.run(self.agents / held['folder'], locker.manifest(self.agents, held['folder'])['entry'],
-                                            {'do': calls[0], 'cards': lanes.assemble(cards, hired, groups, verify)}, self.seconds, on_start=self.on_start)
+                                            {'do': calls[0], 'cards': lanes.assemble(cards, hired, groups, verify, own=agent_key)}, self.seconds, on_start=self.on_start)
         outside = _outside_gives(locker.manifest(self.agents, held['folder']), answer) if state == 'DONE' else ''
         if outside:
             state, reason = 'FAILED', outside
@@ -282,7 +282,7 @@ class Harness:
                 return self._end(account, scope, member, key, job_key, run, stop.state, stop.reason)
         self._result(account, scope, job_key, run, 'RUNNING', f'RUN {run} RUNNING')
         if 'cards' in hands:
-            given['cards'] = lanes.assemble(cards, hired, groups, verify)
+            given['cards'] = lanes.assemble(cards, hired, groups, verify, own=key)
         state, answer, reason = sandbox.run(self.agents / folder, manifest['entry'], given, self.seconds, on_start=self.on_start)
         if state != 'DONE':
             return self._end(account, scope, member, key, job_key, run, 'FAILED', reason)

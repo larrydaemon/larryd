@@ -61,10 +61,11 @@ class NoDataKept(unittest.TestCase):
         hired = [{'agent_key': card['key'], 'board': card['screen'], 'shell_id': 1, 'on': True, 'job_key': 'MJOB_SCRATCH00001_0001'}]
         client = Recorder()
         h = harness.Harness(self.db, self.agents, client)
-        h.facts = lambda account, scope, member: ([card], hired, [], lambda key: (True, ''))   # the platform's word, as it would answer
+        other = {**card, 'key': 'DAGT_SCRATCH00002_0002', 'number': '2'}   # the marketplace is never handed its own card: the planted values ride on another's
+        h.facts = lambda account, scope, member: ([card, other], hired, [], lambda key: (True, ''))   # the platform's word, as it would answer
         self.assertEqual(h.run_job('ACCT_' + 'A' * 12 + '_0001', 'SCRATCH', 'MCON_' + 'B' * 12 + '_0002', 'MJOB_SCRATCH00001_0001', 1), 'DONE')
         delivered = [d for _o, route, d in client.said if route == '/jobs/result' and d['state'] == 'DONE'][0]['delivery']
-        self.assertEqual(delivered, '1 agent in the collection · 1 hired')   # the result went back to wid
+        self.assertEqual(delivered, '1 agent in the collection · 0 hired')   # the result went back to wid
         for path in pathlib.Path(self.tmp.name, 'instance').rglob('*'):
             if path.is_file():
                 body = path.read_bytes()
