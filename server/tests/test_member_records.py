@@ -253,7 +253,7 @@ class WhatTheRecordSays(unittest.TestCase):
         h._ask = lambda *a: (_ for _ in ()).throw(harness.Refused(503, 'wid is away'))
         state, answer, reason = h._written({'folder': 'x'}, {'entry': 'agent.py', 'gives': []}, {'opns': ('read', 'add')}, {}, {'writes': [{'do': 'add', 'species': 'opns', 'values': {'a': 'b'}}]}, 'A', 'S', 'M')
         self.assertEqual((state, answer), ('FAILED', None))
-        self.assertEqual(reason, '1 of 1 record write carried; the records could not be read back: wid is away')
+        self.assertEqual(reason, '1 of 1 record write carried; the records could not be read back')   # the runtime's own words only; the platform's text goes to the log
 
 
 class EveryRecordCallNamesItsAgent(unittest.TestCase):

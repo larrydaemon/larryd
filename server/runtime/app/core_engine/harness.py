@@ -200,7 +200,8 @@ class Harness:
             if wanted:
                 given['records'] = member_records.read(self._ask, wanted, account, scope, member, agent_key)
         except Refused as no:   # THE PLATFORM DID NOT HAND THEM (a slot without the record doors yet, a member not allowed, wid away): the agent is handed none
-            not_read = f'records not read: {no.reason}'   # and says so on its page; nothing is guessed, nothing is written without them, the reason is recorded
+            not_read = 'records not read'   # and says so on its page; nothing is guessed, nothing is written without them. THE RECORD KEEPS THE RUNTIME'S OWN WORDS ONLY:
+            LOG.warning('records not read for %s: %s', agent_key, no.reason)   # the platform's refusal text goes to the log, never into the audit row (fixed words, never cut, nothing written by another)
         state, answer, reason = sandbox.run(self.agents / held['folder'], manifest['entry'], given, self.seconds, on_start=self.on_start)
         outside = _outside_gives(manifest, answer) if state == 'DONE' else ''
         if outside:
@@ -241,7 +242,8 @@ class Harness:
         try:
             given = {**given, 'records': member_records.read(self._ask, wanted, account, scope, member, agent_key), 'written': written}
         except Refused as no:
-            return 'FAILED', None, f'{carried}; the records could not be read back: {no.reason}'
+            LOG.warning('records not read back: %s', no.reason)
+            return 'FAILED', None, f'{carried}; the records could not be read back'
         state, answer, reason = sandbox.run(self.agents / held['folder'], manifest['entry'], given, self.seconds, on_start=self.on_start)
         outside = _outside_gives(manifest, answer) if state == 'DONE' else ''
         if outside:
