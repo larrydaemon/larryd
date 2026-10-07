@@ -34,7 +34,7 @@ class CollectionTest(unittest.TestCase):
             'initials': 'TA', 'image_dam_key': '', 'product': 'LARRYD', 'module': 'AGENT', 'pitch': 'Every agent, one toggle.',
             'developer': 'Positive Feedback', 'type': 'OFF-THE-SHELF', 'residency': 'INTERNAL',
             'screen': 'larryd/agnt/home', 'sends_to': '', 'data_sent': '', 'rate': 0,
-            'hired': False, 'hireable': True, 'needs': '', 'art': '', 'wears': '', 'rating': None, 'developer_site': '', 'offline': False, 'subscription': False}])
+            'hired': False, 'hireable': True, 'needs': '', 'art': '', 'wears': '', 'rating': None, 'developer_site': '', 'offline': False}])
 
     def test_counts_and_order_come_from_the_cards(self):
         cards = [card(key='K3', number='3', hired=True), card(key='K1', number='1'), card(key='K2', number='', name='PF Night Watch')]
@@ -380,24 +380,3 @@ class TheMarkLine(unittest.TestCase):
             self.assertIn(f'<span class="mk-caption" data-part="class">{shown}</span>', h, cls)
             for never in ('AGENT (NORMAL)', 'SUPER AGENT', 'QUANTUM', 'HARNESS', 'AGENTIC'):
                 self.assertNotIn(never, h, cls)
-
-
-class TheSubscriptionWord(unittest.TestCase):
-    """An agent that comes with its product's subscription says Subscription where the price stands, for an account that has it (the owner, 2026-10-07);
-    an account without it sees Offline and never the word (no purchase word on an offline card: Apple's review)."""
-    def html(self, **over):
-        return run({'do': 'collection', 'cards': [final(price='0', **over)]})['view']['html']
-
-    def test_subscribed_it_says_subscription_and_can_be_hired(self):
-        h = self.html(subscription=True, hired=True)
-        self.assertIn('data-part="price">Subscription</span>', h)
-        self.assertNotIn('>Free<', h)
-        self.assertNotIn('mk-offline', h)
-        self.assertIn('data-hire="K1"', h)
-
-    def test_offline_never_says_subscription_and_a_free_agent_says_free(self):
-        h = self.html(offline=True)
-        self.assertIn('data-part="price">Offline</span>', h)
-        self.assertNotIn('ubscri', h)
-        self.assertIn('data-part="price">Free</span>', self.html())
-        self.assertIn('data-part="price">Free</span>', self.html(subscription='true'))   # only a true from the platform
