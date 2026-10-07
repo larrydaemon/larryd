@@ -33,12 +33,13 @@ FIELDS['card'] = ('the card the marketplace shows, as the member sees it: {class
                   'module, developer, sends_to, data_sent}; the number and the art are LARRYD\'s to give at approval')
 CARD = {
     'class': 'one of the platform\'s agent classes: MARK I AGENT (NORMAL), MARK II SUPER AGENT (HARNESS) or MARK III QUANTUM AI '
-             '(AGENTIC CODE); the class picks the card\'s effect (Mark I crt, Mark II wellness, Mark III glitch)',
+             '(AGENTIC CODE), as a guide: simple, complex, extremely complex; the class picks the card\'s effect (Mark I crt, '
+             'Mark II wellness, Mark III glitch)',
     'pitch': 'one line on the card: what the member gets',
     'price': 'whole mTok per run, a whole number: 3 or "3" ("0" is free; no fractions)',
     'type': 'OFF-THE-SHELF or DEVELOPER',
-    'residency': 'INTERNAL (it runs on LARRYD), EXTERNAL or BOTH; who may hire it (every account, or one private account) is '
-                 'set when it is authorized, never here',
+    'residency': 'which marketplaces it is offered on: INTERNAL (Positive Feedback only), EXTERNAL (other marketplaces only, '
+                 'e.g. the Microsoft marketplace) or BOTH (Positive Feedback and at least one other); every LARRYD agent runs in LARRYD',
     'authorization': 'who may hire it, your starting setting: PUBLIC (every account) or PRIVATE (one account); the platform\'s '
                      'authorize panel can change it at any time after, and a PRIVATE agent\'s owning account is entered there',
     'screen': 'the screen it lives on, <species>/<page> (its address is app/<species>/<page>): a module\'s home, list or card, '

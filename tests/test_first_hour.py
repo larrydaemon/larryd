@@ -296,7 +296,7 @@ def test_plain_doctor_warns_of_the_blank_s_placeholders(tmp_path, capsys):
 # frost-92's stranger read of the guide: what is live, the platform, mTok, data and residency, a glossary
 def test_the_guide_says_today_the_platform_mtok_and_a_glossary():
     text = (PACKAGE / 'GUIDE.md').read_text()
-    for heading in ('> **Today.**', '## The platform in one minute', '## mTok', '## What the card says about data and where the agent runs', '## Glossary'):
+    for heading in ('> **Today.**', '## The platform in one minute', '## mTok', '## What the card says about data and where the agent is offered', '## Glossary'):
         assert heading in text, heading
     assert 'Payouts to developers\nare not there yet' in text or 'Payouts to developers are not there yet' in text.replace('\n', ' ')
     for word in ('**FROST**', '**DA-M**', '**LARRY LLM**', '**locker**', '**card key**', '**claim page**', '**CALL and RUN**',

@@ -256,13 +256,15 @@ mTok is the platform's usage unit: members' accounts hold it, and a RUN of your 
 whole number of mTok you set per run in the card (`"price"`, 0 = free), charged after a DONE run. Payouts to developers
 are not there yet: nothing here promises a money value or a share.
 
-## What the card says about data and where the agent runs
+## What the card says about data and where the agent is offered
 - `sends_to` and `data_sent`: the agent itself never reaches out. When the platform sends a member's data to an outside
   AI service for the agent, `sends_to` names that service and `data_sent` says what is sent; the platform asks the
   member before anything goes out. An agent that sends nothing leaves both `""`.
-- `residency` is one of the platform's own values: INTERNAL, EXTERNAL or BOTH. Every agent made with LARRYD runs inside
-  LARRYD, so write INTERNAL. EXTERNAL and BOTH are on the platform's list for agents that run elsewhere; LARRYD runs
-  none of those today.
+- `residency` is which marketplaces the agent is offered on: INTERNAL = Positive Feedback's own agent marketplace only;
+  EXTERNAL = other marketplaces only (e.g. the Microsoft marketplace), not Positive Feedback; BOTH = Positive Feedback
+  and at least one external marketplace. It is not where the agent runs: every LARRYD agent runs in LARRYD.
+- `class`, as a guide to how much the agent does: Mark I = simple, Mark II = complex, Mark III = extremely complex. The
+  class also picks the card's effect.
 - `authorization`: who may hire it, PUBLIC (every account) or PRIVATE (one account). It is your starting setting; the
   platform's authorize panel (in FROST) can change it at any time after, and a PRIVATE agent's owning account is
   entered there.
@@ -314,9 +316,9 @@ The card's allowed values:
 
 | Field | Allowed values |
 |---|---|
-| class | MARK I AGENT (NORMAL) (effect crt); MARK II SUPER AGENT (HARNESS) (effect wellness); MARK III QUANTUM AI (AGENTIC CODE) (effect glitch) |
+| class | MARK I AGENT (NORMAL): simple (effect crt); MARK II SUPER AGENT (HARNESS): complex (effect wellness); MARK III QUANTUM AI (AGENTIC CODE): extremely complex (effect glitch) |
 | type | OFF-THE-SHELF, DEVELOPER |
-| residency | INTERNAL, EXTERNAL, BOTH (where it runs) |
+| residency | which marketplaces it is offered on: INTERNAL: Positive Feedback's own agent marketplace only; EXTERNAL: other marketplaces only (e.g. the Microsoft marketplace), not Positive Feedback; BOTH: Positive Feedback and at least one other marketplace (every LARRYD agent runs in LARRYD) |
 | authorization | PUBLIC, PRIVATE (who may hire it: your starting setting; the platform's authorize panel can change it at any time after, and a PRIVATE agent's owning account is entered there) |
 | product | INVOICE MAPS, AGENCY MGMT, PACE SHIFT, LARRYD |
 | price | a whole number of mTok per run: 3 or "3"; "0" is free |
@@ -364,9 +366,11 @@ marketplace cannot show (no screen, a price that is not whole mTok) is listed un
 - **claim page**: the page `larryd submit` opens, where you sign in with Google or Apple to submit the file you sent.
 - **CALL and RUN**: the two lanes. A CALL answers at once on the member's screen (the names in `"calls"`); a RUN is a
   request on a job, run in the sandbox, whose `delivery` lands in the job and which costs the agent's price.
-- **MARK classes**: the platform's three agent classes, MARK I AGENT (NORMAL), MARK II SUPER AGENT (HARNESS) and MARK
-  III
-  QUANTUM AI (AGENTIC CODE). On the card the class picks the effect: Mark I crt, Mark II wellness, Mark III glitch.
+- **MARK classes**: the platform's three agent classes, as a guide: MARK I AGENT (NORMAL) = simple, MARK II SUPER
+  AGENT (HARNESS) = complex, MARK III QUANTUM AI (AGENTIC CODE) = extremely complex. On the card the class picks the
+  effect: Mark I crt, Mark II wellness, Mark III glitch.
+- **residency**: which marketplaces an agent is offered on: INTERNAL (Positive Feedback only), EXTERNAL (other
+  marketplaces only), BOTH (Positive Feedback and at least one other).
 - **species**: the first half of a screen's name, its module's short code (`cont` for Contacts, `agnt` for Agents).
 - **product**: one of the platform's products: Invoice Maps, Agency Mgmt, Pace Shift, LARRYD.
 - **module**: a part of a product (Contacts, Invoices, Agents, ...), with its home, list and card screens.

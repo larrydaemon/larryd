@@ -437,6 +437,16 @@
   "authorization": [
    "PUBLIC",
    "PRIVATE"
-  ]
+  ],
+  "class_means": {
+   "MARK I AGENT (NORMAL)": "simple",
+   "MARK II SUPER AGENT (HARNESS)": "complex",
+   "MARK III QUANTUM AI (AGENTIC CODE)": "extremely complex"
+  },
+  "residency_means": {
+   "INTERNAL": "Positive Feedback's own agent marketplace only",
+   "EXTERNAL": "other marketplaces only (e.g. the Microsoft marketplace), not Positive Feedback",
+   "BOTH": "Positive Feedback and at least one other marketplace"
+  }
  }
 }

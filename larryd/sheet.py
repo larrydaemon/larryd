@@ -201,9 +201,10 @@ def card_table(cat=None):
     for screen, where in card['screens'].items():
         by.setdefault((where['product'], where['module']), []).append(screen)
     lines = ['| Field | Allowed values |', '|---|---|',
-             '| class | ' + '; '.join(f'{k} (effect {v})' for k, v in card['class'].items()) + ' |',
+             '| class | ' + '; '.join(f'{k}: {card["class_means"][k]} (effect {v})' for k, v in card['class'].items()) + ' |',
              '| type | ' + ', '.join(card['type']) + ' |',
-             '| residency | ' + ', '.join(card['residency']) + ' (where it runs) |',
+             '| residency | which marketplaces it is offered on: ' + '; '.join(f'{k}: {v}' for k, v in card['residency_means'].items())
+             + ' (every LARRYD agent runs in LARRYD) |',
              '| authorization | ' + ', '.join(card['authorization']) + ' (who may hire it: your starting setting; the platform\'s authorize '
              'panel can change it at any time after, and a PRIVATE agent\'s owning account is entered there) |',
              '| product | ' + ', '.join(card['products']) + ' |',

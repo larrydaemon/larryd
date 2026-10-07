@@ -383,9 +383,11 @@ def _card(root, card, f):
         if k in facts and not (text(k) and facts[k].strip()):
             f.add(c, where, f'card "{k}" is empty or not text', f'set card "{k}" to {shape.CARD[k]}')
     lists = sheet.catalog()['card']
+    means = {'class': lists['class_means'], 'residency': lists['residency_means']}   # each value's meaning, said with it
     for k, allowed in (('class', list(lists['class'])), ('type', lists['type']), ('residency', lists['residency']), ('authorization', lists['authorization']), ('product', lists['products'])):
         if text(k) and facts[k].strip() and facts[k].strip().upper() not in allowed:
-            f.add(c, where, f'card "{k}" is "{facts[k]}", not one the platform knows', f'use one of: {", ".join(allowed)}')
+            named = [f'{v} ({means[k][v]})' if k in means else v for v in allowed]
+            f.add(c, where, f'card "{k}" is "{facts[k]}", not one the platform knows', f'use one of: {", ".join(named)}')
     effect = lists['class'].get(facts['class'].strip().upper()) if text('class') else None
     held = card.get('look', {}).get('effect') if isinstance(card.get('look'), dict) else None
     if effect and held and held != effect:

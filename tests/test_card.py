@@ -215,3 +215,17 @@ def test_plain_doctor_says_the_class_picks_the_effect(tmp_path, capsys):
     out = capsys.readouterr().out
     assert 'WILL CONVERT effect -> crt (the class MARK I AGENT (NORMAL) picks it)' in out
     assert 'WILL DROP card.css: .mk-glow: animation, filter -> no name on the menu (the class picks the effect' in out
+
+
+def test_class_and_residency_carry_their_meanings(tmp_path):
+    """The owner: residency is which marketplaces it is offered on; the class, as a guide, how complex it is."""
+    from larryd import sheet
+    todo = next(p.todo for p in doctor.check(_with_card(tmp_path, 'res', {'residency': 'CLOUD'})) if 'residency' in p.wrong)
+    assert todo == ("use one of: INTERNAL (Positive Feedback's own agent marketplace only), EXTERNAL (other marketplaces only "
+                    "(e.g. the Microsoft marketplace), not Positive Feedback), BOTH (Positive Feedback and at least one other marketplace)")
+    todo = next(p.todo for p in doctor.check(_with_card(tmp_path, 'cls', {'class': 'MARK IV'})) if 'class' in p.wrong)
+    assert '(simple)' in todo and '(complex)' in todo and '(extremely complex)' in todo
+    table, guide = sheet.card_table(), (pathlib.Path(doctor.__file__).parent / 'GUIDE.md').read_text()
+    assert 'MARK I AGENT (NORMAL): simple (effect crt)' in table and 'INTERNAL: Positive Feedback\'s own agent marketplace only' in table
+    assert table in (new.make('mean', tmp_path) / 'CLAUDE.md').read_text() and table in guide
+    assert 'It is not where the agent runs: every LARRYD agent runs in LARRYD.' in guide and 'where it runs' not in table
