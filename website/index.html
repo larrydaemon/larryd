@@ -793,7 +793,7 @@ wrote /Users/Shared/weather-report/larryd-checks.svg: paste ![LARRYD checks](lar
 
 <section id="checks" class="band spec-top">
   <div class="section-head">
-    <p class="eyebrow">Version 3</p>
+    <p class="eyebrow">Version 4</p>
     <h2>The LARRYD checks</h2>
     <p class="lead"><code>larryd doctor</code> runs these eight checks on an agent, in this order, before it runs and before it is sent anywhere. Its output names them the same way. Every failure says the file, the line, what is wrong and what to do.</p>
   </div>
@@ -819,6 +819,7 @@ wrote /Users/Shared/weather-report/larryd-checks.svg: paste ![LARRYD checks](lar
     <li><strong><code>run.do</code></strong> The agent is asked to do exactly that one thing.</li>
     <li><strong><code>run.hands</code></strong> It is handed only what it names. A hand LARRYD does not have fails the run.</li>
     <li><strong><code>inputs</code></strong> The job's inputs reach it only by the names and slots declared.</li>
+    <li><strong><code>records</code></strong> On a CALL it is handed the member's records of the declared species only; an answer's writes are carried only for a declared species and verb, and one undeclared write refuses the whole answer.</li>
     <li><strong><code>skills</code></strong> Only declared skills are carried out. An answer that carries files is refused unless the agent declares the DA-M store.</li>
     <li><strong><code>calls</code></strong> Only an agent that declares <code>calls</code> answers on a member's screen.</li>
     <li><strong><code>gives</code></strong> An answer that holds anything <code>gives</code> does not name is refused, by <code>larryd run</code> and by LARRYD's runtime: the run fails, nothing is delivered, nothing is charged.</li>

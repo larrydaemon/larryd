@@ -110,6 +110,31 @@ value that is not text or is longer than 10,000 characters, and it keeps none of
 `samples/job_inputs.edit-me.json`, renamed to `job_inputs.json` once its names are yours), give the inputs the same
 way: `{"do": "answer", "job": {"name": "Harbor", "mood": "calm cool"}}`.
 
+## The member's records
+An agent that works on a member's own records (a calendar on the Operations screen, say) declares which, and what it
+does with them:
+
+    "calls": ["month"],
+    "records": {"opns": ["read", "add", "edit", "remove"]}
+
+The species is the module's code from the screens table (opns = Operations, cont = Contacts, ...); the verbs are read,
+add, edit and remove, any of them. On a CALL (the agent answering on the member's screen) LARRYD reads that member's
+records of each declared species through the platform's own record doors and hands them in as
+`records = {"opns": [rows]}`: each row the record's fields by the platform's names, its key as `"key"`. The agent's
+answer may carry `"writes"` (name it in `gives`):
+
+    "writes": [{"do": "add", "species": "opns", "values": {"identity_operations_date": "2030-10-07", "identity_operations_headline": "Partners", "data_meeting_time": "14:00"}},
+               {"do": "edit", "species": "opns", "key": "MOPN_...", "values": {"data_meeting_time": "15:00"}},
+               {"do": "remove", "species": "opns", "key": "MOPN_..."}]
+
+LARRYD carries each to the platform's own doors for that member (at most 20 in one answer; values a flat {field: text}),
+then runs the agent ONCE MORE on the same page with the records as they are now and `written`, what the platform said of
+each (`[{"do", "species", "key", "ok", "why"}]`, a new record's key on an add), so what the agent draws is the truth; writes
+on that second run are ignored. A write on a species or verb the manifest does not declare refuses the whole answer, and
+nothing is carried. The declaration is in the manifest's hash: FROST approves what the agent may read and write with the
+agent itself. A RUN is handed no records; a CALL is handed `records` only. On your own LARRYD the records live in one
+small file (`~/.larryd/preview/records_<species>.json`), which you may write by hand to try an agent.
+
 ## 4. The doctor
     larryd doctor --fix      (write normally, then this; or plain `larryd doctor` to check only, --json for JSON)
 

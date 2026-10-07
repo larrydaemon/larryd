@@ -18,6 +18,7 @@ import signal
 import subprocess
 import sys
 import tempfile
+import time
 
 _BASE = os.path.realpath(sys.base_prefix)
 _FRAMEWORK = os.path.join(_BASE, 'Resources', 'Python.app', 'Contents', 'MacOS', 'Python')   # a framework python3 only spawns this
@@ -223,7 +224,14 @@ def run(folder, entry, given, seconds=20, on_start=None):
         shutil.rmtree(out_dir, ignore_errors=True)
 
 
-def sweep():
-    """At an instance's start: any run's folders left by a run cut off before its own finally."""
+def sweep(older_than=120):
+    """At an instance's start: any run's folders left by a run cut off before its own finally. A folder younger than
+    older_than seconds is a run in flight (another instance's, or a thread's, on the same computer) and is left alone."""
+    now = time.time()
     for p in pathlib.Path(tempfile.gettempdir()).glob('runtime_[ro][ua][nt]_*'):
+        try:
+            if now - p.stat().st_mtime < older_than:
+                continue
+        except OSError:
+            continue
         shutil.rmtree(p, ignore_errors=True)
