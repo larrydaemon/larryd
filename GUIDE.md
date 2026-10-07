@@ -257,6 +257,8 @@ whole number of mTok you set per run in the card (`"price"`, 0 = free), charged 
 are not there yet: nothing here promises a money value or a share.
 
 ## What the card says about data and where the agent is offered
+- `developer_site` (optional): your website, a plain https address such as `https://example.com`. The card links your
+  name to it, in a new tab. Leave the field out for no link.
 - `sends_to` and `data_sent`: the agent itself never reaches out. When the platform sends a member's data to an outside
   AI service for the agent, `sends_to` names that service and `data_sent` says what is sent; the platform asks the
   member before anything goes out. An agent that sends nothing leaves both `""`.

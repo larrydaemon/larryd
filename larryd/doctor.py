@@ -373,8 +373,11 @@ def _card(root, card, f):
         if k not in facts:
             f.add(c, where, f'card "{k}" is missing', f'add card "{k}": {shape.CARD[k]}' + (f', or run {FIX[:-1]} (fills PUBLIC)' if k == 'authorization' else ''))
     for k in facts:
-        if k not in shape.CARD:
+        if k not in shape.CARD and k not in shape.CARD_OPTIONAL:
             f.add(c, where, f'"{k}" is not a card field', f'remove "{k}"; the card\'s fields are: {", ".join(shape.CARD)}')
+    if 'developer_site' in facts and not (isinstance(facts['developer_site'], str) and re.fullmatch(shape.SITE, facts['developer_site'])):
+        f.add(c, where, f'card "developer_site" is {json.dumps(facts["developer_site"])}, not a plain https address',
+              f'set card "developer_site" to {shape.CARD_OPTIONAL["developer_site"]}')
 
     def text(k):
         return isinstance(facts.get(k), str)

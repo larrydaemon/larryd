@@ -229,3 +229,27 @@ def test_class_and_residency_carry_their_meanings(tmp_path):
     assert 'MARK I AGENT (NORMAL): simple (effect crt)' in table and 'INTERNAL: Positive Feedback\'s own agent marketplace only' in table
     assert table in (new.make('mean', tmp_path) / 'CLAUDE.md').read_text() and table in guide
     assert 'It is not where the agent runs: every LARRYD agent runs in LARRYD.' in guide and 'where it runs' not in table
+
+
+@pytest.mark.parametrize('site', ['https://positivefeedback.ai', 'https://www.example.co.uk/agents/hello?x=1', 'https://a-b.example.com/'])
+def test_a_developers_site_is_optional_and_a_plain_https_address_passes(tmp_path, site):   # the card links the developer's name to it
+    root = _with_card(tmp_path, 's' + re.sub(r'[^a-z0-9]', '', site)[:20], {'developer_site': site})
+    assert [p.wrong for p in doctor.check(root) if p.check == 'the manifest'] == []
+    assert 'developer_site' not in shape.CARD and 'developer_site' in shape.CARD_OPTIONAL   # a fresh project carries none and passes
+
+
+@pytest.mark.parametrize('site', ['', 'http://positivefeedback.ai', 'positivefeedback.ai', '//positivefeedback.ai', 'javascript:alert(1)', 'https://127.0.0.1/',
+                                  'https://localhost', 'https://user@example.com', 'https://example.com:8443', 'https://example.com/a b', 'https://example.com/"x',
+                                  'https://example.com/<b>', 'https://exa mple.com', 5, None, ['https://example.com']])
+def test_a_developers_site_that_is_not_plain_https_is_refused_with_what_to_do(tmp_path, site):
+    root = _with_card(tmp_path, 'n' + re.sub(r'[^a-z0-9]', '', str(site))[:20], {'developer_site': site})
+    problems = [p for p in doctor.check(root) if p.check == 'the manifest']
+    assert any('card "developer_site" is' in p.wrong and 'not a plain https address' in p.wrong for p in problems), [p.wrong for p in problems]
+    assert all(p.todo for p in problems)
+
+
+def test_the_tool_and_the_runtime_agree_on_a_developers_site():   # what the doctor passes, the runtime's gate draws
+    from larryd_runtime.core_engine import view
+    for site in ('https://positivefeedback.ai', 'https://www.example.co.uk/agents/hello?x=1', 'https://a-b.example.com/', 'http://positivefeedback.ai', 'https://127.0.0.1/',
+                 'https://localhost', 'https://user@example.com', 'https://example.com:8443', 'https://example.com/a b', 'javascript:alert(1)', ''):
+        assert bool(re.fullmatch(shape.SITE, site)) == view.link_address(site), site

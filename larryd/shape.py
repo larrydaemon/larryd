@@ -30,7 +30,7 @@ FIELDS = {
     'inputs': 'only with "job" in run.hands: the job\'s inputs by name, each on one of the job\'s slots 001-015, e.g. {"mood": "001"}',
 }
 FIELDS['card'] = ('the card the marketplace shows, as the member sees it: {class, pitch, price, type, residency, screen, product, '
-                  'module, developer, sends_to, data_sent}; the number and the art are LARRYD\'s to give at approval')
+                  'module, developer, sends_to, data_sent} and, if you like, developer_site; the number and the art are LARRYD\'s to give at approval')
 CARD = {
     'class': 'one of the platform\'s agent classes: MARK I AGENT (NORMAL), MARK II SUPER AGENT (HARNESS) or MARK III QUANTUM AI '
              '(AGENTIC CODE), as a guide: simple, complex, extremely complex; the class picks the card\'s effect (Mark I crt, '
@@ -50,6 +50,10 @@ CARD = {
     'sends_to': 'the outside AI service it sends a member\'s data to, by name; "" when it sends nothing out',
     'data_sent': 'what it sends there, in plain words; "" when nothing',
 }
+CARD_OPTIONAL = {   # a card fact an agent may leave out
+    'developer_site': 'your website, a plain https address such as https://example.com: the card links your name to it (leave the field out for no link)',
+}
+SITE = r'https://(?=[^/?#]{1,253}(?:[/?#]|$))(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}(?:[/?#][^\s"\'<>\\`]*)?'   # https to a named host: no user, no port, no number for a host
 SCREEN = r'[a-z][a-z0-9]{1,15}/[a-z][a-z0-9]{1,15}'   # <species>/<page>
 MOST_PITCH = 140                                      # characters on the card
 OPTIONAL = ('inputs', 'look')
