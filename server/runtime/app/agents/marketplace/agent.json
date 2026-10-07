@@ -34,5 +34,22 @@
     "radius": "step-5",
     "space": "step-3",
     "effect": "crt"
-  }
+  },
+  "card": {
+    "class": "MARK I AGENT (NORMAL)",
+    "pitch": "Every agent of the platform as a card: hire one with its toggle.",
+    "price": "0",
+    "type": "OFF-THE-SHELF",
+    "residency": "INTERNAL",
+    "authorization": "PUBLIC",
+    "screen": "agnt/home",
+    "product": "LARRYD",
+    "module": "Agents",
+    "developer": "Positive Feedback",
+    "sends_to": "",
+    "data_sent": "",
+    "developer_site": "https://positivefeedback.ai"
+  },
+  "skills": [],
+  "knowledge": []
 }
