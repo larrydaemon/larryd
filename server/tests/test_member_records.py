@@ -291,3 +291,16 @@ class WhenThePlatformDoesNotHandThem(OnTheDevelopersRuntime):
         reason = con.execute("SELECT reason FROM runtime_runs WHERE lane = 'call' AND agent_key = ? ORDER BY rowid DESC", (KEY_A,)).fetchone()[0]
         con.close()
         self.assertIn('RECORDS_NOT_READ', reason)
+
+
+class WhoTheRecordsAreFor(OnTheDevelopersRuntime):
+    def test_the_members_own_key_rides_with_the_records(self):
+        (pathlib.Path(self.tmp.name) / 'agents').mkdir(exist_ok=True)
+        self.place({'opns': ['read']})
+        self.seed([])
+        code = CODE.replace('"written": given.get("written"),', '"written": given.get("written"), "who": given.get("who"),')
+        r = self.client.post(f'/marketplace/place?key={KEY_A}', data=_zip({**_agent({'opns': ['read']}, gives=('seen', 'topics', 'written', 'view', 'writes', 'who')), 'agent.py': code.encode()}),
+                             content_type='application/octet-stream', headers={'X-Larryd-Place': '1'})
+        self.assertIn(r.status_code, (200, 201))
+        out = self.ask().get_json()
+        self.assertEqual(out['who'], {'member': preview.MEMBER})
