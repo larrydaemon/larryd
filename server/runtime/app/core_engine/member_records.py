@@ -49,15 +49,22 @@ def read(ask, wanted, account, scope, member, agent_key=''):
     for species, verbs in wanted.items():
         if 'read' not in verbs:
             continue
-        rows, offset = [], 0
+        rows, offset, first = [], 0, []
         while True:
             body = ask('wid', 'GET', '/agnt/records/list', {'account': account, 'scope': scope, 'member': member, 'agent_key': agent_key, 'segment': species,
                                                              'page': 'list', 'limit': str(PAGE), 'offset': str(offset)})
             got = [r for r in (body.get('rows') or []) if isinstance(r, dict)]
             rows += [{**r, 'key': key_of(r)} for r in got]
+            first = first or [k for k in (body.get('first') or []) if isinstance(k, str)]   # the member's BY PRIORITY keys in rank order (the platform's one priority)
             offset += len(got)
             if not got or offset >= int(body.get('total') or 0) or offset >= MOST_ROWS:
                 break
+        rank = {k: n for n, k in enumerate(first, 1)}
+        for r in rows:   # the rank rides on the row as 'priority' (1..n), like 'key'; a row off the list carries none
+            if r['key'] in rank:
+                r['priority'] = rank[r['key']]
+            else:
+                r.pop('priority', None)
         out[species] = rows[:MOST_ROWS]
     return out
 

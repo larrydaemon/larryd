@@ -209,6 +209,15 @@ class OnTheDevelopersRuntime(unittest.TestCase):
 
 
 class TheRead(unittest.TestCase):
+    def test_the_members_priority_keys_rank_the_rows(self):
+        """wid's door says the member's BY PRIORITY keys (first, in rank order): each such row carries its rank as priority 1..n; a
+        row's own priority word from elsewhere is dropped, so the platform's list is the one priority."""
+        def ask(office, method, route, data):
+            return {'total': 3, 'first': ['MOPN_000000000002_0000', 'MOPN_000000000000_0000'],
+                    'rows': [{'MOPN_norm_key': f'MOPN_{i:012d}_0000', 'priority': 9} for i in range(3)]}
+        out = member_records.read(ask, {'opns': ('read',)}, 'A', 'S', 'M')
+        self.assertEqual([r.get('priority') for r in out['opns']], [2, None, 1])
+
     def test_the_rows_are_read_page_by_page_up_to_the_most(self):
         asked = []
 

@@ -122,7 +122,9 @@ class Local:
         if (method, route) == ('GET', '/agnt/records/list'):
             whole = lambda v: int(v) if str(v).isdigit() else 0
             limit, offset = whole(data.get('limit', 50)) or 50, whole(data.get('offset', 0))
-            return 200, {'total': len(rows), 'rows': rows[offset:offset + limit], 'everything': len(rows), 'mine_count': len(rows), 'ties': {}}
+            ranked = sorted((r for r in rows if isinstance(r.get('priority'), int) and not isinstance(r.get('priority'), bool) and r['priority'] > 0), key=lambda r: r['priority'])
+            return 200, {'total': len(rows), 'rows': rows[offset:offset + limit], 'everything': len(rows), 'mine_count': len(rows), 'ties': {},
+                         'first': [str(r.get(column) or '') for r in ranked]}   # the developer's BY PRIORITY list: a row's own 'priority' number in the file, in rank order (as wid's door says the member's)
         key = str(data.get('key') or '')
         if (method, route) == ('POST', '/agnt/records/remove'):
             kept = [r for r in rows if r.get(column) != key]
