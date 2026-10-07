@@ -253,7 +253,7 @@ class WhatTheRecordSays(unittest.TestCase):
         h._ask = lambda *a: (_ for _ in ()).throw(harness.Refused(503, 'wid is away'))
         state, answer, reason = h._written({'folder': 'x'}, {'entry': 'agent.py', 'gives': []}, {'opns': ('read', 'add')}, {}, {'writes': [{'do': 'add', 'species': 'opns', 'values': {'a': 'b'}}]}, 'A', 'S', 'M')
         self.assertEqual((state, answer), ('FAILED', None))
-        self.assertEqual(reason, '1 of 1 record write carried; the records could not be read back: wid is away')
+        self.assertEqual(reason, '1 of 1 record write carried; the records could not be read back')   # the runtime's own words only; the platform's text goes to the log
 
 
 class EveryRecordCallNamesItsAgent(unittest.TestCase):
@@ -269,3 +269,25 @@ class EveryRecordCallNamesItsAgent(unittest.TestCase):
                                     {'do': 'remove', 'species': 'opns', 'key': 'K', 'values': {}}], 'A', 'S', 'M', 'MAGT_EB3A10BE9600_1266')
         self.assertEqual([r for r, _k in seen], ['/agnt/records/list', '/agnt/records/add', '/agnt/records/edit', '/agnt/records/remove'])
         self.assertEqual({k for _r, k in seen}, {'MAGT_EB3A10BE9600_1266'})
+
+
+class WhenThePlatformDoesNotHandThem(OnTheDevelopersRuntime):
+    """A slot without the record doors yet, a member FROST does not allow, wid away: the agent is handed no records, its view still
+    draws (it says the platform handed none), nothing is written, and the call's record says why."""
+    def test_a_refused_read_still_draws_and_is_recorded(self):
+        self.place({'opns': ['read', 'add']})
+        self.seed([{'MOPN_norm_key': 'MOPN_000000000001_0001', 'identity_operations_headline': 'Partners'}])
+        real = preview.Local._records_door
+        preview.Local._records_door = lambda self, method, route, data: (404, {'refused': 'nothing by that key'})
+        try:
+            out = self.ask(act='book', day='2026-10-07', topic='x').get_json()
+        finally:
+            preview.Local._records_door = real
+        self.assertEqual(out['seen'], [])                       # handed none: the agent's own words say so on its page
+        self.assertIn('view', out)
+        self.assertEqual(len(self.rows()), 1)                   # nothing written
+        import sqlite3
+        con = sqlite3.connect(next(pathlib.Path(self.tmp.name).glob('*.db')))
+        reason = con.execute("SELECT reason FROM runtime_runs WHERE lane = 'call' AND agent_key = ? ORDER BY rowid DESC", (KEY_A,)).fetchone()[0]
+        con.close()
+        self.assertIn('RECORDS_NOT_READ', reason)

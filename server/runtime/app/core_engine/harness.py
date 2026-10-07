@@ -195,16 +195,20 @@ class Harness:
         manifest = locker.manifest(self.agents, held['folder'])
         wanted = member_records.declared(manifest)   # THE MEMBER'S RECORDS: only what the approved manifest declares, read and written through wid's own doors
         given = {**beside, 'do': calls[0], 'cards': handed}
+        not_read = ''
         try:
             if wanted:
                 given['records'] = member_records.read(self._ask, wanted, account, scope, member, agent_key)
-        except Refused as no:
-            self._record('call', agent_key, 'FAILED', f'the records could not be read: {no.reason}', account=account, member=member)
-            raise Refused(no.status, f'the records could not be read: {no.reason}') from None
+        except Refused as no:   # THE PLATFORM DID NOT HAND THEM (a slot without the record doors yet, a member not allowed, wid away): the agent is handed none
+            not_read = 'records not read'   # and says so on its page; nothing is guessed, nothing is written without them. THE RECORD KEEPS THE RUNTIME'S OWN WORDS ONLY:
+            LOG.warning('records not read for %s: %s', agent_key, no.reason)   # the platform's refusal text goes to the log, never into the audit row (fixed words, never cut, nothing written by another)
         state, answer, reason = sandbox.run(self.agents / held['folder'], manifest['entry'], given, self.seconds, on_start=self.on_start)
         outside = _outside_gives(manifest, answer) if state == 'DONE' else ''
         if outside:
             state, reason = 'FAILED', outside
+        if state == 'DONE' and answer.get('writes') and not_read:   # an agent that saw no records decided blind: its writes go nowhere
+            answer = {k: v for k, v in answer.items() if k != 'writes'}
+            reason = 'writes not carried: the records were not read'
         if state == 'DONE' and answer.get('writes') and not act:
             # A WRITE IS CARRIED ONLY ON THE MEMBER'S OWN CONFIRMED ACT (the review, 2026-10-07): the platform marks the call (act: true, on a POST it
             # checked with the member's own token); a page merely opened, by any address or link, never writes, changes or removes a record
@@ -212,7 +216,7 @@ class Harness:
             reason = 'writes not carried: the call is not the member\'s confirmed act'
         if state == 'DONE' and answer.get('writes'):
             state, answer, reason = self._written(held, manifest, wanted, given, answer, account, scope, member, agent_key)
-        self._record('call', agent_key, state, reason, account=account, member=member)
+        self._record('call', agent_key, state, '; '.join(r for r in (not_read, reason) if r), account=account, member=member)   # the records not read first: the fact that explains the rest
         if state != 'DONE':
             raise Refused(500, reason)
         answer.pop('writes', None)
@@ -238,7 +242,8 @@ class Harness:
         try:
             given = {**given, 'records': member_records.read(self._ask, wanted, account, scope, member, agent_key), 'written': written}
         except Refused as no:
-            return 'FAILED', None, f'{carried}; the records could not be read back: {no.reason}'
+            LOG.warning('records not read back: %s', no.reason)
+            return 'FAILED', None, f'{carried}; the records could not be read back'
         state, answer, reason = sandbox.run(self.agents / held['folder'], manifest['entry'], given, self.seconds, on_start=self.on_start)
         outside = _outside_gives(manifest, answer) if state == 'DONE' else ''
         if outside:
