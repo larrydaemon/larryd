@@ -183,3 +183,35 @@ def test_authorization_is_the_developer_s_starting_setting(tmp_path):
     assert _manifest(root)[1]['card']['authorization'] == 'PUBLIC' and doctor.check(root) == []
     from larryd import sheet
     assert 'the platform\'s authorize panel can change it at any time after' in sheet.card_table()
+
+
+
+def test_module_is_the_platform_s_own_name_for_the_screen(tmp_path):
+    """frost-92 on rc17 (Y2): one name everywhere, the platform's (engine.json: agnt is Agents), checked like product."""
+    for root in (new.make('blankm', tmp_path), new.make('examplem', tmp_path, example='marketplace')):
+        assert _manifest(root)[1]['card']['module'] == 'Agents' and doctor.check(root) == []
+    assert doctor.check(_with_card(tmp_path, 'lower', {'module': 'agents'})) == []   # the same name, any case
+    wrong = [p for p in doctor.check(_with_card(tmp_path, 'oldname', {'module': 'AGENT'}))]
+    assert [p.wrong for p in wrong] == ['card "module" is "AGENT", but the screen agnt/home is in Agents']
+    assert 'set card "module" to "Agents"' in wrong[0].todo
+    from larryd import sheet
+    assert '| agnt/home, agnt/list, agnt/card | LARRYD | Agents |' in sheet.card_table()
+
+
+def test_a_missing_authorization_says_fix_fills_it(tmp_path):
+    root = new.make('noauth', tmp_path)
+    path, manifest = _manifest(root)
+    del manifest['card']['authorization']
+    path.write_text(json.dumps(manifest))
+    todo = next(p.todo for p in doctor.check(root) if 'authorization' in p.wrong)
+    assert todo.endswith('or run `larryd doctor --fix` (fills PUBLIC)')
+
+
+def test_plain_doctor_says_the_class_picks_the_effect(tmp_path, capsys):
+    from larryd import cli
+    root = new.make('fx', tmp_path, example='marketplace')
+    (root / 'agent' / 'card.css').write_text('.mk-glow { animation: breathe 6s; filter: blur(8px) }\n')
+    cli.main(['doctor', str(root)])
+    out = capsys.readouterr().out
+    assert 'WILL CONVERT effect -> crt (the class MARK I AGENT (NORMAL) picks it)' in out
+    assert 'WILL DROP card.css: .mk-glow: animation, filter -> no name on the menu (the class picks the effect' in out

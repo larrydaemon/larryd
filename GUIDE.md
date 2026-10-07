@@ -104,12 +104,13 @@ nearest name on the menu and says each mapping (CONVERTED ...): the card's first
 nearest as the eye sees it (OKLab distance against the reference theme, done once; only the name is kept), its corner
 radius and its padding to the nearest step, written type on a part of the card to the nearest role (by size and
 weight, a different case costing 6px, an unwritten case being none as in CSS; a role made for navigation, a link or a
-field's label only when the selector says so), the sheet's animation words to the nearest effect. Every other value is
-said too, as DROPPED ... with why: colour is card-wide (the accent only), so a part's colour is dropped (a part takes
-a role, never a colour); gap and margin are dropped ("space" is the card's padding and the template sets the gaps from
-it); layout, position, hover and other states, shadows, transforms and transitions are the template's and the
-effect's; @import, @font-face and @keyframes never become a name. It writes the look record, moves the sheet to
-`design/card.css` (agents ship no CSS) and keeps your original manifest, and the design sheet it replaces, in
+field's label only when the selector says so), never an effect: the card's class picks it (Mark I crt, Mark II
+wellness, Mark III glitch), and the sheet's animation and layers are dropped. Every other value is said too, as
+DROPPED ... with why: colour is card-wide (the accent only), so a part's colour is dropped (a part takes a role, never
+a colour); gap and margin are dropped ("space" is the card's padding and the template sets the gaps from it); layout,
+position, hover and other states are the template's; shadows, transforms, transitions and @keyframes belong to the
+effect the class picks; @import, @font-face and @keyframes never become a name. It writes the look record, moves the
+sheet to `design/card.css` (agents ship no CSS) and keeps your original manifest, and the design sheet it replaces, in
 `.larryd/doctor_backup/`. Plain `larryd doctor` changes nothing: while a sheet is in `agent/` it fails the shape and
 says what it WILL CONVERT and WILL DROP. `larryd place` and `larryd submit` convert it the same way first, so CSS is
 never a reason to refuse. --fix also fills the card's missing facts with honest defaults it names. The same files
@@ -262,22 +263,22 @@ The card's allowed values:
 
 | Screen (<species>/<page>, at app/<species>/<page>) | Product | Module |
 |---|---|---|
-| cont/home, cont/list, cont/card | INVOICE MAPS | CONTACTS |
-| invc/home, invc/list, invc/card | INVOICE MAPS | INVOICES |
-| locn/home, locn/list, locn/card | INVOICE MAPS | LOCATIONS |
-| opns/home, opns/list, opns/card | INVOICE MAPS | OPERATIONS |
-| hrcy/home, hrcy/list, hrcy/card | AGENCY MGMT | HIERARCHIES |
-| mdia/home, mdia/list, mdia/card | AGENCY MGMT | MEDIA |
-| brnd/home, brnd/list, brnd/card | AGENCY MGMT | BRAND |
-| sprt/home, sprt/list, sprt/card | AGENCY MGMT | SPRINT |
-| imgs/home, imgs/list, imgs/card | PACE SHIFT | IMAGES |
-| vdeo/home, vdeo/list, vdeo/card | PACE SHIFT | VIDEOS |
-| audo/home, audo/list, audo/card | PACE SHIFT | AUDIO |
-| prdn/home, prdn/list, prdn/card | PACE SHIFT | PRODUCTION |
-| agnt/home, agnt/list, agnt/card | LARRYD | AGENTS |
-| mdls/home, mdls/list, mdls/card | LARRYD | MODELS |
-| logs/home, logs/list, logs/card | LARRYD | LOGS |
-| jobs/home, jobs/list, jobs/card | LARRYD | JOBS |
+| cont/home, cont/list, cont/card | INVOICE MAPS | Contacts |
+| invc/home, invc/list, invc/card | INVOICE MAPS | Invoices |
+| locn/home, locn/list, locn/card | INVOICE MAPS | Locations |
+| opns/home, opns/list, opns/card | INVOICE MAPS | Operations |
+| hrcy/home, hrcy/list, hrcy/card | AGENCY MGMT | Hierarchies |
+| mdia/home, mdia/list, mdia/card | AGENCY MGMT | Media |
+| brnd/home, brnd/list, brnd/card | AGENCY MGMT | Brand |
+| sprt/home, sprt/list, sprt/card | AGENCY MGMT | Sprint |
+| imgs/home, imgs/list, imgs/card | PACE SHIFT | Images |
+| vdeo/home, vdeo/list, vdeo/card | PACE SHIFT | Videos |
+| audo/home, audo/list, audo/card | PACE SHIFT | Audio |
+| prdn/home, prdn/list, prdn/card | PACE SHIFT | Production |
+| agnt/home, agnt/list, agnt/card | LARRYD | Agents |
+| mdls/home, mdls/list, mdls/card | LARRYD | Models |
+| logs/home, logs/list, logs/card | LARRYD | Logs |
+| jobs/home, jobs/list, jobs/card | LARRYD | Jobs |
 | larry/home | any | the product's dashboard |
 
 The class picks the card's effect: Mark I crt, Mark II wellness, Mark III glitch. `larryd doctor --fix` sets the

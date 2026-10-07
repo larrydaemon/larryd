@@ -50,10 +50,12 @@ def test_type_on_a_part_goes_to_the_nearest_role_and_elsewhere_is_said_dropped()
     assert dropped == ['.wrapper: font-size -> no name on the menu (no text part of the card here (the parts: number, class, name, info, pitch, developer, facts, price))']
 
 
-def test_effects_from_the_sheet_s_words():
-    assert look.from_sheet('.x { filter: blur(8px); animation: breathe 6s }')[0]['effect'] == 'wellness'
-    assert look.from_sheet('.x { animation: jitter 1s steps(1) }')[0]['effect'] == 'glitch'
-    assert 'effect' not in look.from_sheet('.mk-card { border-radius: 4px }')[0]
+def test_the_effect_is_never_read_from_a_sheet():
+    """frost-92 on rc17 (Y1): the class picks the effect; a sheet's animation and layers are dropped, said why."""
+    record, said, dropped = look.from_sheet('.mk-glow { filter: blur(8px); animation: breathe 6s }\n@keyframes breathe { to { opacity: 1 } }')
+    assert 'effect' not in record and said == []
+    assert '.mk-glow: filter, animation -> no name on the menu (the class picks the effect, which brings its own motion, light and shadow)' in dropped
+    assert '@keyframes breathe -> no name on the menu (the class picks the effect, which brings its own animation)' in dropped
 
 
 def test_the_runtime_card_template_uses_the_same_fixed_list():
@@ -84,10 +86,10 @@ def test_every_value_is_named_or_dropped_with_why():
     assert record == {'accent': 'active-color-01', 'radius': 'step-6', 'space': 'step-3', 'text': {'name': 'subtitle', 'facts': 'body'}}
     assert any('font-style: italic -> text name' in s for s in said)
     for line in ('@import url("fonts.css") -> no name on the menu (the template loads every file itself)',
-                 '@keyframes lift -> no name on the menu (the effect brings its own animation)',
+                 '@keyframes lift -> no name on the menu (the class picks the effect, which brings its own animation)',
                  '.mk-card: gap -> no name on the menu ("space" is the card\'s padding; the template sets the gaps and margins from it)',
                  '.mk-card: position, top -> no name on the menu (the template places every part)',
-                 '.mk-card: transition -> no name on the menu (the effect brings its own motion, light and shadow)',
+                 '.mk-card: transition -> no name on the menu (the class picks the effect, which brings its own motion, light and shadow)',
                  '.mk-card:hover: transform, box-shadow -> no name on the menu (the template draws hover, focus and every other state)',
                  '.mk-frame: aspect-ratio -> no name on the menu (the template lays out the card)',
                  '.mk-name: color -> no name on the menu (colour is card-wide, the accent only: a text part takes a role, never a colour)',
@@ -101,4 +103,4 @@ def test_every_value_is_named_or_dropped_with_why():
 
 def test_a_layer_s_colour_says_the_effect_draws_it():
     _record, _said, dropped = look.from_sheet('.mk-glow { background: radial-gradient(circle, #D4C4A8 0%, transparent 60%) }')
-    assert dropped == ['.mk-glow: background -> no name on the menu (colour is card-wide, the accent only; the effect draws its own layers)']
+    assert dropped == ['.mk-glow: background -> no name on the menu (colour is card-wide, the accent only; the class picks the effect, which draws its own layers)']

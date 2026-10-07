@@ -239,195 +239,195 @@
   "screens": {
    "cont/home": {
     "product": "INVOICE MAPS",
-    "module": "CONTACTS"
+    "module": "Contacts"
    },
    "cont/list": {
     "product": "INVOICE MAPS",
-    "module": "CONTACTS"
+    "module": "Contacts"
    },
    "cont/card": {
     "product": "INVOICE MAPS",
-    "module": "CONTACTS"
+    "module": "Contacts"
    },
    "invc/home": {
     "product": "INVOICE MAPS",
-    "module": "INVOICES"
+    "module": "Invoices"
    },
    "invc/list": {
     "product": "INVOICE MAPS",
-    "module": "INVOICES"
+    "module": "Invoices"
    },
    "invc/card": {
     "product": "INVOICE MAPS",
-    "module": "INVOICES"
+    "module": "Invoices"
    },
    "locn/home": {
     "product": "INVOICE MAPS",
-    "module": "LOCATIONS"
+    "module": "Locations"
    },
    "locn/list": {
     "product": "INVOICE MAPS",
-    "module": "LOCATIONS"
+    "module": "Locations"
    },
    "locn/card": {
     "product": "INVOICE MAPS",
-    "module": "LOCATIONS"
+    "module": "Locations"
    },
    "opns/home": {
     "product": "INVOICE MAPS",
-    "module": "OPERATIONS"
+    "module": "Operations"
    },
    "opns/list": {
     "product": "INVOICE MAPS",
-    "module": "OPERATIONS"
+    "module": "Operations"
    },
    "opns/card": {
     "product": "INVOICE MAPS",
-    "module": "OPERATIONS"
+    "module": "Operations"
    },
    "hrcy/home": {
     "product": "AGENCY MGMT",
-    "module": "HIERARCHIES"
+    "module": "Hierarchies"
    },
    "hrcy/list": {
     "product": "AGENCY MGMT",
-    "module": "HIERARCHIES"
+    "module": "Hierarchies"
    },
    "hrcy/card": {
     "product": "AGENCY MGMT",
-    "module": "HIERARCHIES"
+    "module": "Hierarchies"
    },
    "mdia/home": {
     "product": "AGENCY MGMT",
-    "module": "MEDIA"
+    "module": "Media"
    },
    "mdia/list": {
     "product": "AGENCY MGMT",
-    "module": "MEDIA"
+    "module": "Media"
    },
    "mdia/card": {
     "product": "AGENCY MGMT",
-    "module": "MEDIA"
+    "module": "Media"
    },
    "brnd/home": {
     "product": "AGENCY MGMT",
-    "module": "BRAND"
+    "module": "Brand"
    },
    "brnd/list": {
     "product": "AGENCY MGMT",
-    "module": "BRAND"
+    "module": "Brand"
    },
    "brnd/card": {
     "product": "AGENCY MGMT",
-    "module": "BRAND"
+    "module": "Brand"
    },
    "sprt/home": {
     "product": "AGENCY MGMT",
-    "module": "SPRINT"
+    "module": "Sprint"
    },
    "sprt/list": {
     "product": "AGENCY MGMT",
-    "module": "SPRINT"
+    "module": "Sprint"
    },
    "sprt/card": {
     "product": "AGENCY MGMT",
-    "module": "SPRINT"
+    "module": "Sprint"
    },
    "imgs/home": {
     "product": "PACE SHIFT",
-    "module": "IMAGES"
+    "module": "Images"
    },
    "imgs/list": {
     "product": "PACE SHIFT",
-    "module": "IMAGES"
+    "module": "Images"
    },
    "imgs/card": {
     "product": "PACE SHIFT",
-    "module": "IMAGES"
+    "module": "Images"
    },
    "vdeo/home": {
     "product": "PACE SHIFT",
-    "module": "VIDEOS"
+    "module": "Videos"
    },
    "vdeo/list": {
     "product": "PACE SHIFT",
-    "module": "VIDEOS"
+    "module": "Videos"
    },
    "vdeo/card": {
     "product": "PACE SHIFT",
-    "module": "VIDEOS"
+    "module": "Videos"
    },
    "audo/home": {
     "product": "PACE SHIFT",
-    "module": "AUDIO"
+    "module": "Audio"
    },
    "audo/list": {
     "product": "PACE SHIFT",
-    "module": "AUDIO"
+    "module": "Audio"
    },
    "audo/card": {
     "product": "PACE SHIFT",
-    "module": "AUDIO"
+    "module": "Audio"
    },
    "prdn/home": {
     "product": "PACE SHIFT",
-    "module": "PRODUCTION"
+    "module": "Production"
    },
    "prdn/list": {
     "product": "PACE SHIFT",
-    "module": "PRODUCTION"
+    "module": "Production"
    },
    "prdn/card": {
     "product": "PACE SHIFT",
-    "module": "PRODUCTION"
+    "module": "Production"
    },
    "agnt/home": {
     "product": "LARRYD",
-    "module": "AGENTS"
+    "module": "Agents"
    },
    "agnt/list": {
     "product": "LARRYD",
-    "module": "AGENTS"
+    "module": "Agents"
    },
    "agnt/card": {
     "product": "LARRYD",
-    "module": "AGENTS"
+    "module": "Agents"
    },
    "mdls/home": {
     "product": "LARRYD",
-    "module": "MODELS"
+    "module": "Models"
    },
    "mdls/list": {
     "product": "LARRYD",
-    "module": "MODELS"
+    "module": "Models"
    },
    "mdls/card": {
     "product": "LARRYD",
-    "module": "MODELS"
+    "module": "Models"
    },
    "logs/home": {
     "product": "LARRYD",
-    "module": "LOGS"
+    "module": "Logs"
    },
    "logs/list": {
     "product": "LARRYD",
-    "module": "LOGS"
+    "module": "Logs"
    },
    "logs/card": {
     "product": "LARRYD",
-    "module": "LOGS"
+    "module": "Logs"
    },
    "jobs/home": {
     "product": "LARRYD",
-    "module": "JOBS"
+    "module": "Jobs"
    },
    "jobs/list": {
     "product": "LARRYD",
-    "module": "JOBS"
+    "module": "Jobs"
    },
    "jobs/card": {
     "product": "LARRYD",
-    "module": "JOBS"
+    "module": "Jobs"
    },
    "larry/home": {
     "product": "any",

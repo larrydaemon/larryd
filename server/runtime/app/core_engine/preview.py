@@ -14,7 +14,7 @@ from . import gate, locker
 ACCOUNT = SCOPE = MEMBER = 'developer'       # the one member of a developer's runtime
 BOARD = 'agnt/home'                          # the marketplace's own screen: a board's first visit places it there
 MARKETPLACE_KEY = 'MAGT_000000000000_0001'    # the marketplace's card key on a developer's runtime
-MARKETPLACE_CARD = {'number': '0', 'class': 'SYSTEM AGENT', 'screen': BOARD, 'product': 'LARRYD', 'module': 'AGENT',
+MARKETPLACE_CARD = {'number': '0', 'class': 'SYSTEM AGENT', 'screen': BOARD, 'product': 'LARRYD', 'module': 'Agents',
                     'pitch': 'Every agent for hire, one toggle each.', 'developer': 'LARRYD', 'price': '0',
                     'type': 'OFF-THE-SHELF', 'residency': 'INTERNAL', 'sends_to': '', 'data_sent': ''}
 CARD_KEYS = ('class', 'pitch', 'price', 'type', 'residency', 'authorization', 'screen', 'product', 'module', 'developer', 'sends_to', 'data_sent')

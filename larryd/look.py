@@ -14,11 +14,6 @@ from . import sheet
 
 FIELDS = ('accent', 'radius', 'space', 'effect', 'text')
 CARD = re.compile(r'\.mk-card\b|\.agent-card\b|:host\b|\.card\b')
-EFFECT_WORDS = {   # what a designed sheet says, read as the nearest effect
-    'crt': re.compile(r'\bcrt\b|scan|repeating-linear-gradient\(\s*0deg|roll', re.I),
-    'wellness': re.compile(r'wellness|blur\(|breathe|drift|radial-gradient', re.I),
-    'glitch': re.compile(r'glitch|jitter|foil|flicker|mix-blend-mode|hue-rotate', re.I),
-}
 PART_WORDS = (   # a selector's words, read as the card's text part they style
     ('price', ('price', 'rate', 'callout', 'cost')),
     ('name', ('name', 'title', 'heading')),
@@ -128,7 +123,7 @@ def _rules(text, within=''):
 
 
 AT_WHY = {'import': 'the template loads every file itself', 'font-face': 'the type roles bring their own faces',
-          'keyframes': 'the effect brings its own animation', '-webkit-keyframes': 'the effect brings its own animation',
+          'keyframes': 'the class picks the effect, which brings its own animation', '-webkit-keyframes': 'the class picks the effect, which brings its own animation',
           'charset': 'not part of a card\'s look', 'namespace': 'not part of a card\'s look', 'page': 'not part of a card\'s look'}
 STATES = re.compile(r':(hover|focus|focus-visible|focus-within|active|visited|checked|disabled)\b', re.I)
 REASONS = (   # (properties, why they never become a name); the first that matches says it
@@ -137,7 +132,7 @@ REASONS = (   # (properties, why they never become a name); the first that match
     (re.compile(r'^(display|flex.*|grid.*|order|align.*|justify.*|place.*|aspect-ratio|width|height|min-.*|max-.*|overflow.*|box-sizing|columns?.*)$'),
      'the template lays out the card'),
     (re.compile(r'^(transition.*|animation.*|transform.*|translate|rotate|scale|filter|backdrop-filter|box-shadow|text-shadow|opacity|mix-blend-mode|will-change)$'),
-     'the effect brings its own motion, light and shadow'),
+     'the class picks the effect, which brings its own motion, light and shadow'),
     (re.compile(r'^(cursor|pointer-events|user-select|content|outline.*)$'), 'the template draws every state'),
 )
 
@@ -154,7 +149,7 @@ def _why(prop, selector, part, card):
         return 'one accent per card: the first colour on the card became it; the template draws the border and the ground'
     if re.search(r'colou?r|background|border|fill|stroke', prop):
         if part is None:
-            return 'colour is card-wide, the accent only; the effect draws its own layers'
+            return 'colour is card-wide, the accent only; the class picks the effect, which draws its own layers'
         return 'colour is card-wide, the accent only: a text part takes a role, never a colour'
     return 'not a name on the menu'
 
@@ -188,7 +183,7 @@ def from_sheet(text, cat=None):
     """-> (the look record nearest to a designed sheet, [what was mapped], [what was dropped]): every declaration of the
     sheet is said once, as a name it became or as dropped with why. The card's own rule (.mk-card, .agent-card, :host,
     no state) gives the accent (its border, outline or text colour first), the radius and the space (its padding); the
-    sheet's animation words give the effect; type on a named part gives that part's role."""
+    effect is never read from a sheet (the class picks it); type on a named part gives that part's role."""
     cat = cat or sheet.catalog()
     rules, ats = _rules(text)
     said, look, used = [], {}, set()
@@ -238,12 +233,6 @@ def from_sheet(text, cat=None):
                         break
             if done:
                 break
-
-    hits = {e: len(w.findall(text or '')) for e, w in EFFECT_WORDS.items()}
-    best = max(hits, key=lambda e: hits[e]) if any(hits.values()) else 'none'
-    if best != 'none':
-        look['effect'] = best
-        said.append(f'the sheet\'s animation and layers -> effect {best} (read from its words: {", ".join(sorted(set(m.group(0).lower() for m in EFFECT_WORDS[best].finditer(text))))})')
 
     text_roles, merged = {}, {}   # per part: its type as the browser cascades it (source order, the later wins per property)
     for n, (selector, decls, _within) in enumerate(rules):

@@ -370,7 +370,7 @@ def _card(root, card, f):
         return
     for k in shape.CARD:
         if k not in facts:
-            f.add(c, where, f'card "{k}" is missing', f'add card "{k}": {shape.CARD[k]}')
+            f.add(c, where, f'card "{k}" is missing', f'add card "{k}": {shape.CARD[k]}' + (', or run `larryd doctor --fix` (fills PUBLIC)' if k == 'authorization' else ''))
     for k in facts:
         if k not in shape.CARD:
             f.add(c, where, f'"{k}" is not a card field', f'remove "{k}"; the card\'s fields are: {", ".join(shape.CARD)}')
@@ -406,6 +406,9 @@ def _card(root, card, f):
         elif text('product') and screens[screen]['product'] != 'any' and facts['product'].strip().upper() in lists['products'] and facts['product'].strip().upper() != screens[screen]['product']:
             f.add(c, where, f'card "screen" {screen} is a {screens[screen]["product"]} screen, but "product" is {facts["product"]}',
                   f'set card "product" to {screens[screen]["product"]}, or pick a screen of {facts["product"]}')
+        if screen in screens and screens[screen]['product'] != 'any' and text('module') and facts['module'].strip().lower() != screens[screen]['module'].lower():
+            f.add(c, where, f'card "module" is "{facts["module"]}", but the screen {screen} is in {screens[screen]["module"]}',
+                  f'set card "module" to "{screens[screen]["module"]}" (the platform\'s own name for that module)')
     for k in ('sends_to', 'data_sent'):
         if k in facts and not text(k):
             f.add(c, where, f'card "{k}" is not text', f'set card "{k}" to {shape.CARD[k]}')
@@ -485,6 +488,14 @@ def conversions(root):
         except UnicodeDecodeError:
             continue
         notes += [('CONVERT', f'{path.name}: {n}') for n in said] + [('DROP', f'{path.name}: {n}') for n in dropped]
+    if notes:   # the effect is never read from a sheet: the card's class picks it
+        try:
+            klass = json.loads((pathlib.Path(root).resolve() / shape.AGENT / shape.MANIFEST).read_text()).get('card', {}).get('class') or ''
+        except (OSError, ValueError, AttributeError):
+            klass = ''
+        effect = sheet.catalog()['card']['class'].get(str(klass).strip().upper())
+        notes.append(('CONVERT', f'effect -> {effect} (the class {klass} picks it)' if effect else
+                      'effect: the card\'s class picks it (MARK I crt, MARK II wellness, MARK III glitch)'))
     return notes
 
 
@@ -609,7 +620,7 @@ def fix(root):
         if isinstance(data, dict):
             card = data.setdefault('card', {})
             defaults = {'class': 'MARK I AGENT (NORMAL)', 'price': '0', 'type': 'OFF-THE-SHELF', 'residency': 'INTERNAL', 'authorization': 'PUBLIC', 'screen': 'agnt/home',
-                        'product': 'LARRYD', 'module': 'AGENT', 'developer': 'Independent developer', 'sends_to': '', 'data_sent': '',
+                        'product': 'LARRYD', 'module': 'Agents', 'developer': 'Independent developer', 'sends_to': '', 'data_sent': '',
                         'pitch': f"What {data.get('name') or 'this agent'} does for the member, in one line."}
             missing = [k for k in defaults if k not in card]
             effect = sheet.catalog()['card']['class'].get(str(card.get('class') or defaults['class']).strip().upper())

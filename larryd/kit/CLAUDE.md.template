@@ -43,7 +43,7 @@ each name at the live theme, so the card follows the brand and light or dark by 
 
 You may design in CSS: write `agent/card.css` normally, then run `larryd doctor --fix`. It maps each value to the
 nearest name below (the card's colour as the eye sees it, its radius and padding to the nearest step, type on a part to
-the nearest role), says each mapping, says every value it drops and why (a part's colour, gaps, layout, hover, shadows),
+the nearest role; never the effect, which the card's class picks), says each mapping, says every value it drops and why (a part's colour, gaps, layout, hover, shadows),
 writes the look record, and moves the sheet to `design/card.css`. Plain `larryd doctor` fails while a sheet is in
 `agent/` and says what it WILL CONVERT and WILL DROP. The menu, a fixed list:
 

@@ -36,7 +36,7 @@
     "authorization": "PUBLIC",
     "screen": "agnt/home",
     "product": "LARRYD",
-    "module": "AGENT",
+    "module": "Agents",
     "developer": "Positive Feedback",
     "sends_to": "",
     "data_sent": ""

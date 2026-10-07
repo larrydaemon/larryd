@@ -44,7 +44,7 @@ CARD = {
     'screen': 'the screen it lives on, <species>/<page> (its address is app/<species>/<page>): a module\'s home, list or card, '
               'e.g. cont/card, or a product\'s dashboard larry/home; the list is in CLAUDE.md',
     'product': 'the product that screen belongs to: INVOICE MAPS, AGENCY MGMT, PACE SHIFT or LARRYD',
-    'module': 'the module that screen is in, e.g. CONTACTS',
+    'module': 'the module that screen is in, by the platform\'s own name, e.g. Contacts (cont/...) or Agents (agnt/...)',
     'developer': 'who made it, as the card credits it: your name or company',
     'sends_to': 'the outside AI service it sends a member\'s data to, by name; "" when it sends nothing out',
     'data_sent': 'what it sends there, in plain words; "" when nothing',
