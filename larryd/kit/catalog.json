@@ -213,5 +213,226 @@
    "label",
    "field"
   ]
+ },
+ "card": {
+  "about": "The card's allowed values, the platform's own fixed lists (its agent class, type and residency lists; its screens: each module's home, list and card, and each product's dashboard larry/home, at app/<species>/<page>). Who may hire (public or one private account) is set at authorization, never in the manifest.",
+  "class": {
+   "MARK I AGENT (NORMAL)": "crt",
+   "MARK II SUPER AGENT (HARNESS)": "wellness",
+   "MARK III QUANTUM AI (AGENTIC CODE)": "glitch"
+  },
+  "type": [
+   "OFF-THE-SHELF",
+   "DEVELOPER"
+  ],
+  "residency": [
+   "INTERNAL",
+   "EXTERNAL",
+   "BOTH"
+  ],
+  "products": [
+   "INVOICE MAPS",
+   "AGENCY MGMT",
+   "PACE SHIFT",
+   "LARRYD"
+  ],
+  "screens": {
+   "cont/home": {
+    "product": "INVOICE MAPS",
+    "module": "CONTACTS"
+   },
+   "cont/list": {
+    "product": "INVOICE MAPS",
+    "module": "CONTACTS"
+   },
+   "cont/card": {
+    "product": "INVOICE MAPS",
+    "module": "CONTACTS"
+   },
+   "invc/home": {
+    "product": "INVOICE MAPS",
+    "module": "INVOICES"
+   },
+   "invc/list": {
+    "product": "INVOICE MAPS",
+    "module": "INVOICES"
+   },
+   "invc/card": {
+    "product": "INVOICE MAPS",
+    "module": "INVOICES"
+   },
+   "locn/home": {
+    "product": "INVOICE MAPS",
+    "module": "LOCATIONS"
+   },
+   "locn/list": {
+    "product": "INVOICE MAPS",
+    "module": "LOCATIONS"
+   },
+   "locn/card": {
+    "product": "INVOICE MAPS",
+    "module": "LOCATIONS"
+   },
+   "opns/home": {
+    "product": "INVOICE MAPS",
+    "module": "OPERATIONS"
+   },
+   "opns/list": {
+    "product": "INVOICE MAPS",
+    "module": "OPERATIONS"
+   },
+   "opns/card": {
+    "product": "INVOICE MAPS",
+    "module": "OPERATIONS"
+   },
+   "hrcy/home": {
+    "product": "AGENCY MGMT",
+    "module": "HIERARCHIES"
+   },
+   "hrcy/list": {
+    "product": "AGENCY MGMT",
+    "module": "HIERARCHIES"
+   },
+   "hrcy/card": {
+    "product": "AGENCY MGMT",
+    "module": "HIERARCHIES"
+   },
+   "mdia/home": {
+    "product": "AGENCY MGMT",
+    "module": "MEDIA"
+   },
+   "mdia/list": {
+    "product": "AGENCY MGMT",
+    "module": "MEDIA"
+   },
+   "mdia/card": {
+    "product": "AGENCY MGMT",
+    "module": "MEDIA"
+   },
+   "brnd/home": {
+    "product": "AGENCY MGMT",
+    "module": "BRAND"
+   },
+   "brnd/list": {
+    "product": "AGENCY MGMT",
+    "module": "BRAND"
+   },
+   "brnd/card": {
+    "product": "AGENCY MGMT",
+    "module": "BRAND"
+   },
+   "sprt/home": {
+    "product": "AGENCY MGMT",
+    "module": "SPRINT"
+   },
+   "sprt/list": {
+    "product": "AGENCY MGMT",
+    "module": "SPRINT"
+   },
+   "sprt/card": {
+    "product": "AGENCY MGMT",
+    "module": "SPRINT"
+   },
+   "imgs/home": {
+    "product": "PACE SHIFT",
+    "module": "IMAGES"
+   },
+   "imgs/list": {
+    "product": "PACE SHIFT",
+    "module": "IMAGES"
+   },
+   "imgs/card": {
+    "product": "PACE SHIFT",
+    "module": "IMAGES"
+   },
+   "vdeo/home": {
+    "product": "PACE SHIFT",
+    "module": "VIDEOS"
+   },
+   "vdeo/list": {
+    "product": "PACE SHIFT",
+    "module": "VIDEOS"
+   },
+   "vdeo/card": {
+    "product": "PACE SHIFT",
+    "module": "VIDEOS"
+   },
+   "audo/home": {
+    "product": "PACE SHIFT",
+    "module": "AUDIO"
+   },
+   "audo/list": {
+    "product": "PACE SHIFT",
+    "module": "AUDIO"
+   },
+   "audo/card": {
+    "product": "PACE SHIFT",
+    "module": "AUDIO"
+   },
+   "prdn/home": {
+    "product": "PACE SHIFT",
+    "module": "PRODUCTION"
+   },
+   "prdn/list": {
+    "product": "PACE SHIFT",
+    "module": "PRODUCTION"
+   },
+   "prdn/card": {
+    "product": "PACE SHIFT",
+    "module": "PRODUCTION"
+   },
+   "agnt/home": {
+    "product": "LARRYD",
+    "module": "AGENTS"
+   },
+   "agnt/list": {
+    "product": "LARRYD",
+    "module": "AGENTS"
+   },
+   "agnt/card": {
+    "product": "LARRYD",
+    "module": "AGENTS"
+   },
+   "mdls/home": {
+    "product": "LARRYD",
+    "module": "MODELS"
+   },
+   "mdls/list": {
+    "product": "LARRYD",
+    "module": "MODELS"
+   },
+   "mdls/card": {
+    "product": "LARRYD",
+    "module": "MODELS"
+   },
+   "logs/home": {
+    "product": "LARRYD",
+    "module": "LOGS"
+   },
+   "logs/list": {
+    "product": "LARRYD",
+    "module": "LOGS"
+   },
+   "logs/card": {
+    "product": "LARRYD",
+    "module": "LOGS"
+   },
+   "jobs/home": {
+    "product": "LARRYD",
+    "module": "JOBS"
+   },
+   "jobs/list": {
+    "product": "LARRYD",
+    "module": "JOBS"
+   },
+   "jobs/card": {
+    "product": "LARRYD",
+    "module": "JOBS"
+   },
+   "larry/home": {
+    "product": "any",
+    "module": "the product's dashboard"
+   }
+  }
  }
 }

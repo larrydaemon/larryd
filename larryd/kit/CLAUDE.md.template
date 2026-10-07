@@ -10,6 +10,9 @@ run, apart from everything else), owned by its developer. The platform reaches i
   goes out on stdout. That is the whole contract.
 - The job it is handed: `{{"do": "<one of does>", ...the inputs named in run.hands}}`.
 - Its answer: one JSON object. `delivery` (plain text) is what lands in the member's job.
+- The job's own inputs: with `"run": {{"do": "answer", "hands": ["job"]}}` and `"inputs": {{"name": "001", "mood": "002"}}`
+  (each on one of the job's slots 001-015), the job also holds `"job": {{"name": "...", "mood": "..."}}`.
+  `samples/job_inputs.json` shows it: `larryd run --job samples/job_inputs.json`.
 
 ## The manifest (`agent/agent.json`)
 {fields}
@@ -25,6 +28,11 @@ run, apart from everything else), owned by its developer. The platform reaches i
 6. Only what it is handed. The inputs are what run.hands names, from what LARRYD hands today: {hands}.
 7. Nothing fake. The agent answers from what it is handed, or it says plainly that it cannot.
 8. Plain words. Names as they are: LARRYD, FROST, mTok, DA-M, LARRY LLM.
+
+## The card's facts (`"card"` in `agent/agent.json`)
+The platform's own fixed lists; the doctor checks each one:
+
+{card}
 
 ## The card's look (`"look"` in `agent/agent.json`, optional)
 The card's look is a small record of NAMES, never CSS: the platform's one card template draws every card and points

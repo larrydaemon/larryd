@@ -192,3 +192,23 @@ def table(cat=None):
             para = []
         out.append(line)
     return '\n'.join(out[:-1])
+
+
+def card_table(cat=None):
+    """THE CARD'S ALLOWED VALUES as Markdown (the platform's own fixed lists), one text for the guide and every CLAUDE.md."""
+    import textwrap
+    card = (cat or catalog())['card']
+    by = {}
+    for screen, where in card['screens'].items():
+        by.setdefault((where['product'], where['module']), []).append(screen)
+    lines = ['| Field | Allowed values |', '|---|---|',
+             '| class | ' + '; '.join(f'{k} (effect {v})' for k, v in card['class'].items()) + ' |',
+             '| type | ' + ', '.join(card['type']) + ' |',
+             '| residency | ' + ', '.join(card['residency']) + ' (where it runs; who may hire it is set at authorization) |',
+             '| product | ' + ', '.join(card['products']) + ' |',
+             '| price | a whole number of mTok per run: 3 or "3"; "0" is free |', '',
+             '| Screen (<species>/<page>, at app/<species>/<page>) | Product | Module |', '|---|---|---|']
+    lines += [f'| {", ".join(screens)} | {product} | {module} |' for (product, module), screens in by.items()]
+    note = ('The class picks the card\'s effect: Mark I crt, Mark II wellness, Mark III glitch. `larryd doctor --fix` sets the look\'s '
+            '"effect" from the class, and `larryd doctor` fails when they differ. A value off these lists fails with the ones to use.')
+    return '\n'.join(lines) + '\n\n' + textwrap.fill(note, 118)

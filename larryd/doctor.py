@@ -10,10 +10,10 @@ import os
 import sys
 from dataclasses import asdict, dataclass
 
-from . import knowledge, look, shape, skills
+from . import knowledge, look, shape, sheet, skills
 
 CHECKS = ('the project', 'the manifest', 'the entry', 'the air gap', 'no secret', 'the shape', 'the skills', 'the knowledge')
-CHECKS_VERSION = '2'   # THE LARRYD CHECKS (CHECKS.md, larryd.ai/checks.html): a new or changed check raises it
+CHECKS_VERSION = '3'   # THE LARRYD CHECKS (CHECKS.md, larryd.ai/checks.html): a new or changed check raises it
 BADGE = 'larryd-checks.svg'   # `larryd doctor --badge` writes it beside agent/, never inside it (the shape keeps agent/ to its own kinds)
 GOLD, RED = '#FFB000', '#910E0D'   # the brand's gold (PASS) and red (FAIL)
 
@@ -363,7 +363,8 @@ def _card(root, card, f):
     """The card facts, checked with the marketplace's own rules: a card the gate cannot show is no agent for hire."""
     if 'card' not in card:
         return   # the manifest check already said it is missing
-    where, c, facts = _rel(root, root / shape.AGENT / shape.MANIFEST), 'the card', card.get('card')
+    # the card is part of the manifest: its problems are named under that check (a check of its own would go unlisted)
+    where, c, facts = _rel(root, root / shape.AGENT / shape.MANIFEST), 'the manifest', card.get('card')
     if not isinstance(facts, dict):
         f.add(c, where, '"card" is not an object', 'set "card" to {' + ', '.join(f'"{k}": ...' for k in shape.CARD) + '}; `larryd new` shows the shape')
         return
@@ -380,12 +381,31 @@ def _card(root, card, f):
     for k in ('class', 'pitch', 'type', 'residency', 'product', 'module', 'developer'):
         if k in facts and not (text(k) and facts[k].strip()):
             f.add(c, where, f'card "{k}" is empty or not text', f'set card "{k}" to {shape.CARD[k]}')
+    lists = sheet.catalog()['card']
+    for k, allowed in (('class', list(lists['class'])), ('type', lists['type']), ('residency', lists['residency']), ('product', lists['products'])):
+        if text(k) and facts[k].strip() and facts[k].strip().upper() not in allowed:
+            f.add(c, where, f'card "{k}" is "{facts[k]}", not one the platform knows', f'use one of: {", ".join(allowed)}')
+    effect = lists['class'].get(facts['class'].strip().upper()) if text('class') else None
+    held = card.get('look', {}).get('effect') if isinstance(card.get('look'), dict) else None
+    if effect and held and held != effect:
+        f.add(c, where, f'look "effect" is "{held}", but the class {facts["class"]} draws {effect}',
+              f'set look "effect" to "{effect}" (the class picks the effect), or run `larryd doctor --fix`')
     if text('pitch') and len(facts['pitch']) > shape.MOST_PITCH:
         f.add(c, where, f'card "pitch" is longer than {shape.MOST_PITCH} characters', 'say it in one line; the card has room for one')
-    if 'price' in facts and not (text('price') and re.fullmatch(r'\d+', facts['price'])):
-        f.add(c, where, 'the price is not a whole mTok rate', 'write card "price" as whole mTok per run, as text: "0" (free) or "5"')
-    if 'screen' in facts and not (text('screen') and re.fullmatch(shape.SCREEN, facts['screen'])):
-        f.add(c, where, 'the card names no screen', 'set card "screen" to the screen it lives on, <species>/<page>, e.g. cont/card')
+    price = facts.get('price')
+    if 'price' in facts and not ((isinstance(price, int) and not isinstance(price, bool) and price >= 0) or (text('price') and re.fullmatch(r'\d+', price.strip()))):
+        f.add(c, where, f'card "price" is {json.dumps(price)}, not a whole mTok rate', 'write card "price" as whole mTok per run, a whole number: 3 or "3" ("0" is free; no fractions)')
+    screens = lists['screens']
+    if 'screen' in facts:
+        screen = facts['screen'].strip() if text('screen') else ''
+        if screen.startswith('app/') and screen[4:] in screens:
+            f.add(c, where, f'card "screen" is "{screen}", the screen\'s address', f'write it without app/: "{screen[4:]}"')
+        elif screen not in screens:
+            f.add(c, where, f'card "screen" is "{facts["screen"]}", not a screen of the platform',
+                  'use <species>/<page>: a module\'s home, list or card, e.g. cont/card, agnt/home, or a product\'s dashboard larry/home (the list is in CLAUDE.md)')
+        elif text('product') and screens[screen]['product'] != 'any' and facts['product'].strip().upper() in lists['products'] and facts['product'].strip().upper() != screens[screen]['product']:
+            f.add(c, where, f'card "screen" {screen} is a {screens[screen]["product"]} screen, but "product" is {facts["product"]}',
+                  f'set card "product" to {screens[screen]["product"]}, or pick a screen of {facts["product"]}')
     for k in ('sends_to', 'data_sent'):
         if k in facts and not text(k):
             f.add(c, where, f'card "{k}" is not text', f'set card "{k}" to {shape.CARD[k]}')
@@ -422,7 +442,7 @@ def check(root):
 
 def report(root, problems):
     lines = [f'larryd doctor: {pathlib.Path(root).resolve()}']
-    for name in CHECKS:
+    for name in CHECKS + tuple(sorted({p.check for p in problems} - set(CHECKS))):   # a problem is always named, under its check
         mine = [p for p in problems if p.check == name]
         lines += [p.text() for p in mine] if mine else [f'PASS {name}']
     failed = len({p.check for p in problems})
@@ -448,7 +468,7 @@ def badge(problems, day):
 
 def as_json(problems):
     return {'ok': not problems, 'checks_version': CHECKS_VERSION, 'checks': [{'check': n, 'ok': not any(p.check == n for p in problems),
-                                            'problems': [asdict(p) for p in problems if p.check == n]} for n in CHECKS]}
+                                            'problems': [asdict(p) for p in problems if p.check == n]} for n in CHECKS + tuple(sorted({p.check for p in problems} - set(CHECKS)))]}
 
 
 def _sheets(agent):
@@ -592,6 +612,13 @@ def fix(root):
                         'product': 'LARRYD', 'module': 'AGENT', 'developer': 'Independent developer', 'sends_to': '', 'data_sent': '',
                         'pitch': f"What {data.get('name') or 'this agent'} does for the member, in one line."}
             missing = [k for k in defaults if k not in card]
+            effect = sheet.catalog()['card']['class'].get(str(card.get('class') or defaults['class']).strip().upper())
+            record = data.get('look') if isinstance(data.get('look'), dict) else {}
+            if effect and record.get('effect') != effect:   # the class picks the effect (Mark I crt, II wellness, III glitch)
+                _backup(root, manifest)
+                data['look'] = {**record, 'effect': effect}
+                _write(root, manifest, json.dumps(data, indent=2) + '\n')
+                changed.append(f'{manifest.relative_to(root)}: look "effect" = "{effect}", from the class {card.get("class") or defaults["class"]}')
             if missing:
                 _backup(root, manifest)
                 for k in missing:

@@ -1,4 +1,4 @@
-# THE LARRYD CHECKS · version 2
+# THE LARRYD CHECKS · version 3
 
 `larryd doctor` runs these eight checks on an agent, in this order, before it runs and before it is sent anywhere. Its
 output names them the same way (`PASS the air gap`, `FAIL no secret · agent/agent.py line 12: ...`). Every failure says
@@ -9,7 +9,7 @@ A new or changed check raises the version. `larryd doctor --json` and the badge 
 | # | Check | What it proves | Why |
 |---|---|---|---|
 | 1 | **the project** | There is an agent here: a real `agent/` folder (not a link) holding `agent.json`. | Everything else is checked inside `agent/`, and only `agent/` is ever sent or run. |
-| 2 | **the manifest** | `agent.json` is one JSON object with every field and no others: `name`, `entry`, `about`, `does`, `calls`, `reads`, `run`, `gives`, `skills`, `knowledge` (and `inputs` only when the agent is handed the job; `look` when the card has one, every value a name on the menu: a theme colour variable, a step, an effect, a part and its role). `run.do` is one of `does`; `calls` only names what is in `does`; `run.hands` asks only for what LARRYD hands (`cards`, `job`); each input has its own slot. | The manifest is the agent's promise: what it does, what it is handed, what it answers. The runtime holds the agent to it. |
+| 2 | **the manifest** | `agent.json` is one JSON object with every field and no others: `name`, `entry`, `about`, `does`, `calls`, `reads`, `run`, `gives`, `skills`, `knowledge` (and `inputs` only when the agent is handed the job; `look` when the card has one, every value a name on the menu: a theme colour variable, a step, an effect, a part and its role). Its `card` holds the platform's own values: a class, type, residency and product from its lists, a whole mTok price (3 or "3"), a screen that exists (`<species>/<page>`) of that product, and the look's effect is the one the class picks. `run.do` is one of `does`; `calls` only names what is in `does`; `run.hands` asks only for what LARRYD hands (`cards`, `job`); each input has its own slot. | The manifest is the agent's promise: what it does, what it is handed, what it answers. The runtime holds the agent to it. |
 | 3 | **the entry** | The entry file exists, compiles, has a function for every name in `does`, and runs as a program (`if __name__ == '__main__':`). | An agent that cannot start, or that promises a function it does not have, fails in front of a person. |
 | 4 | **the air gap** | No network module, no module that starts processes, no hidden imports (`importlib`, `__import__`), nothing outside the Python standard library and the agent's own files, no path outside its own folder. | An agent never reaches out. What it needs is handed to it. |
 | 5 | **no secret** | No file named like a secret (`.env`, `.pem`, `id_rsa`, ...) and no text that looks like a key, token or password. | An agent holds no secret. Keys belong to the developer, never to the agent. |

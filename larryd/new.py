@@ -91,7 +91,9 @@ def make(name, where='.', example=None):
         f'{shape.AGENT}/{shape.MANIFEST}': json.dumps(manifest(name), indent=2) + '\n',
         f'{shape.AGENT}/agent.py': _kit('agent.py').format(name=name),
         shape.SAMPLE: _kit('job.json').format(),
-        'CLAUDE.md': _kit('CLAUDE.md').format(name=name, fields=fields, hands=', '.join(shape.HANDS), tools=tools, sheet=sheet.table()),
+        # the job's own inputs, for an agent with "job" in run.hands and "inputs" {"name": "001", "mood": "002"}: larryd run --job samples/job_inputs.json
+        'samples/job_inputs.json': resources.files('larryd').joinpath('kit', 'job_inputs.json').read_text(),
+        'CLAUDE.md': _kit('CLAUDE.md').format(name=name, fields=fields, hands=', '.join(shape.HANDS), tools=tools, sheet=sheet.table(), card=sheet.card_table()),
         shape.SKILL: skill(),
         '.mcp.json': json.dumps(mcp_config(), indent=2) + '\n',
     }

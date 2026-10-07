@@ -51,7 +51,8 @@ This makes the folder `<name>/`:
   - an agent ships no CSS: the card's look is the `"look"` record in `agent/agent.json` (section 4)
 - `CLAUDE.md`: the spec and the rules, for Claude Code
 - `.claude/skills/larryd/SKILL.md`: the larryd skill Claude Code loads
-- `samples/job.json`: a sample job for `larryd run`
+- `samples/job.json`: a sample job for `larryd run`; `samples/job_inputs.json`: a job with its own inputs, for an agent
+  with `"job"` in `run.hands` (`larryd run --job samples/job_inputs.json`)
 - `.mcp.json`: starts the LARRYD tools in Claude Code when you open the folder with `claude` (it names the full path of this
   larryd, so no virtual environment needs activating)
 
@@ -247,6 +248,40 @@ product and module of the screen it lives on, its pitch, its developer, its type
 mTok, and, when it sends a member's data to an outside AI service, where and what. The card's facts are the `card`
 field of `agent/agent.json` (the doctor checks them with the marketplace's own rules); the number and the art are
 LARRYD's to give at approval.
+
+The card's allowed values:
+
+| Field | Allowed values |
+|---|---|
+| class | MARK I AGENT (NORMAL) (effect crt); MARK II SUPER AGENT (HARNESS) (effect wellness); MARK III QUANTUM AI (AGENTIC CODE) (effect glitch) |
+| type | OFF-THE-SHELF, DEVELOPER |
+| residency | INTERNAL, EXTERNAL, BOTH (where it runs; who may hire it is set at authorization) |
+| product | INVOICE MAPS, AGENCY MGMT, PACE SHIFT, LARRYD |
+| price | a whole number of mTok per run: 3 or "3"; "0" is free |
+
+| Screen (<species>/<page>, at app/<species>/<page>) | Product | Module |
+|---|---|---|
+| cont/home, cont/list, cont/card | INVOICE MAPS | CONTACTS |
+| invc/home, invc/list, invc/card | INVOICE MAPS | INVOICES |
+| locn/home, locn/list, locn/card | INVOICE MAPS | LOCATIONS |
+| opns/home, opns/list, opns/card | INVOICE MAPS | OPERATIONS |
+| hrcy/home, hrcy/list, hrcy/card | AGENCY MGMT | HIERARCHIES |
+| mdia/home, mdia/list, mdia/card | AGENCY MGMT | MEDIA |
+| brnd/home, brnd/list, brnd/card | AGENCY MGMT | BRAND |
+| sprt/home, sprt/list, sprt/card | AGENCY MGMT | SPRINT |
+| imgs/home, imgs/list, imgs/card | PACE SHIFT | IMAGES |
+| vdeo/home, vdeo/list, vdeo/card | PACE SHIFT | VIDEOS |
+| audo/home, audo/list, audo/card | PACE SHIFT | AUDIO |
+| prdn/home, prdn/list, prdn/card | PACE SHIFT | PRODUCTION |
+| agnt/home, agnt/list, agnt/card | LARRYD | AGENTS |
+| mdls/home, mdls/list, mdls/card | LARRYD | MODELS |
+| logs/home, logs/list, logs/card | LARRYD | LOGS |
+| jobs/home, jobs/list, jobs/card | LARRYD | JOBS |
+| larry/home | any | the product's dashboard |
+
+The class picks the card's effect: Mark I crt, Mark II wellness, Mark III glitch. `larryd doctor --fix` sets the
+look's "effect" from the class, and `larryd doctor` fails when they differ. A value off these lists fails with the
+ones to use.
 
 See your card the way a member will, on your own LARRYD:
 

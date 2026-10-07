@@ -13,7 +13,7 @@ from larryd import cli, doctor, guide, new, sheet
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
 PACKAGE = REPO / 'larryd'
-INTERNAL = re.compile(r'\bthe owner\b|harness|the original|\bwid\b|frost-|2026', re.I)
+INTERNAL = re.compile(r'\bthe owner\b|(?<!\()harness(?!\))|the original|\bwid\b|frost-|2026', re.I)
 
 
 def made(tmp_path, example='marketplace'):
@@ -232,3 +232,19 @@ def test_the_unwritten_case_clause_only_where_no_case_was_written():
     _r, said, _d = look.from_sheet('.mk-name { font-size: 30px; text-transform: uppercase }\n.mk-pitch { font-size: 15px }\n')
     assert 'unwritten case' not in said[0] and 'a different case costing 6px;' in said[0]
     assert '(an unwritten case is none, as in CSS)' in said[1]
+
+
+def test_the_blank_ships_a_sample_with_the_job_s_own_inputs(tmp_path):
+    root = new.make('withjob', tmp_path)
+    sample = json.loads((root / 'samples' / 'job_inputs.json').read_text())
+    assert sample == {'do': 'answer', 'job': {'name': 'Harbor', 'mood': 'calm cool'}}
+    manifest = json.loads((root / 'agent' / 'agent.json').read_text())
+    manifest['run'] = {'do': 'answer', 'hands': ['job']}
+    manifest['inputs'] = {'name': '001', 'mood': '002'}
+    (root / 'agent' / 'agent.json').write_text(json.dumps(manifest))
+    (root / 'agent' / 'agent.py').write_text((root / 'agent' / 'agent.py').read_text().replace(
+        "return {'delivery': 'withjob answered the job.'}", "return {'delivery': f\"{job['job']['name']} feels {job['job']['mood']}\"}"))
+    from larryd import runner
+    result = runner.run(root, str(root / 'samples' / 'job_inputs.json'))
+    assert result.state == 'DONE' and runner.as_json(result)['answer'] == {'delivery': 'Harbor feels calm cool'}
+    assert 'samples/job_inputs.json' in (root / 'CLAUDE.md').read_text() and 'samples/job_inputs.json' in (PACKAGE / 'GUIDE.md').read_text()

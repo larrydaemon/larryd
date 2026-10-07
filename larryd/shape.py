@@ -32,13 +32,16 @@ FIELDS = {
 FIELDS['card'] = ('the card the marketplace shows, as the member sees it: {class, pitch, price, type, residency, screen, product, '
                   'module, developer, sends_to, data_sent}; the number and the art are LARRYD\'s to give at approval')
 CARD = {
-    'class': 'the class on the card, e.g. "MARK I AGENT (NORMAL)"',
+    'class': 'one of the platform\'s agent classes: MARK I AGENT (NORMAL), MARK II SUPER AGENT (HARNESS) or MARK III QUANTUM AI '
+             '(AGENTIC CODE); the class picks the card\'s effect (Mark I crt, Mark II wellness, Mark III glitch)',
     'pitch': 'one line on the card: what the member gets',
-    'price': 'whole mTok per run, as text: "0" is free',
-    'type': 'e.g. OFF-THE-SHELF or CUSTOM',
-    'residency': 'INTERNAL (it runs on LARRYD) or EXTERNAL',
-    'screen': 'the screen it lives on, <species>/<page>, e.g. cont/card (contact cards) or agnt/home (the agents page)',
-    'product': 'the product that screen belongs to, e.g. Invoice Maps, Agency Mgmt, Pace Shift, LARRYD',
+    'price': 'whole mTok per run, a whole number: 3 or "3" ("0" is free; no fractions)',
+    'type': 'OFF-THE-SHELF or DEVELOPER',
+    'residency': 'INTERNAL (it runs on LARRYD), EXTERNAL or BOTH; who may hire it (every account, or one private account) is '
+                 'set when it is authorized, never here',
+    'screen': 'the screen it lives on, <species>/<page> (its address is app/<species>/<page>): a module\'s home, list or card, '
+              'e.g. cont/card, or a product\'s dashboard larry/home; the list is in CLAUDE.md',
+    'product': 'the product that screen belongs to: INVOICE MAPS, AGENCY MGMT, PACE SHIFT or LARRYD',
     'module': 'the module that screen is in, e.g. CONTACTS',
     'developer': 'who made it, as the card credits it: your name or company',
     'sends_to': 'the outside AI service it sends a member\'s data to, by name; "" when it sends nothing out',
