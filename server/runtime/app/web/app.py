@@ -173,11 +173,9 @@ def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, deve
         return jsonify({'refused': 'busy: this instance is running another agent, try again'}), 409
 
     def granted(d):
-        """THE SECOND GUARD (the owner: two guards, never one): the platform's own access decision for the member, signed
-        with the rest of the body (runtime.json "access"). Anything but the value that grants is refused here, before the
-        platform is asked or anything is recorded."""
-        if str(d.get(CONFIG['access']['field']) or '') != CONFIG['access']['grants']:
-            raise lanes_harness.Refused(403, 'the platform did not grant this member access')
+        """THE SECOND GUARD at the door: refused here, before the platform is asked or anything is recorded."""
+        if not access_granted(d):
+            raise lanes_harness.Refused(403, NOT_GRANTED)
 
     @app.get('/api/agents/answer')
     def answer():
@@ -407,10 +405,19 @@ def warm_up(app, shake=None, sleep=None, then=None):
     return result
 
 
+NOT_GRANTED = 'the platform did not grant this member access'
+
+
+def access_granted(d):
+    """THE SECOND GUARD (the owner: two guards, never one): the platform's own access decision for the member, carried
+    in a hire's or run's signed body and in each queued run (runtime.json "access"): only the value that grants passes."""
+    return str(d.get(CONFIG['access']['field']) or '') == CONFIG['access']['grants']
+
+
 def catch_up(app):
     """At start, once (never a loop): the RUNs the platform queued while the runtime was away. On Cloud Run every
     slot's queue is read, and each run is claimed once across every instance before it starts (two new instances never
-    start the same run)."""
+    start the same run). A queued run without the platform's access decision is ended REFUSED, never started."""
     status = 0
     sources = list(app.config['harnesses'].items()) or [('', app.config['harness'])]
     for caller, h in sources:
@@ -419,6 +426,9 @@ def catch_up(app):
         if caller:   # the instance's first call back to that slot: its answer and how long it took (no data)
             logging.getLogger('runtime').warning('catch-up: %s answered %s in %.1f s', caller, status, time.monotonic() - began)
         for j in body.get('jobs', []) if status == 200 else []:
+            if not access_granted(j):   # the second guard on this path too: ended REFUSED (told and recorded), never started
+                h._end(j['account'], j['scope'], j['member'], '', j['job_key'], int(j['run']), 'REFUSED', NOT_GRANTED)
+                continue
             app.config['start'](j['account'], j['scope'], j['member'], j['job_key'], int(j['run']), caller)
     return status
 

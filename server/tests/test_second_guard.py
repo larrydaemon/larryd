@@ -82,5 +82,47 @@ class SecondGuard(unittest.TestCase):
         self.assertEqual(self.started, [])
 
 
+class CatchUpGuard(unittest.TestCase):
+    """The same per-run decision on the catch-up path (frost-be, 2026-10-06): a RUN the platform queued while the
+    runtime was away starts only when its queued entry carries the decision; one that does not is ended REFUSED (its
+    result told to the platform and recorded, naming the caller), never started."""
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.app = host.create_app(self.tmp.name, secret=SECRET, addresses={})
+        self.h = self.app.config['harness']
+        self.started, self.said = [], []
+        self.app.config['start'] = lambda *a: self.started.append(a) or True
+        test = self
+
+        class Platform:
+            def get(self, office, route, data=None):
+                return 200, {'jobs': [{**WHO, 'job_key': 'MJOB_00000000000A_0001', 'run': 1, CONF['field']: CONF['grants']},
+                                      {**WHO, 'job_key': 'MJOB_00000000000B_0001', 'run': 2},
+                                      {**WHO, 'job_key': 'MJOB_00000000000C_0001', 'run': 3, CONF['field']: 'deny'}]}
+
+            def post(self, office, route, data):
+                test.said.append((office, route, data))
+                return 200, {}
+        self.h.client = Platform()
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_only_the_granted_queued_run_starts(self):
+        host.catch_up(self.app)
+        self.assertEqual([a[3] for a in self.started], ['MJOB_00000000000A_0001'])
+
+    def test_a_queued_run_without_the_decision_is_ended_refused_and_recorded(self):
+        host.catch_up(self.app)
+        ended = [(d['job_key'], d['state'], d['log']) for _o, route, d in self.said if route == '/jobs/result']
+        self.assertEqual(ended, [('MJOB_00000000000B_0001', 'REFUSED', 'the platform did not grant this member access'),
+                                 ('MJOB_00000000000C_0001', 'REFUSED', 'the platform did not grant this member access')])
+        con = sqlite3.connect(self.h.db)
+        rows = con.execute("SELECT job_key, state, reason, account, member FROM runtime_runs WHERE lane = 'job' ORDER BY id").fetchall()
+        con.close()
+        self.assertEqual(rows, [('MJOB_00000000000B_0001', 'REFUSED', 'THE_PLATFORM_DID_NOT_GRANT_THIS', WHO['account'], WHO['member']),
+                                ('MJOB_00000000000C_0001', 'REFUSED', 'THE_PLATFORM_DID_NOT_GRANT_THIS', WHO['account'], WHO['member'])])
+
+
 if __name__ == '__main__':
     unittest.main()

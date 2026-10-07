@@ -275,7 +275,7 @@ class H3H4Jobs(CloudApp):
         self.assertEqual(len(self.started), 1)
 
     def test_the_catch_up_on_two_new_instances_starts_a_queued_run_once(self):
-        queued = {'jobs': [{'account': 'ACCT_00000000000A_000A', 'scope': 'S', 'member': 'MCON_00000000000B_000B', 'job_key': 'MJOB_00000000000A_000A', 'run': 1}]}
+        queued = {'jobs': [{'account': 'ACCT_00000000000A_000A', 'scope': 'S', 'member': 'MCON_00000000000B_000B', 'job_key': 'MJOB_00000000000A_000A', 'run': 1, 'access': 'allow'}]}
         for name in ('one', 'two'):
             app = self.make(name)
             for h in app.config['harnesses'].values():
