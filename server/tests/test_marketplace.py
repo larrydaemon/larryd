@@ -356,7 +356,7 @@ class TheOfflineCard(unittest.TestCase):
         self.assertNotIn('>Free<', h)
         for rule in ('.agent-card.mk-offline :is(.mk-id, .mk-info, .mk-flavour, .mk-credit, .mk-kind, .mk-sends, .mk-number > *) { opacity: .35 }',
                      '.agent-card.mk-offline .toggle { cursor: default; pointer-events: none; opacity: .5 }',
-                     '.agent-card.mk-offline .mk-price { color: var(--active-color-05, inherit); opacity: 1 }'):
+                     '.agent-card.mk-offline .mk-price { color: var(--active-color-01, inherit); opacity: 1 }'):
             self.assertIn(rule, v['css'])
 
     def test_only_a_true_from_the_platform_is_offline(self):
