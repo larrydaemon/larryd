@@ -354,7 +354,7 @@ class TheOfflineCard(unittest.TestCase):
         self.assertIn('<span class="mk-annotation mk-kind">Informational only</span><span class="mk-callout mk-price" data-part="price">Offline</span>', h)
         self.assertNotIn('mTok', h)
         self.assertNotIn('>Free<', h)
-        for rule in ('.agent-card.mk-offline :is(.mk-name, .mk-info, .mk-flavour, .mk-credit, .mk-kind, .mk-sends, .mk-number > *) { opacity: .35 }',
+        for rule in ('.agent-card.mk-offline :is(.mk-name, .mk-info, .mk-flavour, .mk-credit, .mk-kind, .mk-sends) { opacity: .35 }',
                      '.agent-card.mk-offline .toggle { cursor: default; pointer-events: none; opacity: .5 }',
                      '.agent-card.mk-offline .mk-price { color: var(--active-color-01, inherit); opacity: 1 }'):
             self.assertIn(rule, v['css'])
