@@ -36,7 +36,7 @@
 .agent-card.mk-on::after { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
   background: var(--dock-glass, var(--glass, none)); -webkit-backdrop-filter: var(--dock-glass-filter, var(--glass-filter, none)); backdrop-filter: var(--dock-glass-filter, var(--glass-filter, none)) }
 .agent-card:not(.mk-on) .mk-name { color: var(--active-color-03, inherit) }   /* a card not hired: its name in the theme's darker text colour (slot 03); a hired card's name keeps the bright one */
-.mk-hire .mk-annotation { color: var(--active-color-05, inherit); opacity: 1 }   /* the word Hire on a card not hired: the theme's highlight at full strength */
+.mk-hire .mk-annotation { color: var(--active-color-01, inherit); opacity: 1 }   /* the word Hire: the theme's own colour at full strength, the colour Free wears, on every card (the owner: "the hire the same blue color too") */
 .agent-card.mk-on .mk-hire .mk-annotation { color: var(--active-color-01, inherit) }   /* on a hired card: the theme's regular text colour, never the highlight */
 .agent-card.mk-on :is(.mk-flavour, .mk-price) { color: var(--active-color-03, inherit) }   /* a hired card: its pitch and its price in that darker colour; a card not hired keeps the pitch in the highlight and the price bright */
 .mk-head { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--space) }
