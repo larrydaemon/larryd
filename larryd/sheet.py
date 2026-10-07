@@ -138,12 +138,14 @@ def nearest_colour(rgb, cat):
     return best[0], best[1], far
 
 
-ROLE_RULE = 'nearest by case first, an unwritten case being none as in CSS, then size and weight'
+CASE_COST = 6   # px: what a case that differs from the written one (unwritten = none, as in CSS) adds to a role's distance
+ROLE_RULE = 'nearest by size and weight, a different case costing 6px (an unwritten case is none, as in CSS)'
 
 
 def nearest_role(written, cat, selector=''):
-    """The type role nearest to written type ({property: value}): the case first (an unwritten case is none, CSS's own
-    default, so an uppercase role is never chosen unasked), then size and weight (an unwritten weight counts as 400). A
+    """The type role nearest to written type ({property: value}), as the eye sees it: size and weight lead (an unwritten
+    weight counts as 400; 50 of weight count as 1px), and a case other than the written one (unwritten = none, CSS's own
+    default) adds CASE_COST, so a 40px black name is still a heading but small text never turns uppercase unasked. A
     role made for one purpose (navigation, a link, a field's label) is chosen only for text whose selector says it is
     that. A tie goes to the earlier role."""
     roles, only = cat['roles'], cat.get('only_for', {})
@@ -152,8 +154,8 @@ def nearest_role(written, cat, selector=''):
     size, wt = _px(written.get('font-size')), written.get('font-weight', '400')
     wt = {'bold': 700, 'bolder': 800, 'normal': 400, 'lighter': 300}.get(wt, int(wt) if wt.isdigit() else 400)
     case = written.get('text-transform', 'none')
-    return min(allowed, key=lambda r: (case != roles[r]['case'],
-                                       (abs(roles[r]['size'] - size) if size is not None else 0) + abs(roles[r]['weight'] - wt) / 50))
+    return min(allowed, key=lambda r: (abs(roles[r]['size'] - size) if size is not None else 0) + abs(roles[r]['weight'] - wt) / 50
+               + (CASE_COST if case != roles[r]['case'] else 0))
 
 
 def table(cat=None):

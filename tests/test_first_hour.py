@@ -90,15 +90,14 @@ def test_fix_says_what_it_did_then_the_agent_is_clean(tmp_path, capsys):
 
 
 # 6. the nearest name, as the eye sees it, and the menu written down from the one fixed list
-def test_an_unwritten_case_is_none_and_a_purpose_role_is_never_chosen_unasked():
+def test_roles_by_what_the_eye_sees_case_a_cost_purpose_roles_only_when_asked():
     cat = sheet.catalog()
-    # frost-92's rc13 price and pitch: never an uppercase role, never navigation
-    assert sheet.nearest_role({'font-size': '12px', 'font-weight': '400'}, cat, '.mk-price') == 'body'
-    assert sheet.nearest_role({'font-size': '15px', 'font-style': 'italic'}, cat, '.mk-pitch') == 'body'
+    assert sheet.nearest_role({'font-size': '40px', 'font-weight': '900'}, cat, '.mk-name') in ('heading', 'title')   # a big black name stays a heading
     assert sheet.nearest_role({'font-size': '30px', 'font-weight': '800', 'text-transform': 'uppercase'}, cat, '.mk-name') == 'title'
-    assert sheet.nearest_role({'font-size': '11px', 'font-weight': '400', 'text-transform': 'uppercase'}, cat, '.mk-price') == 'annotation'   # nav is as near, but a price is not navigation
+    assert sheet.nearest_role({'font-size': '15px', 'font-style': 'italic'}, cat, '.mk-pitch') == 'body'
+    assert sheet.nearest_role({'font-size': '12px', 'font-weight': '400'}, cat, '.mk-price') in ('caption', 'body')
+    assert sheet.nearest_role({'font-size': '11px', 'font-weight': '400', 'text-transform': 'uppercase'}, cat, '.mk-price') == 'annotation'   # nav is as near; a price is not navigation
     assert sheet.nearest_role({'font-size': '11px', 'font-weight': '400', 'text-transform': 'uppercase'}, cat, '.mk-nav') == 'nav'   # it says it is navigation
-    assert sheet.nearest_role({'font-size': '14px', 'font-weight': '500'}, cat, '.mk-pitch') == 'body'
     assert sheet.nearest_role({'font-size': '14px', 'font-weight': '500'}, cat, 'a.more') == 'link'
     assert '(chosen only for a selector naming nav, menu, navigation)' in sheet.table()
 

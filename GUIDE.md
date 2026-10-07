@@ -101,17 +101,18 @@ drops anything else. A look the record does not name keeps the template's defaul
 Design in CSS if you like: write `agent/card.css` normally and run `larryd doctor --fix`. It maps each value to the
 nearest name on the menu and says each mapping (CONVERTED ...): the card's first colour to the theme colour variable
 nearest as the eye sees it (OKLab distance against the reference theme, done once; only the name is kept), its corner
-radius and its padding to the nearest step, written type on a part of the card to the nearest role (by case first, an
-unwritten case being none as in CSS, then size and weight; a role made for navigation, a link or a field's label only
-when the selector says so), the sheet's animation words to the nearest effect. Every other value is said too, as
-DROPPED ... with why: colour is card-wide (the accent only), so a part's colour is dropped (a part takes a role, never
-a colour); gap and margin are dropped ("space" is the card's padding and the template sets the gaps from it); layout,
-position, hover and other states, shadows, transforms and transitions are the template's and the effect's; @import,
-@font-face and @keyframes never become a name. It writes the look record, moves the sheet to `design/card.css` (agents
-ship no CSS) and keeps your original manifest, and the design sheet it replaces, in `.larryd/doctor_backup/`. Plain
-`larryd doctor` changes nothing: while a sheet is in `agent/` it fails the shape and says what it WILL CONVERT and
-WILL DROP. `larryd place` and `larryd submit` convert it the same way first, so CSS is never a reason to refuse. --fix
-also fills the card's missing facts with honest defaults it names. The same files always give the same result.
+radius and its padding to the nearest step, written type on a part of the card to the nearest role (by size and
+weight, a different case costing 6px, an unwritten case being none as in CSS; a role made for navigation, a link or a
+field's label only when the selector says so), the sheet's animation words to the nearest effect. Every other value is
+said too, as DROPPED ... with why: colour is card-wide (the accent only), so a part's colour is dropped (a part takes
+a role, never a colour); gap and margin are dropped ("space" is the card's padding and the template sets the gaps from
+it); layout, position, hover and other states, shadows, transforms and transitions are the template's and the
+effect's; @import, @font-face and @keyframes never become a name. It writes the look record, moves the sheet to
+`design/card.css` (agents ship no CSS) and keeps your original manifest, and the design sheet it replaces, in
+`.larryd/doctor_backup/`. Plain `larryd doctor` changes nothing: while a sheet is in `agent/` it fails the shape and
+says what it WILL CONVERT and WILL DROP. `larryd place` and `larryd submit` convert it the same way first, so CSS is
+never a reason to refuse. --fix also fills the card's missing facts with honest defaults it names. The same files
+always give the same result.
 
 ### The menu (a fixed list, the same for the doctor, this guide and the platform)
 
@@ -154,8 +155,8 @@ role, never a colour: colour is card-wide, the accent only.
 | facts | annotation | the type and residency |
 | price | callout | the price |
 
-The type roles (designed type on a part goes to the nearest role, nearest by case first, an unwritten case being none
-as in CSS, then size and weight; the role brings its own font, style and letter spacing):
+The type roles (designed type on a part goes to the nearest role, nearest by size and weight, a different case costing
+6px (an unwritten case is none, as in CSS); the role brings its own font, style and letter spacing):
 
 | Role | Size | Weight | Case | For |
 |---|---|---|---|---|

@@ -81,7 +81,7 @@ FROST92 = """@import url("fonts.css");
 
 def test_every_value_is_named_or_dropped_with_why():
     record, said, dropped = look.from_sheet(FROST92)
-    assert record == {'accent': 'active-color-01', 'radius': 'step-6', 'space': 'step-3', 'text': {'name': 'body', 'facts': 'body'}}
+    assert record == {'accent': 'active-color-01', 'radius': 'step-6', 'space': 'step-3', 'text': {'name': 'subtitle', 'facts': 'body'}}
     assert any('font-style: italic -> text name' in s for s in said)
     for line in ('@import url("fonts.css") -> no name on the menu (the template loads every file itself)',
                  '@keyframes lift -> no name on the menu (the effect brings its own animation)',
