@@ -48,3 +48,15 @@ class AssembleTest(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class OfflineIsForTheSubscription(unittest.TestCase):
+    """The owner, 2026-10-07: "the offline is for the subscription to work ... this is offline until someone buys a subscription to invoice maps"."""
+    def test_a_card_marked_offline_is_offline_only_without_its_products_subscription(self):
+        maps = card('MAPS', product='INVOICE MAPS', product_slug='invoicemaps', screen='locn/home', offline=True)
+        self.assertIs(lanes.assemble([maps], [], [], lambda k: OK)[0]['offline'], True)                     # no subscription: offline
+        self.assertIs(lanes.assemble([maps], [], ['paceshift'], lambda k: OK)[0]['offline'], True)          # another product's: still offline
+        self.assertIs(lanes.assemble([maps], [], ['invoicemaps'], lambda k: OK)[0]['offline'], False)       # its own product's: online
+        for not_marked in (False, None, 'true', 1):
+            self.assertIs(lanes.assemble([card('CAL', offline=not_marked)], [], [], lambda k: OK)[0]['offline'], False)   # never marked: never offline
+        self.assertIs(lanes.assemble([card('CAL')], [], [], lambda k: OK)[0]['offline'], False)

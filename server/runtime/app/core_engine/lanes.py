@@ -19,5 +19,8 @@ def assemble(cards, hired, subscribed, verify, own=''):
         if not gate.shown(c, verify(c['key']))[0]:
             continue
         may, why = gate.entitled(c, subscribed)
-        out.append({**c, 'hired': hired_on(hired, c['key']), 'hireable': True, 'reason': why, 'needs': '' if may else c['product']})   # every card can be hired: its toggle always (the owner, 2026-10-06); a RUN of a priced agent still needs its subscription (gate.may_run)
+        # OFFLINE IS FOR THE SUBSCRIPTION (the owner, 2026-10-07: "the offline is for the subscription to work ... this is offline until someone buys a
+        # subscription to invoice maps"): a card the platform marks offline is offline only for an account WITHOUT its product's subscription; with it, online
+        offline = c.get('offline') is True and c.get('product_slug') not in subscribed
+        out.append({**c, 'offline': offline, 'hired': hired_on(hired, c['key']), 'hireable': True, 'reason': why, 'needs': '' if may else c['product']})   # every card can be hired: its toggle always (the owner, 2026-10-06); a RUN of a priced agent still needs its subscription (gate.may_run)
     return out
