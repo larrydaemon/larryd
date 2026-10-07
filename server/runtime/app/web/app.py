@@ -366,10 +366,29 @@ def _marketplace_pages(app, h, instance, token):
                         'marketplace': '/marketplace'}), 201
 
 
-def place(app, agent_key, data, role=''):
-    """An approved agent file into the locker (<intake folder>/<key>/, or marketplace/<key>/ for the marketplace role), then to FROST's review. -> what was held, and
-    FROST's review or why FROST did not take it (the agent stays held; `submit <key>` sends it again)."""
-    h, conf = app.config['harness'], CONFIG['intake']
+SLOT_ENV = 'LARRYD_SLOT'   # the slot an operator's place, submit or review is for, when --slot is not given (the door's configured slot)
+
+
+def harness_for_slot(app, slot=''):
+    """The harness whose platform client reaches THE SLOT an agent is for. On Cloud Run (keys mode) the runtime has no
+    platform address of its own, only one client per slot signed with its key for that slot: the slot must be named
+    (--slot, or LARRYD_SLOT) and known, or nothing is done. On a laptop (no slots) the one harness."""
+    harnesses = app.config['harnesses']
+    if not harnesses:
+        return app.config['harness']
+    slot = slot or os.environ.get(SLOT_ENV, '')
+    if not slot:
+        raise SystemExit(f'name the slot this agent is for (--slot <slot> or {SLOT_ENV}): one of {", ".join(sorted(harnesses))}')
+    if slot not in harnesses:
+        raise SystemExit(f'no slot {slot}: the slots are {", ".join(sorted(harnesses))}')
+    return harnesses[slot]
+
+
+def place(app, agent_key, data, role='', slot=''):
+    """An approved agent file into the locker (<intake folder>/<key>/, or marketplace/<key>/ for the marketplace role), then to FROST's review
+    through the slot it is for (harness_for_slot). -> what was held, and FROST's review or why FROST did not take it (the agent
+    stays held; `submit <key>` sends it again)."""
+    h, conf = harness_for_slot(app, slot), CONFIG['intake']   # refused before anything is held when no slot is named
     try:
         files = intake.check(intake.from_zip(data, conf['most_files'], conf['most_bytes']), conf['most_files'], conf['most_bytes'])
         group = lanes_harness.MARKETPLACE if role == 'marketplace' else conf['folder']   # the marketplace keeps its own folder (as the bucket's sync files it)
@@ -454,9 +473,10 @@ def cloud_parts():
 
 def main(argv):
     """python runtime/app/web/app.py                                   the host
-    python runtime/app/web/app.py submit <key>                        an agent the runtime holds, to FROST's review (its key, its exact hashes, its manifest)
-    python runtime/app/web/app.py place <card key> <file.larryd> [marketplace]   an agent the owner approved: into the locker (and, on Cloud Run, the lockers bucket), then to FROST's review
-    python runtime/app/web/app.py review <card key>...                what the runtime records for those agents, with FROST's word on the hashes it holds
+    python runtime/app/web/app.py submit <key> [--slot <slot>]        an agent the runtime holds, to FROST's review (its key, its exact hashes, its manifest)
+    python runtime/app/web/app.py place <card key> <file.larryd> [marketplace] [--slot <slot>]   an agent the owner approved: into the locker (and, on Cloud Run, the lockers bucket), then to FROST's review
+    python runtime/app/web/app.py review <card key>... [--slot <slot>]   what the runtime records for those agents, with FROST's word on the hashes it holds
+      (on Cloud Run --slot, or LARRYD_SLOT, names the slot whose FROST is asked: slot-a, slot-b or proof)
     python runtime/app/web/app.py job <slot> <account> <scope> <member> <job key> <run>   a Cloud Run job execution: one RUN, its result to that slot
     python runtime/app/web/app.py callbacks <slot> <n>                Cloud Run: the warm-up, the first call back to that slot and n more (statuses and times)
     python runtime/app/web/app.py selftest                            Cloud Run: the marketplace agent run once in the sandbox, its record written"""
@@ -469,15 +489,21 @@ def main(argv):
                      agents=(INSTANCE / 'agents') if cloud and cloud.get('lockers') else locker_root(INSTANCE),
                      developer=os.environ.get(DEVELOPER) == '1',
                      keys=callers.Keys(keys_dir) if keys_dir else None, nonces=callers.nonces() if keys_dir else None, cloud=cloud)
+    slot = ''
+    if '--slot' in argv[2:]:   # place, submit, review: the slot whose FROST is asked
+        at = argv.index('--slot')
+        if at + 1 >= len(argv):
+            raise SystemExit('--slot needs a slot name')
+        slot, argv = argv[at + 1], argv[:at] + argv[at + 2:]
     if argv[1:2] == ['place'] and len(argv) in (4, 5):
-        print(json.dumps(place(app, argv[2], pathlib.Path(argv[3]).read_bytes(), role=argv[4] if len(argv) == 5 else '')))
+        print(json.dumps(place(app, argv[2], pathlib.Path(argv[3]).read_bytes(), role=argv[4] if len(argv) == 5 else '', slot=slot)))
         return
     if argv[1:2] == ['review'] and len(argv) >= 3:
-        print(json.dumps(app.config['harness'].review_state(argv[2:])))
+        print(json.dumps(harness_for_slot(app, slot).review_state(argv[2:])))
         return
     if argv[1:2] == ['submit'] and len(argv) == 3:
         try:
-            print(json.dumps(app.config['harness'].submit(argv[2])))
+            print(json.dumps(harness_for_slot(app, slot).submit(argv[2])))
         except lanes_harness.Refused as no:
             raise SystemExit(f'refused ({no.status}): {no.reason}')
         return
