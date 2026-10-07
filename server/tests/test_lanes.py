@@ -66,3 +66,14 @@ class OfflineIsForTheSubscription(unittest.TestCase):
         self.assertIs(lanes.assemble([maps], [], ['invoicemaps'], lambda k: OK)[0]['subscription'], True)
         self.assertIs(lanes.assemble([maps], [], [], lambda k: OK)[0]['subscription'], False)       # no subscription: Offline, and the word Subscription is never shown
         self.assertIs(lanes.assemble([card('CAL')], [], ['larryd'], lambda k: OK)[0]['subscription'], False)   # a free agent stays Free
+
+    def test_all_four_products_work_the_same(self):   # the owner, 2026-10-07: "all 4 products work the same"
+        products = (('INVOICE MAPS', 'invoicemaps'), ('AGENCY MGMT', 'agencymgmt'), ('PACE SHIFT', 'paceshift'), ('LARRYD', 'larryd'))
+        for name, slug in products:
+            marked = card('X', product=name, product_slug=slug, offline=True)
+            without = lanes.assemble([marked], [], [s for _n, s in products if s != slug], lambda k: OK)[0]   # every OTHER product's subscription
+            with_it = lanes.assemble([marked], [], [slug], lambda k: OK)[0]
+            self.assertEqual((without['offline'], without['subscription']), (True, False), name)    # no subscription to ITS product: offline and locked
+            self.assertEqual((with_it['offline'], with_it['subscription']), (False, True), name)    # its own: Subscription, the toggle works
+            free = lanes.assemble([card('F', product=name, product_slug=slug)], [], [], lambda k: OK)[0]
+            self.assertEqual((free['offline'], free['subscription'], free['needs']), (False, False, ''), name)   # a free agent: free with no subscription
