@@ -60,3 +60,9 @@ class OfflineIsForTheSubscription(unittest.TestCase):
         for not_marked in (False, None, 'true', 1):
             self.assertIs(lanes.assemble([card('CAL', offline=not_marked)], [], [], lambda k: OK)[0]['offline'], False)   # never marked: never offline
         self.assertIs(lanes.assemble([card('CAL')], [], [], lambda k: OK)[0]['offline'], False)
+
+    def test_with_the_subscription_the_card_says_subscription_never_without(self):
+        maps = card('MAPS', product='INVOICE MAPS', product_slug='invoicemaps', screen='locn/home', offline=True)
+        self.assertIs(lanes.assemble([maps], [], ['invoicemaps'], lambda k: OK)[0]['subscription'], True)
+        self.assertIs(lanes.assemble([maps], [], [], lambda k: OK)[0]['subscription'], False)       # no subscription: Offline, and the word Subscription is never shown
+        self.assertIs(lanes.assemble([card('CAL')], [], ['larryd'], lambda k: OK)[0]['subscription'], False)   # a free agent stays Free
