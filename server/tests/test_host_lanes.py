@@ -56,7 +56,7 @@ class HostLanes(unittest.TestCase):
     def test_hire_and_defaults_need_the_marketplace_and_the_platform(self):
         r = self.post('/agents/defaults', {**self.who, 'board': 'larryd/agnt/home'})
         self.assertEqual((r.status_code, r.get_json()), (503, {'refused': 'the marketplace is not in the locker'}))
-        r = self.post('/agents/hire', {**self.who, 'agent_key': 'K', 'on': 'on'})
+        r = self.post('/agents/hire', {**self.who, 'agent_key': 'K', 'on': 'on', 'access': 'allow'})
         self.assertEqual((r.status_code, r.get_json()), (503, {'refused': 'the marketplace is not in the locker'}))
         locker.add(self.db, APP / 'agents', 'MAGT_SCRATCH00001_0001', 'marketplace')
         r = self.post('/agents/defaults', {**self.who, 'board': 'larryd/agnt/home'})
@@ -73,7 +73,7 @@ class HostLanes(unittest.TestCase):
         self.assertEqual((r.status_code, r.get_json()), (400, {'refused': 'run is the RUN number'}))
 
     def test_a_run_with_a_silent_platform_fails_and_is_recorded(self):
-        r = self.post('/jobs/run', {**self.who, 'job_key': 'MJOB_000000000009_0009', 'run': '1'})
+        r = self.post('/jobs/run', {**self.who, 'job_key': 'MJOB_000000000009_0009', 'run': '1', 'access': 'allow'})
         self.assertEqual((r.status_code, r.get_json()), (202, {'accepted': 'MJOB_000000000009_0009', 'run': 1, 'already': False}))
         for _ in range(100):
             con = sqlite3.connect(self.db)

@@ -62,5 +62,10 @@
       "lryllm",
       "so"
     ]
+  },
+  "access": {
+    "about": "THE SECOND GUARD (the owner: two guards, never one): every hire and run the platform signs carries the platform's own access decision for the member (FROST's grid) in this field; the runtime refuses any hire or run whose signed body does not carry the value that grants. The field's name is the hire-rights lane's (provisional until it is named).",
+    "field": "access",
+    "grants": "allow"
   }
 }

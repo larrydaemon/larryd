@@ -172,6 +172,13 @@ def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, deve
     def busy():
         return jsonify({'refused': 'busy: this instance is running another agent, try again'}), 409
 
+    def granted(d):
+        """THE SECOND GUARD (the owner: two guards, never one): the platform's own access decision for the member, signed
+        with the rest of the body (runtime.json "access"). Anything but the value that grants is refused here, before the
+        platform is asked or anything is recorded."""
+        if str(d.get(CONFIG['access']['field']) or '') != CONFIG['access']['grants']:
+            raise lanes_harness.Refused(403, 'the platform did not grant this member access')
+
     @app.get('/api/agents/answer')
     def answer():
         token = slot.take()   # the slot first, atomically, before any of the agent's code
@@ -191,6 +198,7 @@ def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, deve
             d = given('agent_key', 'on')
             if str(d['on']) not in ('on', 'off'):
                 raise lanes_harness.Refused(400, 'on is "on" or "off"')
+            granted(d)
             return harness_for().hire(d['account'], d['scope'], d['member'], d['agent_key'], str(d['on']) == 'on')
         return answered(work)
 
@@ -240,6 +248,10 @@ def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, deve
             return jsonify({'refused': no.reason}), no.status
         if not str(d['run']).isdigit():
             return jsonify({'refused': 'run is the RUN number'}), 400
+        try:
+            granted(d)
+        except lanes_harness.Refused as no:
+            return jsonify({'refused': no.reason}), no.status
         caller = request.headers.get('X-Office-Key', '') if keys is not None else ''
         started = start(d['account'], d['scope'], d['member'], d['job_key'], int(d['run']), caller)
         if started is None:

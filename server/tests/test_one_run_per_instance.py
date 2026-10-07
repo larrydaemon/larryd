@@ -40,7 +40,7 @@ class OneSlot(unittest.TestCase):
             d = {**self.who, 'agent_key': 'AGNT_X'}
             r = self.client.get('/api/agents/answer', query_string=d, headers=self.headers('/agents/answer', d))
             self.assertEqual(r.status_code, 409)
-            d = {**self.who, 'job_key': 'JOB_X', 'run': '1'}
+            d = {**self.who, 'job_key': 'JOB_X', 'run': '1', 'access': 'allow'}
             r = self.client.post('/api/jobs/run', json=d, headers=self.headers('/jobs/run', d))
             self.assertEqual(r.status_code, 409)
         finally:
@@ -59,10 +59,10 @@ class OneSlot(unittest.TestCase):
             seen['held'] = self.app.config['slot'].taken_at is not None
             gate.wait(5)
         self.app.config['harness'].run_job = slow
-        d = {**self.who, 'job_key': 'JOB_SLOW', 'run': '1'}
+        d = {**self.who, 'job_key': 'JOB_SLOW', 'run': '1', 'access': 'allow'}
         r = self.client.post('/api/jobs/run', json=d, headers=self.headers('/jobs/run', d))
         self.assertEqual(r.status_code, 202)
-        d2 = {**self.who, 'job_key': 'JOB_OTHER', 'run': '1'}
+        d2 = {**self.who, 'job_key': 'JOB_OTHER', 'run': '1', 'access': 'allow'}
         self.assertEqual(self.client.post('/api/jobs/run', json=d2, headers=self.headers('/jobs/run', d2)).status_code, 409)
         gate.set()
         for _ in range(100):
@@ -219,7 +219,7 @@ class SlotFailsClosed(unittest.TestCase):
         d = {**self.who, 'agent_key': 'AGNT_X'}
         r = self.client.get('/api/agents/answer', query_string=d, headers=self.headers('/agents/answer', d))
         self.assertEqual(r.status_code, 409)
-        d = {**self.who, 'job_key': 'JOB_X', 'run': '1'}
+        d = {**self.who, 'job_key': 'JOB_X', 'run': '1', 'access': 'allow'}
         self.assertEqual(self.client.post('/api/jobs/run', json=d, headers=self.headers('/jobs/run', d)).status_code, 409)
         slot.clock = __import__('time').monotonic   # the clock back: the slot was never left held
         t = slot.take()

@@ -264,7 +264,7 @@ class H3H4Jobs(CloudApp):
     def test_a_long_run_is_claimed_once_and_started_as_a_job_never_a_thread(self):
         app = self.make()
         before = threading.active_count()
-        d = {'account': 'ACCT_00000000000A_000A', 'scope': 'S', 'member': 'MCON_00000000000B_000B', 'job_key': 'MJOB_000000000001_0001', 'run': '3'}
+        d = {'account': 'ACCT_00000000000A_000A', 'scope': 'S', 'member': 'MCON_00000000000B_000B', 'job_key': 'MJOB_000000000001_0001', 'run': '3', 'access': 'allow'}
         r = self.call(app, '/jobs/run', d, 'POST')
         self.assertEqual((r.status_code, json.loads(r.data)['already']), (202, False))
         self.assertEqual(self.started, [['job', 'slot-a', 'ACCT_00000000000A_000A', 'S', 'MCON_00000000000B_000B', 'MJOB_000000000001_0001', '3']])
