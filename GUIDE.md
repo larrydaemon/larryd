@@ -282,6 +282,8 @@ whole number of mTok you set per run in the card (`"price"`, 0 = free), charged 
 are not there yet: nothing here promises a money value or a share.
 
 ## What the card says about data and where the agent is offered
+- `availability` (optional): `"offline"` for an agent shown for information only. Its card is dimmed and locked, it says
+  Offline where its price stands, and it cannot be hired. Leave the field out for an agent that can be hired.
 - `developer_site` (optional): your website, a plain https address such as `https://example.com`. The card links your
   name to it, in a new tab. Leave the field out for no link.
 - `sends_to` and `data_sent`: the agent itself never reaches out. When the platform sends a member's data to an outside

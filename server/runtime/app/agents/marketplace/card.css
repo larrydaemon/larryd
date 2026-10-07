@@ -173,6 +173,15 @@
 .mk-simple .agent-card { box-shadow: none }
 .mk-simple .agent-card.mk-on::after { -webkit-backdrop-filter: none; backdrop-filter: none }
 .mk-simple .toggle, .mk-simple .toggle__knob { transition: none }
+/* AN OFFLINE CARD (the owner's design, approved in the lab 2026-10-07): its words at 35%, each text part by itself, so no line, border or picture dims with them;
+   the toggle at 50% and never pressed; the two words that say its state, Locked and Offline, bright (the theme's highlight); its outer rounded frame at 35% (the
+   border's line and the glow inside it). The cat's box, its glass border, its picture and its animation stay as they are. */
+.agent-card.mk-offline :is(.mk-id, .mk-info, .mk-flavour, .mk-credit, .mk-kind, .mk-sends, .mk-number > *) { opacity: .35 }
+.agent-card.mk-offline .mk-price { color: var(--active-color-05, inherit); opacity: 1 }
+.agent-card.mk-offline { border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+  box-shadow: 0 0 0 1px var(--active-color-09, transparent) inset, 0 0 22px -4px color-mix(in srgb, var(--accent) 35%, transparent) inset }
+.agent-card.mk-offline .toggle { cursor: default; pointer-events: none; opacity: .5 }
+.agent-card.mk-offline .mk-hire .mk-annotation { color: var(--active-color-05, inherit); opacity: 1 }
 /* THE CONTROLLER'S OWN FEW RULES (its shape and colours are the platform's controller's, from the page's sheets inside this shadow root): the first column the wide
    one, the search's the narrow one; View beside My agents on one line; the picked sort link at the links' own small size; and ON AND OFF TOLD BY ONE RULE ON EVERY THEME
    (the owner, 2026-10-07: "normally black is off and color bright is on"): a button not selected is the theme's ground with its colour for words and line; the

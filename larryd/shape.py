@@ -54,6 +54,7 @@ CARD = {
     'data_sent': 'what it sends there, in plain words; "" when nothing',
 }
 CARD_OPTIONAL = {   # a card fact an agent may leave out
+    'availability': '"offline" for an agent shown for information only: its card is dimmed and locked and it cannot be hired (leave the field out for an agent that can be hired)',
     'developer_site': 'your website, a plain https address such as https://example.com: the card links your name to it (leave the field out for no link)',
 }
 SITE = r'https://(?=[^/?#]{1,253}(?:[/?#]|$))(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}(?:[/?#][^\s"\'<>\\`]*)?'   # https to a named host: no user, no port, no number for a host

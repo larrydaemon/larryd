@@ -253,3 +253,10 @@ def test_the_tool_and_the_runtime_agree_on_a_developers_site():   # what the doc
     for site in ('https://positivefeedback.ai', 'https://www.example.co.uk/agents/hello?x=1', 'https://a-b.example.com/', 'http://positivefeedback.ai', 'https://127.0.0.1/',
                  'https://localhost', 'https://user@example.com', 'https://example.com:8443', 'https://example.com/a b', 'javascript:alert(1)', ''):
         assert bool(re.fullmatch(shape.SITE, site)) == view.link_address(site), site
+
+
+def test_an_offline_agent_says_so_on_its_card_and_only_that_word_passes(tmp_path):
+    assert [p.wrong for p in doctor.check(_with_card(tmp_path, 'off1', {'availability': 'offline'})) if p.check == 'the manifest'] == []
+    for n, bad in enumerate(('online', 'OFFLINE', '', True, None)):
+        problems = [p for p in doctor.check(_with_card(tmp_path, f'off{n + 2}', {'availability': bad})) if p.check == 'the manifest']
+        assert any('card "availability" is' in p.wrong for p in problems), bad

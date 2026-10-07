@@ -377,6 +377,8 @@ def _card(root, card, f):
     for k in facts:
         if k not in shape.CARD and k not in shape.CARD_OPTIONAL:
             f.add(c, where, f'"{k}" is not a card field', f'remove "{k}"; the card\'s fields are: {", ".join(shape.CARD)}')
+    if 'availability' in facts and facts['availability'] != 'offline':
+        f.add(c, where, f'card "availability" is {json.dumps(facts["availability"])}, not "offline"', f'set card "availability" to {shape.CARD_OPTIONAL["availability"]}')
     if 'developer_site' in facts and not (isinstance(facts['developer_site'], str) and re.fullmatch(shape.SITE, facts['developer_site'])):
         f.add(c, where, f'card "developer_site" is {json.dumps(facts["developer_site"])}, not a plain https address',
               f'set card "developer_site" to {shape.CARD_OPTIONAL["developer_site"]}')

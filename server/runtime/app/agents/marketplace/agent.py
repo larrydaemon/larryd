@@ -81,7 +81,7 @@ def collection(cards, themes=None, find=None, page=None):
             'developer': c.get('developer') or '', 'developer_site': _site(c.get('developer_site')), 'type': c.get('type') or '', 'residency': c.get('residency') or '',
             'screen': c.get('screen') or '', 'sends_to': c.get('sends_to') or '', 'data_sent': c.get('data_sent') or '',
             'rate': _rate(c.get('price')), 'hired': bool(c.get('hired')), 'hireable': bool(c.get('hireable')), 'needs': c.get('needs') or '',
-            'art': c.get('art') or '', 'wears': c.get('wears') or '', 'rating': _rating(c)}
+            'art': c.get('art') or '', 'wears': c.get('wears') or '', 'rating': _rating(c), 'offline': c.get('offline') is True}
            for c in cards]
     answer = {'cards': out, 'total': everything, 'hired': hired, 'shown': len(out),
               'filters': {f: sorted({c[f] for c in cards if c.get(f)}) for f in FILTERS}}
@@ -111,6 +111,11 @@ def _card(c, simple=False):
     if simple:
         art = '<span class="mk-logo"></span>'   # SIMPLE: no cat is fetched; in its place the card's own product's logo, one the page has already loaded (the sheet's)
     price = f'{c["rate"]} mTok' if c['rate'] else 'Free'
+    # AN OFFLINE CARD (the owner's design, 2026-10-07; the platform says which: card.offline): the toggle stays, dimmed and locked (no data-hire: the platform's
+    # hire never reaches it), the word Locked where Hire stood; Offline where the price stood; Informational only where Agent stood; the sheet dims the rest
+    kind = 'Agent'
+    if c['offline']:
+        price, kind = 'Offline', 'Informational only'
     developer = (f'<a class="mk-site" href="{e(c["developer_site"])}" target="_blank" rel="noopener noreferrer">{e(c["developer"])}</a>'   # the developer's name opens the developer's own website
                  if c['developer_site'] else e(c['developer']))
     toggle = (f'<button type="button" class="toggle" data-hire="{e(c["key"])}" aria-pressed="{"true" if c["hired"] else "false"}" title="Hire">'
@@ -121,15 +126,17 @@ def _card(c, simple=False):
     extra = (f'<div class="mk-caption mk-sends">Sends data to {e(c["sends_to"])}' + (f': {e(c["data_sent"])}' if c['data_sent'] else '') + '</div>') if c['sends_to'] else ''
     mark = next((n for n, word in ((3, 'MARK III'), (2, 'MARK II'), (1, 'MARK I')) if c['class'].upper().startswith(word)), 0)   # the class picks the box's animation: I CRT, II Wellness, III Glitch
     rain = '<canvas class="mk-rain" aria-hidden="true"></canvas>' if mark == 3 and not simple else ''   # Mark III: the code rain's canvas (card.js), behind the cat; none in the SIMPLE view
-    return (f'<article class="agent-card{" mk-on" if c["hired"] else ""}" data-agent="{e(c["key"])}" data-on="{"1" if c["hired"] else "0"}" data-mark="{mark}" data-wears="{e(c["wears"]) if c["wears"].isalnum() else ""}">'
+    locked = ('<button type="button" class="toggle" aria-disabled="true" aria-pressed="' + ('true' if c['hired'] else 'false') + '" title="Locked"><span class="toggle__knob"></span></button>')
+    hire = f'{locked}<span class="mk-annotation">Locked</span>' if c['offline'] else f'{toggle}<span class="mk-annotation">Hire</span>'
+    return (f'<article class="agent-card{" mk-on" if c["hired"] else ""}{" mk-offline" if c["offline"] else ""}" data-agent="{e(c["key"])}" data-on="{"1" if c["hired"] else "0"}" data-mark="{mark}" data-wears="{e(c["wears"]) if c["wears"].isalnum() else ""}">'
             f'<div class="mk-head"><div class="mk-id"><span class="mk-caption" data-part="class">{e(c["class"])}</span>'
             f'<div class="mk-heading mk-name" data-part="name">{e(c["name"])}</div></div>'   # the name stands where the number stood: under the class, beside the hire toggle
-            f'<div class="mk-hire">{toggle}<span class="mk-annotation">Hire</span></div></div>'
+            f'<div class="mk-hire">{hire}</div></div>'
             f'<div class="mk-frame">{rain}{art}<span class="mk-warm"></span>{number}</div>'
             f'<div class="mk-annotation mk-info" data-part="info">{e(c["product"])} · {e(c["module"])}</div>'
             f'<div class="mk-text mk-flavour" data-part="pitch">{e(c["pitch"])}</div>'
             f'<div class="mk-annotation mk-credit" data-part="developer">Developer · {developer}</div>'
-            f'<div class="mk-foot"><span class="mk-annotation mk-kind">Agent</span><span class="mk-callout mk-price" data-part="price">{price}</span></div>{extra}</article>')
+            f'<div class="mk-foot"><span class="mk-annotation mk-kind">{kind}</span><span class="mk-callout mk-price" data-part="price">{price}</span></div>{extra}</article>')
 
 
 SAFE = re.compile(r'[A-Za-z0-9_./:~%?=&+,@-]+')   # an address's own characters (our CDN's carry ?v=...); never a quote, a bracket, a space, a backslash or a <

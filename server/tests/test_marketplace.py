@@ -34,7 +34,7 @@ class CollectionTest(unittest.TestCase):
             'initials': 'TA', 'image_dam_key': '', 'product': 'LARRYD', 'module': 'AGENT', 'pitch': 'Every agent, one toggle.',
             'developer': 'Positive Feedback', 'type': 'OFF-THE-SHELF', 'residency': 'INTERNAL',
             'screen': 'larryd/agnt/home', 'sends_to': '', 'data_sent': '', 'rate': 0,
-            'hired': False, 'hireable': True, 'needs': '', 'art': '', 'wears': '', 'rating': None, 'developer_site': ''}])
+            'hired': False, 'hireable': True, 'needs': '', 'art': '', 'wears': '', 'rating': None, 'developer_site': '', 'offline': False}])
 
     def test_counts_and_order_come_from_the_cards(self):
         cards = [card(key='K3', number='3', hired=True), card(key='K1', number='1'), card(key='K2', number='', name='PF Night Watch')]
@@ -335,3 +335,38 @@ class TheAgentsOwnController(unittest.TestCase):
         elsewhere = page()
         elsewhere['links']['mine_on'] = '/larryd/int/en/app/hire?x=1'   # a link the page did not mean: the runtime drops the whole view
         self.assertTrue(view.refused(run({'do': 'collection', 'cards': self.CARDS, 'page': elsewhere})['view'], P))
+
+
+class TheOfflineCard(unittest.TestCase):
+    """The owner's OFFLINE card (approved in the lab, 2026-10-07): the platform says which card is offline (card.offline); the toggle stays, dimmed and
+    locked; Locked for Hire, Offline for the price, Informational only for Agent; the sheet dims the rest."""
+    def html(self, **over):
+        return run({'do': 'collection', 'cards': [final(**over)]})['view']
+
+    def test_an_offline_card_is_locked_and_says_so(self):
+        v = self.html(offline=True, price='12')
+        h = v['html']
+        self.assertIn('<article class="agent-card mk-offline"', h)
+        self.assertIn('<div class="mk-hire"><button type="button" class="toggle" aria-disabled="true" aria-pressed="false" title="Locked"><span class="toggle__knob"></span></button>'
+                      '<span class="mk-annotation">Locked</span></div>', h)
+        self.assertNotIn('data-hire', h)          # the platform's hire never reaches an offline card
+        self.assertNotIn('>Hire<', h)
+        self.assertIn('<span class="mk-annotation mk-kind">Informational only</span><span class="mk-callout mk-price" data-part="price">Offline</span>', h)
+        self.assertNotIn('mTok', h)
+        self.assertNotIn('>Free<', h)
+        for rule in ('.agent-card.mk-offline :is(.mk-id, .mk-info, .mk-flavour, .mk-credit, .mk-kind, .mk-sends, .mk-number > *) { opacity: .35 }',
+                     '.agent-card.mk-offline .toggle { cursor: default; pointer-events: none; opacity: .5 }',
+                     '.agent-card.mk-offline .mk-price { color: var(--active-color-05, inherit); opacity: 1 }'):
+            self.assertIn(rule, v['css'])
+
+    def test_only_a_true_from_the_platform_is_offline(self):
+        for value in (False, None, 'true', 'offline', 1, ''):
+            h = self.html(offline=value)['html']
+            self.assertNotIn('mk-offline', h, value)
+            self.assertIn('data-hire="K1"', h, value)
+            self.assertIn('<span class="mk-annotation mk-kind">Agent</span>', h)
+
+    def test_an_offline_view_passes_the_runtimes_check(self):
+        from core_engine import view
+        self.assertEqual(view.refused(self.html(offline=True)), '')
+        self.assertEqual(run({'do': 'collection', 'cards': [final(offline=True)]})['cards'][0]['offline'], True)
