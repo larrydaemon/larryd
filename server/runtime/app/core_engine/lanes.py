@@ -19,5 +19,5 @@ def assemble(cards, hired, subscribed, verify, own=''):
         if not gate.shown(c, verify(c['key']))[0]:
             continue
         may, why = gate.entitled(c, subscribed)
-        out.append({**c, 'hired': hired_on(hired, c['key']), 'hireable': may, 'reason': why, 'needs': '' if may else c['product']})
+        out.append({**c, 'hired': hired_on(hired, c['key']), 'hireable': True, 'reason': why, 'needs': '' if may else c['product']})   # every card can be hired: its toggle always (the owner, 2026-10-06); a RUN of a priced agent still needs its subscription (gate.may_run)
     return out

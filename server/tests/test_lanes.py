@@ -24,7 +24,7 @@ class AssembleTest(unittest.TestCase):
         verify = {'FREE': OK, 'PAID': OK, 'DRAFT': OK, 'NOCODE': (False, 'not in the locker')}.get
         out = lanes.assemble(cards, hired, [], verify)
         self.assertEqual([(c['key'], c['hired'], c['hireable'], c['reason']) for c in out],
-                         [('FREE', True, True, ''), ('PAID', False, False, 'needs the PACE SHIFT subscription')])
+                         [('FREE', True, True, ''), ('PAID', False, True, 'needs the PACE SHIFT subscription')])   # every card can be hired (the owner, 2026-10-06); its run needs the subscription
         self.assertEqual([c['needs'] for c in out], ['', 'PACE SHIFT'])
 
     def test_an_agent_is_never_handed_its_own_card(self):
