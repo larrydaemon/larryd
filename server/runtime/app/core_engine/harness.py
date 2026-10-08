@@ -262,7 +262,12 @@ class Harness:
         for c in cards:
             worn = wears.get(c.get('product'))
             worn = worn if isinstance(worn, str) and worn.isalnum() else ''
-            art = arts.get(worn) if worn else ''
+            art = arts.get(worn) if worn else ''   # the cat is its product's
+            # AN AGENT THAT LIVES ON A DASHBOARD WEARS LARRY LLM'S THEME (the owner, 2026-10-07: pf Today's Meetings "is on the larry llm dashboard pages so it
+            # needs the larry llm theme not invoice maps"): the dashboard is LARRY LLM's page on every product; the page hands that theme as wears['lryllm']
+            dash = wears.get('lryllm')
+            if str(c.get('screen') or '').split('/')[-2:] == ['larry', 'home'] and isinstance(dash, str) and dash.isalnum():
+                worn = dash
             held = locker.held(self.db, c['key'])
             try:
                 site = ((locker.manifest(self.agents, held['folder']).get('card') or {}).get('developer_site') if held else '') or ''

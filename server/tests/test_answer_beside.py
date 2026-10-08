@@ -118,3 +118,24 @@ class AlwaysOn(TheAnswerDoor):
         self.hire(KEY_A, False)
         self.hire(preview.MARKETPLACE_KEY, True)   # hiring it (again) is never refused
         self.assertNotIn(f'data-agent="{preview.MARKETPLACE_KEY}"', self.post(self.body()).get_json()['view']['html'])   # and it never lists itself
+
+
+class TheDashboardsAgentWearsLarryLlm(unittest.TestCase):
+    """An agent that lives on a dashboard (larry/home) wears LARRY LLM's theme, whatever its product; its cat stays its product's (the owner, 2026-10-07)."""
+    def test_by_its_screen_and_only_when_the_page_hands_that_theme(self):
+        from core_engine import harness
+        h = harness.Harness.__new__(harness.Harness)
+        h.db, h.agents = ':memory:', pathlib.Path('/nonexistent')
+        import core_engine.locker as locker
+        held = locker.held
+        locker.held = lambda db, key: None
+        try:
+            cards = [{'key': 'A', 'product': 'INVOICE MAPS', 'screen': 'invoicemaps/larry/home'}, {'key': 'B', 'product': 'INVOICE MAPS', 'screen': 'invoicemaps/opns/home'},
+                     {'key': 'C', 'product': 'PACE SHIFT', 'screen': 'larry/home'}]
+            page = {'wears': {'INVOICE MAPS': 'A37089573E6F', 'PACE SHIFT': '701504D635EE', 'lryllm': 'BD746833F3E6'}, 'arts': {'A37089573E6F': 'cat-im', '701504D635EE': 'cat-ps', 'BD746833F3E6': 'cat-llm'}}
+            out = {c['key']: (c['wears'], c['art']) for c in h._dressed(cards, page)}
+            self.assertEqual(out, {'A': ('BD746833F3E6', 'cat-im'), 'B': ('A37089573E6F', 'cat-im'), 'C': ('BD746833F3E6', 'cat-ps')})
+            del page['wears']['lryllm']
+            self.assertEqual({c['key']: c['wears'] for c in h._dressed(cards, page)}, {'A': 'A37089573E6F', 'B': 'A37089573E6F', 'C': '701504D635EE'})   # not handed: its product's, as before
+        finally:
+            locker.held = held
