@@ -209,6 +209,15 @@ class OnTheDevelopersRuntime(unittest.TestCase):
 
 
 class TheRead(unittest.TestCase):
+    def test_the_members_priority_keys_rank_the_rows(self):
+        """wid's door says the member's BY PRIORITY keys (first, in rank order): each such row carries its rank as priority 1..n; a
+        row's own priority word from elsewhere is dropped, so the platform's list is the one priority."""
+        def ask(office, method, route, data):
+            return {'total': 3, 'first': ['MOPN_000000000002_0000', 'MOPN_000000000000_0000'],
+                    'rows': [{'MOPN_norm_key': f'MOPN_{i:012d}_0000', 'priority': 9} for i in range(3)]}
+        out = member_records.read(ask, {'opns': ('read',)}, 'A', 'S', 'M')
+        self.assertEqual([r.get('priority') for r in out['opns']], [2, None, 1])
+
     def test_the_rows_are_read_page_by_page_up_to_the_most(self):
         asked = []
 
@@ -291,3 +300,16 @@ class WhenThePlatformDoesNotHandThem(OnTheDevelopersRuntime):
         reason = con.execute("SELECT reason FROM runtime_runs WHERE lane = 'call' AND agent_key = ? ORDER BY rowid DESC", (KEY_A,)).fetchone()[0]
         con.close()
         self.assertIn('RECORDS_NOT_READ', reason)
+
+
+class WhoTheRecordsAreFor(OnTheDevelopersRuntime):
+    def test_the_members_own_key_rides_with_the_records(self):
+        (pathlib.Path(self.tmp.name) / 'agents').mkdir(exist_ok=True)
+        self.place({'opns': ['read']})
+        self.seed([])
+        code = CODE.replace('"written": given.get("written"),', '"written": given.get("written"), "who": given.get("who"),')
+        r = self.client.post(f'/marketplace/place?key={KEY_A}', data=_zip({**_agent({'opns': ['read']}, gives=('seen', 'topics', 'written', 'view', 'writes', 'who')), 'agent.py': code.encode()}),
+                             content_type='application/octet-stream', headers={'X-Larryd-Place': '1'})
+        self.assertIn(r.status_code, (200, 201))
+        out = self.ask().get_json()
+        self.assertEqual(out['who'], {'member': preview.MEMBER})

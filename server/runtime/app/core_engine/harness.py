@@ -199,6 +199,7 @@ class Harness:
         try:
             if wanted:
                 given['records'] = member_records.read(self._ask, wanted, account, scope, member, agent_key)
+                given['who'] = {'member': member}   # WHO THE RECORDS ARE FOR: the member's own key, so an agent can tell their own rows (system_member_roles) from the account's; nothing else of them
         except Refused as no:   # THE PLATFORM DID NOT HAND THEM (a slot without the record doors yet, a member not allowed, wid away): the agent is handed none
             not_read = 'records not read'   # and says so on its page; nothing is guessed, nothing is written without them. THE RECORD KEEPS THE RUNTIME'S OWN WORDS ONLY:
             LOG.warning('records not read for %s: %s', agent_key, no.reason)   # the platform's refusal text goes to the log, never into the audit row (fixed words, never cut, nothing written by another)
