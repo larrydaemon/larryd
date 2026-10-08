@@ -84,7 +84,7 @@ def test_the_script_builds_nothing_from_text(agent, line):
 
 
 @pytest.mark.parametrize('page', [PAGE.replace('</body>', '<script>alert(1)</script></body>'), PAGE.replace('<main', '<main style="color:red"'),
-                                  PAGE.replace('<main', '<main onclick="x()"'), PAGE.replace('<head>', '<head><style>b{}</style>'),
+                                  PAGE.replace('<main', '<main onclick="x()"'), PAGE.replace('<head>', '<head><link rel="stylesheet" href="https://example.com/a.css">'),
                                   PAGE.replace('src="/page.js"', 'src="https://example.com/a.js"')])
 def test_the_page_holds_nothing_written_in(agent, page):
     (agent / 'live' / 'page.html').write_text(page)
@@ -111,16 +111,27 @@ def test_the_program_may_ask_the_one_door_larryd_hands_it(agent):
     assert doctor.check(agent) == []
 
 
-def test_the_page_may_carry_one_small_sheet_of_theme_colours(agent):
-    (agent / 'live' / 'page.css').write_text('/* ours */\n.box { height: 50vh; overflow-y: scroll; color: var(--active-color-01); }\n')
+STYLED = PAGE.replace('<!--sheets-->', '<!--sheets--><style>\n/* ours */\n.box { height: 50vh; overflow-y: scroll; color: var(--active-color-01); }\n</style>')
+
+
+def test_the_pages_own_rules_are_written_in_the_page_in_theme_colours(agent):
+    (agent / 'live' / 'page.html').write_text(STYLED)
     assert doctor.check(agent) == []
 
 
-@pytest.mark.parametrize('rule, said', [('.a { background: url(https://example.com/a.png) }', 'names a file or an address'), ('@import "x.css";', 'names a file or an address'),
-                                        ('.a { color: #ff0000 }', 'writes a colour of its own'), ('.a { background: rgb(1, 2, 3) }', 'writes a colour of its own')])
-def test_the_sheet_names_no_file_and_no_colour_of_its_own(agent, rule, said):
-    (agent / 'live' / 'page.css').write_text(rule + '\n')
+@pytest.mark.parametrize('rule, said', [('.a { background: url(https://example.com/a.png) }', 'name a file or an address'), ('@import "x.css";', 'name a file or an address'),
+                                        ('.a { color: #ff0000 }', 'write a colour of their own'), ('.a { background: rgb(1, 2, 3) }', 'write a colour of their own')])
+def test_the_rules_name_no_file_and_no_colour_of_their_own(agent, rule, said):
+    (agent / 'live' / 'page.html').write_text(STYLED.replace('.box {', rule + '\n.box {'))
     assert any(said in w for w in _wrongs(agent)), _wrongs(agent)
+
+
+def test_one_plain_style_block_and_no_sheet_file(agent):
+    (agent / 'live' / 'page.html').write_text(STYLED.replace('</style>', '</style><style>.b { margin: 0 }</style>'))
+    assert 'the live page holds more than one plain <style> block' in _wrongs(agent)
+    (agent / 'live' / 'page.html').write_text(STYLED)
+    (agent / 'live' / 'page.css').write_text('.b { margin: 0 }')
+    assert 'live/ holds something that is not part of the live half' in _wrongs(agent)
 
 
 # ---------------------------------------------------------------- the live half is packed, hashed and approved with the agent

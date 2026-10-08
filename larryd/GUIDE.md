@@ -145,14 +145,16 @@ own, outside the platform. The platform's page never runs an agent's script, and
 and put the live half in `live/` beside `agent/`, these four files and nothing else:
 
 - `page.html`: the one page. It loads `/page.js` and the platform's sheets (the line `<!--sheets-->` in its head), with
-  no script, style or handler written into it.
+  no script, style attribute or handler written into it.
 - `page.js`: the page's script. It reaches only its own room program (paths that start with `/`), names no outside
   address, and builds nothing from text (no eval, no innerHTML).
 - `room.py`: the room program, the Python standard library only. It listens and answers; it starts no process and calls
   out to nothing.
 - `live.json`: what it declares (its ports, its seats, its limits).
-- and, if the page needs them, `page.css` (one small sheet: rules only, every colour a theme variable such as
-  `var(--active-color-01)`, no `url()`, no `@import`) and `rain.js` (a second script, held to the script's rules).
+- and, if the page needs it, `rain.js` (a second script, held to the script's rules).
+
+The page's own rules are written in the page, as every agent's are: ONE plain `<style>` block in `page.html`, rules only,
+every colour a theme variable such as `var(--active-color-01)`, no `url()`, no `@import`. There is no sheet file.
 
 On a CALL LARRYD hands the agent `live = {"link": "https://<the live page>/#<pass>"}`. The pass is signed by LARRYD for the
 member the platform named (the account, the member, a first name, the theme), good once and for ten minutes; the agent

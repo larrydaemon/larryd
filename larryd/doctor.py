@@ -483,15 +483,21 @@ def _live(root, card, c, where, f):
                 f.add(c, _rel(root, path), 'the live page names an outside address', 'the page reaches only its own room program: use paths that start with /', n)
             if name != 'page.html' and re.search(r'\beval\s*\(|new\s+Function\s*\(|\.innerHTML\b|document\.write', line):
                 f.add(c, _rel(root, path), 'the live page builds code or markup from text', 'make elements and set their text; never eval, new Function, innerHTML or document.write', n)
-        if name == 'page.html' and re.search(r'<script(?![^>]*\bsrc="/(?:page|rain)\.js")|\son[a-z]+\s*=|\sstyle\s*=|<style', path.read_text(encoding='utf-8', errors='replace'), re.I):
-            f.add(c, _rel(root, path), 'the live page holds script, a style or a handler written into it', 'the page loads /page.js and the platform\'s sheets, nothing written in')
-    sheet = half / 'page.css'
-    if sheet.is_file() and not sheet.is_symlink():   # the page's own small sheet: no file, no address, no import, and no colour of its own (the theme's variables only)
-        for n, line in enumerate(re.sub(r'/\*.*?\*/', lambda m: '\n' * m.group(0).count('\n'), sheet.read_text(encoding='utf-8', errors='replace'), flags=re.S).splitlines(), 1):
-            if re.search(r'url\s*\(|@import|@font-face|expression\s*\(|//', line, re.I):
-                f.add(c, _rel(root, sheet), 'the live page\'s sheet names a file or an address', 'a sheet of rules only: no url(), no @import, no @font-face', n)
-            if re.search(r'#[0-9a-fA-F]{3,8}\b|\brgba?\s*\(|\bhsla?\s*\(', line):
-                f.add(c, _rel(root, sheet), 'the live page\'s sheet writes a colour of its own', 'use the theme\'s colour variables, e.g. var(--active-color-01): the page then follows the brand, dark and light', n)
+        if name == 'page.html' and re.search(r'<script(?![^>]*\bsrc="/(?:page|rain)\.js")|\son[a-z]+\s*=|\sstyle\s*=|<link\b(?![^>]*\bhref="/)', path.read_text(encoding='utf-8', errors='replace'), re.I):
+            f.add(c, _rel(root, path), 'the live page holds script, a style attribute or a handler written into it', 'the page loads /page.js and the platform\'s sheets; its own rules go in one <style> block')
+    page = half / 'page.html'
+    if page.is_file() and not page.is_symlink():   # THE PAGE'S OWN RULES ARE WRITTEN IN THE PAGE (the owner, 2026-10-08: "the css is inline all the agents use inline"): one <style> block, rules only, no file, no address, no import, and no colour of its own (the theme's variables only)
+        text = page.read_text(encoding='utf-8', errors='replace')
+        blocks = re.findall(r'<style\b([^>]*)>(.*?)</style>', text, re.S | re.I)
+        if len(blocks) > 1 or any(attrs.strip() for attrs, _body in blocks):
+            f.add(c, _rel(root, page), 'the live page holds more than one plain <style> block', 'write the page\'s own rules in ONE <style> block with no attribute')
+        for _attrs, body in blocks:
+            first = text[:text.find(body)].count('\n') + 1
+            for n, line in enumerate(re.sub(r'/\*.*?\*/', lambda m: '\n' * m.group(0).count('\n'), body, flags=re.S).splitlines(), first):
+                if re.search(r'url\s*\(|@import|@font-face|expression\s*\(|//', line, re.I):
+                    f.add(c, _rel(root, page), 'the live page\'s rules name a file or an address', 'rules only: no url(), no @import, no @font-face', n)
+                if re.search(r'#[0-9a-fA-F]{3,8}\b|\brgba?\s*\(|\bhsla?\s*\(', line):
+                    f.add(c, _rel(root, page), 'the live page\'s rules write a colour of their own', 'use the theme\'s colour variables, e.g. var(--active-color-01): the page then follows the brand, dark and light', n)
     program = half / 'room.py'
     if program.is_file() and not program.is_symlink():
         try:
