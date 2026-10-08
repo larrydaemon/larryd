@@ -157,7 +157,7 @@ On a RUN the answer carries one ask:
 only those fields, with its own key, waits for the file, checks that it IS a picture or a video (from its first bytes,
 whatever it is called) and keeps it in the member's DA-M. The file never passes through the agent, and nothing the
 provider says is ever handed to it. A model the manifest does not declare, a field the model does not take, a member's day
-that is full (LARRYD's own daily limit) or a provider that refuses: the RUN ends FAILED or REFUSED with LARRYD's plain
+that is full (LARRYD's own daily limit: every ask counts from the moment it is sent, whatever comes back) or a provider that refuses: the RUN ends FAILED or REFUSED with LARRYD's plain
 reason, nothing is charged and nothing is kept. `larryd run` runs the agent and shows the ask; nothing leaves your computer.
 
 ## A stored file as the member's record
@@ -179,8 +179,11 @@ RUN's inputs by the names `"inputs"` declares:
 
     "run": {"words": "A red fox in fresh snow", "shape": "16:9"}
 
-LARRYD passes them on to the platform on their slots, and the platform starts the RUN as its own Run button does. On a
-page merely opened LARRYD drops `run`: an address never starts a RUN. Such an agent's CALL is also handed
+LARRYD passes them on to the platform on their slots, and the platform starts the RUN as its own Run button does. Each
+value must be EXACTLY a word the member sent in that act (a value of the form they submitted, as `page.search` hands it):
+an agent cannot put anything else into a RUN, not a record it was handed and not words of its own; clean the words up in
+the RUN itself. One value the member did not send refuses the ask whole. On a page merely opened LARRYD drops `run`: an
+address never starts a RUN. Such an agent's CALL is also handed
 `runs = [{"run", "state", "code", "at"}]`, how the member's last five RUNs of it ended (LARRYD's own record: the state and
 a short code such as `NOT_MADE_REPLICATE_FAILED`, never an input or a delivery), so the page can say what became of an ask.
 

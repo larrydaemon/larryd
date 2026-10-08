@@ -10,8 +10,8 @@ import sqlite3
 
 KEEP_DAYS = 396   # 13 months: past a year of billing disputes
 KEY = re.compile(r'^[A-Z]{4}_[0-9A-F]{12}_[0-9A-F]{4}$')   # a platform key, as the platform mints it
-LANES = ('call', 'hire', 'job', 'selftest')
-STATES = ('DONE', 'FAILED', 'REFUSED', 'ON', 'OFF', 'INTERRUPTED', 'CALLBACK_FAILED')   # CALLBACK_FAILED: the run ended, its result never reached the platform
+LANES = ('call', 'hire', 'job', 'selftest', 'make')   # make: one errand of the outside hand, written BEFORE anything is sent (the daily limit counts these)
+STATES = ('DONE', 'FAILED', 'REFUSED', 'ON', 'OFF', 'INTERRUPTED', 'CALLBACK_FAILED', 'SENT')   # CALLBACK_FAILED: the run ended, its result never reached the platform
 CALLERS = ('', 'slot-a', 'slot-b', 'proof', 'selftest')
 DOMAIN = re.compile(r'^[a-z0-9.-]{1,253}$')
 
@@ -100,13 +100,14 @@ class SqliteRecords:
             con.close()
         return [{'run': r[0], 'state': r[1], 'code': r[2] or '', 'at': r[3] or ''} for r in rows]
 
-    def done_today(self, agent_key, member):
-        """How many RUNs of one agent ended DONE for this member since midnight UTC (the outside hand's daily limit)."""
+    def sent_today(self, agent_key, member):
+        """How many errands of one agent were sent for this member since midnight UTC (the outside hand's daily limit): every
+        errand is counted from the moment it is about to leave, whatever became of it after."""
         since = _now().strftime('%Y-%m-%dT00:00:00')
         con = sqlite3.connect(self.db)
         try:
-            return con.execute("SELECT COUNT(*) FROM runtime_runs WHERE agent_key = ? AND member = ? AND lane = 'job' AND state = 'DONE' AND finished_at >= ?",
-                               (agent_key, member or '', since)).fetchone()[0]
+            return con.execute("SELECT COUNT(*) FROM runtime_runs WHERE agent_key = ? AND member = ? AND lane = 'make' AND finished_at >= ?",
+                               (agent_key, member, since)).fetchone()[0]
         finally:
             con.close()
 
@@ -165,8 +166,8 @@ class FirestoreRecords:
     def charged(self, agent_key):
         return sum(int((d.to_dict() or {}).get('charged') or 0) for d in self._query(agent_key, 'job').stream())
 
-    def _of_member(self, agent_key, member):
-        q = self._query(agent_key, 'job').where(field_path='member', op_string='==', value=member or '')
+    def _of_member(self, agent_key, member, lane='job'):
+        q = self._query(agent_key, lane).where(field_path='member', op_string='==', value=member or '')
         return [d.to_dict() or {} for d in q.stream()]
 
     def recent(self, agent_key, member, most):
@@ -175,7 +176,7 @@ class FirestoreRecords:
         return [{'run': int(d.get('run') or 0), 'state': d.get('state') or '', 'code': d.get('error_code') or '',
                  'at': d['finished_at'].isoformat(timespec='seconds') if hasattr(d.get('finished_at'), 'isoformat') else ''} for d in rows]
 
-    def done_today(self, agent_key, member):
-        """How many RUNs of one agent ended DONE for this member since midnight UTC (the outside hand's daily limit)."""
+    def sent_today(self, agent_key, member):
+        """How many errands of one agent were sent for this member since midnight UTC (the outside hand's daily limit)."""
         since = _now().replace(hour=0, minute=0, second=0, microsecond=0)
-        return sum(1 for d in self._of_member(agent_key, member) if d.get('state') == 'DONE' and hasattr(d.get('finished_at'), 'timestamp') and d['finished_at'] >= since)
+        return sum(1 for d in self._of_member(agent_key, member, 'make') if hasattr(d.get('finished_at'), 'timestamp') and d['finished_at'] >= since)

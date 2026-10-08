@@ -180,10 +180,33 @@ class TheRun(World):
         self.assertNotIn('/mtok/use', [r for _o, r, _d in p.said])   # a file that was not made is never charged
         self.assertEqual(self.h.records.recent(KEY, MEMBER, 5)[0]['code'], 'NOT_MADE_REPLICATE_REFUSED_THE_KEY')   # the record keeps the whole of it, as a code
         self.assertEqual(self.run_with(Platform()), 'DONE')
+
+    def test_the_daily_limit_counts_every_errand_before_it_leaves_and_fails_closed(self):
+        self.placed(self.ANSWER, self.DECLARED, ('makes', 'keeps', 'delivery'))
+        self.assertEqual(self.run_with(Platform(), a_day={'image': 2}), 'DONE')                       # the first of the day
+        self.assertEqual(self.run_with(Platform(), Provider(data=b'not a picture'), a_day={'image': 2}), 'FAILED')   # the second was sent (and paid for), whatever came back
         p, provider = Platform(), Provider()
-        self.assertEqual(self.run_with(p, provider, a_day={'image': 1}), 'REFUSED')   # one was made today
-        self.assertIn('the day is full', self.results(p)[-1]['log'])
+        self.assertEqual(self.run_with(p, provider, a_day={'image': 2}), 'REFUSED')                   # the third: the day is full, though only one was kept
+        self.assertIn('the day is full: 2 a day', self.results(p)[-1]['log'])
         self.assertEqual(provider.asked, [])
+        self.assertEqual(self.h.records.sent_today(KEY, MEMBER), 3)   # the refused one is written too: the count never runs behind
+        for a_day in ({'image': None}, {'image': '25'}, {'image': True}, {'image': -1}):   # no whole limit for the kind: nothing leaves
+            p, provider = Platform(), Provider()
+            self.assertEqual(self.run_with(p, provider, a_day=a_day), 'REFUSED', a_day)
+            self.assertIn('the day is not counted', self.results(p)[-1]['log'])
+            self.assertEqual(provider.asked, [])
+
+        class Broken:
+            def __getattr__(self, name):
+                raise OSError('the records are away')
+        h = harness.Harness(self.db, self.agents, Platform(), hand=hand(Provider()), key_for=lambda name: SECRET_KEY, records=Broken())
+        with self.assertRaises(harness._Stop) as stop:
+            h._made([ASK], KEY, JOB, 1, ACCOUNT, MEMBER)
+        self.assertEqual((stop.exception.state, 'the day is not counted' in stop.exception.reason), ('REFUSED', True))
+        h = harness.Harness(self.db, self.agents, Platform(), hand=hand(Provider()), key_for=lambda name: SECRET_KEY)
+        with self.assertRaises(harness._Stop) as stop:
+            h._made([ASK], KEY, JOB, 1, ACCOUNT, '')   # a member the platform did not name is nobody's day
+        self.assertEqual(stop.exception.state, 'REFUSED')
 
     def test_a_carried_file_becomes_a_record_too(self):
         wav = base64.b64encode(b'RIFF0000WAVEfmt ').decode()
@@ -206,8 +229,18 @@ class TheRunAskedFromThePage(World):
 
     def test_the_declared_inputs_go_on_their_slots(self):
         asked = harness.Harness._run_asked
-        self.assertEqual(asked(self.MANIFEST, {'words': 'a fox', 'shape': '16:9'}), ({'inputs': {'001': 'a fox', '002': '16:9'}}, ''))
-        self.assertEqual(asked(self.MANIFEST, {'words': 'a fox', 'shape': ''}), ({'inputs': {'001': 'a fox'}}, ''))
+        sent = {'words': 'a fox', 'shape': '16-9', 'act': 'make', 'mode': 'dark'}   # the words of the form the member sent, as the platform hands them
+        self.assertEqual(asked(self.MANIFEST, {'words': 'a fox', 'shape': '16-9'}, sent), ({'inputs': {'001': 'a fox', '002': '16-9'}}, ''))
+        self.assertEqual(asked(self.MANIFEST, {'words': 'a fox', 'shape': ''}, sent), ({'inputs': {'001': 'a fox'}}, ''))
         for wrong in ({}, {'other': 'x'}, {'words': 5}, {'words': 'x' * 10001}, 'x'):
-            self.assertIsNone(asked(self.MANIFEST, wrong)[0], wrong)
-        self.assertIsNone(asked({'run': {'do': 'make', 'hands': []}, 'inputs': {'words': '001'}}, {'words': 'x'})[0])
+            self.assertIsNone(asked(self.MANIFEST, wrong, sent)[0], wrong)
+        self.assertIsNone(asked({'run': {'do': 'make', 'hands': []}, 'inputs': {'words': '001'}}, {'words': 'a fox'}, sent)[0])
+
+    def test_a_run_carries_only_words_the_member_sent_in_that_act(self):
+        """An agent cannot put a record it was handed, or words of its own, into a RUN: each input is exactly a word of the act."""
+        asked = harness.Harness._run_asked
+        sent = {'words': 'a fox', 'shape': '16-9', 'act': 'make'}
+        for smuggled in ({'words': 'a fox and the member\'s private record'}, {'words': 'A FOX'}, {'words': 'a fox', 'shape': '16:9'}, {'words': ' a fox'}):
+            self.assertEqual(asked(self.MANIFEST, smuggled, sent), (None, 'run not asked: it carries a word the member did not send'), smuggled)
+        for nothing_sent in (None, {}, 'x', {'words': 5}):
+            self.assertIsNone(asked(self.MANIFEST, {'words': 'a fox'}, nothing_sent)[0], nothing_sent)

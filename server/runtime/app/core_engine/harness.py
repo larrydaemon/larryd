@@ -230,9 +230,12 @@ class Harness:
         if state == 'DONE' and answer.get('writes'):
             state, answer, reason = self._written(held, manifest, wanted, given, answer, account, scope, member, agent_key)
         if state == 'DONE' and 'run' in answer:
-            # A RUN ASKED FROM THE PAGE: only on the member's own confirmed act, only the inputs the manifest declares, each on its slot. The runtime starts
-            # nothing itself: it answers the platform {"run": {"inputs": {slot: text}}}, and the platform starts the RUN as its own Run button does
-            asked, why = self._run_asked(manifest, answer['run']) if act else (None, 'run not asked: the call is not the member\'s confirmed act')
+            # A RUN ASKED FROM THE PAGE: only on the member's own confirmed act, only the inputs the manifest declares, each on its slot, and EACH ONE A
+            # WORD OF THAT ACT ITSELF (what the member typed or picked in the form they sent: the platform hands those words in page.search). An agent
+            # cannot put anything else into a RUN: not a record it was handed, not words of its own; the act confirms what the member saw and sent,
+            # nothing more. The runtime starts nothing itself: it answers the platform {"run": {"inputs": {slot: text}}}, and the platform starts the
+            # RUN as its own Run button does
+            asked, why = self._run_asked(manifest, answer['run'], (beside.get('page') or {}).get('search')) if act else (None, 'run not asked: the call is not the member\'s confirmed act')
             answer = {k: v for k, v in answer.items() if k != 'run'}
             if asked is not None:
                 answer['run'] = asked
@@ -274,14 +277,19 @@ class Harness:
         return 'DONE', answer, carried
 
     @staticmethod
-    def _run_asked(manifest, asked):
+    def _run_asked(manifest, asked, sent=None):
         """-> ({'inputs': {slot: text}}, '') or (None, why): the words of a RUN the page asks for, by the names the manifest's
-        "inputs" gives them, each text within the job's own limit. An undeclared name refuses the ask whole."""
+        "inputs" gives them, each text within the job's own limit, and each EXACTLY a word of the member's act (sent: the words of
+        the form the member sent, as the platform hands them). An undeclared name, or a word the member did not send, refuses the
+        ask whole."""
         declared = manifest.get('inputs')
         if not (isinstance(declared, dict) and 'job' in ((manifest.get('run') or {}).get('hands') or [])):
             return None, 'run not asked: the agent declares no job inputs'
         if not (isinstance(asked, dict) and asked and all(isinstance(n, str) and n in declared and isinstance(v, str) and len(v) <= MOST_INPUT for n, v in asked.items())):
             return None, 'run not asked: its words are not the declared inputs, each a text'
+        own = {v for v in (sent or {}).values() if isinstance(v, str)} if isinstance(sent, dict) else set()
+        if any(v != '' and v not in own for v in asked.values()):
+            return None, 'run not asked: it carries a word the member did not send'
         return {'inputs': {declared[n]: v for n, v in asked.items() if v != ''}}, ''
 
     def _dressed(self, cards, page):
@@ -409,7 +417,7 @@ class Harness:
             files = self._files(manifest, answer)
             asks = self._asks(manifest, answer, key, member)
             keeps = self._keeps(manifest, answer, files, asks)
-            files = files + self._made(asks)   # THE ERRAND, before anything is charged or stored: a file that was not made costs the member nothing and leaves nothing behind
+            files = files + self._made(asks, key, job_key, run, account, member)   # THE ERRAND, before anything is charged or stored: a file that was not made costs the member nothing and leaves nothing behind
         except _Stop as stop:
             return self._end(account, scope, member, key, job_key, run, stop.state, stop.reason)
         status, body = self.client.post('cc', '/mtok/use', {'account': account, 'member': member, 'agent_key': key,
@@ -458,22 +466,33 @@ class Harness:
         asks, why = outside.check(makes, allowed)
         if why:
             raise _Stop('FAILED', f'not made, bad ask: {why}; nothing was sent')
-        kind = outside.MODELS[asks[0]['model']]['kind']
-        most = self.a_day.get(kind)
-        if most is not None and hasattr(self.records, 'done_today') and self.records.done_today(key, member) >= most:
-            raise _Stop('REFUSED', f'the day is full: {most} a day; nothing was sent')
         return asks
 
-    def _made(self, asks):
+    def _made(self, asks, agent_key, job_key, run, account, member):
         """The errand itself: each ask made by the outside hand with the runtime's own key for that provider, read for this one
         errand and passed nowhere else. -> the files, as the DA-M store takes them. What a provider says is never carried: the
-        reason is the hand's own fixed words."""
+        reason is the hand's own fixed words.
+        THE DAILY LIMIT IS THE BILL'S GUARD, AND IT FAILS CLOSED: every errand is written down BEFORE it leaves (a 'make' record: the
+        agent, the member, the job) and then counted with the others of the member's day; over the limit, a limit that is not a
+        whole number, a member the platform did not name, or records that cannot be written or counted: nothing is sent. An
+        errand counts whatever becomes of it after (a provider that was paid and a DA-M that then refused is still a paid errand)."""
         out = []
         for ask in asks:
             provider = outside.MODELS[ask['model']]['provider']
             provider_key = self.key_for(provider)
             if not provider_key:
                 raise _Stop('FAILED', f'not made, no {outside.PROVIDERS[provider]["name"]} key: LARRYD holds none; nothing was sent')
+            most = self.a_day.get(outside.MODELS[ask['model']]['kind'])
+            if not (isinstance(most, int) and not isinstance(most, bool) and most >= 0 and member and agent_key):
+                raise _Stop('REFUSED', 'the day is not counted: no limit is set for this kind, or the member is not named; nothing was sent')
+            try:
+                self.records.record('make', agent_key, 'SENT', '', job_key, int(run), 0, caller=self.caller, account=account, member=member)
+                sent = self.records.sent_today(agent_key, member)
+            except Exception:   # noqa: BLE001 - whatever kept the day from being written or counted, nothing leaves
+                LOG.error('the day could not be counted for %s: nothing was sent', agent_key)
+                raise _Stop('REFUSED', 'the day is not counted: LARRYD could not write or read its own record; nothing was sent')
+            if sent > most:
+                raise _Stop('REFUSED', f'the day is full: {most} a day; nothing was sent')
             made, why = self.hand.make(ask, provider_key)
             if why:
                 raise _Stop('FAILED', f'not made, {why}')
