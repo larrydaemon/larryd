@@ -14,7 +14,7 @@ from . import knowledge, look, shape, sheet, skills
 
 FIX = '`larryd doctor --fix`, or larryd_doctor with "fix": true,'   # every todo that asks for the fixer names both doors
 CHECKS = ('the project', 'the manifest', 'the entry', 'the air gap', 'no secret', 'the shape', 'the skills', 'the knowledge')
-CHECKS_VERSION = '4'   # THE LARRYD CHECKS (CHECKS.md, larryd.ai/checks.html): a new or changed check raises it
+CHECKS_VERSION = '5'   # THE LARRYD CHECKS (CHECKS.md, larryd.ai/checks.html): a new or changed check raises it
 BADGE = 'larryd-checks.svg'   # `larryd doctor --badge` writes it beside agent/, never inside it (the shape keeps agent/ to its own kinds)
 GOLD, RED = '#FFB000', '#910E0D'   # the brand's gold (PASS) and red (FAIL)
 
@@ -156,6 +156,8 @@ def _manifest(root, f):
         f.add(c, where, '"inputs" is declared, but run "hands" has no "job"', 'add "job" to run "hands", or take "inputs" out')
     if 'records' in card:
         _records(card, c, where, f)
+    if 'live' in card:
+        _live(root, card, c, where, f)
     for k, what in (('skills', 'skills that exist (`larryd skills`)'), ('knowledge', 'knowledge packs (`larryd pack`)')):
         if k in card and not (isinstance(card[k], list) and all(isinstance(x, str) for x in card[k])):
             f.add(c, where, f'"{k}" is not a list of hashes', f'set "{k}" to [] or to the hashes of {what}')
@@ -442,6 +444,83 @@ def _records(card, c, where, f):
             f.add(c, where, f'records "{name}" is not a list of verbs', f'list what the agent does with them, from: {", ".join(shape.RECORD_VERBS)}')
     if not card.get('calls'):
         f.add(c, where, '"records" is declared, but "calls" is empty', 'records are handed on a CALL (the member\'s screen): name the call in "calls", or take "records" out')
+
+
+OUTSIDE = re.compile(r'(?:https?:|wss?:)?//[A-Za-z0-9]')   # an address of anywhere, written into the live page or its script
+LIVE_BANNED = {'subprocess', 'multiprocessing', 'ctypes', 'importlib', 'http', 'ftplib', 'smtplib', 'telnetlib', 'xmlrpc', 'webbrowser', 'pty'}   # urllib stays: its one use is LARRYD's own door, an address LARRYD hands in the environment
+LIVE_ADDRESS = re.compile(r'(?:https?:|wss?:)?//(?!127\.0\.0\.1[:/\'"])[A-Za-z0-9]')   # an address written into the room program (its own machine aside)
+
+
+def _live(root, card, c, where, f):
+    """"live": the agent's own live page, served by its own room program outside the platform. The manifest says
+    {"seats": 1 to 4}; the live half is the folder live/ beside agent/: page.html, page.js, room.py, live.json and nothing else.
+    The page and its script name no outside address and build no code from text; the program is the standard library only,
+    starts no process and names no address (the one door it asks is LARRYD's, handed in its environment)."""
+    asked, low, high = card['live'], *shape.LIVE_SEATS
+    if not (isinstance(asked, dict) and set(asked) == {'seats'} and isinstance(asked['seats'], int) and not isinstance(asked['seats'], bool) and low <= asked['seats'] <= high):
+        f.add(c, where, f'"live" is not {{"seats": {low} to {high}}}', f'set "live" to {{"seats": N}}, N from {low} to {high}')
+    if not card.get('calls'):
+        f.add(c, where, '"live" is declared, but "calls" is empty', 'the link to the live page is handed on a CALL (the member\'s screen): name the call in "calls", or take "live" out')
+    if (root / shape.AGENT / shape.LIVE).exists():
+        f.add(c, _rel(root, root / shape.AGENT / shape.LIVE), 'agent/ holds something named live', 'that name is the live half\'s place in LARRYD\'s locker: rename it')
+    half = root / shape.LIVE
+    if half.is_symlink() or not half.is_dir():
+        f.add(c, _rel(root, half), '"live" is declared, but there is no live/ folder beside agent/', f'make live/ with {", ".join(shape.LIVE_FILES)}')
+        return
+    held = sorted(p.name for p in half.iterdir() if p.name not in ('__pycache__', 'store'))
+    for name in held:
+        if name not in shape.LIVE_FILES + shape.LIVE_MAY or (half / name).is_symlink() or not (half / name).is_file():
+            f.add(c, _rel(root, half / name), 'live/ holds something that is not part of the live half', f'live/ holds only: {", ".join(shape.LIVE_FILES)}')
+    for name in shape.LIVE_FILES:
+        if name not in held:
+            f.add(c, _rel(root, half / name), f'live/ has no {name}', f'the live half is: {", ".join(shape.LIVE_FILES)}')
+    for name in ('page.html', 'page.js', 'rain.js'):
+        path = half / name
+        if not path.is_file() or path.is_symlink():
+            continue
+        for n, line in enumerate(path.read_text(encoding='utf-8', errors='replace').splitlines(), 1):
+            if OUTSIDE.search(line):
+                f.add(c, _rel(root, path), 'the live page names an outside address', 'the page reaches only its own room program: use paths that start with /', n)
+            if name != 'page.html' and re.search(r'\beval\s*\(|new\s+Function\s*\(|\.innerHTML\b|document\.write', line):
+                f.add(c, _rel(root, path), 'the live page builds code or markup from text', 'make elements and set their text; never eval, new Function, innerHTML or document.write', n)
+        if name == 'page.html' and re.search(r'<script(?![^>]*\bsrc="/(?:page|rain)\.js")|\son[a-z]+\s*=|\sstyle\s*=|<style', path.read_text(encoding='utf-8', errors='replace'), re.I):
+            f.add(c, _rel(root, path), 'the live page holds script, a style or a handler written into it', 'the page loads /page.js and the platform\'s sheets, nothing written in')
+    sheet = half / 'page.css'
+    if sheet.is_file() and not sheet.is_symlink():   # the page's own small sheet: no file, no address, no import, and no colour of its own (the theme's variables only)
+        for n, line in enumerate(re.sub(r'/\*.*?\*/', lambda m: '\n' * m.group(0).count('\n'), sheet.read_text(encoding='utf-8', errors='replace'), flags=re.S).splitlines(), 1):
+            if re.search(r'url\s*\(|@import|@font-face|expression\s*\(|//', line, re.I):
+                f.add(c, _rel(root, sheet), 'the live page\'s sheet names a file or an address', 'a sheet of rules only: no url(), no @import, no @font-face', n)
+            if re.search(r'#[0-9a-fA-F]{3,8}\b|\brgba?\s*\(|\bhsla?\s*\(', line):
+                f.add(c, _rel(root, sheet), 'the live page\'s sheet writes a colour of its own', 'use the theme\'s colour variables, e.g. var(--active-color-01): the page then follows the brand, dark and light', n)
+    program = half / 'room.py'
+    if program.is_file() and not program.is_symlink():
+        try:
+            tree = ast.parse(program.read_text(encoding='utf-8'))
+        except (SyntaxError, ValueError) as e:
+            f.add(c, _rel(root, program), f'the room program does not compile: {e}', 'fix it')
+            return
+        for n, line in enumerate(program.read_text(encoding='utf-8').splitlines(), 1):
+            if LIVE_ADDRESS.search(line):
+                f.add(c, _rel(root, program), 'the room program names an address', 'the one address it may ask is LARRYD\'s own door, handed in its environment: write none into the program', n)
+        for node in ast.walk(tree):
+            names = [a.name for a in node.names] if isinstance(node, ast.Import) else [node.module or ''] if isinstance(node, ast.ImportFrom) else []
+            for name in names:
+                top = name.split('.')[0]
+                if top not in sys.stdlib_module_names:
+                    f.add(c, _rel(root, program), f'the room program imports {top}, not the standard library', 'the room program is the Python standard library only', node.lineno)
+                elif top in LIVE_BANNED:
+                    f.add(c, _rel(root, program), f'the room program imports {top}', 'the room program starts no process and calls out to nothing: it listens and answers', node.lineno)
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr in ('system', 'popen', 'create_connection', 'open_connection', 'create_subprocess_exec', 'create_subprocess_shell') \
+                    or isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id in ('eval', 'exec', '__import__'):
+                f.add(c, _rel(root, program), 'the room program starts a process, calls out or runs text as code', 'it listens and answers; take it out', node.lineno)
+    limits = half / 'live.json'
+    if limits.is_file() and not limits.is_symlink():
+        try:
+            said = json.loads(limits.read_text(encoding='utf-8'))
+        except ValueError:
+            said = None
+        if not isinstance(said, dict) or said.get('seats') != (asked.get('seats') if isinstance(asked, dict) else None):
+            f.add(c, _rel(root, limits), 'live.json does not say the same seats as the manifest', 'set "seats" in live/live.json to the manifest\'s "live" seats')
 
 
 PLACEHOLDER = re.compile(r'^What .+ (answers, in one plain sentence|does for the member, in one line)\.$')   # the blank's own words

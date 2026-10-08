@@ -32,6 +32,8 @@ FIELDS = {
                'e.g. {"opns": ["read", "add", "edit", "remove"]}; LARRYD hands them as records = {species: [rows]} and carries the '
                'answer\'s "writes" to the platform\'s own record doors, only what is declared',
 }
+FIELDS['live'] = ('the agent\'s own live page (optional, only on an agent that answers calls): {"seats": 1 to 4}; its files sit in live/ beside '
+                  'agent/ (page.html, page.js, room.py, live.json) and LARRYD hands the call live = {"link": the page with the member\'s pass}')
 FIELDS['card'] = ('the card the marketplace shows, as the member sees it: {class, pitch, price, type, residency, screen, product, '
                   'module, developer, sends_to, data_sent} and, if you like, developer_site; the number and the art are LARRYD\'s to give at approval')
 CARD = {
@@ -60,7 +62,11 @@ CARD_OPTIONAL = {   # a card fact an agent may leave out
 SITE = r'https://(?=[^/?#]{1,253}(?:[/?#]|$))(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}(?:[/?#][^\s"\'<>\\`]*)?'   # https to a named host: no user, no port, no number for a host
 SCREEN = r'[a-z][a-z0-9]{1,15}/[a-z][a-z0-9]{1,15}'   # <species>/<page>
 MOST_PITCH = 140                                      # characters on the card
-OPTIONAL = ('inputs', 'look', 'records')
+OPTIONAL = ('inputs', 'look', 'records', 'live')
+LIVE = 'live'   # the live half's folder, beside agent/
+LIVE_FILES = ('live.json', 'page.html', 'page.js', 'room.py')   # all of it, and nothing else
+LIVE_MAY = ('page.css', 'rain.js')   # and, if the page needs it, one small sheet of its own (every colour a theme variable)
+LIVE_SEATS = (1, 4)
 RECORD_VERBS = ('read', 'add', 'edit', 'remove')   # what an agent may declare on a species' records
 PACK = 'pack.json'   # a knowledge pack: a folder of plain text files with pack.json {"name", "about"}
 PACK_FIELDS = ('name', 'about')

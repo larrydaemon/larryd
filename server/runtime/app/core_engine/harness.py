@@ -14,7 +14,7 @@ import pathlib
 import re
 import sqlite3
 
-from . import gate, lanes, locker, look, member_records, records as run_records, sandbox, view
+from . import gate, lanes, live, locker, look, member_records, records as run_records, sandbox, view
 
 MARKETPLACE = 'marketplace'   # the one agent's locker folder: it answers the collection, hires, and places defaults
 SAMPLE_RATING = {'rating': '4.8', 'reviews': '212'}   # THE DESIGN'S SAMPLE, ON EVERY CARD, UNTIL A RATING SYSTEM EXISTS (the owner, 2026-10-07: "we can build that later, for now just keep them all the same as the design"): not a member's rating of anything; one line to take out ({} shows no strip)
@@ -38,6 +38,12 @@ HANDED = {   # a skill's hand: the platform's door the runtime asks for the RUN'
     'identity': ('fs', '/agents/identity', 'who the agent works for', 'FROST'),
 }
 
+
+
+def _product(card):
+    """The card's product as the page names its themes (INVOICE MAPS -> invoicemaps)."""
+    product = card.get('product') if isinstance(card, dict) else ''
+    return ''.join(c for c in product.lower() if c.isalnum()) if isinstance(product, str) else ''
 
 
 def _outside_gives(manifest, answer):
@@ -195,6 +201,10 @@ class Harness:
         manifest = locker.manifest(self.agents, held['folder'])
         wanted = member_records.declared(manifest)   # THE MEMBER'S RECORDS: only what the approved manifest declares, read and written through wid's own doors
         given = {**beside, 'do': calls[0], 'cards': handed}
+        if live.declared(manifest):   # THE AGENT'S OWN LIVE PAGE: the runtime signs the member's pass and hands the finished link (the agent holds no secret)
+            door = live.link(account, member, agent_key, page=beside.get('page'), product=_product(card), who=self._identity(account, scope, member), scope=scope, via=self.caller)
+            if door:
+                given['live'] = {'link': door}
         not_read = ''
         try:
             if wanted:
@@ -439,6 +449,49 @@ class Harness:
                 raise _Stop('FAILED', f"LARRYD could not read {what}: {body.get('refused') or body.get('error') or f'{who} answered {status}'}")
             out[hand] = body
         return out
+
+    def live_records(self, agent_key, account, scope, member, do, species, key='', values=None):
+        """THE ROOM PROGRAM'S ASK OF THE MEMBER'S RECORDS (the owner, 2026-10-08: "this data needs to be stored in the sprint module"):
+        an agent's live page keeps what its members write in the member's own records on the platform, never in a store of
+        its own. The ask is held exactly as a CALL's records are: the agent is in the locker, its APPROVED manifest declares a
+        live page AND this species with this verb, its card is approved and hired by that member (the gate), and the platform's
+        own doors for agents decide the rest (FROST's scope). The member's act is the send on their own live page, which only
+        their pass opened. -> {'rows': [...]} for list; {'ok', 'key', 'why'} for add and edit. Nothing is kept."""
+        held = locker.held(self.db, agent_key)
+        manifest = locker.manifest(self.agents, held['folder']) if held else None
+        wanted = member_records.declared(manifest) if manifest and live.declared(manifest) else {}
+        verb = live.DOES.get(do)
+        if not verb or species not in wanted or verb not in wanted[species]:
+            raise Refused(403, 'the agent does not declare it')
+        ok, why = locker.verify(self.db, self.agents, held['agent_key'])
+        if not ok:
+            raise Refused(403, why)
+        cards, hired, groups, verify = self.facts(account, scope, member)
+        card = self._card(cards, agent_key)
+        if card is None:
+            raise Refused(404, 'the agent has no APPROVED card')
+        ok, why = gate.may_run(card, verify(agent_key), lanes.hired_on(hired, agent_key), groups)
+        if not ok:
+            self._record('live', agent_key, 'REFUSED', why, account=account, member=member)
+            raise Refused(403, why)
+        if do == 'list':
+            return {'rows': member_records.read(self._ask, {species: ('read',)}, account, scope, member, agent_key).get(species, [])}
+        writes, why = member_records.check([{'do': do, 'species': species, 'key': key, 'values': values}], wanted)
+        if why:
+            raise Refused(400, why)
+        written = member_records.carry(self.client.post, writes, account, scope, member, agent_key)[0]
+        return {'ok': written['ok'], 'key': written['key'], 'why': written['why']}
+
+    def _identity(self, account, scope, member):
+        """Who the member is, for a live page's pass, from FROST's own identity door: {first_name, account_name, ...} as FROST
+        hands it; {} when FROST does not answer a CALL with it (the page then says Member): never guessed, never read from
+        anywhere else."""
+        office, route, _what, _who = HANDED['identity']
+        try:
+            status, body = self.client.get(office, route, {'account': account, 'scope': scope, 'member': member})
+        except Exception:   # the platform away: the pass goes without them
+            return {}
+        return body if status == 200 and isinstance(body, dict) else {}
 
     def _job_inputs(self, manifest, account, scope, job_key, run):
         """The job's own inputs, as the agent declares them ({name: slot}), read from wid for this RUN only: -> {name: value}.

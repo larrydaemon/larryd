@@ -135,6 +135,41 @@ nothing is carried. The declaration is in the manifest's hash: FROST approves wh
 agent itself. A RUN is handed no records; a CALL is handed `records` only. On your own LARRYD the records live in one
 small file (`~/.larryd/preview/records_<species>.json`), which you may write by hand to try an agent.
 
+## The agent's own live page
+An agent that needs something live (people talking to each other, a page that changes by itself) has a live page of its
+own, outside the platform. The platform's page never runs an agent's script, and that stays so. Declare it:
+
+    "calls": ["door"],
+    "live": {"seats": 4}
+
+and put the live half in `live/` beside `agent/`, these four files and nothing else:
+
+- `page.html`: the one page. It loads `/page.js` and the platform's sheets (the line `<!--sheets-->` in its head), with
+  no script, style or handler written into it.
+- `page.js`: the page's script. It reaches only its own room program (paths that start with `/`), names no outside
+  address, and builds nothing from text (no eval, no innerHTML).
+- `room.py`: the room program, the Python standard library only. It listens and answers; it starts no process and calls
+  out to nothing.
+- `live.json`: what it declares (its ports, its seats, its limits).
+- and, if the page needs them, `page.css` (one small sheet: rules only, every colour a theme variable such as
+  `var(--active-color-01)`, no `url()`, no `@import`) and `rain.js` (a second script, held to the script's rules).
+
+On a CALL LARRYD hands the agent `live = {"link": "https://<the live page>/#<pass>"}`. The pass is signed by LARRYD for the
+member the platform named (the account, the member, a first name, the theme), good once and for ten minutes; the agent
+holds no secret. The agent's view draws the link as a link out (`target="_blank" rel="noopener noreferrer"`). Handed no
+link, it says the page is away and draws no button. The doctor checks the live half with the agent, and it is approved
+with the agent.
+
+The live half is part of the agent: `larryd submit` packs it with `agent/` (under `live/` in the file), its bytes are in
+the code's hash, and a changed live page is a changed agent, reviewed again.
+
+What the members write on a live page is kept in the member's own records on the platform, never in a store of the
+agent's. Declare the species beside `live`, e.g. `"records": {"sprt": ["read", "add", "edit"]}`. The room program asks
+LARRYD (the one address it may ask, handed in its environment), marked with the key its passes are signed with, and
+LARRYD carries the ask to the platform's own record doors for that member: list, add, edit, only what the approved
+manifest declares, only for a member who hired the agent. The pass names the member's scope and the slot their call came
+through; the room program sends both back with each ask.
+
 ## The app's own parts in a view
 An agent's view draws with the platform's own classes (they work inside the view: the page's sheets stand in it), so a view
 reads like the app. Buttons: `btn btn--small` (a selected one carries `aria-current="true"`), a row of them in
