@@ -488,15 +488,24 @@ def _live(root, card, c, where, f):
     page = half / 'page.html'
     if page.is_file() and not page.is_symlink():   # THE PAGE'S OWN RULES ARE WRITTEN IN THE PAGE (the owner, 2026-10-08: "the css is inline all the agents use inline"): one <style> block, rules only, no file, no address, no import, and no colour of its own (the theme's variables only)
         text = page.read_text(encoding='utf-8', errors='replace')
-        blocks = re.findall(r'<style\b([^>]*)>(.*?)</style>', text, re.S | re.I)
-        if len(blocks) > 1 or any(attrs.strip() for attrs, _body in blocks):
-            f.add(c, _rel(root, page), 'the live page holds more than one plain <style> block', 'write the page\'s own rules in ONE <style> block with no attribute')
-        for _attrs, body in blocks:
-            first = text[:text.find(body)].count('\n') + 1
+        # ONE BLOCK, WRITTEN EXACTLY `<style>` ... `</style>` (the security review, 2026-10-08): a doctor that read the page one way while a
+        # browser read it another could be walked past. So nothing that even looks like a style tag is allowed but that one plain pair,
+        # and the block between is cut out by those exact words, not by a guess at how a browser would parse.
+        opens, closes = len(re.findall(r'<\s*style', text, re.I)), len(re.findall(r'<\s*/\s*style', text, re.I))
+        plain = text.count('<style>') == 1 and text.count('</style>') == 1 and opens == 1 and closes == 1 and text.index('<style>') < text.index('</style>')
+        if (opens or closes) and not plain:
+            f.add(c, _rel(root, page), 'the live page holds more than one plain <style> block', 'write the page\'s own rules in ONE <style> block with no attribute, closed by </style>')
+        elif plain:
+            body = text[text.index('<style>') + 7:text.index('</style>')]
+            first = text[:text.index('<style>')].count('\n') + 1
+            if '\\' in body:   # a rule may hide a word behind an escape (\75rl for url): no rule needs one, so none is allowed
+                f.add(c, _rel(root, page), 'the live page\'s rules hold a backslash', 'write every word of a rule plainly: no escapes', first + body[:body.index('\\')].count('\n'))
+            if '<' in body:
+                f.add(c, _rel(root, page), 'the live page\'s rules hold markup', 'rules only inside the <style> block')
             for n, line in enumerate(re.sub(r'/\*.*?\*/', lambda m: '\n' * m.group(0).count('\n'), body, flags=re.S).splitlines(), first):
-                if re.search(r'url\s*\(|@import|@font-face|expression\s*\(|//', line, re.I):
-                    f.add(c, _rel(root, page), 'the live page\'s rules name a file or an address', 'rules only: no url(), no @import, no @font-face', n)
-                if re.search(r'#[0-9a-fA-F]{3,8}\b|\brgba?\s*\(|\bhsla?\s*\(', line):
+                if re.search(r'url|image-set|image\s*\(|src\s*\(|element\s*\(|expression|binding|behavior|//', line, re.I) or re.search(r'@(?!media\b|supports\b)', line, re.I):
+                    f.add(c, _rel(root, page), 'the live page\'s rules name a file or an address', 'rules only: no url(), no @import, no @font-face; of the @ rules only @media and @supports', n)
+                if re.search(r'#[0-9a-fA-F]{3,8}\b|\brgba?\s*\(|\bhsla?\s*\(|\b(?:hwb|lab|lch|oklab|oklch|color)\s*\(', line, re.I):
                     f.add(c, _rel(root, page), 'the live page\'s rules write a colour of their own', 'use the theme\'s colour variables, e.g. var(--active-color-01): the page then follows the brand, dark and light', n)
     program = half / 'room.py'
     if program.is_file() and not program.is_symlink():

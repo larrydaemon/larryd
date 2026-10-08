@@ -126,6 +126,28 @@ def test_the_rules_name_no_file_and_no_colour_of_their_own(agent, rule, said):
     assert any(said in w for w in _wrongs(agent)), _wrongs(agent)
 
 
+@pytest.mark.parametrize('rule, said', [
+    ('.a { background: \\75rl(x) }', 'hold a backslash'), ('@\\69mport "x.css";', 'hold a backslash'), ('.a { background: URL(x) }', 'name a file or an address'),
+    ('.a { background: image-set("a.png" 1x) }', 'name a file or an address'), ('@font-face { font-family: x }', 'name a file or an address'),
+    ('@namespace x "y";', 'name a file or an address'), ('.a { color: oklch(60% 0.2 20) }', 'write a colour of their own'), ('.a { color: COLOR(srgb 1 0 0) }', 'write a colour of their own')])
+def test_a_rule_cannot_hide_a_word_or_reach_out(agent, rule, said):
+    (agent / 'live' / 'page.html').write_text(STYLED.replace('.box {', rule + '\n.box {'))
+    assert any(said in w for w in _wrongs(agent)), _wrongs(agent)
+
+
+@pytest.mark.parametrize('page', [STYLED.replace('<style>', '<style media="all">'), STYLED.replace('<style>', '<STYLE>').replace('</style>', '</STYLE>'), STYLED.replace('</style>', '</style >'),
+                                  STYLED.replace('<style>', '<style/x>'), STYLED.replace('<style>', '< style>'), STYLED.replace('</style>', ''), STYLED.replace('<main', '<svg><style>.c{}</style></svg><main'),
+                                  STYLED.replace('<!--sheets-->', '<!--sheets--><!-- <style>.d{}</style> -->')])
+def test_only_the_one_exact_style_pair_is_read_and_nothing_else_may_look_like_one(agent, page):
+    (agent / 'live' / 'page.html').write_text(page)
+    assert 'the live page holds more than one plain <style> block' in _wrongs(agent), _wrongs(agent)
+
+
+def test_media_and_supports_are_the_only_at_rules(agent):
+    (agent / 'live' / 'page.html').write_text(STYLED.replace('.box {', '@media (max-width: 640px) { .b { margin: 0 } }\n@supports not selector(::-webkit-scrollbar) { .b { margin: 0 } }\n.box {'))
+    assert doctor.check(agent) == []
+
+
 def test_one_plain_style_block_and_no_sheet_file(agent):
     (agent / 'live' / 'page.html').write_text(STYLED.replace('</style>', '</style><style>.b { margin: 0 }</style>'))
     assert 'the live page holds more than one plain <style> block' in _wrongs(agent)
