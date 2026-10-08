@@ -50,6 +50,13 @@
   "run": {
     "seconds": 20
   },
+  "makes": {
+    "about": "THE OUTSIDE HAND (core_engine/outside.py): what an agent may ask LARRYD to have made by a model on its list (Nano Banana 2, Seedance 2.5). a_day: how many files of each kind ONE member may have made by ONE agent in a day (UTC); the provider is paid per file with the runtime's own key (instance secrets/provider_<name>), so this is the bill's guard. The owner's numbers.",
+    "a_day": {
+      "image": 25,
+      "video": 5
+    }
+  },
   "slots": {
     "about": "Cloud Run (the LARRYD runtime design): the one runtime serves every caller; a call's key id names who called (slot-a, slot-b, proof), and the runtime calls back THAT caller at <host>/<office>, signed with its own key 'runtime-to-<caller>'. A caller with no host here is never called back (slot A has none until it runs the new platform; the laptop's proof has none: it cannot be reached).",
     "slot-a": "",

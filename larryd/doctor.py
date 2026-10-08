@@ -156,6 +156,8 @@ def _manifest(root, f):
         f.add(c, where, '"inputs" is declared, but run "hands" has no "job"', 'add "job" to run "hands", or take "inputs" out')
     if 'records' in card:
         _records(card, c, where, f)
+    if 'makes' in card:
+        _makes(card, c, where, f)
     for k, what in (('skills', 'skills that exist (`larryd skills`)'), ('knowledge', 'knowledge packs (`larryd pack`)')):
         if k in card and not (isinstance(card[k], list) and all(isinstance(x, str) for x in card[k])):
             f.add(c, where, f'"{k}" is not a list of hashes', f'set "{k}" to [] or to the hashes of {what}')
@@ -424,6 +426,24 @@ def _card(root, card, f):
             f.add(c, where, f'card "{k}" is not text', f'set card "{k}" to {shape.CARD[k]}')
     if text('sends_to') and facts['sends_to'].strip() and not (text('data_sent') and facts['data_sent'].strip()):
         f.add(c, where, 'card "sends_to" names an outside service, but "data_sent" says nothing', 'say in card "data_sent" what is sent there, in plain words')
+
+
+def _makes(card, c, where, f):
+    """"makes": the models the agent asks LARRYD to have something made by, on a RUN: each on LARRYD's list; the answer names
+    "makes" in gives; and the card says, to the member, where their words go ("sends_to") and what is sent ("data_sent")."""
+    asked = card['makes']
+    listed = ', '.join(shape.MAKES)
+    if not (isinstance(asked, list) and asked and all(isinstance(m, str) and m in shape.MAKES for m in asked)):
+        f.add(c, where, '"makes" is not a list of models on LARRYD\'s list', f'set "makes" to the models the agent asks for, from: {listed}')
+        return
+    if isinstance(card.get('gives'), list) and 'makes' not in card['gives']:
+        f.add(c, where, '"makes" is declared, but "gives" does not name "makes"', 'add "makes" to "gives": the answer carries the ask as "makes": [{"model", "prompt", "name", ...}]')
+    facts = card.get('card') if isinstance(card.get('card'), dict) else {}
+    providers = sorted({shape.MAKES[m][1] for m in asked})
+    said = str(facts.get('sends_to') or '')
+    if not all(p.lower() in said.lower() for p in providers):
+        f.add(c, where, f'"makes" sends the member\'s words to {", ".join(providers)}, but card "sends_to" does not say so',
+              f'name {", ".join(providers)} in card "sends_to", and say in "data_sent" what is sent (the words the member types)')
 
 
 def _records(card, c, where, f):

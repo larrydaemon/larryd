@@ -46,7 +46,7 @@ KEY = re.compile(r'[A-Z]{4}_[0-9A-F]{12}_[0-9A-F]{4}')   # a key as the platform
 
 
 def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, developer=False, keys=None, nonces=None, cloud=None,
-               retry_seconds=RETRY_IN_REQUEST):
+               retry_seconds=RETRY_IN_REQUEST, outside=None):
     """agents: the locker's folder (default the runtime's own; a test gives a scratch one). developer: the developer's runtime
     (the marketplace page; the platform's answers from the instance when no address is declared).
     keys: the hardened call (Cloud Run): {key id: [versions]} of the callers. cloud: Cloud Run's parts (the runtime design):
@@ -75,7 +75,13 @@ def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, deve
         preview.hold_marketplace(db, locker_dir)
     records = cloud.get('records') or run_records.SqliteRecords(db)
     client = preview.Local(db, locker_dir, instance) if local else platform.Client(addresses or {}, secret)
-    h = lanes_harness.Harness(db, locker_dir, client, CONFIG['run']['seconds'], records=records)
+    # THE OUTSIDE HAND (core_engine/outside.py): the runtime's own key for each provider, read from its instance for one errand
+    # (secrets/provider_<name>, placed by the owner's deploy; never in the image, the locker or a call); outside = {'hand', 'key_for', 'a_day'} replaces them (the lab, a test)
+    def provider_key(provider):
+        placed = pathlib.Path(instance) / 'secrets' / f'provider_{provider}'
+        return placed.read_text().strip() if re.fullmatch(r'[a-z]{1,32}', provider) and placed.is_file() else ''
+    hand_parts = {'key_for': provider_key, 'a_day': (CONFIG.get('makes') or {}).get('a_day'), **(outside or {})}
+    h = lanes_harness.Harness(db, locker_dir, client, CONFIG['run']['seconds'], records=records, **hand_parts)
     harnesses = {}
     if keys is not None:   # one harness per slot: its calls go back to THAT slot, signed with the runtime's key for it
         slots = CONFIG['slots']
@@ -84,7 +90,7 @@ def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, deve
             harnesses[caller] = lanes_harness.Harness(
                 db, locker_dir, platform.Client({o: f'{base}/{o}' for o in slots['offices']} if base else {}, '',
                                                 outbound=cloud['outbound'], slot=caller, retry_seconds=retry_seconds),
-                CONFIG['run']['seconds'], records=records, caller=caller)
+                CONFIG['run']['seconds'], records=records, caller=caller, **hand_parts)
     claims = cloud.get('claims') or long_runs.MemoryClaims()
     job_starter = cloud.get('jobs')
     running, lock = set(), threading.Lock()

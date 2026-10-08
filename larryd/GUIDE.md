@@ -135,6 +135,55 @@ nothing is carried. The declaration is in the manifest's hash: FROST approves wh
 agent itself. A RUN is handed no records; a CALL is handed `records` only. On your own LARRYD the records live in one
 small file (`~/.larryd/preview/records_<species>.json`), which you may write by hand to try an agent.
 
+## Something made by an outside model
+An agent never reaches out. An agent that needs a picture or a video made asks LARRYD for it, and LARRYD's own hand does
+the errand. Declare the models, from LARRYD's list, and say on the card where the member's words go:
+
+    "makes": ["nano-banana-2"],
+    "gives": ["makes", "keeps", "delivery"],
+    "card": {"sends_to": "Replicate (Google Nano Banana 2)", "data_sent": "The words you type for the picture and the shape you pick."}
+
+| Model | Makes | Run by | An ask may name |
+|---|---|---|---|
+| `nano-banana-2` | a picture (png, jpg or webp) | Replicate | `aspect`: 1:1, 3:4, 4:3, 16:9, 9:16 |
+| `seedance-2.5` | a video (mp4) | Replicate | `aspect`: 16:9, 9:16, 1:1 · `seconds`: 5, 10 · `size`: 480p, 720p |
+
+On a RUN the answer carries one ask:
+
+    "makes": [{"model": "nano-banana-2", "prompt": "A red fox in fresh snow", "name": "A red fox", "aspect": "16:9"}]
+
+`prompt` is the words (at most 4,000 characters), `name` the file's plain name without an ending (letters, digits, spaces,
+`_` and `-`; LARRYD adds the ending of what came back). A choice left out takes the model's first. LARRYD sends the model
+only those fields, with its own key, waits for the file, checks that it IS a picture or a video (from its first bytes,
+whatever it is called) and keeps it in the member's DA-M. The file never passes through the agent, and nothing the
+provider says is ever handed to it. A model the manifest does not declare, a field the model does not take, a member's day
+that is full (LARRYD's own daily limit) or a provider that refuses: the RUN ends FAILED or REFUSED with LARRYD's plain
+reason, nothing is charged and nothing is kept. `larryd run` runs the agent and shows the ask; nothing leaves your computer.
+
+## A stored file as the member's record
+On the platform a picture, a video or a sound IS a record of its module (Images, Videos, Audio): the DA-M file is the
+record's identity. A RUN that stores a file (a made one, or one the answer carries with the DA-M store) may ask for its
+record:
+
+    "records": {"imgs": ["read", "add"]},
+    "keeps": [{"species": "imgs", "file": "A red fox", "values": {"data_nickname": "A red fox", "data_psgen_prompt": "A red fox in fresh snow"}}]
+
+`file` names a file this RUN stores: a made one by its ask's `name`, a carried one by its own name (`"Click.wav"`).
+LARRYD adds the record through the platform's own door for that member, with the file's DA-M key as its identity (the
+agent never writes `identity_dam_file`). The species needs `add` in `"records"`; at most 10 in one answer.
+
+## A RUN asked from the agent's page
+An agent whose page has its own button for the work (Generate) names `"run"` in `gives`. When the member presses it (a
+form on the page carrying a hidden input named `act`: the member's own confirmed act), the CALL's answer may carry the
+RUN's inputs by the names `"inputs"` declares:
+
+    "run": {"words": "A red fox in fresh snow", "shape": "16:9"}
+
+LARRYD passes them on to the platform on their slots, and the platform starts the RUN as its own Run button does. On a
+page merely opened LARRYD drops `run`: an address never starts a RUN. Such an agent's CALL is also handed
+`runs = [{"run", "state", "code", "at"}]`, how the member's last five RUNs of it ended (LARRYD's own record: the state and
+a short code such as `NOT_MADE_REPLICATE_FAILED`, never an input or a delivery), so the page can say what became of an ask.
+
 ## The app's own parts in a view
 An agent's view draws with the platform's own classes (they work inside the view: the page's sheets stand in it), so a view
 reads like the app. Buttons: `btn btn--small` (a selected one carries `aria-current="true"`), a row of them in
@@ -308,9 +357,9 @@ are not there yet: nothing here promises a money value or a share.
   Offline where its price stands, and it cannot be hired. Leave the field out for an agent that can be hired.
 - `developer_site` (optional): your website, a plain https address such as `https://example.com`. The card links your
   name to it, in a new tab. Leave the field out for no link.
-- `sends_to` and `data_sent`: the agent itself never reaches out. When the platform sends a member's data to an outside
-  AI service for the agent, `sends_to` names that service and `data_sent` says what is sent; the platform asks the
-  member before anything goes out. An agent that sends nothing leaves both `""`.
+- `sends_to` and `data_sent`: the agent itself never reaches out. When LARRYD sends a member's words to an outside
+  AI service for the agent (`"makes"`), `sends_to` names that service and `data_sent` says what is sent; it goes out
+  only on the member's own act. An agent that sends nothing leaves both `""`.
 - `residency` is which marketplaces the agent is offered on: INTERNAL = Positive Feedback's own agent marketplace only;
   EXTERNAL = other marketplaces only (e.g. the Microsoft marketplace), not Positive Feedback; BOTH = Positive Feedback
   and at least one external marketplace. It is not where the agent runs: every LARRYD agent runs in LARRYD.

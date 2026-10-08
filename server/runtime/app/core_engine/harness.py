@@ -14,7 +14,7 @@ import pathlib
 import re
 import sqlite3
 
-from . import gate, lanes, locker, look, member_records, records as run_records, sandbox, view
+from . import gate, lanes, locker, look, member_records, outside, records as run_records, sandbox, view
 
 MARKETPLACE = 'marketplace'   # the one agent's locker folder: it answers the collection, hires, and places defaults
 SAMPLE_RATING = {'rating': '4.8', 'reviews': '212'}   # THE DESIGN'S SAMPLE, ON EVERY CARD, UNTIL A RATING SYSTEM EXISTS (the owner, 2026-10-07: "we can build that later, for now just keep them all the same as the design"): not a member's rating of anything; one line to take out ({} shows no strip)
@@ -22,6 +22,10 @@ BESIDE = ('find', 'themes', 'page')   # what an ANSWER call may hand the agent b
 HANDS = ('cards', 'job')      # what a RUN can be handed: the cards the member sees; the job's own inputs (read from wid, kept nowhere)
 SLOT = re.compile(r'^0(0[1-9]|1[0-5])$')   # a job's agent input slots, as wid's jobs species holds them: data_job_001 .. data_job_015
 MOST_INPUT = 10_000           # characters in one input
+MOST_KEEPS = 10               # records one RUN may add for the files it stored
+A_DAY = {'image': 25, 'video': 5}   # THE OUTSIDE HAND'S DAILY LIMIT, per member and agent (the provider is paid per file made; the runtime's own config may set others)
+RUNS_HANDED = 5               # the member's last RUNs of an agent that starts RUNs from its page, handed to its CALL (state and the runtime's own code, nothing else)
+ZONE = ''                     # a made file goes to the member's DA-M with no zone named (DA-M's own general limit)
 
 
 def _skills():
@@ -69,12 +73,17 @@ def _now():
 
 
 class Harness:
-    def __init__(self, db, agents, client, seconds=20, records=None, caller='', on_start=None):
+    def __init__(self, db, agents, client, seconds=20, records=None, caller='', on_start=None, hand=None, key_for=None, a_day=None):
         """records: where every call and run is recorded (runtime.db by default; Firestore on Cloud Run). caller: the key id
-        of the office that called (a run record names it). on_start(pid): told each sandboxed run's process (the slot)."""
+        of the office that called (a run record names it). on_start(pid): told each sandboxed run's process (the slot).
+        hand: THE OUTSIDE HAND (core_engine/outside.py). key_for(provider) -> the key one errand is done with, '' when the
+        runtime holds none (then nothing is made, and the run says so). a_day: {kind: files a member may have made in a day}."""
         self.db, self.agents, self.client, self.seconds = db, agents, client, seconds
         self.records = records if records is not None else run_records.SqliteRecords(db)
         self.caller, self.on_start = caller, on_start
+        self.hand = hand if hand is not None else outside.Hand()
+        self.key_for = key_for or (lambda provider: '')
+        self.a_day = {**A_DAY, **(a_day or {})}
 
     # ---------------------------------------------------------------- what the platform says
     def _ask(self, office, method, route, data):
@@ -195,6 +204,9 @@ class Harness:
         manifest = locker.manifest(self.agents, held['folder'])
         wanted = member_records.declared(manifest)   # THE MEMBER'S RECORDS: only what the approved manifest declares, read and written through wid's own doors
         given = {**beside, 'do': calls[0], 'cards': handed}
+        starts = 'run' in (manifest.get('gives') or [])   # AN AGENT THAT STARTS ITS OWN RUN FROM ITS PAGE (the member's Generate): it names "run" in gives
+        if starts and hasattr(self.records, 'recent'):
+            given['runs'] = self.records.recent(agent_key, member, RUNS_HANDED)   # what became of the member's last RUNs of it: the run's number, its state, the runtime's own code and the time; never an input or a delivery
         not_read = ''
         try:
             if wanted:
@@ -217,6 +229,14 @@ class Harness:
             reason = 'writes not carried: the call is not the member\'s confirmed act'
         if state == 'DONE' and answer.get('writes'):
             state, answer, reason = self._written(held, manifest, wanted, given, answer, account, scope, member, agent_key)
+        if state == 'DONE' and 'run' in answer:
+            # A RUN ASKED FROM THE PAGE: only on the member's own confirmed act, only the inputs the manifest declares, each on its slot. The runtime starts
+            # nothing itself: it answers the platform {"run": {"inputs": {slot: text}}}, and the platform starts the RUN as its own Run button does
+            asked, why = self._run_asked(manifest, answer['run']) if act else (None, 'run not asked: the call is not the member\'s confirmed act')
+            answer = {k: v for k, v in answer.items() if k != 'run'}
+            if asked is not None:
+                answer['run'] = asked
+            reason = '; '.join(r for r in (reason, why) if r)
         self._record('call', agent_key, state, '; '.join(r for r in (not_read, reason) if r), account=account, member=member)   # the records not read first: the fact that explains the rest
         if state != 'DONE':
             raise Refused(500, reason)
@@ -252,6 +272,17 @@ class Harness:
         if state != 'DONE':
             return state, None, f'{carried}; the second run: {reason}'
         return 'DONE', answer, carried
+
+    @staticmethod
+    def _run_asked(manifest, asked):
+        """-> ({'inputs': {slot: text}}, '') or (None, why): the words of a RUN the page asks for, by the names the manifest's
+        "inputs" gives them, each text within the job's own limit. An undeclared name refuses the ask whole."""
+        declared = manifest.get('inputs')
+        if not (isinstance(declared, dict) and 'job' in ((manifest.get('run') or {}).get('hands') or [])):
+            return None, 'run not asked: the agent declares no job inputs'
+        if not (isinstance(asked, dict) and asked and all(isinstance(n, str) and n in declared and isinstance(v, str) and len(v) <= MOST_INPUT for n, v in asked.items())):
+            return None, 'run not asked: its words are not the declared inputs, each a text'
+        return {'inputs': {declared[n]: v for n, v in asked.items() if v != ''}}, ''
 
     def _dressed(self, cards, page):
         """EACH CARD AS THE PAGE DRESSES IT, on this one call and kept nowhere: wears = the theme the page gives the card's product
@@ -376,6 +407,9 @@ class Harness:
             return self._end(account, scope, member, key, job_key, run, 'FAILED', f'{outside}; the delivery is withheld')
         try:
             files = self._files(manifest, answer)
+            asks = self._asks(manifest, answer, key, member)
+            keeps = self._keeps(manifest, answer, files, asks)
+            files = files + self._made(asks)   # THE ERRAND, before anything is charged or stored: a file that was not made costs the member nothing and leaves nothing behind
         except _Stop as stop:
             return self._end(account, scope, member, key, job_key, run, stop.state, stop.reason)
         status, body = self.client.post('cc', '/mtok/use', {'account': account, 'member': member, 'agent_key': key,
@@ -385,16 +419,90 @@ class Harness:
                              f"not charged: {body.get('refused') or f'mTok answered {status}'}; the delivery is withheld")
         charged = int(body.get('charged') or 0)
         paid = 'free' if body.get('free') else f"{charged} mTok from the {body.get('paid_from')}"
+        in_dam = {}   # {the file's name: its DA-M key}, for the records below
         for f in files:
             status, stored = self.client.post('so', '/dam/upload', {'account': account, 'scope': scope, 'member': member, 'job_key': job_key,
                                                                    'run': str(run), 'name': f['name'], 'content_b64': f['content_b64'], 'source_key': key})
             if status != 200:
                 return self._end(account, scope, member, key, job_key, run, 'FAILED',
                                  f"{paid}, but DA-M did not store the files: {stored.get('refused') or stored.get('error') or f'DA-M answered {status}'}", charged=charged)
-        kept = {k: v for k, v in answer.items() if k != 'files'}
+            in_dam[f['name']] = stored.get('dam_key') if isinstance(stored.get('dam_key'), str) else ''
+            if f.get('asked_as'):
+                in_dam[f['asked_as']] = in_dam[f['name']]   # a made file is kept by the name its ask gave it (the agent cannot know which kind of picture came back)
+        kept_note = ''
+        if keeps:
+            # A STORED FILE BECOMES THE MEMBER'S RECORD (Images, Videos, Audio: the DA-M file IS the record's identity): each through wid's own add door for
+            # this member, exactly as a CALL's write is carried; the file's DA-M key is the runtime's to fill, never the agent's
+            writes = [{'do': 'add', 'species': k['species'], 'key': '', 'values': {**k['values'], 'identity_dam_file': in_dam.get(k['file'], '')}} for k in keeps]
+            if not all(w['values']['identity_dam_file'] for w in writes):
+                return self._end(account, scope, member, key, job_key, run, 'FAILED', f'{paid}, the files are in DA-M, but DA-M named no key for them: no record was added', charged=charged)
+            written = member_records.carry(self.client.post, writes, account, scope, member, key)
+            good = sum(1 for w in written if w['ok'])
+            kept_note = f" · {good} of {len(written)} record{'' if len(written) == 1 else 's'} added"
+            if good != len(written):
+                return self._end(account, scope, member, key, job_key, run, 'FAILED', f"{paid}, the files are in DA-M, but not every record was added{kept_note}", charged=charged)
+        kept = {k: v for k, v in answer.items() if k not in ('files', 'makes', 'keeps')}
         delivery = answer.get('delivery') if isinstance(answer.get('delivery'), str) else json.dumps(kept, sort_keys=True)
         stored_note = f" · {len(files)} file{'' if len(files) == 1 else 's'} in DA-M" if files else ''
-        return self._end(account, scope, member, key, job_key, run, 'DONE', f'RUN {run} DONE · {paid}{stored_note}', charged=charged, delivery=delivery)
+        return self._end(account, scope, member, key, job_key, run, 'DONE', f'RUN {run} DONE · {paid}{stored_note}{kept_note}', charged=charged, delivery=delivery)
+
+    def _asks(self, manifest, answer, key, member):
+        """What the answer asks THE OUTSIDE HAND to make, checked before anything leaves: [] when nothing; refused when the
+        manifest declares no such model, the ask is not the model's own grammar, or the member's day is full."""
+        makes = answer.get('makes')
+        if makes is None:
+            return []
+        allowed = outside.declared(manifest)
+        if not allowed:
+            raise _Stop('FAILED', 'the answer asks for something to be made, but the agent declares no "makes"; nothing was sent')
+        asks, why = outside.check(makes, allowed)
+        if why:
+            raise _Stop('FAILED', f'not made, bad ask: {why}; nothing was sent')
+        kind = outside.MODELS[asks[0]['model']]['kind']
+        most = self.a_day.get(kind)
+        if most is not None and hasattr(self.records, 'done_today') and self.records.done_today(key, member) >= most:
+            raise _Stop('REFUSED', f'the day is full: {most} a day; nothing was sent')
+        return asks
+
+    def _made(self, asks):
+        """The errand itself: each ask made by the outside hand with the runtime's own key for that provider, read for this one
+        errand and passed nowhere else. -> the files, as the DA-M store takes them. What a provider says is never carried: the
+        reason is the hand's own fixed words."""
+        out = []
+        for ask in asks:
+            provider = outside.MODELS[ask['model']]['provider']
+            provider_key = self.key_for(provider)
+            if not provider_key:
+                raise _Stop('FAILED', f'not made, no {outside.PROVIDERS[provider]["name"]} key: LARRYD holds none; nothing was sent')
+            made, why = self.hand.make(ask, provider_key)
+            if why:
+                raise _Stop('FAILED', f'not made, {why}')
+            out.append({'name': made['name'], 'content_b64': base64.b64encode(made['data']).decode('ascii'), 'asked_as': ask['name']})
+        return out
+
+    def _keeps(self, manifest, answer, files, asks):
+        """The records the answer asks for, one per stored file: keeps = [{species, values, file}], each an ADD the manifest
+        declares on that species (checked as a CALL's writes are), each naming a file this RUN stores (a file the answer
+        carries, by its name; a made one, by the ask's name). -> [{species, values, file: the stored file's name}]."""
+        keeps = answer.get('keeps')
+        if keeps is None:
+            return []
+        wanted = member_records.declared(manifest)
+        if not (isinstance(keeps, list) and keeps and len(keeps) <= MOST_KEEPS and all(isinstance(k, dict) and set(k) == {'species', 'values', 'file'} for k in keeps)):
+            raise _Stop('FAILED', f'the answer\'s keeps are not a list of at most {MOST_KEEPS} of {{species, values, file}}; nothing was sent')
+        _writes, why = member_records.check([{'do': 'add', 'species': k['species'], 'values': k['values']} for k in keeps], wanted)
+        if why:
+            raise _Stop('FAILED', f'not kept: {why}; nothing was sent')
+        carried = {f['name'] for f in files}
+        asked = {a['name'] for a in asks}
+        out = []
+        for n, k in enumerate(keeps, 1):
+            if 'identity_dam_file' in k['values']:
+                raise _Stop('FAILED', f'keep {n} names the file\'s own key, which is LARRYD\'s to fill; nothing was sent')
+            if not (isinstance(k['file'], str) and (k['file'] in carried or k['file'] in asked)):
+                raise _Stop('FAILED', f'keep {n} names a file this run does not store; nothing was sent')
+            out.append({'species': k['species'], 'values': k['values'], 'file': k['file']})
+        return out
 
     def _files(self, manifest, answer):
         """The files an answer carries, checked before anything is charged: [] when none; refused when the agent does not

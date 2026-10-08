@@ -90,6 +90,26 @@ class SqliteRecords:
         finally:
             con.close()
 
+    def recent(self, agent_key, member, most):
+        """The member's last RUNs of one agent, newest first: [{run, state, code, at}] (the record's own fields: never an input or a delivery)."""
+        con = sqlite3.connect(self.db)
+        try:
+            rows = con.execute("SELECT run, state, reason, finished_at FROM runtime_runs WHERE agent_key = ? AND member = ? AND lane = 'job' "
+                               'ORDER BY id DESC LIMIT ?', (agent_key, member or '', int(most))).fetchall()
+        finally:
+            con.close()
+        return [{'run': r[0], 'state': r[1], 'code': r[2] or '', 'at': r[3] or ''} for r in rows]
+
+    def done_today(self, agent_key, member):
+        """How many RUNs of one agent ended DONE for this member since midnight UTC (the outside hand's daily limit)."""
+        since = _now().strftime('%Y-%m-%dT00:00:00')
+        con = sqlite3.connect(self.db)
+        try:
+            return con.execute("SELECT COUNT(*) FROM runtime_runs WHERE agent_key = ? AND member = ? AND lane = 'job' AND state = 'DONE' AND finished_at >= ?",
+                               (agent_key, member or '', since)).fetchone()[0]
+        finally:
+            con.close()
+
 
 class FirestoreRecords:
     """Cloud Run's records: Firestore `runs`, one document per call or run, the 13-month expire_at its TTL field. The
@@ -144,3 +164,18 @@ class FirestoreRecords:
 
     def charged(self, agent_key):
         return sum(int((d.to_dict() or {}).get('charged') or 0) for d in self._query(agent_key, 'job').stream())
+
+    def _of_member(self, agent_key, member):
+        q = self._query(agent_key, 'job').where(field_path='member', op_string='==', value=member or '')
+        return [d.to_dict() or {} for d in q.stream()]
+
+    def recent(self, agent_key, member, most):
+        """The member's last RUNs of one agent, newest first: [{run, state, code, at}] (the record's own fields only)."""
+        rows = sorted(self._of_member(agent_key, member), key=lambda d: d.get('finished_at') or _now(), reverse=True)[:int(most)]
+        return [{'run': int(d.get('run') or 0), 'state': d.get('state') or '', 'code': d.get('error_code') or '',
+                 'at': d['finished_at'].isoformat(timespec='seconds') if hasattr(d.get('finished_at'), 'isoformat') else ''} for d in rows]
+
+    def done_today(self, agent_key, member):
+        """How many RUNs of one agent ended DONE for this member since midnight UTC (the outside hand's daily limit)."""
+        since = _now().replace(hour=0, minute=0, second=0, microsecond=0)
+        return sum(1 for d in self._of_member(agent_key, member) if d.get('state') == 'DONE' and hasattr(d.get('finished_at'), 'timestamp') and d['finished_at'] >= since)
