@@ -263,11 +263,13 @@ class Harness:
             worn = wears.get(c.get('product'))
             worn = worn if isinstance(worn, str) and worn.isalnum() else ''
             art = arts.get(worn) if worn else ''   # the cat is its product's
-            # AN AGENT THAT LIVES ON A DASHBOARD WEARS LARRY LLM'S THEME (the owner, 2026-10-07: pf Today's Meetings "is on the larry llm dashboard pages so it
-            # needs the larry llm theme not invoice maps"): the dashboard is LARRY LLM's page on every product; the page hands that theme as wears['lryllm']
-            dash = wears.get('lryllm')
-            if str(c.get('screen') or '').split('/')[-2:] == ['larry', 'home'] and isinstance(dash, str) and dash.isalnum():
-                worn = dash
+            # AN AGENT THAT LIVES ON A DASHBOARD IS NOT ITS PRODUCT'S (the owner, 2026-10-07: pf Today's Meetings "is on the larry llm dashboard pages so it needs
+            # the larry llm theme not invoice maps"; "if we dont have it... maybe positive feedback. we have that"): the dashboard is LARRY LLM's page on every
+            # product. Its card wears LARRY LLM's theme when the page hands one (wears['lryllm']), else Positive Feedback's (wears['global'], handed today), and
+            # that theme's cat when there is one
+            dash = next((wears.get(k) for k in ('lryllm', 'global') if isinstance(wears.get(k), str) and wears.get(k).isalnum()), '')
+            if str(c.get('screen') or '').split('/')[-2:] == ['larry', 'home'] and dash:
+                worn, art = dash, (arts.get(dash) or art)
             held = locker.held(self.db, c['key'])
             try:
                 site = ((locker.manifest(self.agents, held['folder']).get('card') or {}).get('developer_site') if held else '') or ''
