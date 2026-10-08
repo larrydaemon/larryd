@@ -120,10 +120,10 @@ class AlwaysOn(TheAnswerDoor):
         self.assertNotIn(f'data-agent="{preview.MARKETPLACE_KEY}"', self.post(self.body()).get_json()['view']['html'])   # and it never lists itself
 
 
-class TheDashboardsAgentIsNotItsProducts(unittest.TestCase):
-    """An agent that lives on a dashboard (larry/home) wears LARRY LLM's theme when the page hands one, else Positive Feedback's (the global one, handed today),
-    with that theme's cat (the owner, 2026-10-07)."""
-    def test_by_its_screen(self):
+class TheDashboardsAgentWearsItsProducts(unittest.TestCase):
+    """An agent that lives on a dashboard (larry/home) wears its own product's theme and that theme's cat, as every other card does (the owner, 2026-10-08:
+    pf Today's Meetings in Invoice Maps's theme, not Positive Feedback's); a theme handed for LARRY LLM or the global one changes no card."""
+    def test_by_its_product(self):
         from core_engine import harness
         import core_engine.locker as locker
         h = harness.Harness.__new__(harness.Harness)
@@ -132,15 +132,11 @@ class TheDashboardsAgentIsNotItsProducts(unittest.TestCase):
         try:
             cards = [{'key': 'A', 'product': 'INVOICE MAPS', 'screen': 'invoicemaps/larry/home'}, {'key': 'B', 'product': 'INVOICE MAPS', 'screen': 'invoicemaps/opns/home'},
                      {'key': 'C', 'product': 'PACE SHIFT', 'screen': 'larry/home'}]
-            page = {'wears': {'INVOICE MAPS': 'A37089573E6F', 'PACE SHIFT': '701504D635EE', 'global': 'AAD97D32163C'},
-                    'arts': {'A37089573E6F': 'cat-im', '701504D635EE': 'cat-ps', 'AAD97D32163C': 'cat-pf'}}
+            page = {'wears': {'INVOICE MAPS': 'A37089573E6F', 'PACE SHIFT': '701504D635EE', 'global': 'AAD97D32163C', 'lryllm': 'BD746833F3E6'},
+                    'arts': {'A37089573E6F': 'cat-im', '701504D635EE': 'cat-ps', 'AAD97D32163C': 'cat-pf', 'BD746833F3E6': 'cat-llm'}}
             got = lambda: {c['key']: (c['wears'], c['art']) for c in h._dressed(cards, page)}
-            self.assertEqual(got(), {'A': ('AAD97D32163C', 'cat-pf'), 'B': ('A37089573E6F', 'cat-im'), 'C': ('AAD97D32163C', 'cat-pf')})   # today: Positive Feedback's theme and cat
-            page['wears']['lryllm'] = 'BD746833F3E6'
-            self.assertEqual(got()['A'], ('BD746833F3E6', 'cat-im'))            # LARRY LLM's theme once handed; no cat of its own: its product's
-            page['arts']['BD746833F3E6'] = 'cat-llm'
-            self.assertEqual(got()['A'], ('BD746833F3E6', 'cat-llm'))           # and its own cat once there is one
+            self.assertEqual(got(), {'A': ('A37089573E6F', 'cat-im'), 'B': ('A37089573E6F', 'cat-im'), 'C': ('701504D635EE', 'cat-ps')})
             page['wears'] = {'INVOICE MAPS': 'A37089573E6F', 'PACE SHIFT': '701504D635EE'}
-            self.assertEqual({k: v[0] for k, v in got().items()}, {'A': 'A37089573E6F', 'B': 'A37089573E6F', 'C': '701504D635EE'})   # neither handed: its product's, as before
+            self.assertEqual({k: v[0] for k, v in got().items()}, {'A': 'A37089573E6F', 'B': 'A37089573E6F', 'C': '701504D635EE'})
         finally:
             locker.held = held
