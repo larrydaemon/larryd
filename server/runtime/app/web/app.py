@@ -551,9 +551,15 @@ def main(argv):
         return
     if argv[1:2] == ['submit'] and len(argv) == 3:
         try:
-            print(json.dumps(harness_for_slot(app, slot).submit(argv[2])))
+            review = harness_for_slot(app, slot).submit(argv[2])
         except lanes_harness.Refused as no:
             raise SystemExit(f'refused ({no.status}): {no.reason}')
+        card_key = str(review.get('card_key') or '')
+        if KEY.fullmatch(card_key):   # BOTH KEYS LINKED here too (PF Virtual Wire, 2026-10-08: sent again by its key, its card was approved and never shown: the bucket held no card.json)
+            locker.link(harness_for_slot(app, slot).db, argv[2], card_key)
+            if app.config.get('lockers') is not None:
+                app.config['lockers'].link(argv[2], card_key)
+        print(json.dumps(review))
         return
     if argv[1:2] == ['job'] and len(argv) == 8:
         _slot, account, scope, member, job_key, run = argv[2:]
