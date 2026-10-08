@@ -189,7 +189,7 @@ class Hand:
             return False
         host = (parts.hostname or '').lower()
         return (parts.scheme == 'https' and not parts.username and not parts.password and port is None
-                and any(host.endswith(h) for h in hosts)) or address.startswith(tuple(h for h in hosts if h.startswith('http://127.0.0.1:')))
+                and any(host.endswith(h) or host == h.lstrip('.') for h in hosts))   # the delivery host itself (replicate.delivery) or a name under it or address.startswith(tuple(h for h in hosts if h.startswith('http://127.0.0.1:')))
 
     def fetch(self, ask, address):
         """-> (bytes, its kind, '') or (b'', '', why): only from the provider's delivery hosts, cut at the model's size, and it must be

@@ -99,6 +99,13 @@ class TheList(World):
         self.assertEqual(json.loads(p.asked[0][3]), {'input': outside.goes_out(ASK)})
         self.assertEqual([h.get('Authorization') for _m, _u, h, _d in p.asked], [f'Bearer {SECRET_KEY}', f'Bearer {SECRET_KEY}', None])   # never to a delivery host
 
+    def test_the_delivery_host_itself_and_names_under_it(self):
+        for address in ('https://replicate.delivery/xezq/abc/out.png', 'https://pbxt.replicate.delivery/abc/out.png'):
+            made, why = hand(Provider(output=address)).make(ASK, SECRET_KEY)
+            self.assertEqual((why, made['kind']), ('', 'png'), address)
+        for address in ('https://notreplicate.delivery/out.png', 'https://replicate.delivery.evil.example/out.png', 'https://replicate.delivery:8443/out.png', 'https://user@replicate.delivery/out.png'):
+            self.assertEqual(hand(Provider(output=address)).make(ASK, SECRET_KEY), (None, 'file not from Replicate'), address)
+
     def test_what_comes_back_is_not_trusted(self):
         for provider, said in ((Provider(output='https://evil.example/out.png'), 'file not from Replicate'),
                                (Provider(output='http://x.replicate.delivery/out.png'), 'file not from Replicate'),
