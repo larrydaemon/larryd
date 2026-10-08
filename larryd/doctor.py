@@ -2,6 +2,7 @@
 for every problem what is wrong and what to do, in words an AI can act on without asking.
 The checks, in order: the project · the manifest · the entry · the air gap · no secret · the shape · the skills · the knowledge."""
 import ast
+from html.parser import HTMLParser
 import json
 import pathlib
 import re
@@ -451,6 +452,69 @@ LIVE_BANNED = {'subprocess', 'multiprocessing', 'ctypes', 'importlib', 'http', '
 LIVE_ADDRESS = re.compile(r'(?:https?:|wss?:)?//(?!127\.0\.0\.1[:/\'"])[A-Za-z0-9]')   # an address written into the room program (its own machine aside)
 
 
+PAGE_TAGS = {   # THE LIVE PAGE IS A SHELL, AND ONLY THIS (the security review, 2026-10-08): every element and attribute it may hold, by name
+    'html': {'lang', 'data-theme', 'data-brilliance-hierarchy', 'data-font-scale', 'data-case'}, 'head': set(), 'title': set(), 'style': set(),
+    'meta': {'charset', 'name', 'content'}, 'body': {'class'}, 'main': {'class', 'id'}, 'script': {'src', 'defer'}}
+
+
+class _Page(HTMLParser):
+    """The live page read as the standard parser reads it: anything that is not on the list is a fault. A page that may hold
+    only these few plain parts has no place for a frame, a form, a link out, an object, markup hidden in an attribute, or a
+    second way to write a rule: there is nothing to tell apart from what a browser would do with it."""
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.wrong, self.scripts = [], []
+
+    def handle_starttag(self, tag, attrs):
+        if tag not in PAGE_TAGS:
+            self.wrong.append(f'the live page holds a <{tag[:20]}> element')
+            return
+        names = [k for k, _v in attrs]
+        if len(set(names)) != len(names) or set(names) - PAGE_TAGS[tag]:
+            self.wrong.append(f'the live page\'s <{tag}> holds an attribute it may not ({", ".join(sorted(set(names) - PAGE_TAGS[tag]))[:60] or "one written twice"})')
+        had = dict(attrs)
+        if tag == 'script':
+            self.scripts.append(had.get('src'))
+            if had.get('src') not in ('/page.js', '/rain.js'):
+                self.wrong.append('the live page loads a script that is not /page.js or /rain.js')
+        if tag == 'meta' and not (set(had) == {'charset'} or (had.get('name') == 'viewport' and set(had) == {'name', 'content'})):
+            self.wrong.append('the live page holds a <meta> that is not its charset or its viewport')
+        if any(isinstance(v, str) and ('<' in v or '>' in v or '&' in v) for v in had.values()):
+            self.wrong.append('the live page holds markup inside an attribute')
+
+    def handle_startendtag(self, tag, attrs):
+        self.handle_starttag(tag, attrs)
+
+    def handle_comment(self, data):
+        if data != 'sheets':
+            self.wrong.append('the live page holds a comment that is not <!--sheets-->')
+
+    def handle_pi(self, data):
+        self.wrong.append('the live page holds a processing instruction')
+
+    def unknown_decl(self, data):
+        self.wrong.append('the live page holds a declaration that is not its doctype')
+
+    def handle_decl(self, decl):
+        if decl.strip().lower() != 'doctype html':
+            self.wrong.append('the live page holds a declaration that is not its doctype')
+
+
+def _page_shape(text):
+    """-> [what is wrong with the live page's own markup] (empty: it is the plain shell and nothing else)."""
+    if len(text) > 200_000 or '\x00' in text:
+        return ['the live page is not a plain small page']
+    p = _Page()
+    try:
+        p.feed(text)
+        p.close()
+    except Exception:   # a page the standard parser cannot read is not a page LARRYD takes
+        return ['the live page is not markup the standard parser reads']
+    if p.scripts.count('/page.js') != 1 or len(p.scripts) != len(set(p.scripts)):
+        p.wrong.append('the live page does not load /page.js exactly once')
+    return list(dict.fromkeys(p.wrong))
+
+
 def _live(root, card, c, where, f):
     """"live": the agent's own live page, served by its own room program outside the platform. The manifest says
     {"seats": 1 to 4}; the live half is the folder live/ beside agent/: page.html, page.js, room.py, live.json and nothing else.
@@ -483,8 +547,9 @@ def _live(root, card, c, where, f):
                 f.add(c, _rel(root, path), 'the live page names an outside address', 'the page reaches only its own room program: use paths that start with /', n)
             if name != 'page.html' and re.search(r'\beval\s*\(|new\s+Function\s*\(|\.innerHTML\b|document\.write', line):
                 f.add(c, _rel(root, path), 'the live page builds code or markup from text', 'make elements and set their text; never eval, new Function, innerHTML or document.write', n)
-        if name == 'page.html' and re.search(r'<script(?![^>]*\bsrc="/(?:page|rain)\.js")|\son[a-z]+\s*=|\sstyle\s*=|<link\b(?![^>]*\bhref="/)', path.read_text(encoding='utf-8', errors='replace'), re.I):
-            f.add(c, _rel(root, path), 'the live page holds script, a style attribute or a handler written into it', 'the page loads /page.js and the platform\'s sheets; its own rules go in one <style> block')
+        if name == 'page.html':
+            for wrong in _page_shape(path.read_text(encoding='utf-8', errors='replace')):
+                f.add(c, _rel(root, path), wrong, 'the page is a shell: html, head (meta, title, the line <!--sheets-->, one <style> block), body, main, and its scripts /page.js and /rain.js; everything else is built by the script')
     page = half / 'page.html'
     if page.is_file() and not page.is_symlink():   # THE PAGE'S OWN RULES ARE WRITTEN IN THE PAGE (the owner, 2026-10-08: "the css is inline all the agents use inline"): one <style> block, rules only, no file, no address, no import, and no colour of its own (the theme's variables only)
         text = page.read_text(encoding='utf-8', errors='replace')

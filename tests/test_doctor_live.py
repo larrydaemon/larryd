@@ -193,3 +193,31 @@ def test_nothing_in_agent_may_take_the_live_halfs_name(agent):
     (agent / 'agent' / 'live').mkdir()
     (agent / 'agent' / 'live' / 'notes.txt').write_text('x')
     assert 'agent/ holds something named live' in _wrongs(agent)
+
+
+# ---------------------------------------------------------------- the page is a plain shell and nothing else (an allowlist, not a hunt)
+@pytest.mark.parametrize('page, said', [
+    (STYLED.replace('<main', '<iframe srcdoc="&lt;style&gt;b{color:#f00}&lt;/style&gt;"></iframe><main'), '<iframe> element'),
+    (STYLED.replace('<main', '<object data="/x"></object><main'), '<object> element'),
+    (STYLED.replace('<main', '<form action="/say"><input name="words"></form><main'), '<form> element'),
+    (STYLED.replace('<main', '<a href="https://example.com">x</a><main'), '<a> element'),
+    (STYLED.replace('<main', '<base href="https://example.com/"><main'), '<base> element'),
+    (STYLED.replace('<main', '<img src="/x" onerror="x()"><main'), '<img> element'),
+    (STYLED.replace('<head>', '<head><meta http-equiv="refresh" content="0;url=https://example.com">'), 'attribute it may not'),
+    (STYLED.replace('<head>', '<head><link rel="stylesheet" href="/x.css">'), '<link> element'),
+    (STYLED.replace('<main', '<main title="&lt;b&gt;"'), 'attribute it may not'),
+    (STYLED.replace('<html>', '<html lang="&lt;x&gt;">'), 'markup inside an attribute'),
+    (STYLED.replace('<!--sheets-->', '<!--sheets--><!-- hidden -->'), 'a comment that is not'),
+    (STYLED.replace('<script src="/page.js" defer></script>', '<script src="/page.js" defer></script><script src="/page.js" defer></script>'), 'exactly once'),
+    (STYLED.replace('<script src="/page.js" defer></script>', '<script src="/other.js"></script>'), 'not /page.js or /rain.js'),
+    (STYLED.replace('<main', '<svg><script>x()</script></svg><main'), '<svg> element')])
+def test_the_page_holds_only_its_plain_shell(agent, page, said):
+    (agent / 'live' / 'page.html').write_text(page)
+    assert any(said in w for w in _wrongs(agent)), _wrongs(agent)
+
+
+def test_the_plain_shell_with_its_two_scripts_passes(agent):
+    (agent / 'live' / 'rain.js').write_text("'use strict';\n")
+    (agent / 'live' / 'page.html').write_text(STYLED.replace('<html>', '<html lang="en" data-theme="dark" data-case="upper">').replace('<head>', '<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>x</title>')
+                                              .replace('<body>', '<body class="menu-page">').replace('<script src="/page.js" defer></script>', '<script src="/rain.js" defer></script><script src="/page.js" defer></script>'))
+    assert doctor.check(agent) == []
