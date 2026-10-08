@@ -51,7 +51,7 @@
     "seconds": 20
   },
   "makes": {
-    "about": "THE OUTSIDE HAND (core_engine/outside.py): what an agent may ask LARRYD to have made by a model on its list (Nano Banana 2, Seedance 2.5). a_day: how many files of each kind ONE member may have made by ONE agent in a day (UTC); the provider is paid per file with the runtime's own key (instance secrets/provider_<name>), so this is the bill's guard. The owner's numbers.",
+    "about": "THE OUTSIDE HAND (core_engine/outside.py): what an agent may ask LARRYD to have made by a model on its list (Nano Banana 2, Seedance 2.5). a_day: how many files of each kind ONE member may have made by ONE agent in a day (UTC); the provider is paid per file with the platform's own key (its one home is FROST's vault; the runtime asks for it per errand and keeps no copy), so this is the bill's guard. The owner's numbers.",
     "a_day": {
       "image": 25,
       "video": 5

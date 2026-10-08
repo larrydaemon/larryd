@@ -54,8 +54,8 @@ def hand(provider):
 
 
 class Platform:
-    def __init__(self, add=200):
-        self.add, self.said = add, []
+    def __init__(self, add=200, vault=SECRET_KEY):
+        self.add, self.vault, self.said = add, vault, []   # vault: the platform's own key as FROST's vault hands it for one errand ('' = it hands none)
 
     def get(self, office, route, data=None):
         self.said.append((office, route, data))
@@ -65,6 +65,8 @@ class Platform:
         self.said.append((office, route, data))
         if route == '/dam/upload':
             return 200, {'dam_key': 'DA-M_0123456789AB_0001', 'repeat': False}
+        if route == '/agents/provider_key':
+            return (200, {'key': self.vault}) if self.vault else (404, {'refused': 'nothing by that key'})
         if route == '/agnt/records/add':
             return (200, {'key': 'MIMG_0123456789AB_0002'}) if self.add == 200 else (self.add, {'refused': 'no'})
         return (200, {'charged': 0, 'free': True}) if route == '/mtok/use' else (200, {'saved': True})
@@ -125,8 +127,8 @@ class TheRun(World):
         con.close()
         locker.add(self.db, self.agents, KEY, 'echo')
 
-    def run_with(self, client, provider=None, key=SECRET_KEY, a_day=None):
-        h = harness.Harness(self.db, self.agents, client, hand=hand(provider or Provider()), key_for=lambda name: key, a_day=a_day)
+    def run_with(self, client, provider=None, a_day=None):
+        h = harness.Harness(self.db, self.agents, client, hand=hand(provider or Provider()), a_day=a_day)
         h.facts = lambda account, scope, member: ([CARD], HIRED, [], lambda k: (True, ''))
         self.h = h
         return h.run_job(ACCOUNT, SCOPE, MEMBER, JOB, 1)
@@ -138,6 +140,10 @@ class TheRun(World):
         self.placed(self.ANSWER, self.DECLARED, ('makes', 'keeps', 'delivery'))
         p = Platform()
         self.assertEqual(self.run_with(p), 'DONE')
+        asked = next(d for o, r, d in p.said if (o, r) == ('fs', '/agents/provider_key'))   # THE KEY'S ONE HOME: asked of FROST for this RUN, this member, this agent as approved
+        row = locker.held(self.db, KEY)
+        self.assertEqual(asked, {'account': ACCOUNT, 'scope': SCOPE, 'member': MEMBER, 'job_key': JOB, 'run': '1', 'agent_key': KEY, 'code_sha256': row['code_sha256'],
+                                 'manifest_sha256': row['manifest_sha256'], 'provider': 'replicate'})
         upload = next(d for _o, r, d in p.said if r == '/dam/upload')
         self.assertEqual((upload['name'], base64.b64decode(upload['content_b64']), upload['job_key'], upload['run']), ('A red fox.png', PNG, JOB, '1'))
         added = next(d for _o, r, d in p.said if r == '/agnt/records/add')
@@ -171,9 +177,10 @@ class TheRun(World):
 
     def test_no_key_a_refusing_provider_and_a_full_day_make_nothing(self):
         self.placed(self.ANSWER, self.DECLARED, ('makes', 'keeps', 'delivery'))
-        p = Platform()
-        self.assertEqual(self.run_with(p, key=''), 'FAILED')
+        p, provider = Platform(vault=''), Provider()
+        self.assertEqual(self.run_with(p, provider), 'FAILED')   # FROST's vault hands none: nothing is sent, nothing stands in for it
         self.assertIn('not made, no Replicate key', self.results(p)[-1]['log'])
+        self.assertEqual(provider.asked, [])
         p = Platform()
         self.assertEqual(self.run_with(p, Provider(submit=401)), 'FAILED')
         self.assertEqual(self.results(p)[-1]['log'], 'not made, Replicate refused the key')
@@ -199,11 +206,11 @@ class TheRun(World):
         class Broken:
             def __getattr__(self, name):
                 raise OSError('the records are away')
-        h = harness.Harness(self.db, self.agents, Platform(), hand=hand(Provider()), key_for=lambda name: SECRET_KEY, records=Broken())
+        h = harness.Harness(self.db, self.agents, Platform(), hand=hand(Provider()), records=Broken())
         with self.assertRaises(harness._Stop) as stop:
             h._made([ASK], KEY, JOB, 1, ACCOUNT, MEMBER)
         self.assertEqual((stop.exception.state, 'the day is not counted' in stop.exception.reason), ('REFUSED', True))
-        h = harness.Harness(self.db, self.agents, Platform(), hand=hand(Provider()), key_for=lambda name: SECRET_KEY)
+        h = harness.Harness(self.db, self.agents, Platform(), hand=hand(Provider()))
         with self.assertRaises(harness._Stop) as stop:
             h._made([ASK], KEY, JOB, 1, ACCOUNT, '')   # a member the platform did not name is nobody's day
         self.assertEqual(stop.exception.state, 'REFUSED')

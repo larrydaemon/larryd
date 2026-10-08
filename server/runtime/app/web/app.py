@@ -75,12 +75,9 @@ def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, deve
         preview.hold_marketplace(db, locker_dir)
     records = cloud.get('records') or run_records.SqliteRecords(db)
     client = preview.Local(db, locker_dir, instance) if local else platform.Client(addresses or {}, secret)
-    # THE OUTSIDE HAND (core_engine/outside.py): the runtime's own key for each provider, read from its instance for one errand
-    # (secrets/provider_<name>, placed by the owner's deploy; never in the image, the locker or a call); outside = {'hand', 'key_for', 'a_day'} replaces them (the lab, a test)
-    def provider_key(provider):
-        placed = pathlib.Path(instance) / 'secrets' / f'provider_{provider}'
-        return placed.read_text().strip() if re.fullmatch(r'[a-z]{1,32}', provider) and placed.is_file() else ''
-    hand_parts = {'key_for': provider_key, 'a_day': (CONFIG.get('makes') or {}).get('a_day'), **(outside or {})}
+    # THE OUTSIDE HAND (core_engine/outside.py). The runtime holds NO provider key, anywhere: each errand asks FROST's vault on the platform
+    # for it (harness._provider_key; the owner: "a single source setup"). outside = {'hand', 'a_day'} replaces the hand or the limit (the lab, a test)
+    hand_parts = {'a_day': (CONFIG.get('makes') or {}).get('a_day'), **(outside or {})}
     h = lanes_harness.Harness(db, locker_dir, client, CONFIG['run']['seconds'], records=records, **hand_parts)
     harnesses = {}
     if keys is not None:   # one harness per slot: its calls go back to THAT slot, signed with the runtime's key for it

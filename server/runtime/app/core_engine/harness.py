@@ -73,16 +73,16 @@ def _now():
 
 
 class Harness:
-    def __init__(self, db, agents, client, seconds=20, records=None, caller='', on_start=None, hand=None, key_for=None, a_day=None):
+    def __init__(self, db, agents, client, seconds=20, records=None, caller='', on_start=None, hand=None, a_day=None):
         """records: where every call and run is recorded (runtime.db by default; Firestore on Cloud Run). caller: the key id
         of the office that called (a run record names it). on_start(pid): told each sandboxed run's process (the slot).
-        hand: THE OUTSIDE HAND (core_engine/outside.py). key_for(provider) -> the key one errand is done with, '' when the
-        runtime holds none (then nothing is made, and the run says so). a_day: {kind: files a member may have made in a day}."""
+        hand: THE OUTSIDE HAND (core_engine/outside.py). a_day: {kind: files a member may have made in a day}.
+        THE RUNTIME HOLDS NO PROVIDER KEY (the owner, 2026-10-08: "a single source setup"): the key's one home is the platform's
+        vault; each errand asks FROST for it (_provider_key), uses it once and forgets it."""
         self.db, self.agents, self.client, self.seconds = db, agents, client, seconds
         self.records = records if records is not None else run_records.SqliteRecords(db)
         self.caller, self.on_start = caller, on_start
         self.hand = hand if hand is not None else outside.Hand()
-        self.key_for = key_for or (lambda provider: '')
         self.a_day = {**A_DAY, **(a_day or {})}
 
     # ---------------------------------------------------------------- what the platform says
@@ -417,7 +417,7 @@ class Harness:
             files = self._files(manifest, answer)
             asks = self._asks(manifest, answer, key, member)
             keeps = self._keeps(manifest, answer, files, asks)
-            files = files + self._made(asks, key, job_key, run, account, member)   # THE ERRAND, before anything is charged or stored: a file that was not made costs the member nothing and leaves nothing behind
+            files = files + self._made(asks, key, job_key, run, account, member, scope)   # THE ERRAND, before anything is charged or stored: a file that was not made costs the member nothing and leaves nothing behind
         except _Stop as stop:
             return self._end(account, scope, member, key, job_key, run, stop.state, stop.reason)
         status, body = self.client.post('cc', '/mtok/use', {'account': account, 'member': member, 'agent_key': key,
@@ -468,9 +468,23 @@ class Harness:
             raise _Stop('FAILED', f'not made, bad ask: {why}; nothing was sent')
         return asks
 
-    def _made(self, asks, agent_key, job_key, run, account, member):
-        """The errand itself: each ask made by the outside hand with the runtime's own key for that provider, read for this one
-        errand and passed nowhere else. -> the files, as the DA-M store takes them. What a provider says is never carried: the
+    def _provider_key(self, provider, agent_key, job_key, run, account, scope, member):
+        """THE KEY FOR ONE ERRAND, FROM ITS ONE HOME (the owner, 2026-10-08: "the replicate token is on production and should point
+        to that directly always its a single source setup"): asked of FROST's vault on the platform that called, for this RUN of
+        this member and this agent as FROST approved it (its exact hashes); FROST alone decides. -> the key, or '' when FROST
+        hands none. It lives in this call's memory only: never kept, never written, never in a reason or a log."""
+        row = locker.held(self.db, agent_key)
+        if row is None:
+            return ''
+        status, body = self.client.post('fs', '/agents/provider_key', {'account': account, 'scope': scope, 'member': member, 'job_key': job_key, 'run': str(run),
+                                                                       'agent_key': row['agent_key'], 'code_sha256': row['code_sha256'],
+                                                                       'manifest_sha256': row['manifest_sha256'], 'provider': provider})
+        held = body.get('key') if status == 200 and isinstance(body, dict) else ''
+        return held if isinstance(held, str) else ''
+
+    def _made(self, asks, agent_key, job_key, run, account, member, scope=''):
+        """The errand itself: each ask made by the outside hand with the platform's own key for that provider, asked of FROST's
+        vault for this one errand and passed nowhere else. -> the files, as the DA-M store takes them. What a provider says is never carried: the
         reason is the hand's own fixed words.
         THE DAILY LIMIT IS THE BILL'S GUARD, AND IT FAILS CLOSED: every errand is written down BEFORE it leaves (a 'make' record: the
         agent, the member, the job) and then counted with the others of the member's day; over the limit, a limit that is not a
@@ -479,9 +493,9 @@ class Harness:
         out = []
         for ask in asks:
             provider = outside.MODELS[ask['model']]['provider']
-            provider_key = self.key_for(provider)
+            provider_key = self._provider_key(provider, agent_key, job_key, run, account, scope, member)
             if not provider_key:
-                raise _Stop('FAILED', f'not made, no {outside.PROVIDERS[provider]["name"]} key: LARRYD holds none; nothing was sent')
+                raise _Stop('FAILED', f'not made, no {outside.PROVIDERS[provider]["name"]} key: FROST\'s vault handed none; nothing was sent')
             most = self.a_day.get(outside.MODELS[ask['model']]['kind'])
             if not (isinstance(most, int) and not isinstance(most, bool) and most >= 0 and member and agent_key):
                 raise _Stop('REFUSED', 'the day is not counted: no limit is set for this kind, or the member is not named; nothing was sent')
