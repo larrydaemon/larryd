@@ -32,6 +32,10 @@ if "written" not in given and search.get("act") == "bad":
     out["writes"] = json.loads(search.get("bad", "[]"))
 if "written" in given and search.get("again") == "1":
     out["writes"] = [{"do": "remove", "species": "opns", "key": "MOPN_000000000000_0000"}]
+if "written" in given and search.get("then") and len(given["written"]) == 1:   # the second run: an edit of the record this act just added, or of another
+    out["writes"] = [{"do": "edit", "species": "opns", "key": search.get("other") or given["written"][0]["key"], "values": {"data_meeting_zoom": search["then"]}}] * int(search.get("times", "1"))
+if "written" in given and search.get("then") and len(given["written"]) > 1:       # the third run asks once more: ignored
+    out["writes"] = [{"do": "edit", "species": "opns", "key": given["written"][0]["key"], "values": {"data_meeting_zoom": "a third round"}}]
 print(json.dumps(out))
 '''
 
@@ -196,6 +200,39 @@ class OnTheDevelopersRuntime(unittest.TestCase):
         out = self.ask(act='book', day='2026-10-07', topic='New', again='1').get_json()
         self.assertEqual(len(self.rows()), 2)   # the booking, and Kept still there: the second run's remove went nowhere
         self.assertNotIn('writes', out)
+
+    def test_the_second_run_may_edit_the_record_this_act_just_added_and_nothing_else(self):
+        """One round more (PF Virtual Wire's first message: the thread's record is added by its identity, read back, then written
+        into): an edit of a record whose add this same act carried is carried too, and a third and last run draws the truth."""
+        self.place({'opns': ['read', 'add', 'edit', 'remove']})
+        self.seed([{'MOPN_norm_key': 'MOPN_000000000001_0001', 'identity_operations_headline': 'Old'}])
+        out = self.ask(act='book', day='2026-10-07', topic='New', then='https://meet.example.org/a').get_json()
+        new = next(r for r in self.rows() if r['identity_operations_headline'] == 'New')
+        self.assertEqual(new['data_meeting_zoom'], 'https://meet.example.org/a')
+        self.assertEqual([(w['do'], w['key'], w['ok']) for w in out['written']], [('add', new['MOPN_norm_key'], True), ('edit', new['MOPN_norm_key'], True)])   # the third run: all of wid's words
+        self.assertNotIn('writes', out)                                              # and what the third run asks is never carried
+        self.assertNotIn('a third round', json.dumps(self.rows()))
+        # an edit of a record this act did not add: ignored, as every write on a second run was before
+        out = self.ask(act='book', day='2026-10-08', topic='Other', then='https://meet.example.org/b', other='MOPN_000000000001_0001').get_json()
+        self.assertEqual(len(out['written']), 1)
+        self.assertNotIn('data_meeting_zoom', next(r for r in self.rows() if r['identity_operations_headline'] == 'Old'))
+        # the act's own first write was an edit, not an add: no round more
+        out = self.ask(act='change', key='MOPN_000000000001_0001', topic='Older', then='https://meet.example.org/c').get_json()
+        self.assertEqual(len(out['written']), 1)
+        self.assertNotIn('data_meeting_zoom', next(r for r in self.rows() if r['identity_operations_headline'] == 'Older'))
+        # a page merely opened: neither round is carried
+        before = self.rows()
+        self.ask(confirmed=False, act='book', day='2026-10-09', topic='Opened', then='https://meet.example.org/d')
+        self.assertEqual(self.rows(), before)
+
+    def test_the_round_more_is_checked_as_the_first_was(self):
+        self.place({'opns': ['read', 'add']})   # edit is not declared: the second run's edit refuses the answer; the add stands and the record says so
+        self.seed([])
+        r = self.ask(act='book', day='2026-10-07', topic='New', then='https://meet.example.org/a')
+        self.assertEqual(r.status_code, 500)
+        self.assertIn('1 of 1 record write carried', r.get_json()['refused'])
+        self.assertIn('does not declare', r.get_json()['refused'])
+        self.assertNotIn('data_meeting_zoom', self.rows()[0])
 
     def test_the_call_is_recorded_with_the_writes_carried_and_no_data(self):
         self.place({'opns': ['read', 'add']})

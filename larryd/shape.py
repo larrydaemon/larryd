@@ -33,7 +33,7 @@ FIELDS = {
                'answer\'s "writes" to the platform\'s own record doors, only what is declared',
 }
 FIELDS['live'] = ('the agent\'s own live page (optional, only on an agent that answers calls): {"seats": 1 to 4}; its files sit in live/ beside '
-                  'agent/ (page.html, page.js, room.py, live.json) and LARRYD hands the call live = {"link": the page with the member\'s pass}')
+                  'agent/ (page.html, page.js, room.py, live.json) and LARRYD tells the call live = {"room": true}; the view holds one empty <div data-room></div>, and the address and the member\'s pass go to the platform alone')
 FIELDS['makes'] = ('what the agent asks LARRYD to have made by an outside model on a RUN (optional): a list of models on LARRYD\'s list, e.g. '
                    '["nano-banana-2"]; the agent never reaches out: its answer carries "makes": [one ask], LARRYD\'s own hand does the errand and '
                    'stores the file in the member\'s DA-M; the card\'s "sends_to" and "data_sent" must say where the words go')

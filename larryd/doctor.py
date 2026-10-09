@@ -544,7 +544,7 @@ def _live(root, card, c, where, f):
     if not (isinstance(asked, dict) and set(asked) == {'seats'} and isinstance(asked['seats'], int) and not isinstance(asked['seats'], bool) and low <= asked['seats'] <= high):
         f.add(c, where, f'"live" is not {{"seats": {low} to {high}}}', f'set "live" to {{"seats": N}}, N from {low} to {high}')
     if not card.get('calls'):
-        f.add(c, where, '"live" is declared, but "calls" is empty', 'the link to the live page is handed on a CALL (the member\'s screen): name the call in "calls", or take "live" out')
+        f.add(c, where, '"live" is declared, but "calls" is empty', 'the room is drawn on a CALL (the member\'s screen): name the call in "calls", or take "live" out')
     if (root / shape.AGENT / shape.LIVE).exists():
         f.add(c, _rel(root, root / shape.AGENT / shape.LIVE), 'agent/ holds something named live', 'that name is the live half\'s place in LARRYD\'s locker: rename it')
     half = root / shape.LIVE

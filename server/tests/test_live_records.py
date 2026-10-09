@@ -55,26 +55,66 @@ class TheDoor(unittest.TestCase):
         if hire:
             self.app.config['harness'].hire(preview.ACCOUNT, preview.SCOPE, preview.MEMBER, KEY_A, True)
 
-    def test_the_answer_carries_the_runtimes_own_frame(self):
-        """The live page inside the platform's page: the runtime's own field beside the view, a pass of its own; an agent with no live page has none."""
+    def test_the_answer_carries_the_runtimes_own_room(self):
+        """The room inside the platform's page: the runtime's own field beside the view, the room program's address and a pass of its own; an agent with no live half has none."""
         self.place()
         h = self.app.config['harness']
         out = h.answer(preview.ACCOUNT, preview.SCOPE, preview.MEMBER, KEY_A, beside={})
-        self.assertTrue(out['frame'].startswith('https://live.example.org/#'), out.get('frame'))
+        self.assertRegex(out['room'], r'^https://live\.example\.org/#[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$')
         again = h.answer(preview.ACCOUNT, preview.SCOPE, preview.MEMBER, KEY_A, beside={})
-        self.assertNotEqual(out['frame'], again['frame'])   # every pass opens once: each answer has its own
+        self.assertNotEqual(out['room'], again['room'])   # every pass opens once: each answer has its own
         self.assertEqual(out['view'], {'html': '<div>x</div>', 'css': ''})
+        self.assertNotIn('frame', out)
 
-    def test_no_frame_without_a_live_page_and_never_an_agents_own(self):
+    def test_the_agent_is_told_its_room_is_there_and_is_handed_no_address_and_no_pass(self):
+        """THE SECURITY REVIEW OF THE ROOM RULE (2026-10-08): an agent's markup is not trusted with a credential. The agent is told
+        only {"room": true}; the address and the pass go to the platform alone, in the runtime's own field."""
+        files = _agent({'sprt': ['read', 'add', 'edit']})
+        files['agent.py'] = b'import json, sys\ngiven = json.load(sys.stdin)\nprint(json.dumps({"said": json.dumps(given)}))\n'
+        files['agent.json'] = json.dumps({**json.loads(files['agent.json']), 'gives': ['said']}).encode()
+        self.client.post(f'/marketplace/place?key={KEY_A}', data=_zip(files), content_type='application/octet-stream', headers={'X-Larryd-Place': '1'})
+        h = self.app.config['harness']
+        h.hire(preview.ACCOUNT, preview.SCOPE, preview.MEMBER, KEY_A, True)
+        out = h.answer(preview.ACCOUNT, preview.SCOPE, preview.MEMBER, KEY_A, beside={})
+        handed = json.loads(out['said'])
+        self.assertEqual(handed['live'], {'room': True})
+        member_pass = out['room'].split('#', 1)[1]
+        self.assertNotIn('live.example.org', out['said'])   # no address
+        self.assertNotIn(member_pass, out['said'])           # no pass
+        self.assertNotIn(member_pass.split('.')[0][:24], out['said'])
+
+    def test_an_agent_with_a_live_page_is_handed_the_first_name_its_pass_carries(self):
+        """The messenger inside the page writes a message under the same name as the live page does: FROST's own first name, plain, or none."""
+        from core_engine import harness
+        files = _agent({'sprt': ['read', 'add', 'edit']})
+        files['agent.py'] = b'import json, sys\ngiven = json.load(sys.stdin)\nprint(json.dumps({"who": given.get("who")}))\n'
+        files['agent.json'] = json.dumps({**json.loads(files['agent.json']), 'gives': ['who']}).encode()
+        self.client.post(f'/marketplace/place?key={KEY_A}', data=_zip(files), content_type='application/octet-stream', headers={'X-Larryd-Place': '1'})
+        h = self.app.config['harness']
+        h.hire(preview.ACCOUNT, preview.SCOPE, preview.MEMBER, KEY_A, True)
+        self.assertEqual(h.answer(preview.ACCOUNT, preview.SCOPE, preview.MEMBER, KEY_A, beside={})['who'], {'member': preview.MEMBER})   # FROST handed no name: the key alone
+        real = harness.Harness._identity
+        try:
+            harness.Harness._identity = lambda self, account, scope, member: {'first_name': '  Uma  ', 'email': 'uma@example.org'}
+            self.assertEqual(h.answer(preview.ACCOUNT, preview.SCOPE, preview.MEMBER, KEY_A, beside={})['who'], {'member': preview.MEMBER, 'name': 'Uma'})   # the first name alone, nothing else of them
+            harness.Harness._identity = lambda self, account, scope, member: {'first_name': '<b>Uma</b>'}
+            self.assertEqual(h.answer(preview.ACCOUNT, preview.SCOPE, preview.MEMBER, KEY_A, beside={})['who'], {'member': preview.MEMBER})   # not plain: none
+        finally:
+            harness.Harness._identity = real
+
+    def test_no_room_without_a_live_half_and_never_an_agents_own(self):
         self.place(with_live=False)
-        self.assertNotIn('frame', self.app.config['harness'].answer(preview.ACCOUNT, preview.SCOPE, preview.MEMBER, KEY_A, beside={}))
-        files = _agent({'sprt': ['read', 'add', 'edit']}, with_live=False)
-        files['agent.py'] = b'import json, sys\njson.load(sys.stdin)\nprint(json.dumps({"view": {"html": "<div>x</div>"}, "frame": "https://elsewhere.example.org/"}))\n'
-        r = self.client.post(f'/marketplace/place?key={KEY_A}', data=_zip(files), content_type='application/octet-stream', headers={'X-Larryd-Place': '1'})
-        self.assertIn(r.status_code, (200, 201))
+        self.assertNotIn('room', self.app.config['harness'].answer(preview.ACCOUNT, preview.SCOPE, preview.MEMBER, KEY_A, beside={}))
         from core_engine import harness as lanes_harness
-        with self.assertRaises(lanes_harness.Refused):   # an agent's own "frame" is no field of an answer: the whole answer is refused
-            self.app.config['harness'].answer(preview.ACCOUNT, preview.SCOPE, preview.MEMBER, KEY_A, beside={})
+        for with_live in (False, True):
+            for gives in (['view'], ['view', 'room']):   # AN AGENT'S OWN "room" REFUSES THE WHOLE ANSWER, even when its manifest's "gives" names it, with a live half or without
+                files = _agent({'sprt': ['read', 'add', 'edit']}, with_live=with_live)
+                files['agent.py'] = b'import json, sys\njson.load(sys.stdin)\nprint(json.dumps({"view": {"html": "<div>x</div>"}, "room": "https://elsewhere.example.org/#a.b"}))\n'
+                files['agent.json'] = json.dumps({**json.loads(files['agent.json']), 'gives': gives}).encode()
+                r = self.client.post(f'/marketplace/place?key={KEY_A}', data=_zip(files), content_type='application/octet-stream', headers={'X-Larryd-Place': '1'})
+                self.assertIn(r.status_code, (200, 201))
+                with self.assertRaises(lanes_harness.Refused, msg=(with_live, gives)):
+                    self.app.config['harness'].answer(preview.ACCOUNT, preview.SCOPE, preview.MEMBER, KEY_A, beside={})
 
     def ask(self, do, signed=KEY, at=None, **more):
         body = json.dumps({**self.who, 'do': do, 'at': int(time.time()) if at is None else at, **more}).encode()

@@ -50,13 +50,16 @@ def _product(card):
     return ''.join(c for c in product.lower() if c.isalnum()) if isinstance(product, str) else ''
 
 
+RUNTIME_OWN = frozenset(('room',))   # THE RUNTIME'S OWN FIELDS OF AN ANSWER (the security review of the room rule, 2026-10-08): never an agent's word, whatever its "gives" names: an answer that holds one is refused whole
+
+
 def _outside_gives(manifest, answer):
     """What the manifest's "gives" names is all an answer may hold (as `larryd run` holds it on the developer's computer):
     -> '' when it holds nothing else, or why not, in the words the member's job log shows."""
     gives = manifest.get('gives')
     if not (isinstance(gives, list) and all(isinstance(g, str) for g in gives)):
         return 'the agent declares no "gives": nothing it answers can be delivered'
-    extra = sorted(set(answer) - set(gives))
+    extra = sorted(set(answer) - (set(gives) - RUNTIME_OWN))
     return f'the answer holds {extra}, which "gives" does not name' if extra else ''
 
 class _Stop(Exception):
@@ -210,10 +213,11 @@ class Harness:
         manifest = locker.manifest(self.agents, held['folder'])
         wanted = member_records.declared(manifest)   # THE MEMBER'S RECORDS: only what the approved manifest declares, read and written through wid's own doors
         given = {**beside, 'do': calls[0], 'cards': handed}
-        if live.declared(manifest):   # THE AGENT'S OWN LIVE PAGE: the runtime signs the member's pass and hands the finished link (the agent holds no secret)
-            door = live.link(account, member, agent_key, page=beside.get('page'), product=_product(card), who=self._identity(account, scope, member), scope=scope, via=self.caller)
-            if door:
-                given['live'] = {'link': door}
+        if live.declared(manifest) and live.settings()[1]:
+            # THE AGENT IS TOLD ONLY THAT ITS ROOM IS THERE (the security review of the room rule, 2026-10-08): never the room's address and never
+            # the member's pass. An agent's markup is not trusted with a credential: it draws one empty placeholder, and the address and the pass
+            # go to the platform in the runtime's own field beside the view (room, below), which no agent can write
+            given['live'] = {'room': True}
         starts = 'run' in (manifest.get('gives') or [])   # AN AGENT THAT STARTS ITS OWN RUN FROM ITS PAGE (the member's Generate): it names "run" in gives
         if starts and hasattr(self.records, 'recent'):
             given['runs'] = self.records.recent(agent_key, member, RUNS_HANDED)   # what became of the member's last RUNs of it: the run's number, its state, the runtime's own code and the time; never an input or a delivery
@@ -222,6 +226,13 @@ class Harness:
             if wanted:
                 given['records'] = member_records.read(self._ask, wanted, account, scope, member, agent_key)
                 given['who'] = {'member': member}   # WHO THE RECORDS ARE FOR: the member's own key, so an agent can tell their own rows (system_member_roles) from the account's; nothing else of them
+                if live.declared(manifest):
+                    # AN AGENT WITH A LIVE PAGE IS HANDED THE FIRST NAME ITS OWN PASS ALREADY CARRIES (PF Virtual Wire, 2026-10-08: the messenger
+                    # is inside the page now, and a message written there wears the same name as one written on the live page): FROST's own
+                    # word, plain, or none; an agent without a live page is handed the key alone, as before
+                    name = live._plain(self._identity(account, scope, member).get('first_name'), 40)
+                    if name:
+                        given['who']['name'] = name
         except Refused as no:   # THE PLATFORM DID NOT HAND THEM (a slot without the record doors yet, a member not allowed, wid away): the agent is handed none
             not_read = 'records not read'   # and says so on its page; nothing is guessed, nothing is written without them. THE RECORD KEEPS THE RUNTIME'S OWN WORDS ONLY:
             LOG.warning('records not read for %s: %s', agent_key, no.reason)   # the platform's refusal text goes to the log, never into the audit row (fixed words, never cut, nothing written by another)
@@ -259,22 +270,24 @@ class Harness:
         answer, why = view.checked(answer, path if isinstance(path, str) else '')   # the agent's own view, passed on only when it holds nothing that runs or reaches out
         if why:
             LOG.warning('view dropped for %s: %s', agent_key, why)
-        answer.pop('frame', None)   # never an agent's word: the one address a page may frame is the runtime's own, below
+        answer.pop('room', None)   # never an agent's word (an answer that held one was refused above: RUNTIME_OWN); the runtime's own, below
         out = {'agent_key': agent_key, 'title': card['name'], **answer}
         if live.declared(manifest):
-            # THE LIVE PAGE INSIDE THE PLATFORM'S PAGE (the owner, 2026-10-08: "all the agents are inside ... whats the point of an api if its not in the
-            # platform"): the runtime's OWN field beside the view, the address of the agent's live page with a pass of its own (never the door link's pass:
-            # each pass opens once). A host that frames places it; a host that does not (a device) draws the view, whose door still opens the page
-            frame = live.link(account, member, agent_key, page=beside.get('page'), product=_product(card), who=self._identity(account, scope, member), scope=scope, via=self.caller)
-            if frame:
-                out['frame'] = frame
+            # THE ROOM INSIDE THE PLATFORM'S PAGE (the owner, 2026-10-08: "inside the page but as a regular inject like all the other agents"): the
+            # runtime's OWN field beside the view, "<the room program's address>/#<the member's pass>", signed here for the member the platform named,
+            # each pass good once. The platform checks the address against its own list and hands both to its own script (wid: THE HOST'S ROOM RULE);
+            # the agent's view holds only an empty placeholder and never sees either. No page frames anything
+            room = live.link(account, member, agent_key, page=beside.get('page'), product=_product(card), who=self._identity(account, scope, member), scope=scope, via=self.caller)
+            if room:
+                out['room'] = room
         return out
 
     def _written(self, held, manifest, wanted, given, answer, account, scope, member, agent_key=''):
         """THE WRITES AN ANSWER ASKS FOR: checked against the declaration (one fault refuses them all), carried to wid's own
         doors for this member, then the agent runs ONCE MORE on the same page with the records as they are now and
         written = what wid said of each, so the page shows the truth (a new record with its key, a refused write said);
-        writes on that second run are ignored. -> (state, answer, reason)."""
+        writes on that second run are ignored, but for edits of a record this same act just added (one round more, below).
+        -> (state, answer, reason)."""
         if not wanted:
             return 'FAILED', None, 'the answer carries writes, but the manifest declares no records'
         writes, why = member_records.check(answer['writes'], wanted)
@@ -293,6 +306,31 @@ class Harness:
             return 'FAILED', None, f'{carried}; the second run: {outside}'
         if state != 'DONE':
             return state, None, f'{carried}; the second run: {reason}'
+        # ONE ROUND MORE, FOR A RECORD THIS ACT ITSELF JUST ADDED (PF Virtual Wire, 2026-10-08: the thread's record is added by its
+        # identity only, the member's own list is read back, and only then is the first message written into it): the second run may
+        # ask for EDITS OF A RECORD WHOSE ADD THIS SAME ACT CARRIED (its key as wid answered it), nothing else. They are checked and
+        # carried as the first were, and the agent runs a third and last time on the records as they are now, with written = all of
+        # them. Any other write on the second run is ignored as before, and every write on the third.
+        made = {w['key'] for w in written if w['do'] == 'add' and w['ok'] and w['key']}
+        more = answer.get('writes')
+        if not (made and isinstance(more, list) and more and all(isinstance(w, dict) and w.get('do') == 'edit' and w.get('key') in made for w in more)):
+            return 'DONE', answer, carried
+        writes, why = member_records.check(more, wanted)
+        if why:
+            return 'FAILED', None, f'{carried}; the second run: {why}'
+        written = written + member_records.carry(self.client.post, writes, account, scope, member, agent_key)
+        carried = f'{sum(1 for w in written if w["ok"])} of {len(written)} record write{"" if len(written) == 1 else "s"} carried'
+        try:
+            given = {**given, 'records': member_records.read(self._ask, wanted, account, scope, member, agent_key), 'written': written}
+        except Refused as no:
+            LOG.warning('records not read back: %s', no.reason)
+            return 'FAILED', None, f'{carried}; the records could not be read back'
+        state, answer, reason = sandbox.run(self.agents / held['folder'], manifest['entry'], given, self.seconds, on_start=self.on_start)
+        outside = _outside_gives(manifest, answer) if state == 'DONE' else ''
+        if outside:
+            return 'FAILED', None, f'{carried}; the third run: {outside}'
+        if state != 'DONE':
+            return state, None, f'{carried}; the third run: {reason}'
         return 'DONE', answer, carried
 
     @staticmethod

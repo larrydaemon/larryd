@@ -1,11 +1,13 @@
 """THE LIVE PAGE'S PASS (the owner, 2026-10-08: "it runs outside the core with an agent"; "secure with our own frost identity").
 An agent whose approved manifest declares "live" has a live page of its own, served by its own room program outside the
-platform. The agent holds no secret; LARRYD does: on a CALL the runtime signs a PASS for the member the platform named and
-hands the agent the finished link, `live = {"link": "<the live page>/#<pass>"}`. The pass says who (account, member, first
+platform. The agent holds no secret and is handed none; LARRYD does: on a CALL the runtime signs a PASS for the member the
+platform named and answers the PLATFORM, in its own field beside the agent's view, `room = "<the room program>/#<pass>"`; the
+agent itself is told only `live = {"room": true}` (2026-10-08, the security review: an agent's markup carries no address and
+no pass). The pass says who (account, member, first
 name), for which agent, the member's company, email and website when FROST hands them, how the page is worn (theme, mode), when it ends (ten minutes) and a number that makes it good once.
 It rides after the # of the link: never in a request line, never in a server's log. The room program checks it with the same
 key. Settings, by the environment: LARRYD_LIVE_ADDRESS (https, a named host) and LARRYD_LIVE_KEY_FILE (the key's file).
-With either missing the agent is handed no link, and says so on its page: nothing is shown that does not work."""
+With either missing the agent is told of no room and the platform is handed none: nothing is shown that does not work."""
 import base64
 import hashlib
 import hmac
@@ -61,8 +63,8 @@ def _plain(value, most):
 
 
 def link(account, member, agent_key, name='', page=None, product='', environ=None, now=None, who=None, scope='', via=''):
-    """The link an agent that declares "live" is handed for this member, or '' when the live page is not set up or the
-    platform's own words for the member are not plain keys."""
+    """The room's address with a pass for this member, for the runtime's own answer field of an agent that declares "live" (never
+    handed to the agent), or '' when the room is not set up or the platform's own words for the member are not plain keys."""
     address, key = settings(environ)
     if not key or not all(isinstance(x, str) and PLAIN.fullmatch(x) for x in (account, member, agent_key)):
         return ''

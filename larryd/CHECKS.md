@@ -26,7 +26,7 @@ The doctor checks what the manifest declares. When the agent runs, the runtime h
 - **`inputs`**: the job's inputs reach it only by the names and slots declared.
 - **`records`**: on a CALL it is handed the member's records of the declared species only, and an answer's writes are carried only for a declared species and verb; one undeclared write refuses the whole answer, nothing is carried.
 - **the live half**: packed with the agent, inside the code's hash, verified with it before every call; its room program's asks of the member's records are carried only for a species and verb the manifest declares, for a member who hired the agent.
-- **`live`**: on a CALL it is handed `live = {"link"}`: its own live page with a pass LARRYD signed for the member, good once and for ten minutes. The agent holds no secret; without the live page set up it is handed no link.
+- **`live`**: on a CALL it is told `live = {"room": true}` and nothing more: no address, no pass. Its view holds one empty `<div data-room></div>`; LARRYD signs the member's pass (good once, ten minutes) and hands it with the room's address to the platform alone, in its own `room` field beside the view. The agent holds no secret; without the room set up it is told of none.
 - **`skills`**: only declared skills are carried out. An answer that carries files is refused unless the agent declares the DA-M store.
 - **`calls`**: only an agent that declares `calls` answers on a member's screen.
 - **`gives`**: an answer that holds anything `gives` does not name is refused, enforced by `larryd run` and by LARRYD's runtime: the run fails, nothing is delivered, nothing is charged.

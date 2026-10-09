@@ -156,11 +156,13 @@ and put the live half in `live/` beside `agent/`, these four files and nothing e
 The page's own rules are written in the page, as every agent's are: ONE plain `<style>` block in `page.html`, rules only,
 every colour a theme variable such as `var(--active-color-01)`, no `url()`, no `@import`. There is no sheet file.
 
-On a CALL LARRYD hands the agent `live = {"link": "https://<the live page>/#<pass>"}`. The pass is signed by LARRYD for the
-member the platform named (the account, the member, a first name, the theme), good once and for ten minutes; the agent
-holds no secret. The agent's view draws the link as a link out (`target="_blank" rel="noopener noreferrer"`). Handed no
-link, it says the page is away and draws no button. The doctor checks the live half with the agent, and it is approved
-with the agent.
+On a CALL LARRYD tells the agent only that its room is there: `live = {"room": true}`. The agent is handed no address and
+no pass, and holds no secret. Its view marks where the room goes with ONE empty element, `<div data-room></div>`, and
+nothing else: no link out, no frame. LARRYD signs the pass for the member the platform named (the account, the member, a
+first name, the theme), good once and for ten minutes, and answers the platform in its own field beside the view,
+`room = "https://<the room program>/#<pass>"`; an agent's own `room` refuses its whole answer. The platform checks the
+address against its own list and draws the room inside the page with its own script. Told of no room, the agent draws no
+placeholder. The doctor checks the live half with the agent, and it is approved with the agent.
 
 The live half is part of the agent: `larryd submit` packs it with `agent/` (under `live/` in the file), its bytes are in
 the code's hash, and a changed live page is a changed agent, reviewed again.
