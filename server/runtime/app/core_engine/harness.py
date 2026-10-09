@@ -50,7 +50,7 @@ def _product(card):
     return ''.join(c for c in product.lower() if c.isalnum()) if isinstance(product, str) else ''
 
 
-RUNTIME_OWN = frozenset(('room',))   # THE RUNTIME'S OWN FIELDS OF AN ANSWER (the security review of the room rule, 2026-10-08): never an agent's word, whatever its "gives" names: an answer that holds one is refused whole
+RUNTIME_OWN = frozenset(('room', 'frame'))   # THE RUNTIME'S OWN FIELDS OF AN ANSWER (the security review of the room rule, 2026-10-08): never an agent's word, whatever its "gives" names: an answer that holds one is refused whole
 
 
 def _outside_gives(manifest, answer):
@@ -271,6 +271,7 @@ class Harness:
         answer, why = view.checked(answer, path if isinstance(path, str) else '')   # the agent's own view, passed on only when it holds nothing that runs or reaches out
         if why:
             LOG.warning('view dropped for %s: %s', agent_key, why)
+        answer.pop('frame', None)   # the field's first name (the frame attempt, 2026-10-08): never an agent's word either, whatever an old host reads
         answer.pop('room', None)   # never an agent's word (an answer that held one was refused above: RUNTIME_OWN); the runtime's own, below
         out = {'agent_key': agent_key, 'title': card['name'], **answer}
         if live.declared(manifest):
@@ -319,7 +320,11 @@ class Harness:
         writes, why = member_records.check(more, wanted)
         if why:
             return 'FAILED', None, f'{carried}; the second run: {why}'
-        written = written + member_records.carry(self.client.post, writes, account, scope, member, agent_key)
+        try:   # THE RECORD SAYS WHAT WAS WRITTEN, whatever happens in this round (the commit's security review, 2026-10-08): the first writes are on the platform now, so a fault carrying the second never leaves the run without its word
+            written = written + member_records.carry(self.client.post, writes, account, scope, member, agent_key)
+        except (OSError, ValueError, KeyError, Refused) as no:
+            LOG.warning('the second round of writes was not carried: %s', no)
+            return 'FAILED', None, f'{carried}; the second round of writes could not be carried'
         carried = f'{sum(1 for w in written if w["ok"])} of {len(written)} record write{"" if len(written) == 1 else "s"} carried'
         try:
             given = {**given, 'records': member_records.read(self._ask, wanted, account, scope, member, agent_key), 'written': written}
