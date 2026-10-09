@@ -248,6 +248,25 @@ class TheRun(World):
             self.assertIn(said, self.results(p)[-1]['log'])
             self.assertEqual((provider.asked, [r for _o, r, _d in p.said if r in ('/dam/upload', '/agnt/records/add')]), ([], []))
 
+    def test_a_carried_file_never_takes_a_made_files_record(self):
+        """A carried file named as the made one WILL be named (its ask's name plus the kind that came back) is refused before anything
+        is charged or stored: a record's key is never put on another file than the one its keep means."""
+        wav = base64.b64encode(b'RIFF0000WAVEfmt ').decode()
+        answer = {'files': [{'name': 'A red fox.png', 'content_b64': wav}], 'makes': [ASK], 'keeps': [{'species': 'imgs', 'file': 'A red fox', 'values': {'data_nickname': 'x'}}], 'delivery': 'm'}
+        self.placed(answer, {**self.DECLARED, 'skills': [STORE]}, ('files', 'makes', 'keeps', 'delivery'))
+        p = Platform()
+        self.assertEqual(self.run_with(p), 'FAILED')
+        self.assertIn('stored under one name', self.results(p)[-1]['log'])
+        self.assertEqual([r for _o, r, _d in p.said if r in ('/dam/upload', '/agnt/records/add', '/mtok/use')], [])
+
+    def test_a_kept_file_and_another_go_each_to_its_own_place(self):
+        wav = base64.b64encode(b'RIFF0000WAVEfmt ').decode()
+        answer = {'files': [{'name': 'Notes.wav', 'content_b64': wav}], 'makes': [ASK], 'keeps': [{'species': 'imgs', 'file': 'A red fox', 'values': {'data_nickname': 'x'}}], 'delivery': 'm'}
+        self.placed(answer, {**self.DECLARED, 'skills': [STORE]}, ('files', 'makes', 'keeps', 'delivery'))
+        p = Platform()
+        self.assertEqual(self.run_with(p), 'DONE')
+        self.assertEqual({d['name']: d['source_key'] for _o, r, d in p.said if r == '/dam/upload'}, {'Notes.wav': KEY, 'A red fox.png': 'MIMG_0123456789AB_0002'})   # the kept one under its record, the other under the agent's card
+
     def test_a_file_dam_refuses_leaves_no_record_in_silence(self):
         self.placed(self.ANSWER, self.DECLARED, ('makes', 'keeps', 'delivery'))
 
