@@ -83,5 +83,15 @@ class ThePass(unittest.TestCase):
         self.assertEqual((facts['theme'], facts['mode']), ('', 'dark'))
 
 
+class AViewIsPassedOnWithBothTexts(unittest.TestCase):
+    """A view the agent hands with markup and no sheet goes on as {html, css}: the platform's gate reads both texts and places nothing without them."""
+    def test_markup_alone(self):
+        from core_engine import view
+        answer, why = view.checked({'open': True, 'view': {'html': '<div class="body">Door</div>'}})
+        self.assertEqual((why, answer['view']), ('', {'html': '<div class="body">Door</div>', 'css': ''}))
+        answer, why = view.checked({'view': {'html': '<div class="body">Door</div>', 'css': '.a { color: red; }'}})
+        self.assertEqual((why, answer['view']['css']), ('', '.a { color: red; }'))
+
+
 if __name__ == '__main__':
     unittest.main()

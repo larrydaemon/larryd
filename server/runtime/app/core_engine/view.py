@@ -193,4 +193,6 @@ def checked(answer, path=''):
     why = refused(answer['view'], path)
     if why:
         answer = {k: v for k, v in answer.items() if k != 'view'}
+    else:   # PASSED ON WHOLE, both texts always there (PF Virtual Wire, 2026-10-08: its door handed markup and no sheet, the platform's own gate reads a view as {html, css} and placed nothing)
+        answer = {**answer, 'view': {'html': answer['view'].get('html', ''), 'css': answer['view'].get('css', '')}}
     return answer, why
