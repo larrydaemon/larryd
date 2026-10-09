@@ -259,7 +259,16 @@ class Harness:
         answer, why = view.checked(answer, path if isinstance(path, str) else '')   # the agent's own view, passed on only when it holds nothing that runs or reaches out
         if why:
             LOG.warning('view dropped for %s: %s', agent_key, why)
-        return {'agent_key': agent_key, 'title': card['name'], **answer}
+        answer.pop('frame', None)   # never an agent's word: the one address a page may frame is the runtime's own, below
+        out = {'agent_key': agent_key, 'title': card['name'], **answer}
+        if live.declared(manifest):
+            # THE LIVE PAGE INSIDE THE PLATFORM'S PAGE (the owner, 2026-10-08: "all the agents are inside ... whats the point of an api if its not in the
+            # platform"): the runtime's OWN field beside the view, the address of the agent's live page with a pass of its own (never the door link's pass:
+            # each pass opens once). A host that frames places it; a host that does not (a device) draws the view, whose door still opens the page
+            frame = live.link(account, member, agent_key, page=beside.get('page'), product=_product(card), who=self._identity(account, scope, member), scope=scope, via=self.caller)
+            if frame:
+                out['frame'] = frame
+        return out
 
     def _written(self, held, manifest, wanted, given, answer, account, scope, member, agent_key=''):
         """THE WRITES AN ANSWER ASKS FOR: checked against the declaration (one fault refuses them all), carried to wid's own

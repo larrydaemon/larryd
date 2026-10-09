@@ -55,6 +55,27 @@ class TheDoor(unittest.TestCase):
         if hire:
             self.app.config['harness'].hire(preview.ACCOUNT, preview.SCOPE, preview.MEMBER, KEY_A, True)
 
+    def test_the_answer_carries_the_runtimes_own_frame(self):
+        """The live page inside the platform's page: the runtime's own field beside the view, a pass of its own; an agent with no live page has none."""
+        self.place()
+        h = self.app.config['harness']
+        out = h.answer(preview.ACCOUNT, preview.SCOPE, preview.MEMBER, KEY_A, beside={})
+        self.assertTrue(out['frame'].startswith('https://live.example.org/#'), out.get('frame'))
+        again = h.answer(preview.ACCOUNT, preview.SCOPE, preview.MEMBER, KEY_A, beside={})
+        self.assertNotEqual(out['frame'], again['frame'])   # every pass opens once: each answer has its own
+        self.assertEqual(out['view'], {'html': '<div>x</div>', 'css': ''})
+
+    def test_no_frame_without_a_live_page_and_never_an_agents_own(self):
+        self.place(with_live=False)
+        self.assertNotIn('frame', self.app.config['harness'].answer(preview.ACCOUNT, preview.SCOPE, preview.MEMBER, KEY_A, beside={}))
+        files = _agent({'sprt': ['read', 'add', 'edit']}, with_live=False)
+        files['agent.py'] = b'import json, sys\njson.load(sys.stdin)\nprint(json.dumps({"view": {"html": "<div>x</div>"}, "frame": "https://elsewhere.example.org/"}))\n'
+        r = self.client.post(f'/marketplace/place?key={KEY_A}', data=_zip(files), content_type='application/octet-stream', headers={'X-Larryd-Place': '1'})
+        self.assertIn(r.status_code, (200, 201))
+        from core_engine import harness as lanes_harness
+        with self.assertRaises(lanes_harness.Refused):   # an agent's own "frame" is no field of an answer: the whole answer is refused
+            self.app.config['harness'].answer(preview.ACCOUNT, preview.SCOPE, preview.MEMBER, KEY_A, beside={})
+
     def ask(self, do, signed=KEY, at=None, **more):
         body = json.dumps({**self.who, 'do': do, 'at': int(time.time()) if at is None else at, **more}).encode()
         r = self.client.post('/api/live/records', data=body, headers={'X-Talk-Mark': live.mark(signed.encode(), body), 'Content-Type': 'application/json'})
