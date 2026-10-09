@@ -433,15 +433,46 @@ class Harness:
         return done
 
     def defaults(self, account, scope, member, board):
-        """A board's first visit (the platform asks once): the marketplace is placed on its own screen, when it may be shown."""
+        """A board's first visit (the platform asks once, when the member's board is born): the marketplace is placed on its
+        own screen, as before, AND EVERY DEFAULT AGENT OF THIS BOARD (the owner, 2026-10-09: "a few agents will be turned on as
+        default when new users come in so its not blank and empty"): a card the system owner marked on by default (the card's
+        own default, the platform's word, never the agent's manifest) whose screen is this board, shown (APPROVED, in the
+        locker, FROST's exact hashes), not offline for this account, hireable and not hired. Each goes through the platform's
+        same hire door (its own decision for this member stands: a refusal there skips the card, nothing else) and leaves the
+        same hire record. A CARD THAT NAMES AN OUTSIDE AI SERVICE IS NEVER PLACED BY DEFAULT: the member's own hire is the
+        permission for that. Nothing is kept here: "once" is the platform's (a board is born once), so an agent a member
+        let go does not come back. -> {placed: [keys], skipped: [{agent_key, why}]}."""
         key = self.marketplace_key()
         cards, hired, groups, verify = self.facts(account, scope, member)
-        card = self._card(lanes.assemble(cards, hired, groups, verify), key)
-        if card is None or card['screen'] != board or card['hired'] or not card['hireable']:
-            return {'placed': []}
-        self._ask('wid', 'POST', '/agnt/hire', {'account': account, 'scope': scope, 'member': member, 'agent_key': key})
-        self._record('hire', key, 'ON', account=account, member=member)
-        return {'placed': [key]}
+        placed, skipped, refused = [], [], None
+        for card in lanes.assemble(cards, hired, groups, verify):
+            mine = card['key'] == key
+            if card['screen'] != board or not (mine or card.get('default') is True):
+                continue
+            if card['hired']:
+                continue   # theirs already: nothing to place, nothing to say
+            if not card['hireable']:
+                skipped.append({'agent_key': card['key'], 'why': card['reason'] or 'not hireable'})
+                continue
+            if not mine and card.get('offline') is True:   # an offline agent is never hired (hire, above)
+                skipped.append({'agent_key': card['key'], 'why': 'offline'})
+                continue
+            if not mine and str(card.get('sends_to') or '').strip():
+                skipped.append({'agent_key': card['key'], 'why': 'it names an outside AI service: the member hires it themselves'})
+                continue
+            try:
+                self._ask('wid', 'POST', '/agnt/hire', {'account': account, 'scope': scope, 'member': member, 'agent_key': card['key']})
+            except Refused as no:
+                if mine:
+                    refused = no   # the marketplace as before: its refusal is the answer, said once the board's other defaults are placed (a board is born once)
+                    continue
+                skipped.append({'agent_key': card['key'], 'why': no.reason})
+                continue
+            self._record('hire', card['key'], 'ON', account=account, member=member)
+            placed.append(card['key'])
+        if refused is not None:
+            raise refused
+        return {'placed': placed, 'skipped': skipped}
 
     # ---------------------------------------------------------------- the JOB lane: a RUN, pushed by the platform
     def _result(self, account, scope, job_key, run, state, log, delivery=''):
