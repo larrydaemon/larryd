@@ -188,8 +188,10 @@ class Hand:
         except ValueError:
             return False
         host = (parts.hostname or '').lower()
-        return (parts.scheme == 'https' and not parts.username and not parts.password and port is None
-                and any(host.endswith(h) or host == h.lstrip('.') for h in hosts))   # the delivery host itself (replicate.delivery) or a name under it or address.startswith(tuple(h for h in hosts if h.startswith('http://127.0.0.1:')))
+        if parts.scheme == 'https' and not parts.username and not parts.password and port is None:
+            return any(host.endswith(h) or host == h.lstrip('.') for h in hosts if h.startswith('.'))   # the delivery host itself (replicate.delivery) or a name under it
+        # A STAND-IN PROVIDER ON THIS MACHINE (the lab, a test): its whole origin, named at the runtime's own start (places), loopback only; the list itself names none
+        return any(h.startswith('http://127.0.0.1:') and address.startswith(h) for h in hosts)
 
     def fetch(self, ask, address):
         """-> (bytes, its kind, '') or (b'', '', why): only from the provider's delivery hosts, cut at the model's size, and it must be

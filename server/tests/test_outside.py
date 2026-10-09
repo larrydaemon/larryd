@@ -238,6 +238,35 @@ class TheRun(World):
         self.assertEqual((added['segment'], added['values']['identity_dam_file']), ('audo', 'DA-M_' + hashlib.sha256(b'RIFF0000WAVEfmt ').hexdigest().upper()[:12]))
         self.assertEqual(next(d for _o, r, d in p.said if r == '/dam/upload')['source_key'], 'MIMG_0123456789AB_0002')
 
+    def test_one_name_one_file_one_record(self):
+        wav = base64.b64encode(b'RIFF0000WAVEfmt ').decode()
+        for answer, said in (({'files': [{'name': 'A red fox', 'content_b64': wav}], 'makes': [ASK], 'keeps': [{'species': 'imgs', 'file': 'A red fox', 'values': {'data_nickname': 'x'}}], 'delivery': 'm'}, 'share one name'),
+                             ({**self.ANSWER, 'keeps': [self.ANSWER['keeps'][0], {'species': 'imgs', 'file': 'A red fox', 'values': {'data_nickname': 'twice'}}]}, 'one file, one record')):
+            self.placed(answer, {**self.DECLARED, 'skills': [STORE]}, ('files', 'makes', 'keeps', 'delivery'))
+            p, provider = Platform(), Provider()
+            self.assertEqual(self.run_with(p, provider), 'FAILED')
+            self.assertIn(said, self.results(p)[-1]['log'])
+            self.assertEqual((provider.asked, [r for _o, r, _d in p.said if r in ('/dam/upload', '/agnt/records/add')]), ([], []))
+
+    def test_a_file_dam_refuses_leaves_no_record_in_silence(self):
+        self.placed(self.ANSWER, self.DECLARED, ('makes', 'keeps', 'delivery'))
+
+        class NoRoom(Platform):
+            def post(self, office, route, data):
+                if route == '/dam/upload':
+                    self.said.append((office, route, data))
+                    return 413, {'refused': 'larger than the zone takes'}
+                if route == '/agnt/records/remove':
+                    self.said.append((office, route, data))
+                    return self.back, ({'removed': data.get('key')} if self.back == 200 else {'refused': 'not in the records that agent declares'})
+                return super().post(office, route, data)
+        for back, said in ((200, 'its record was taken back'), (403, 'ITS RECORD MIMG_0123456789AB_0002 STANDS WITHOUT ITS FILE')):
+            p = NoRoom()
+            p.back = back
+            self.assertEqual(self.run_with(p), 'FAILED')
+            self.assertIn(said, self.results(p)[-1]['log'])
+            self.assertEqual(next(d for _o, r, d in p.said if r == '/agnt/records/remove')['key'], 'MIMG_0123456789AB_0002')
+
     def test_a_record_the_platform_refuses_fails_the_run_and_says_so(self):
         self.placed(self.ANSWER, self.DECLARED, ('makes', 'keeps', 'delivery'))
         p = Platform(add=403)

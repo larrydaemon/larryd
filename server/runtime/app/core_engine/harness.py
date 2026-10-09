@@ -440,7 +440,7 @@ class Harness:
         # under its record's key. A record the platform refuses: nothing is stored.
         record_of, kept_note = {}, ''   # {the file's name: its record's key}
         if keeps:
-            by_name = {name: f for f in files for name in (f['name'], f.get('asked_as')) if name}   # a made file is kept by the name its ask gave it (the agent cannot know which kind of picture came back)
+            by_name = {(f.get('asked_as') or f['name']): f for f in files}   # a made file is kept by the name its ask gave it (the agent cannot know which kind of picture came back), a carried one by its own; _keeps held them one to one
             companion = lambda f: 'DA-M_' + hashlib.sha256(base64.b64decode(f['content_b64'])).hexdigest().upper()[:12]
             writes = [{'do': 'add', 'species': k['species'], 'key': '', 'values': {**k['values'], 'identity_dam_file': companion(by_name[k['file']])}} for k in keeps]
             written = member_records.carry(self.client.post, writes, account, scope, member, key)
@@ -453,8 +453,15 @@ class Harness:
             status, stored = self.client.post('so', '/dam/upload', {'account': account, 'scope': scope, 'member': member, 'job_key': job_key, 'run': str(run), 'name': f['name'],
                                                                    'content_b64': f['content_b64'], 'source_key': record_of.get(f['name'], key)})   # its record's key; a file no record keeps: the agent's card, as before
             if status != 200:
+                # A RECORD WHOSE FILE DID NOT ARRIVE IS TAKEN BACK when the platform lets the agent (its card declares remove); either way the RUN says
+                # plainly what stands: never a record left behind in silence
+                left = ''
+                if f['name'] in record_of:
+                    back = member_records.carry(self.client.post, [{'do': 'remove', 'species': next(k['species'] for k in keeps if by_name[k['file']]['name'] == f['name']),
+                                                                   'key': record_of[f['name']], 'values': {}}], account, scope, member, key)
+                    left = '; its record was taken back' if back and back[0]['ok'] else f"; ITS RECORD {record_of[f['name']]} STANDS WITHOUT ITS FILE"
                 return self._end(account, scope, member, key, job_key, run, 'FAILED',
-                                 f"{paid}{kept_note}, but DA-M did not store the files: {stored.get('refused') or stored.get('error') or f'DA-M answered {status}'}", charged=charged)
+                                 f"{paid}{kept_note}, but DA-M did not store the files{left}: {stored.get('refused') or stored.get('error') or f'DA-M answered {status}'}", charged=charged)
         kept = {k: v for k, v in answer.items() if k not in ('files', 'makes', 'keeps')}
         delivery = answer.get('delivery') if isinstance(answer.get('delivery'), str) else json.dumps(kept, sort_keys=True)
         stored_note = f" · {len(files)} file{'' if len(files) == 1 else 's'} in DA-M" if files else ''
@@ -532,14 +539,18 @@ class Harness:
         _writes, why = member_records.check([{'do': 'add', 'species': k['species'], 'values': k['values']} for k in keeps], wanted)
         if why:
             raise _Stop('FAILED', f'not kept: {why}; nothing was sent')
-        carried = {f['name'] for f in files}
-        asked = {a['name'] for a in asks}
-        out = []
+        names = [f['name'] for f in files] + [a['name'] for a in asks]   # a carried file by its own name, a made one by its ask's name
+        if len(set(names)) != len(names):
+            raise _Stop('FAILED', 'two files of this run share one name: a record could not tell which is its own; nothing was sent')   # ONE NAME, ONE FILE: a keep never lands on another file than the one it names
+        out, kept = [], set()
         for n, k in enumerate(keeps, 1):
             if 'identity_dam_file' in k['values']:
                 raise _Stop('FAILED', f'keep {n} names the file\'s own key, which is LARRYD\'s to fill; nothing was sent')
-            if not (isinstance(k['file'], str) and (k['file'] in carried or k['file'] in asked)):
+            if not (isinstance(k['file'], str) and k['file'] in names):
                 raise _Stop('FAILED', f'keep {n} names a file this run does not store; nothing was sent')
+            if k['file'] in kept:
+                raise _Stop('FAILED', f'keep {n} names a file another keep already holds: one file, one record; nothing was sent')
+            kept.add(k['file'])
             out.append({'species': k['species'], 'values': k['values'], 'file': k['file']})
         return out
 
