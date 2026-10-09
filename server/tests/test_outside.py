@@ -294,6 +294,40 @@ class TheRun(World):
         self.assertNotIn('/dam/upload', [r for _o, r, _d in p.said])   # a record the platform refuses: nothing is stored
 
 
+class TheRunInFlight(World):
+    """A RUN the runtime took is STARTED until it ends: its agent's page is told of it meanwhile (running), and what the page
+    is told of ENDED runs (runs) never holds a start."""
+    def test_a_started_run_is_in_flight_until_it_ends_and_never_among_the_ended(self):
+        h = harness.Harness(self.db, self.agents, Platform())
+        self.assertEqual((h.records.in_flight(KEY, MEMBER), h.records.recent(KEY, MEMBER, 5)), ([], []))
+        h.started(KEY, JOB, 3, ACCOUNT, MEMBER)
+        h.started(KEY, JOB, 3, ACCOUNT, MEMBER)   # written once, however often it is said
+        self.assertEqual([r['run'] for r in h.records.in_flight(KEY, MEMBER)], [3])
+        self.assertEqual(h.records.recent(KEY, MEMBER, 5), [])                      # a start is not an end
+        self.assertEqual(h.records.in_flight(KEY, 'MCON_' + 'C' * 12 + '_0003'), [])   # another member's page is told nothing of it
+        h._record('job', KEY, 'DONE', '', JOB, 3, account=ACCOUNT, member=MEMBER)
+        self.assertEqual((h.records.in_flight(KEY, MEMBER), [r['state'] for r in h.records.recent(KEY, MEMBER, 5)]), ([], ['DONE']))
+
+    def test_a_run_lost_on_the_way_is_not_in_flight_for_ever(self):
+        h = harness.Harness(self.db, self.agents, Platform())
+        h.started(KEY, JOB, 4, ACCOUNT, MEMBER)
+        con = sqlite3.connect(self.db)
+        con.execute("UPDATE runtime_runs SET started_at = '2020-01-01T00:00:00+00:00' WHERE state = 'STARTED'")
+        con.commit()
+        con.close()
+        self.assertEqual(h.records.in_flight(KEY, MEMBER), [])
+
+    def test_a_whole_run_starts_and_ends(self):
+        self.agent([], answer={'delivery': 'done'}, gives=('delivery',))
+        h = harness.Harness(self.db, self.agents, Platform())
+        h.facts = lambda account, scope, member: ([CARD], HIRED, [], lambda k: (True, ''))
+        self.assertEqual(h.run_job(ACCOUNT, SCOPE, MEMBER, JOB, 1), 'DONE')
+        con = sqlite3.connect(self.db)
+        states = [r[0] for r in con.execute("SELECT state FROM runtime_runs WHERE lane = 'job' ORDER BY id")]
+        con.close()
+        self.assertEqual((states, h.records.in_flight(KEY, MEMBER)), (['STARTED', 'DONE'], []))
+
+
 class TheRunAskedFromThePage(World):
     MANIFEST = {'run': {'do': 'make', 'hands': ['job']}, 'inputs': {'words': '001', 'shape': '002'}}
 
