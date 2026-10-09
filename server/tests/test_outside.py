@@ -154,7 +154,12 @@ class TheRun(World):
         upload = next(d for _o, r, d in p.said if r == '/dam/upload')
         self.assertEqual((upload['name'], base64.b64decode(upload['content_b64']), upload['job_key'], upload['run']), ('A red fox.png', PNG, JOB, '1'))
         added = next(d for _o, r, d in p.said if r == '/agnt/records/add')
-        self.assertEqual((added['segment'], added['member'], added['values']), ('imgs', MEMBER, {'data_nickname': 'A red fox', 'identity_dam_file': 'DA-M_0123456789AB_0001'}))
+        import hashlib
+        companion = 'DA-M_' + hashlib.sha256(PNG).hexdigest().upper()[:12]   # THE RECORD'S IDENTITY: the DA-M file's companion, by DA-M's own recipe (sha256 of the bytes, its first twelve, never the token)
+        self.assertEqual((added['segment'], added['member'], added['values']), ('imgs', MEMBER, {'data_nickname': 'A red fox', 'identity_dam_file': companion}))
+        self.assertEqual(upload['source_key'], 'MIMG_0123456789AB_0002')   # THE FILE IS STORED TIED TO ITS RECORD (the card's look book reads a record's files by its key), never to the agent
+        order = [r for _o, r, _d in p.said]
+        self.assertLess(order.index('/agnt/records/add'), order.index('/dam/upload'))   # the record first: its key is what the file is stored under
         last = self.results(p)[-1]
         self.assertEqual((last['state'], last['log'], last['delivery']), ('DONE', 'RUN 1 DONE · free · 1 file in DA-M · 1 of 1 record added', 'made'))
         routes = [r for _o, r, _d in p.said]
@@ -229,13 +234,16 @@ class TheRun(World):
         p = Platform()
         self.assertEqual(self.run_with(p), 'DONE')
         added = next(d for _o, r, d in p.said if r == '/agnt/records/add')
-        self.assertEqual((added['segment'], added['values']['identity_dam_file']), ('audo', 'DA-M_0123456789AB_0001'))
+        import hashlib
+        self.assertEqual((added['segment'], added['values']['identity_dam_file']), ('audo', 'DA-M_' + hashlib.sha256(b'RIFF0000WAVEfmt ').hexdigest().upper()[:12]))
+        self.assertEqual(next(d for _o, r, d in p.said if r == '/dam/upload')['source_key'], 'MIMG_0123456789AB_0002')
 
     def test_a_record_the_platform_refuses_fails_the_run_and_says_so(self):
         self.placed(self.ANSWER, self.DECLARED, ('makes', 'keeps', 'delivery'))
         p = Platform(add=403)
         self.assertEqual(self.run_with(p), 'FAILED')
-        self.assertIn('the files are in DA-M, but not every record was added', self.results(p)[-1]['log'])
+        self.assertIn('not every record was added', self.results(p)[-1]['log'])
+        self.assertNotIn('/dam/upload', [r for _o, r, _d in p.said])   # a record the platform refuses: nothing is stored
 
 
 class TheRunAskedFromThePage(World):

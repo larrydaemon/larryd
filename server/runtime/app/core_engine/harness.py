@@ -432,28 +432,29 @@ class Harness:
                              f"not charged: {body.get('refused') or f'mTok answered {status}'}; the delivery is withheld")
         charged = int(body.get('charged') or 0)
         paid = 'free' if body.get('free') else f"{charged} mTok from the {body.get('paid_from')}"
-        in_dam = {}   # {the file's name: its DA-M key}, for the records below
-        for f in files:
-            status, stored = self.client.post('so', '/dam/upload', {'account': account, 'scope': scope, 'member': member, 'job_key': job_key,
-                                                                   'run': str(run), 'name': f['name'], 'content_b64': f['content_b64'], 'source_key': key})
-            if status != 200:
-                return self._end(account, scope, member, key, job_key, run, 'FAILED',
-                                 f"{paid}, but DA-M did not store the files: {stored.get('refused') or stored.get('error') or f'DA-M answered {status}'}", charged=charged)
-            in_dam[f['name']] = stored.get('dam_key') if isinstance(stored.get('dam_key'), str) else ''
-            if f.get('asked_as'):
-                in_dam[f['asked_as']] = in_dam[f['name']]   # a made file is kept by the name its ask gave it (the agent cannot know which kind of picture came back)
-        kept_note = ''
+        # A STORED FILE BECOMES THE MEMBER'S RECORD, AND THE RECORD COMES FIRST (found on B, 2026-10-08: a made picture's card showed no picture). On the
+        # platform a record's card shows the files TIED TO THAT RECORD in DA-M (the look book reads them by the record's own key), so a kept file is stored
+        # tied to its record, never to the agent. The record's identity is the DA-M file's companion, DA-M_<the content's hash> (the platform's own recipe:
+        # sha256 of the bytes, its first twelve, never the token), which the runtime knows before DA-M has seen the file. So: the records are added through
+        # wid's own door for this member (as a CALL's write is carried; the identity is the runtime's to fill, never the agent's), then each file is stored
+        # under its record's key. A record the platform refuses: nothing is stored.
+        record_of, kept_note = {}, ''   # {the file's name: its record's key}
         if keeps:
-            # A STORED FILE BECOMES THE MEMBER'S RECORD (Images, Videos, Audio: the DA-M file IS the record's identity): each through wid's own add door for
-            # this member, exactly as a CALL's write is carried; the file's DA-M key is the runtime's to fill, never the agent's
-            writes = [{'do': 'add', 'species': k['species'], 'key': '', 'values': {**k['values'], 'identity_dam_file': in_dam.get(k['file'], '')}} for k in keeps]
-            if not all(w['values']['identity_dam_file'] for w in writes):
-                return self._end(account, scope, member, key, job_key, run, 'FAILED', f'{paid}, the files are in DA-M, but DA-M named no key for them: no record was added', charged=charged)
+            by_name = {name: f for f in files for name in (f['name'], f.get('asked_as')) if name}   # a made file is kept by the name its ask gave it (the agent cannot know which kind of picture came back)
+            companion = lambda f: 'DA-M_' + hashlib.sha256(base64.b64decode(f['content_b64'])).hexdigest().upper()[:12]
+            writes = [{'do': 'add', 'species': k['species'], 'key': '', 'values': {**k['values'], 'identity_dam_file': companion(by_name[k['file']])}} for k in keeps]
             written = member_records.carry(self.client.post, writes, account, scope, member, key)
             good = sum(1 for w in written if w['ok'])
             kept_note = f" · {good} of {len(written)} record{'' if len(written) == 1 else 's'} added"
             if good != len(written):
-                return self._end(account, scope, member, key, job_key, run, 'FAILED', f"{paid}, the files are in DA-M, but not every record was added{kept_note}", charged=charged)
+                return self._end(account, scope, member, key, job_key, run, 'FAILED', f"{paid}, but not every record was added{kept_note}; no file was stored", charged=charged)
+            record_of = {by_name[k['file']]['name']: w['key'] for k, w in zip(keeps, written)}
+        for f in files:
+            status, stored = self.client.post('so', '/dam/upload', {'account': account, 'scope': scope, 'member': member, 'job_key': job_key, 'run': str(run), 'name': f['name'],
+                                                                   'content_b64': f['content_b64'], 'source_key': record_of.get(f['name'], key)})   # its record's key; a file no record keeps: the agent's card, as before
+            if status != 200:
+                return self._end(account, scope, member, key, job_key, run, 'FAILED',
+                                 f"{paid}{kept_note}, but DA-M did not store the files: {stored.get('refused') or stored.get('error') or f'DA-M answered {status}'}", charged=charged)
         kept = {k: v for k, v in answer.items() if k not in ('files', 'makes', 'keeps')}
         delivery = answer.get('delivery') if isinstance(answer.get('delivery'), str) else json.dumps(kept, sort_keys=True)
         stored_note = f" · {len(files)} file{'' if len(files) == 1 else 's'} in DA-M" if files else ''
