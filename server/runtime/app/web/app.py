@@ -291,6 +291,9 @@ def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, deve
             return jsonify({'refused': no.reason}), no.status
         if started is None:
             return busy()
+        card = str(d.get('card_key') or '')
+        if started and KEY.fullmatch(card):   # THE RUN IS IN FLIGHT FROM THIS MOMENT (its own job starts in up to a minute): written down now, so its agent's page can say so on its very next load
+            (harnesses.get(caller) or h).started(card, d['job_key'], int(d['run']), d['account'], d['member'])
         return jsonify({'accepted': d['job_key'], 'run': int(d['run']), 'already': not started}), 202
 
     app.config['start'] = start

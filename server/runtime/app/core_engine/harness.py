@@ -221,6 +221,7 @@ class Harness:
         starts = 'run' in (manifest.get('gives') or [])   # AN AGENT THAT STARTS ITS OWN RUN FROM ITS PAGE (the member's Generate): it names "run" in gives
         if starts and hasattr(self.records, 'recent'):
             given['runs'] = self.records.recent(agent_key, member, RUNS_HANDED)   # what became of the member's last RUNs of it: the run's number, its state, the runtime's own code and the time; never an input or a delivery
+            given['running'] = self.records.in_flight(agent_key, member) if hasattr(self.records, 'in_flight') else []   # and the ones still IN FLIGHT ([{run, at}]): a page merely opened can say a RUN is being made (found on B, 2026-10-09: a plain load said "No generations yet" while one rendered)
         not_read = ''
         try:
             if wanted:
@@ -456,6 +457,7 @@ class Harness:
                 given['job'] = self._job_inputs(manifest, account, scope, job_key, run)
             except _Stop as stop:
                 return self._end(account, scope, member, key, job_key, run, stop.state, stop.reason)
+        self.started(key, job_key, run, account, member)
         self._result(account, scope, job_key, run, 'RUNNING', f'RUN {run} RUNNING')
         if 'cards' in hands:
             given['cards'] = lanes.assemble(cards, hired, groups, verify, own=key)
@@ -514,6 +516,16 @@ class Harness:
         delivery = answer.get('delivery') if isinstance(answer.get('delivery'), str) else json.dumps(kept, sort_keys=True)
         stored_note = f" · {len(files)} file{'' if len(files) == 1 else 's'} in DA-M" if files else ''
         return self._end(account, scope, member, key, job_key, run, 'DONE', f'RUN {run} DONE · {paid}{stored_note}{kept_note}', charged=charged, delivery=delivery)
+
+    def started(self, agent_key, job_key, run, account, member):
+        """A RUN the runtime took is written down as STARTED, once (at the door when the platform names the agent, else here as it
+        begins): its agent, its job, its number, the member; nothing of its inputs. Its end is the RUN's own record; a page of
+        its agent is told of it meanwhile (records.in_flight). A record that cannot be written stops nothing."""
+        try:
+            if not self.records.has_start(job_key, int(run)):
+                self._record('job', agent_key, 'STARTED', '', job_key, int(run), account=account, member=member)
+        except Exception:   # noqa: BLE001 - the RUN itself matters more than this note of it
+            LOG.warning('a start could not be recorded for %s', agent_key)
 
     def _asks(self, manifest, answer, key, member):
         """What the answer asks THE OUTSIDE HAND to make, checked before anything leaves: [] when nothing; refused when the
