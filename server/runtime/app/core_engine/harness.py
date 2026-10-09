@@ -440,7 +440,8 @@ class Harness:
         locker, FROST's exact hashes), not offline for this account, hireable and not hired. Each goes through the platform's
         same hire door (its own decision for this member stands: a refusal there skips the card, nothing else) and leaves the
         same hire record. A CARD THAT NAMES AN OUTSIDE AI SERVICE IS NEVER PLACED BY DEFAULT: the member's own hire is the
-        permission for that. Nothing is kept here: "once" is the platform's (a board is born once), so an agent a member
+        permission for that. TWO CHECKS: this runtime skips it from the facts it read, and the platform's door, told the ask is
+        a default placement, refuses it on its own card (the one that counts). Nothing is kept here: "once" is the platform's (a board is born once), so an agent a member
         let go does not come back. -> {placed: [keys], skipped: [{agent_key, why}]}."""
         key = self.marketplace_key()
         cards, hired, groups, verify = self.facts(account, scope, member)
@@ -461,7 +462,11 @@ class Harness:
                 skipped.append({'agent_key': card['key'], 'why': 'it names an outside AI service: the member hires it themselves'})
                 continue
             try:
-                self._ask('wid', 'POST', '/agnt/hire', {'account': account, 'scope': scope, 'member': member, 'agent_key': card['key']})
+                # THE PLACEMENT SAYS WHAT IT IS (the security review of c78af5d, 2026-10-09): default and the board ride in the signed ask, so THE
+                # PLATFORM decides on ITS OWN card as it stands (marked by the owner, approved, on this board, naming no outside AI service) and
+                # refuses otherwise; the skips above are this runtime's own reading of the facts and never the check that counts. A member's own
+                # hire (hire, above) never carries the mark
+                self._ask('wid', 'POST', '/agnt/hire', {'account': account, 'scope': scope, 'member': member, 'agent_key': card['key'], 'default': '1', 'board': board})
             except Refused as no:
                 if mine:
                     refused = no   # the marketplace as before: its refusal is the answer, said once the board's other defaults are placed (a board is born once)

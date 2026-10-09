@@ -28,6 +28,7 @@ class Platform(harness.Harness):
     def __init__(self, *a, **k):
         super().__init__(*a, **k)
         self.cards, self.hired, self.groups, self.unverified, self.asked, self.refuses = [], [], [], set(), [], {}
+        self.core_names_a_service = set()   # THE PLATFORM'S OWN CARD names an outside AI service, whatever the facts this runtime read say
 
     def marketplace_key(self):
         return MARKET
@@ -39,6 +40,8 @@ class Platform(harness.Harness):
         self.asked.append((office, method, route, dict(data)))
         if data['agent_key'] in self.refuses:
             raise harness.Refused(403, self.refuses[data['agent_key']])
+        if 'default' in data and data['agent_key'] in self.core_names_a_service:   # the platform's door, told it is a default placement, decides on its own card
+            raise harness.Refused(403, 'not placed by default: it names an outside AI service, the member hires it themselves')
         self.hired.append({'agent_key': data['agent_key'], 'on': True})   # the platform's hire: a shell holding it, switched on
         return {'board': BOARD}
 
@@ -63,14 +66,14 @@ class DefaultAgents(unittest.TestCase):
     def test_the_marketplace_as_before_on_its_own_screen_only(self):
         self.assertEqual(self.first(), {'placed': [], 'skipped': []})
         self.assertEqual(self.first(HOME), {'placed': [MARKET], 'skipped': []})
-        self.assertEqual(self.p.asked, [('wid', 'POST', '/agnt/hire', {'account': ACCOUNT, 'scope': 'SCRATCH', 'member': MEMBER, 'agent_key': MARKET})])
+        self.assertEqual(self.p.asked, [('wid', 'POST', '/agnt/hire', {'account': ACCOUNT, 'scope': 'SCRATCH', 'member': MEMBER, 'agent_key': MARKET, 'default': '1', 'board': HOME})])
         self.assertEqual(self.hires(), [(MARKET, 'ON', ACCOUNT, MEMBER)])
         self.assertEqual(self.first(HOME), {'placed': [], 'skipped': []})   # hired: nothing more
 
     def test_a_marked_card_is_placed_on_its_own_board_through_the_same_door(self):
         self.p.cards += [card('ATOM', default=True), card('PLAIN'), card('ELSEWHERE', 'agencymgmt/mdia/home', default=True)]
         self.assertEqual(self.first(), {'placed': ['ATOM'], 'skipped': []})
-        self.assertEqual(self.p.asked, [('wid', 'POST', '/agnt/hire', {'account': ACCOUNT, 'scope': 'SCRATCH', 'member': MEMBER, 'agent_key': 'ATOM'})])
+        self.assertEqual(self.p.asked, [('wid', 'POST', '/agnt/hire', {'account': ACCOUNT, 'scope': 'SCRATCH', 'member': MEMBER, 'agent_key': 'ATOM', 'default': '1', 'board': BOARD})])   # the placement says what it is, and for which board
         self.assertEqual(self.hires(), [('ATOM', 'ON', ACCOUNT, MEMBER)])   # the same hire record a member's own hire leaves
 
     def test_only_the_platforms_true_marks_a_card(self):
@@ -85,6 +88,24 @@ class DefaultAgents(unittest.TestCase):
         self.assertEqual(got['placed'], ['ATOM'])
         self.assertEqual(got['skipped'], [{'agent_key': 'OUT', 'why': 'it names an outside AI service: the member hires it themselves'}])
         self.assertNotIn('OUT', [a[3]['agent_key'] for a in self.p.asked])   # the platform was never asked
+
+    def test_the_mismatch_this_runtimes_fact_says_no_service_and_the_platforms_card_names_one(self):
+        """THE SECURITY REVIEW OF c78af5d: this runtime's own skip reads the facts it was handed; empty or stale, it does not
+        fire. The ask says it is a default placement, the platform refuses it on its own card, and the runtime lists it as
+        skipped: not placed, no hire record. The other default of the board is placed all the same."""
+        self.p.cards += [card('STALE', default=True, sends_to=''), card('ATOM', default=True)]
+        self.p.core_names_a_service = {'STALE'}
+        got = self.first()
+        self.assertEqual(got, {'placed': ['ATOM'], 'skipped': [{'agent_key': 'STALE', 'why': 'not placed by default: it names an outside AI service, the member hires it themselves'}]})
+        self.assertEqual(self.hires(), [('ATOM', 'ON', ACCOUNT, MEMBER)])
+        self.assertTrue(all(a[3].get('default') == '1' and a[3].get('board') == BOARD for a in self.p.asked))   # every default placement carries the mark
+
+    def test_a_members_own_hire_never_carries_the_mark(self):
+        self.p.cards += [card('ATOM', default=True)]
+        self.p.hired = [{'agent_key': MARKET, 'on': True}]   # the marketplace is theirs: they hire through it
+        self.p.hire(ACCOUNT, 'SCRATCH', MEMBER, 'ATOM', True)
+        self.p.hire(ACCOUNT, 'SCRATCH', MEMBER, 'ATOM', False)
+        self.assertEqual([(a[2], sorted(a[3])) for a in self.p.asked], [('/agnt/hire', ['account', 'agent_key', 'member', 'scope']), ('/agnt/unhire', ['account', 'agent_key', 'member', 'scope'])])
 
     def test_an_offline_card_is_skipped_until_the_account_holds_its_subscription(self):
         self.p.cards += [card('OFF', default=True, offline=True)]
