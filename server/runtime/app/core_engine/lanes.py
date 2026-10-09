@@ -11,10 +11,15 @@ def groups(balance):
     return sorted({s['agent_group'] for s in (balance or {}).get('subscriptions') or [] if s.get('agent_group')})
 
 
+SEQUENCE = 'SEQUENCE'   # A CARD'S ROLE, the platform's word (the catalog's facts, never the agent's manifest here): this agent is its screen's sequence, the container its screen's shells stand in (the owner, 2026-10-09: "this will be part of the product and not in the pf agent marketplace, its always there like the marketplace itself")
+
+
 def assemble(cards, hired, subscribed, verify, own=''):
     out = []
     for c in cards:
         if c['key'] == own:   # an agent is never handed its own card: the marketplace is the page, never a card inside itself (the owner, 2026-10-06)
+            continue
+        if own and c.get('role') == SEQUENCE:   # A SCREEN'S SEQUENCE IS NEVER A CARD IN A LISTING: no agent is handed it (the marketplace's collection, a RUN's cards); the runtime's own doors (hire, defaults: own = '') still find it
             continue
         if not gate.shown(c, verify(c['key']))[0]:
             continue

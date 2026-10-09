@@ -140,6 +140,30 @@ class DefaultAgents(unittest.TestCase):
             self.first(HOME)
         self.assertEqual([a[3]['agent_key'] for a in self.p.asked][-2:], [MARKET, 'ATOM'])   # and the board's other default was placed first
 
+    def test_a_screens_sequence_is_placed_on_its_own_screen_with_no_mark_through_the_same_door(self):
+        """THE CARD'S ROLE (the catalog's facts): a SEQUENCE card is placed at its own screen's first visit as the
+        marketplace is on its own, under the same default mark; never on another board."""
+        self.p.cards += [card('FLOW', role='SEQUENCE'), card('PLAIN', role=''), card('ELSEWHERE', 'agencymgmt/mdia/home', role='SEQUENCE')]
+        self.assertEqual(self.first(), {'placed': ['FLOW'], 'skipped': []})
+        self.assertEqual(self.p.asked, [('wid', 'POST', '/agnt/hire', {'account': ACCOUNT, 'scope': 'SCRATCH', 'member': MEMBER, 'agent_key': 'FLOW', 'default': '1', 'board': BOARD})])
+        self.assertEqual(self.hires(), [('FLOW', 'ON', ACCOUNT, MEMBER)])
+        self.assertEqual(self.first(), {'placed': [], 'skipped': []})   # theirs already
+
+    def test_a_sequence_that_names_an_outside_ai_service_or_is_offline_is_never_placed(self):
+        self.p.cards += [card('OUT', role='SEQUENCE', sends_to='an outside AI service'), card('OFF', role='SEQUENCE', offline=True)]
+        got = self.first()
+        self.assertEqual(got['placed'], [])
+        self.assertEqual(sorted(s['agent_key'] for s in got['skipped']), ['OFF', 'OUT'])
+        self.assertEqual(self.p.asked, [])
+
+    def test_nobody_lets_a_screens_sequence_go(self):
+        self.p.cards += [card('FLOW', role='SEQUENCE')]
+        self.p.hired = [{'agent_key': MARKET, 'on': True}, {'agent_key': 'FLOW', 'on': True}]
+        with self.assertRaises(harness.Refused) as no:
+            self.p.hire(ACCOUNT, 'SCRATCH', MEMBER, 'FLOW', False)
+        self.assertEqual((no.exception.status, no.exception.reason), (403, "this page's sequence is always on"))
+        self.assertEqual(self.p.asked, [])   # the platform was never asked
+
     def test_the_runtime_keeps_no_once_of_its_own(self):
         """ONCE IS THE PLATFORM'S: it asks only when a board is born (wid: shells.board). Asked again for a member who let
         the agent go, the runtime would place it again, so nothing but a board's birth may ask (wid's own test holds that)."""
