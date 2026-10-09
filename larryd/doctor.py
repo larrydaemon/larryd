@@ -451,19 +451,25 @@ def _makes(card, c, where, f):
 
 def _records(card, c, where, f):
     """"records": the member's records an agent reads and writes on a CALL: {species: [verbs]}, each species a module of the
-    platform (the screens table's codes), each verb one of read, add, edit, remove; only an agent that answers calls."""
+    platform (the screens table's codes), each verb one of read, add, edit, remove; only an agent that answers calls.
+    THE COUNTS: "*": ["count"], of no one species, alone or beside species; handed on a CALL and on a RUN."""
     asked = card['records']
     species = sorted({s.split('/')[0] for s in sheet.catalog()['card']['screens'] if not s.startswith('larry/')})
     shape_todo = 'set "records" to {"<species>": [verbs]}, e.g. {"opns": ["read", "add", "edit", "remove"]}'
     if not (isinstance(asked, dict) and asked):
         f.add(c, where, '"records" is not {species: [verbs]}', shape_todo)
         return
+    every, count = shape.RECORD_COUNTS
     for name, verbs in asked.items():
+        if name == every:   # THE COUNTS: "*" takes ["count"] alone
+            if verbs != count:
+                f.add(c, where, f'records "{every}" is not {json.dumps(count)}', f'"{every}" asks for the counts alone: set it to {json.dumps(count)}, or take it out')
+            continue
         if not (isinstance(name, str) and name in species):
             f.add(c, where, f'records names "{name}", not a module of the platform', f'use a module\'s code: {", ".join(species)}')
         if not (isinstance(verbs, list) and verbs and all(isinstance(v, str) and v in shape.RECORD_VERBS for v in verbs)):
             f.add(c, where, f'records "{name}" is not a list of verbs', f'list what the agent does with them, from: {", ".join(shape.RECORD_VERBS)}')
-    if not card.get('calls'):
+    if not card.get('calls') and set(asked) != {every}:   # the counts alone are handed on a RUN too
         f.add(c, where, '"records" is declared, but "calls" is empty', 'records are handed on a CALL (the member\'s screen): name the call in "calls", or take "records" out')
 
 

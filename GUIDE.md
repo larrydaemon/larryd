@@ -135,6 +135,28 @@ nothing is carried. The declaration is in the manifest's hash: FROST approves wh
 agent itself. A RUN is handed no records; a CALL is handed `records` only. On your own LARRYD the records live in one
 small file (`~/.larryd/preview/records_<species>.json`), which you may write by hand to try an agent.
 
+### The counts
+An agent that only needs to know HOW MUCH there is (a picture of the account, a meter) asks for the counts, never the
+records:
+
+    "records": {"*": ["count"]}
+
+Written exactly so (`"*"` takes `["count"]` alone; `count` is not a verb of a species), alone or beside species. On a
+CALL and on a RUN LARRYD asks the platform for the member it named and hands in
+
+    "counts": {"scope": "ACME",
+               "modules": {"cont": 400, "invc": 2, "mdia": 1569},
+               "products": {"cont": "invoicemaps", "invc": "invoicemaps", "mdia": "agencymgmt"},
+               "ties": [["invc", "cont", 1], ["mdia", "hrcy", 1317]]}
+
+`scope` is the account's name as the page shows it to the member. `modules` has one entry for each module that member
+may list, with the number the list would hand them (all of the account's, or their own only: the platform decides, the
+agent never asks); a module they may not list is absent, never 0. `ties` are `[from, to, how many]`: how many of
+`from`'s records name a record of `to`, only between two modules in `modules`. No record, key or name is in it. When
+the platform does not hand them, `counts` is absent: draw without. The agent must be hired and on, and its approved card
+must carry the declaration (it is in the manifest's hash). On your own LARRYD the counts are the number of rows in each
+`records_<species>.json`; or write `~/.larryd/preview/counts.json` (`{"modules": {...}, "ties": [...]}`) by hand.
+
 ## The agent's own live page
 An agent that needs something live (people talking to each other, a page that changes by itself) has a live page of its
 own, outside the platform. The platform's page never runs an agent's script, and that stays so. Declare it:

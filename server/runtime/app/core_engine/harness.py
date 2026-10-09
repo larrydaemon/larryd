@@ -193,6 +193,23 @@ class Harness:
     def _card(cards, key):
         return next((c for c in cards if c['key'] == key), None)
 
+    def _counts(self, manifest, given, account, scope, member, agent_key):
+        """THE COUNTS (2026-10-09): an agent whose APPROVED manifest declares "records": {"*": ["count"]} is handed
+        given['counts'], the numbers of the member the platform named (how many records they may list in each module, how
+        many ties between two), asked of the platform's counts door for that member and checked to be numbers and codes
+        alone; never a record. The platform did not hand them (refused, away, an answer that is more than numbers): the
+        agent is handed none and the runtime says so in its own fixed words -> 'counts not read', else ''."""
+        if not member_records.counts_declared(manifest):
+            return ''
+        try:
+            given['counts'] = member_records.counts(self._ask, account, scope, member, agent_key)
+            return ''
+        except Refused as no:
+            LOG.warning('counts not read for %s: %s', agent_key, no.reason)   # the platform's words go to the log, never into the audit row
+        except ValueError as no:
+            LOG.warning('counts not read for %s: %s', agent_key, no)
+        return 'counts not read'
+
     # ---------------------------------------------------------------- the CALL lane: an agent answers now
     def answer(self, account, scope, member, agent_key, beside=None, act=False):
         """An agent's answer for the member's screen: only an agent that answers calls, passing the gate itself."""
@@ -237,11 +254,12 @@ class Harness:
         except Refused as no:   # THE PLATFORM DID NOT HAND THEM (a slot without the record doors yet, a member not allowed, wid away): the agent is handed none
             not_read = 'records not read'   # and says so on its page; nothing is guessed, nothing is written without them. THE RECORD KEEPS THE RUNTIME'S OWN WORDS ONLY:
             LOG.warning('records not read for %s: %s', agent_key, no.reason)   # the platform's refusal text goes to the log, never into the audit row (fixed words, never cut, nothing written by another)
+        not_read = '; '.join(r for r in (not_read, self._counts(manifest, given, account, scope, member, agent_key)) if r)   # THE COUNTS, when the approved manifest declares them
         state, answer, reason = sandbox.run(self.agents / held['folder'], manifest['entry'], given, self.seconds, on_start=self.on_start)
         outside = _outside_gives(manifest, answer) if state == 'DONE' else ''
         if outside:
             state, reason = 'FAILED', outside
-        if state == 'DONE' and answer.get('writes') and not_read:   # an agent that saw no records decided blind: its writes go nowhere
+        if state == 'DONE' and answer.get('writes') and 'records not read' in not_read:   # an agent that saw no records decided blind: its writes go nowhere
             answer = {k: v for k, v in answer.items() if k != 'writes'}
             reason = 'writes not carried: the records were not read'
         if state == 'DONE' and answer.get('writes') and not act:
@@ -466,6 +484,7 @@ class Harness:
         self._result(account, scope, job_key, run, 'RUNNING', f'RUN {run} RUNNING')
         if 'cards' in hands:
             given['cards'] = lanes.assemble(cards, hired, groups, verify, own=key)
+        self._counts(manifest, given, account, scope, member, key)   # THE COUNTS, when the approved manifest declares them: handed on a RUN as on a CALL; not handed, the agent runs without
         state, answer, reason = sandbox.run(self.agents / folder, manifest['entry'], given, self.seconds, on_start=self.on_start)
         if state != 'DONE':
             return self._end(account, scope, member, key, job_key, run, 'FAILED', reason)

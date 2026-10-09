@@ -23,6 +23,7 @@ X-Office-At, inside the window (`core_engine/signing.py`; the platform's `office
 | wid | POST /agnt/hire, /agnt/unhire | account, scope, member, agent_key | {shell_id, job_key, board, already} / {removed} |
 | wid | GET /jobs/queued | nothing | jobs: [{account, scope, member, job_key, run}] |
 | wid | GET /agnt/records/list | account, scope, member, agent_key (the agent's card key), segment, page=list, limit, offset | rows: [the record's columns], total, first: [the member's BY PRIORITY keys of this species' list, in rank order] (an agent that declares `records`; `core_engine/member_records.py` hands each ranked row its rank as `priority` 1..n, beside `key`) |
+| wid | GET /agnt/records/counts | account, scope, member, agent_key (the agent's card key) | scope, modules: {species: how many records the member may list}, products: {species: product slug}, ties: [[from, to, how many]]; numbers and codes alone (an agent that declares `"records": {"*": ["count"]}`; `core_engine/member_records.py` checks it and hands it as `counts`, on a CALL and on a RUN) |
 | wid | POST /agnt/records/add, /agnt/records/edit, /agnt/records/remove | account, scope, member, agent_key (the agent's card key), segment, values / key | {key} / {key} / {removed}; a refusal as {error} or {refused} (carried to the agent as `written`) |
 | wid | GET /jobs/inputs | account, scope, job_key, run | inputs: {slot: value} |
 | wid | POST /jobs/result | account, scope, job_key, run, state, log, delivery | {saved} |

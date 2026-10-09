@@ -5,7 +5,10 @@ records = {species: [rows]} (each row the record's fields, its key as "key"); an
 writes = [{do: add | edit | remove, species, key, values}], each carried to wid's own doors for that member, only for a
 declared species and verb; anything undeclared or ill-shaped refuses the whole answer, nothing is carried. The runtime
 keeps none of it: the rows live in the call's memory, the writes go to wid and are gone. The manifest is in the agent's
-hash, so FROST approves what an agent may read and write with the agent itself."""
+hash, so FROST approves what an agent may read and write with the agent itself.
+THE COUNTS (2026-10-09): a manifest that declares "records": {"*": ["count"]} is handed, on a CALL and on a RUN, counts =
+{scope, modules: {species: how many}, products: {species: product}, ties: [[from, to, how many]]}: the numbers of the
+member's own account as their own grid lets them list it, asked of wid's counts door; never a record, never a key."""
 import re
 
 VERBS = ('read', 'add', 'edit', 'remove')
@@ -32,6 +35,49 @@ def declared(manifest):
                 and all(isinstance(v, str) and v in VERBS for v in verbs):
             out[species] = tuple(dict.fromkeys(verbs))
     return out
+
+
+EVERY, COUNT = '*', 'count'                     # THE COUNTS: "records": {"*": ["count"]}, of no one species
+COUNTS_DOOR = ('GET', '/agnt/records/counts')
+SCOPE = re.compile(r'^[A-Za-z0-9]{1,40}$')      # an account's scope name, as the page shows it to the member (letters and digits alone)
+PRODUCT = re.compile(r'^[a-z]{1,24}$')          # a product's slug
+
+
+def counts_declared(manifest):
+    """Does the manifest declare THE COUNTS: "records": {"*": ["count"]}, written exactly so (anything else under "*"
+    counts for nothing, fail closed)? It is no right on any species: declared() never sees it."""
+    asked = manifest.get('records') if isinstance(manifest, dict) else None
+    return isinstance(asked, dict) and asked.get(EVERY) == [COUNT]
+
+
+def _whole(n):
+    return isinstance(n, int) and not isinstance(n, bool) and 0 <= n < 10 ** 12
+
+
+def counted(body):
+    """The counts door's answer as the agent is handed it, or ValueError: {scope, modules: {species: how many},
+    products: {species: its product's slug}, ties: [[from, to, how many]]}. Numbers, module codes, product slugs and the
+    scope's name alone: anything else in the answer (a key, a word, a part the runtime does not know) refuses it whole."""
+    if not isinstance(body, dict) or set(body) - {'scope', 'modules', 'products', 'ties'}:
+        raise ValueError('the counts are not {scope, modules, products, ties}')
+    scope, modules, products, ties = body.get('scope'), body.get('modules'), body.get('products', {}), body.get('ties')
+    if not (isinstance(scope, str) and SCOPE.fullmatch(scope)):
+        raise ValueError('the counts name no scope')
+    if not (isinstance(modules, dict) and len(modules) <= 64 and all(isinstance(k, str) and SPECIES.fullmatch(k) and _whole(n) for k, n in modules.items())):
+        raise ValueError('the counts\' modules are not {species: a whole number}')
+    if not (isinstance(products, dict) and all(k in modules and isinstance(v, str) and PRODUCT.fullmatch(v) for k, v in products.items())):
+        raise ValueError('the counts\' products are not {species: a product}')
+    if not (isinstance(ties, list) and len(ties) <= 64 * 64 and all(
+            isinstance(t, list) and len(t) == 3 and isinstance(t[0], str) and isinstance(t[1], str) and t[0] in modules and t[1] in modules and _whole(t[2]) for t in ties)):
+        raise ValueError('the counts\' ties are not [[from, to, a whole number]] between counted modules')
+    return {'scope': scope, 'modules': dict(modules), 'products': dict(products), 'ties': [list(t) for t in ties]}
+
+
+def counts(ask, account, scope, member, agent_key=''):
+    """THE COUNTS of the member the platform named, through wid's counts door: how many records they may list in each
+    module and how many ties between two of them; never a record. A refusal propagates; an answer that is not numbers
+    and codes alone is ValueError (nothing is handed)."""
+    return counted(ask('wid', COUNTS_DOOR[0], COUNTS_DOOR[1], {'account': account, 'scope': scope, 'member': member, 'agent_key': agent_key}))
 
 
 def key_of(row):

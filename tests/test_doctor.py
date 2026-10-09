@@ -468,6 +468,31 @@ def test_records_catches(agent, records, said):
     assert all(p.todo for p in problems)
 
 
+def test_the_counts_declaration_passes_alone_beside_species_and_without_a_call(agent):
+    for records, calls in (({'*': ['count']}, ('answer',)), ({'*': ['count'], 'opns': ['read']}, ('answer',)), ({'*': ['count']}, ())):
+        _records(agent, records, calls=calls)
+        assert doctor.check(agent) == [], (records, calls)
+
+
+@pytest.mark.parametrize('records, said', [
+    ({'*': ['read']}, 'records "*" is not ["count"]'),
+    ({'*': ['count', 'read']}, 'records "*" is not ["count"]'),
+    ({'*': 'count'}, 'records "*" is not ["count"]'),
+    ({'*': True}, 'records "*" is not ["count"]'),
+    ({'opns': ['count']}, 'not a list of verbs'),
+])
+def test_the_counts_declaration_catches(agent, records, said):
+    _records(agent, records)
+    problems = [p for p in doctor.check(agent) if p.check == 'the manifest']
+    assert problems and any(said in p.wrong for p in problems), [p.wrong for p in problems]
+    assert all(p.todo for p in problems)
+
+
+def test_the_counts_beside_species_still_need_a_call(agent):
+    _records(agent, {'*': ['count'], 'opns': ['read']}, calls=())
+    assert [p.wrong for p in doctor.check(agent) if p.check == 'the manifest'] == ['"records" is declared, but "calls" is empty']
+
+
 def test_records_need_a_call(agent):
     _records(agent, {'opns': ['read']}, calls=())
     problems = [p.wrong for p in doctor.check(agent) if p.check == 'the manifest']

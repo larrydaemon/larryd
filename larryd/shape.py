@@ -30,7 +30,9 @@ FIELDS = {
     'inputs': 'only with "job" in run.hands: the job\'s inputs by name, each on one of the job\'s slots 001-015, e.g. {"mood": "001"}',
     'records': 'the member\'s records the agent reads and writes on a CALL (optional): {"<species>": ["read", "add", "edit", "remove"]}, '
                'e.g. {"opns": ["read", "add", "edit", "remove"]}; LARRYD hands them as records = {species: [rows]} and carries the '
-               'answer\'s "writes" to the platform\'s own record doors, only what is declared',
+               'answer\'s "writes" to the platform\'s own record doors, only what is declared. THE COUNTS: {"*": ["count"]} (alone or beside '
+               'species) hands counts = {scope, modules: {species: how many}, products, ties: [[from, to, how many]]} on a CALL and on a RUN: '
+               'the numbers of the member\'s own account, never a record',
 }
 FIELDS['live'] = ('the agent\'s own live page (optional, only on an agent that answers calls): {"seats": 1 to 4}; its files sit in live/ beside '
                   'agent/ (page.html, page.js, room.py, live.json) and LARRYD tells the call live = {"room": true}; the view holds one empty <div data-room></div>, and the address and the member\'s pass go to the platform alone')
@@ -75,6 +77,7 @@ MAKES = {   # THE OUTSIDE HAND'S LIST (the same as the runtime's core_engine/out
     'seedance-2.5': ('a video', 'Replicate', {'aspect': ('16:9', '9:16', '1:1'), 'seconds': ('5', '10'), 'size': ('480p', '720p')}),
 }
 RECORD_VERBS = ('read', 'add', 'edit', 'remove')   # what an agent may declare on a species' records
+RECORD_COUNTS = ('*', ['count'])   # THE COUNTS: "records": {"*": ["count"]}, of no one species: how many, never which
 PACK = 'pack.json'   # a knowledge pack: a folder of plain text files with pack.json {"name", "about"}
 PACK_FIELDS = ('name', 'about')
 PACK_KINDS = {'.json', '.txt', '.md', '.csv'}

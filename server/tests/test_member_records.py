@@ -82,6 +82,62 @@ class TheDeclaration(unittest.TestCase):
             self.assertIn(said, why, bad)
 
 
+COUNTS_CODE = '''import json, sys
+given = json.load(sys.stdin)
+print(json.dumps({"counts": given.get("counts", "none"), "records": "records" in given, "view": {"html": "<section class=\\"dots\\">dots</section>", "css": ".dots { color: red }"}}))
+'''
+GOOD_COUNTS = {'scope': 'SCRATCH', 'modules': {'cont': 4, 'invc': 2, 'mdia': 0}, 'products': {'cont': 'invoicemaps', 'invc': 'invoicemaps', 'mdia': 'agencymgmt'}, 'ties': [['invc', 'cont', 2]]}
+
+
+class TheCounts(unittest.TestCase):
+    """THE COUNTS (2026-10-09): "records": {"*": ["count"]} hands counts, numbers and codes alone, and opens no record."""
+    def test_the_declaration_is_written_exactly_so(self):
+        self.assertTrue(member_records.counts_declared({'records': {'*': ['count']}}))
+        self.assertTrue(member_records.counts_declared({'records': {'*': ['count'], 'opns': ['read']}}))
+        for bad in ({'records': {'*': ['read']}}, {'records': {'*': ['count', 'read']}}, {'records': {'*': 'count'}}, {'records': {'*': []}}, {'records': {'*': True}},
+                    {'records': {'opns': ['count']}}, {'records': {'opns': ['read']}}, {'counts': True}, {'reads': ['counts']}, {'records': 'count'}, {}, 'junk'):
+            self.assertFalse(member_records.counts_declared(bad), bad)
+        self.assertEqual(member_records.declared({'records': {'*': ['count']}}), {})   # no right on any species
+        self.assertEqual(member_records.declared({'records': {'*': ['count'], 'opns': ['read']}}), {'opns': ('read',)})
+        self.assertEqual(member_records.declared({'records': {'opns': ['count']}}), {})   # count is no verb of a species
+        self.assertEqual(member_records.check([{'do': 'add', 'species': '*', 'values': {'a': 'b'}}], member_records.declared({'records': {'*': ['count']}}))[0], [])
+
+    def test_the_answer_is_numbers_and_codes_or_nothing(self):
+        self.assertEqual(member_records.counted(GOOD_COUNTS), GOOD_COUNTS)
+        self.assertEqual(member_records.counted({'scope': 'A1', 'modules': {}, 'ties': []}), {'scope': 'A1', 'modules': {}, 'products': {}, 'ties': []})
+        for bad in ({**GOOD_COUNTS, 'rows': []}, {**GOOD_COUNTS, 'scope': 'two words'}, {**GOOD_COUNTS, 'scope': 7}, {**GOOD_COUNTS, 'modules': {'cont': '4'}},
+                    {**GOOD_COUNTS, 'modules': {'cont': True}}, {**GOOD_COUNTS, 'modules': {'cont': -1}}, {**GOOD_COUNTS, 'modules': {'cont': 1.5}},
+                    {**GOOD_COUNTS, 'modules': {'MCON_000000000001_0001': 1}}, {**GOOD_COUNTS, 'modules': [4]}, {**GOOD_COUNTS, 'products': {'cont': 'Invoice Maps'}},
+                    {**GOOD_COUNTS, 'products': {'opns': 'invoicemaps'}}, {**GOOD_COUNTS, 'ties': [['invc', 'cont', 'MCON_000000000001_0001']]},
+                    {**GOOD_COUNTS, 'ties': [['invc', 'opns', 1]]}, {**GOOD_COUNTS, 'ties': [['invc', 'cont', 1, 'x']]}, {**GOOD_COUNTS, 'ties': [{'from': 'invc'}]},
+                    {**GOOD_COUNTS, 'ties': 'none'}, {'modules': {}, 'ties': []}, [], 'junk', None):
+            with self.assertRaises(ValueError, msg=bad):
+                member_records.counted(bad)
+
+    def test_the_door_is_asked_for_the_member_the_platform_named(self):
+        asked = []
+        got = member_records.counts(lambda *a: asked.append(a) or GOOD_COUNTS, 'ACCT_A', 'SCRATCH', 'MCON_M', 'MAGT_K')
+        self.assertEqual(got, GOOD_COUNTS)
+        self.assertEqual(asked, [('wid', 'GET', '/agnt/records/counts', {'account': 'ACCT_A', 'scope': 'SCRATCH', 'member': 'MCON_M', 'agent_key': 'MAGT_K'})])
+
+    def test_the_harness_hands_them_or_says_it_did_not(self):
+        h = harness.Harness.__new__(harness.Harness)
+        who = ('ACCT_A', 'SCRATCH', 'MCON_M', 'MAGT_K')
+        given = {}
+        h._ask = lambda *a: GOOD_COUNTS
+        self.assertEqual((h._counts({'records': {'*': ['count']}}, given, *who), given), ('', {'counts': GOOD_COUNTS}))
+        given, asked = {}, []
+        h._ask = lambda *a: asked.append(a) or GOOD_COUNTS
+        self.assertEqual((h._counts({'records': {'opns': ['read']}}, given, *who), given, asked), ('', {}, []))   # not declared: the door is never asked
+        h._ask = lambda *a: {**GOOD_COUNTS, 'rows': [{'identity_first_name': 'A'}]}
+        self.assertEqual((h._counts({'records': {'*': ['count']}}, given, *who), given), ('counts not read', {}))   # more than numbers: nothing handed
+
+        def refuse(*a):
+            raise harness.Refused(403, 'refused by FROST: not in the records that agent declares')
+        h._ask = refuse
+        self.assertEqual((h._counts({'records': {'*': ['count']}}, given, *who), given), ('counts not read', {}))
+
+
 class OnTheDevelopersRuntime(unittest.TestCase):
     """The whole lane through the developer's runtime: the stand-in's doors, the harness, the sandbox, the second run."""
     def setUp(self):
@@ -114,6 +170,21 @@ class OnTheDevelopersRuntime(unittest.TestCase):
 
     def rows(self):
         return json.loads(self.records.read_text())
+
+    def test_the_counts_are_handed_on_a_call_and_no_record_with_them(self):
+        manifest = json.loads(_agent({'*': ['count']}, gives=('counts', 'records', 'view'))['agent.json'])
+        files = {'agent.json': json.dumps(manifest).encode(), 'agent.py': COUNTS_CODE.encode()}
+        r = self.client.post(f'/marketplace/place?key={KEY_A}', data=_zip(files), content_type='application/octet-stream', headers={'X-Larryd-Place': '1'})
+        self.assertIn(r.status_code, (200, 201), r.get_data(as_text=True)[:300])
+        self.app.config['harness'].hire(preview.ACCOUNT, preview.SCOPE, preview.MEMBER, KEY_A, True)
+        self.seed([{'MOPN_norm_key': 'MOPN_000000000001_0001', 'identity_operations_headline': 'Partners'}, {'MOPN_norm_key': 'MOPN_000000000002_0002', 'identity_operations_headline': 'Demo'}])
+        out = self.ask(confirmed=False).get_json()
+        self.assertEqual(out['counts'], {'scope': preview.SCOPE, 'modules': {'opns': 2}, 'products': {}, 'ties': []})   # the stand-in: the rows of each records file
+        self.assertFalse(out['records'])   # the counts open no record
+        (self.records.parent / 'counts.json').write_text(json.dumps({'modules': {'cont': 400, 'invc': 2}, 'ties': [['invc', 'cont', 1]]}))   # the developer's own, by hand
+        self.assertEqual(self.ask(confirmed=False).get_json()['counts'], {'scope': preview.SCOPE, 'modules': {'cont': 400, 'invc': 2}, 'products': {}, 'ties': [['invc', 'cont', 1]]})
+        (self.records.parent / 'counts.json').write_text(json.dumps({'modules': {'cont': 'many'}}))   # ill made: the files' own counts again
+        self.assertEqual(self.ask(confirmed=False).get_json()['counts']['modules'], {'opns': 2})
 
     def test_the_declared_records_are_handed_with_their_keys_and_nothing_is_kept(self):
         self.place({'opns': ['read']})
