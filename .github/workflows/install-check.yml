@@ -1,0 +1,51 @@
+name: install check
+
+# THE STRANGER'S CHECK (2026-10-19): every install line on larryd.ai, on brand-new machines (Ubuntu x86_64, Ubuntu arm64,
+# macOS), from the public registries, then the whole flow (release/install_check.sh). Runs after a release, by hand
+# (workflow_dispatch) or when the version to check (release/INSTALL_CHECK_VERSION) changes.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to check, for example 0.1.2"
+        required: true
+        type: string
+  push:
+    paths:
+      - release/INSTALL_CHECK_VERSION
+      - release/install_check.sh
+      - .github/workflows/install-check.yml
+
+permissions:
+  contents: read
+
+jobs:
+  install:
+    name: ${{ matrix.how }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm, macos-latest]
+        how: [pipx, uv, npm, cargo]
+    steps:
+      - uses: actions/checkout@v4
+      - name: what the page asks for (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq bubblewrap pipx
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+      - name: what the page asks for (Mac)
+        if: runner.os == 'macOS' && matrix.how == 'pipx'
+        run: brew install pipx
+      - name: uv (the page's line, brew install uv; its installer here)
+        if: matrix.how == 'uv'
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+      - uses: actions/setup-node@v4
+        if: matrix.how == 'npm'
+        with:
+          node-version: "22"
+      - name: the check
+        run: |
+          V="${{ inputs.version }}"; [ -n "$V" ] || V=$(cat release/INSTALL_CHECK_VERSION)
+          release/install_check.sh "${{ matrix.how }}" "$V"

@@ -9,6 +9,7 @@ macOS sandbox-exec, or on Linux bubblewrap (bwrap) with a seccomp filter; on any
   else is mounted;
 - an empty environment, one JSON object in on stdin, one JSON object out on stdout, inside the time limit.
 Anything else is FAILED with the kind of failure (never the agent's words)."""
+import glob
 import json
 import os
 import pathlib
@@ -26,23 +27,31 @@ BWRAP = shutil.which('bwrap') or '/usr/bin/bwrap'
 MOST_BYTES = 1_000_000
 
 # LINUX: before the agent's code runs, a start-up written with the standard library alone installs a seccomp filter
-# (x86_64): fork, vfork, execve, execveat and a clone that is not a thread are refused with EPERM ("Operation not
+# (x86_64 and aarch64): fork, vfork, execve, execveat and a clone that is not a thread are refused with EPERM ("Operation not
 # permitted", the Mac's words); clone3 answers ENOSYS so a thread falls back to clone. Then the agent's entry runs.
 _BOOT = r'''
 import ctypes, os, platform, runpy, struct, sys
 os.environ.pop("PWD", None)   # bwrap's --chdir sets it; the environment is only what the runtime gives
-if platform.machine() != "x86_64":
-    raise SystemExit("the Linux sandbox knows x86_64 only")
 def f(code, jt, jf, k):
     return struct.pack("HBBI", code, jt, jf, k)
 LD, JEQ, JSET, RET = 0x20, 0x15, 0x45, 0x06
 ALLOW, KILL, EPERM, ENOSYS = 0x7fff0000, 0x80000000, 0x00050001, 0x00050026
-prog = [f(LD, 0, 0, 4), f(JEQ, 1, 0, 0xc000003e), f(RET, 0, 0, KILL), f(LD, 0, 0, 0),
-        f(JEQ, 6, 0, 57), f(JEQ, 5, 0, 58), f(JEQ, 4, 0, 59), f(JEQ, 3, 0, 322), f(JEQ, 4, 0, 435), f(JEQ, 5, 0, 56),
-        f(RET, 0, 0, ALLOW), f(RET, 0, 0, EPERM),                                   # 10 allow; 11 deny
-        f(RET, 0, 0, EPERM), f(RET, 0, 0, ENOSYS),                                  # 12 (unused) · 13 clone3
-        f(RET, 0, 0, ALLOW),                                                         # 14 (unused)
-        f(LD, 0, 0, 16), f(JSET, 1, 0, 0x10000), f(RET, 0, 0, EPERM), f(RET, 0, 0, ALLOW)]   # 15.. clone: a thread only
+if platform.machine() == "x86_64":
+    prog = [f(LD, 0, 0, 4), f(JEQ, 1, 0, 0xc000003e), f(RET, 0, 0, KILL), f(LD, 0, 0, 0),
+            f(JEQ, 6, 0, 57), f(JEQ, 5, 0, 58), f(JEQ, 4, 0, 59), f(JEQ, 3, 0, 322), f(JEQ, 4, 0, 435), f(JEQ, 5, 0, 56),
+            f(RET, 0, 0, ALLOW), f(RET, 0, 0, EPERM),                                   # 10 allow; 11 deny
+            f(RET, 0, 0, EPERM), f(RET, 0, 0, ENOSYS),                                  # 12 (unused) · 13 clone3
+            f(RET, 0, 0, ALLOW),                                                         # 14 (unused)
+            f(LD, 0, 0, 16), f(JSET, 1, 0, 0x10000), f(RET, 0, 0, EPERM), f(RET, 0, 0, ALLOW)]   # 15.. clone: a thread only
+elif platform.machine() in ("aarch64", "arm64"):
+    # the same rules on 64-bit ARM (its own numbers; it has no fork or vfork): execve 221 and execveat 281 refused,
+    # clone3 435 ENOSYS, clone 220 a thread only
+    prog = [f(LD, 0, 0, 4), f(JEQ, 1, 0, 0xc00000b7), f(RET, 0, 0, KILL), f(LD, 0, 0, 0),
+            f(JEQ, 4, 0, 221), f(JEQ, 3, 0, 281), f(JEQ, 3, 0, 435), f(JEQ, 3, 0, 220),
+            f(RET, 0, 0, ALLOW), f(RET, 0, 0, EPERM), f(RET, 0, 0, ENOSYS),            # 8 allow · 9 deny · 10 clone3
+            f(LD, 0, 0, 16), f(JSET, 1, 0, 0x10000), f(RET, 0, 0, EPERM), f(RET, 0, 0, ALLOW)]   # 11.. clone: a thread only
+else:
+    raise SystemExit("the Linux sandbox knows x86_64 and aarch64 only")
 class Prog(ctypes.Structure):
     _fields_ = [("len", ctypes.c_ushort), ("filter", ctypes.c_void_p)]
 raw = ctypes.create_string_buffer(b"".join(prog))
@@ -60,7 +69,40 @@ def _linux_runtime():
     import sysconfig
     stdlib = os.path.realpath(sysconfig.get_paths()['stdlib'])
     arch = sysconfig.get_config_var('MULTIARCH') or 'x86_64-linux-gnu'
-    return [PYTHON, stdlib, f'/usr/lib/{arch}', '/usr/lib64']
+    # A Python built with a shared libpython that lives in its own folder (GitHub's setup-python, pyenv --enable-shared,
+    # Homebrew on Linux) loads it from there; without it bound, the binary picks up the system's libpython, a different
+    # build ("undefined symbol"), or none. Only those library files, nothing else of that folder.
+    own = []
+    if sysconfig.get_config_var('Py_ENABLE_SHARED'):
+        libdir = sysconfig.get_config_var('LIBDIR') or ''
+        own = sorted(glob.glob(os.path.join(libdir, 'libpython*.so*')))
+    return [PYTHON, stdlib, f'/usr/lib/{arch}', '/usr/lib64', *own, *_loader()]
+
+
+def _loader():
+    """The program loader the Python binary names (its ELF interpreter). On x86_64 it is under /lib64 (bound above); on
+    aarch64 it is /lib/ld-linux-aarch64.so.1, a link in /usr/lib itself, which the arch folder alone does not hold.
+    -> [its path inside the sandbox's /usr], or [] when it is already covered or cannot be read."""
+    try:
+        data = pathlib.Path(PYTHON).read_bytes()[:65536]
+    except OSError:
+        return []
+    if data[:4] != b'\x7fELF' or data[4] != 2:   # 64-bit ELF only
+        return []
+    import struct
+    end = '<' if data[5] == 1 else '>'
+    phoff, = struct.unpack_from(end + 'Q', data, 0x20)
+    phentsize, phnum = struct.unpack_from(end + 'HH', data, 0x36)
+    for i in range(phnum):
+        kind, = struct.unpack_from(end + 'I', data, phoff + i * phentsize)
+        if kind == 3:   # PT_INTERP
+            off, = struct.unpack_from(end + 'Q', data, phoff + i * phentsize + 8)
+            size, = struct.unpack_from(end + 'Q', data, phoff + i * phentsize + 32)
+            path = data[off:off + size].rstrip(b'\x00').decode()
+            if path.startswith('/lib/'):
+                path = '/usr' + path   # /lib is the sandbox's link to usr/lib
+            return [] if path.startswith('/lib64/') or path.startswith('/usr/lib64/') else [path]
+    return []
 
 
 def _linux_command(agent, run, entry):

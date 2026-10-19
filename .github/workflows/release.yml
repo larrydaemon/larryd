@@ -74,9 +74,35 @@ jobs:
       - name: cargo launcher tests
         run: cd cargo && cargo test -q
 
+  check_arm:
+    name: the tests on Linux arm64
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref_name }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: |
+            3.11
+            3.12
+      - name: the tools the tests use
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq bubblewrap
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Claude Code
+        run: npm install -g @anthropic-ai/claude-code && claude --version
+      - name: python tests
+        run: |
+          python -m pip install --quiet -e ".[door]" pytest build
+          python -m pytest -q tests
+
   pypi:
     name: PyPI
-    needs: check
+    needs: [check, check_arm]
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -97,7 +123,7 @@ jobs:
 
   npm:
     name: npm
-    needs: check
+    needs: [check, check_arm]
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -122,7 +148,7 @@ jobs:
 
   crates:
     name: crates.io
-    needs: check
+    needs: [check, check_arm]
     runs-on: ubuntu-latest
     permissions:
       id-token: write
