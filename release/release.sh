@@ -35,6 +35,8 @@ def sub_first(path, pattern, repl):
 sub_first("pyproject.toml", r'^version = "[^"]+"', f'version = "{v}"')
 sub_first("cargo/Cargo.toml", r'^version = "[^"]+"', f'version = "{v}"')
 sub_first("npm/package.json", r'"version": "[^"]+"', f'"version": "{v}"')
+sub_first("larryd/__init__.py", r"^__version__ = '[^']+'", f"__version__ = '{v}'")   # the launchers compare this with their own version
+sub_first("plugin/.claude-plugin/plugin.json", r'"version": "[^"]+"', f'"version": "{v}"')
 mcp = pathlib.Path("listings/mcp-registry/server.json")
 if mcp.exists():
     d = json.loads(mcp.read_text()); d["version"] = v

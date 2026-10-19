@@ -3,16 +3,26 @@
   "name": "io.github.larrydaemon/larryd",
   "title": "LARRYD",
   "description": "Build, test and ship AI agents with Claude Code: new, doctor, run, submit, status.",
-  "version": "0.1.1",
-  "repository": {"url": "https://github.com/larrydaemon/larryd", "source": "github"},
+  "version": "0.1.2",
+  "repository": {
+    "url": "https://github.com/larrydaemon/larryd",
+    "source": "github"
+  },
   "packages": [
     {
       "registryType": "pypi",
       "identifier": "larryd",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "runtimeHint": "uvx",
-      "packageArguments": [{"type": "positional", "value": "mcp"}],
-      "transport": {"type": "stdio"}
+      "packageArguments": [
+        {
+          "type": "positional",
+          "value": "mcp"
+        }
+      ],
+      "transport": {
+        "type": "stdio"
+      }
     }
   ]
 }
