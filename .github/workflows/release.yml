@@ -41,7 +41,9 @@ jobs:
           ref: ${{ inputs.tag || github.ref_name }}
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: |
+            3.11
+            3.12
       - id: v
         env:
           TAG: ${{ inputs.tag || github.ref_name }}
@@ -49,13 +51,23 @@ jobs:
           python release/check_versions.py "$TAG"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+      # THE TOOLS THE TESTS USE (2026-10-19, the first real run found them missing): bubblewrap, LARRYD's Linux sandbox, with
+      # Ubuntu's AppArmor limit on unprivileged user namespaces lifted so bwrap can make one; Claude Code, which validates the
+      # plugin; Python 3.11 (above), the oldest LARRYD supports
+      - name: the tools the tests use
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq bubblewrap
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+          bwrap --ro-bind / / --dev /dev --proc /proc true && echo "bwrap works"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Claude Code
+        run: npm install -g @anthropic-ai/claude-code && claude --version
       - name: python tests
         run: |
           python -m pip install --quiet -e ".[door]" pytest build
           python -m pytest -q tests
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
       - name: npm launcher tests
         run: cd npm && npm test
       - uses: dtolnay/rust-toolchain@stable
