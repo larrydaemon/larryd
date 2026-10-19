@@ -33,7 +33,7 @@ jobs:
       - name: what the page asks for (Linux)
         if: runner.os == 'Linux'
         run: |
-          sudo apt-get update -qq && sudo apt-get install -y -qq bubblewrap pipx
+          sudo apt-get update -qq && sudo apt-get install -y -qq bubblewrap pipx python3-venv
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
       - name: what the page asks for (Mac)
         if: runner.os == 'macOS' && matrix.how == 'pipx'

@@ -48,6 +48,14 @@ fn pip_said(stderr: &str, spec: &str) -> String {
     format!("pip could not install {spec} (its words are above); fix what it says, then run larryd again")
 }
 
+/// What to say when Python could not make LARRYD's venv. Debian and Ubuntu ship venv as its own package (python3-venv).
+fn venv_said(stderr: &str, py: &str, venv: &Path) -> String {
+    if ["ensurepip is not available", "No module named venv", "python3-venv"].iter().any(|w| stderr.contains(w)) {
+        return format!("{py} cannot make a virtual environment yet: on Debian or Ubuntu run sudo apt install python3-venv, then run larryd again");
+    }
+    format!("{py} could not make a venv at {}; check that folder, then run larryd again", venv.display())
+}
+
 fn is_root() -> bool {
     Command::new("id").arg("-u").output().map(|o| String::from_utf8_lossy(&o.stdout).trim() == "0").unwrap_or(false)
 }
@@ -94,9 +102,12 @@ fn main() {
             let _ = std::fs::create_dir_all(parent);
         }
         let spec = env::var("LARRYD_PIP_SPEC").unwrap_or_else(|_| format!("larryd=={VERSION}"));
-        let made = Command::new(&py).args(["-m", "venv"]).arg(&venv).stdout(Stdio::null()).status();
-        if !made.map(|s| s.success()).unwrap_or(false) {
-            say(&format!("{py} could not make a venv at {}; check that folder, then run larryd again", venv.display()));
+        let made = Command::new(&py).args(["-m", "venv"]).arg(&venv).stdin(Stdio::null()).output();
+        let made_ok = made.as_ref().map(|o| o.status.success()).unwrap_or(false);
+        if !made_ok {
+            let said = made.map(|o| format!("{}{}", String::from_utf8_lossy(&o.stdout), String::from_utf8_lossy(&o.stderr))).unwrap_or_default();   // Debian says why on stdout
+            eprint!("{said}");
+            say(&venv_said(&said, &py, &venv));
             exit(1);
         }
         let pip = Command::new(&venv_python).args(["-m", "pip", "install", "-q", &spec]).stdin(Stdio::null()).stdout(Stdio::null()).output();
@@ -139,5 +150,12 @@ mod tests {
         assert!(pip_said(missing, "larryd==0.1.2").starts_with("LARRYD 0.1.2 is not on PyPI yet"));
         assert!(pip_said("NewConnectionError('Failed to establish a new connection')", "larryd==0.1.2").starts_with("could not reach PyPI"));
         assert!(pip_said("ERROR: something else", "larryd==0.1.2").starts_with("pip could not install larryd==0.1.2 (its words are above)"));
+    }
+
+    #[test]
+    fn a_python_without_venv_is_told_what_to_install() {
+        let debian = "The virtual environment was not created successfully because ensurepip is not\navailable.  On Debian/Ubuntu systems, you need to install the python3-venv\npackage";
+        assert!(venv_said(debian, "python3", Path::new("/v")).ends_with("sudo apt install python3-venv, then run larryd again"));
+        assert!(venv_said("Error: [Errno 13] Permission denied", "python3", Path::new("/v")).starts_with("python3 could not make a venv at /v; check that folder"));
     }
 }

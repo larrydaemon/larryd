@@ -39,6 +39,13 @@ test('pip\'s words become the right sentence', () => {
   assert.match(pipSaid('ERROR: something else', 'larryd==0.1.2'), /^pip could not install larryd==0\.1\.2 \(its words are above\)/);
 });
 
+test('a Python without venv is told what to install', () => {
+  const { venvSaid } = require(LAUNCHER);
+  const debian = 'The virtual environment was not created successfully because ensurepip is not\navailable.  On Debian/Ubuntu systems, you need to install the python3-venv\npackage';
+  assert.match(venvSaid(debian, 'python3', '/v'), /sudo apt install python3-venv, then run larryd again$/);
+  assert.match(venvSaid('Error: [Errno 13] Permission denied', 'python3', '/v'), /^python3 could not make a venv at \/v; check that folder/);
+});
+
 test('installs once into its own venv, then hands every argument through', () => {
   const venv = fs.mkdtempSync(path.join(os.tmpdir(), 'larryd-npm-venv-'));
   fs.rmSync(venv, { recursive: true });

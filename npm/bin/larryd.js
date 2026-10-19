@@ -35,6 +35,14 @@ function pipSaid(stderr, spec) {
   return `pip could not install ${spec} (its words are above); fix what it says, then run larryd again`;
 }
 
+// What to say when Python could not make LARRYD's venv. Debian and Ubuntu ship venv as its own package (python3-venv).
+function venvSaid(stderr, py, venv) {
+  if (/ensurepip is not available|No module named venv|python3-venv/.test(stderr)) {
+    return `${py} cannot make a virtual environment yet: on Debian or Ubuntu run sudo apt install python3-venv, then run larryd again`;
+  }
+  return `${py} could not make a venv at ${venv}; check that folder, then run larryd again`;
+}
+
 function venvDir() {
   if (process.env.LARRYD_VENV) return process.env.LARRYD_VENV;
   const root = typeof process.getuid === 'function' && process.getuid() === 0;
@@ -59,10 +67,12 @@ function main() {
     }
     say(`installing LARRYD ${VERSION} (once) into ${venv}`);
     fs.mkdirSync(path.dirname(venv), { recursive: true, mode: 0o700 });
-    const made = spawnSync(py, ['-m', 'venv', venv], { stdio: ['ignore', 'ignore', 'inherit'] });
+    const made = spawnSync(py, ['-m', 'venv', venv], { stdio: ['ignore', 'pipe', 'pipe'], encoding: 'utf8' });   // Debian says why on stdout
     const spec = process.env.LARRYD_PIP_SPEC || `larryd==${VERSION}`;
     if (made.status !== 0) {
-      say(`${py} could not make a venv at ${venv}; check that folder, then run larryd again`);
+      const said = (made.stdout || '') + (made.stderr || '');
+      process.stderr.write(said);
+      say(venvSaid(said, py, venv));
       return 1;
     }
     const pip = spawnSync(venvPython, ['-m', 'pip', 'install', '-q', spec], { stdio: ['ignore', 'ignore', 'pipe'], encoding: 'utf8' });
@@ -82,4 +92,4 @@ if (require.main === module) {
   const code = main();
   if (code !== null) process.exit(code);
 }
-module.exports = { pipSaid };
+module.exports = { venvSaid, pipSaid };
