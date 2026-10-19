@@ -114,19 +114,19 @@ def _loader():
 
 
 def _linux_command(agent, run, entry):
-    import sysconfig
     cmd = [BWRAP, '--unshare-all', '--die-with-parent', '--new-session', '--clearenv',
            '--setenv', 'PATH', '/usr/bin:/bin', '--setenv', 'HOME', run, '--setenv', 'TMPDIR', run, '--setenv', 'LC_CTYPE', 'C.UTF-8',
            '--dev', '/dev', '--symlink', 'usr/lib', '/lib', '--symlink', 'usr/lib64', '/lib64']
-    for path in _linux_runtime():
+    runtime = _linux_runtime()
+    for path in runtime:
         if os.path.exists(path):
             cmd += ['--ro-bind', path, path]
     # A self-contained Python (GitHub's, uv's, pyenv's) keeps the packages pip installs into it INSIDE its standard
     # library folder; that folder is covered with an empty, read-only one, so an agent has the plain runtime only
-    stdlib = os.path.realpath(sysconfig.get_paths()['stdlib'])
-    for packages in (os.path.join(stdlib, 'site-packages'), os.path.join(stdlib, 'dist-packages')):
-        if os.path.isdir(packages):
-            cmd += ['--tmpfs', packages, '--remount-ro', packages]
+    for folder in runtime:
+        for packages in (os.path.join(folder, 'site-packages'), os.path.join(folder, 'dist-packages')):
+            if os.path.isdir(packages):
+                cmd += ['--tmpfs', packages, '--remount-ro', packages]
     cmd += ['--ro-bind', agent, agent, '--bind', run, run,
             '--remount-ro', '/',   # bwrap's own root (a tmpfs holding the mount points) read-only: the run folder is the one place to write
             '--chdir', run, PYTHON, '-I', '-B', '-c', _BOOT, os.path.join(agent, entry)]
