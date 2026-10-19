@@ -83,35 +83,50 @@ def _loader():
     """The program loader the Python binary names (its ELF interpreter). On x86_64 it is under /lib64 (bound above); on
     aarch64 it is /lib/ld-linux-aarch64.so.1, a link in /usr/lib itself, which the arch folder alone does not hold.
     -> [its path inside the sandbox's /usr], or [] when it is already covered or cannot be read."""
-    try:
-        data = pathlib.Path(PYTHON).read_bytes()[:65536]
-    except OSError:
-        return []
-    if data[:4] != b'\x7fELF' or data[4] != 2:   # 64-bit ELF only
-        return []
     import struct
-    end = '<' if data[5] == 1 else '>'
-    phoff, = struct.unpack_from(end + 'Q', data, 0x20)
-    phentsize, phnum = struct.unpack_from(end + 'HH', data, 0x36)
-    for i in range(phnum):
-        kind, = struct.unpack_from(end + 'I', data, phoff + i * phentsize)
-        if kind == 3:   # PT_INTERP
-            off, = struct.unpack_from(end + 'Q', data, phoff + i * phentsize + 8)
-            size, = struct.unpack_from(end + 'Q', data, phoff + i * phentsize + 32)
-            path = data[off:off + size].rstrip(b'\x00').decode()
-            if path.startswith('/lib/'):
-                path = '/usr' + path   # /lib is the sandbox's link to usr/lib
-            return [] if path.startswith('/lib64/') or path.startswith('/usr/lib64/') else [path]
-    return []
+    try:
+        with open(PYTHON, 'rb') as fh:
+            head = fh.read(64)
+            if head[:4] != b'\x7fELF' or head[4] != 2:   # 64-bit ELF only
+                return []
+            end = '<' if head[5] == 1 else '>'
+            phoff, = struct.unpack_from(end + 'Q', head, 0x20)
+            phentsize, phnum = struct.unpack_from(end + 'HH', head, 0x36)
+            fh.seek(phoff)
+            table = fh.read(phentsize * phnum)
+            for i in range(phnum):
+                kind, = struct.unpack_from(end + 'I', table, i * phentsize)
+                if kind == 3:   # PT_INTERP: the loader's path, wherever in the file it is stored
+                    off, = struct.unpack_from(end + 'Q', table, i * phentsize + 8)
+                    size, = struct.unpack_from(end + 'Q', table, i * phentsize + 32)
+                    fh.seek(off)
+                    path = fh.read(size).rstrip(b'\x00').decode()
+                    break
+            else:
+                return []
+    except (OSError, struct.error, UnicodeDecodeError):
+        return []
+    if not path:
+        return []
+    if path.startswith('/lib/'):
+        path = '/usr' + path   # /lib is the sandbox's link to usr/lib
+    return [] if path.startswith(('/lib64/', '/usr/lib64/')) else [path]
 
 
 def _linux_command(agent, run, entry):
+    import sysconfig
     cmd = [BWRAP, '--unshare-all', '--die-with-parent', '--new-session', '--clearenv',
            '--setenv', 'PATH', '/usr/bin:/bin', '--setenv', 'HOME', run, '--setenv', 'TMPDIR', run, '--setenv', 'LC_CTYPE', 'C.UTF-8',
            '--dev', '/dev', '--symlink', 'usr/lib', '/lib', '--symlink', 'usr/lib64', '/lib64']
     for path in _linux_runtime():
         if os.path.exists(path):
             cmd += ['--ro-bind', path, path]
+    # A self-contained Python (GitHub's, uv's, pyenv's) keeps the packages pip installs into it INSIDE its standard
+    # library folder; that folder is covered with an empty, read-only one, so an agent has the plain runtime only
+    stdlib = os.path.realpath(sysconfig.get_paths()['stdlib'])
+    for packages in (os.path.join(stdlib, 'site-packages'), os.path.join(stdlib, 'dist-packages')):
+        if os.path.isdir(packages):
+            cmd += ['--tmpfs', packages, '--remount-ro', packages]
     cmd += ['--ro-bind', agent, agent, '--bind', run, run,
             '--remount-ro', '/',   # bwrap's own root (a tmpfs holding the mount points) read-only: the run folder is the one place to write
             '--chdir', run, PYTHON, '-I', '-B', '-c', _BOOT, os.path.join(agent, entry)]
