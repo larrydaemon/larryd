@@ -4,7 +4,7 @@ macOS sandbox-exec, or on Linux bubblewrap (bwrap) with a seccomp filter; on any
 - no new process (no fork, no other program);
 - writes only in its own run folder (made for the run, removed after), never into the locker;
 - reads nothing but its own folder, its run folder and what the Python runtime needs to start (the binary, its standard
-  library, the libraries those link, the system's own libraries): on macOS every other read is refused (a file's name
+  library, the libraries those link, the system's own libraries; never the packages installed into it): on macOS every other read is refused (a file's name
   and size may be looked up, never its contents: /etc/hosts, another project, the home folders); on Linux nothing
   else is mounted;
 - an empty environment, one JSON object in on stdin, one JSON object out on stdout, inside the time limit.
@@ -158,8 +158,37 @@ def _mac_runtime():
     return sorted(folders)
 
 
+_PACKAGES = ('site-packages', 'dist-packages')
+_SITE_PACKAGES = None
+
+
+def site_packages():
+    """Every packages folder the runtime's Python puts on its own path (sys.path and site's list, exactly as the agent's
+    process sees them, run with -I as the agent is), plus any under its own folder; each as named and as it really is (a
+    link resolved). These are where pip installs into a Python that is not a venv (GitHub's, python.org's, uv's)."""
+    global _SITE_PACKAGES
+    if _SITE_PACKAGES is None:
+        named = set(glob.glob(os.path.join(_BASE, 'lib', 'python*', 'site-packages')))
+        try:
+            done = subprocess.run([PYTHON, '-I', '-c', 'import json, site, sys; print(json.dumps(sys.path + site.getsitepackages()))'],
+                                  capture_output=True, text=True, timeout=30, env={'PATH': '/usr/bin:/bin'})
+            named.update(json.loads(done.stdout) if done.returncode == 0 else [])
+        except (OSError, ValueError, subprocess.TimeoutExpired):
+            pass
+        found = set()
+        for p in named:
+            if isinstance(p, str) and os.path.basename(p.rstrip('/')) in _PACKAGES:
+                found.update({os.path.normpath(p), os.path.realpath(p)})
+        _SITE_PACKAGES = sorted(found)
+    return _SITE_PACKAGES
+
+
 def _profile(agent, run):
     reads = ' '.join(f'(subpath "{p}")' for p in [agent, run, *_mac_runtime(), *_MAC_SYSTEM]) + ' ' + ' '.join(f'(literal "{p}")' for p in _MAC_LITERAL)
+    # the plain runtime only: the runtime's packages folders are refused even where its own folder is readable (the last
+    # rule that matches wins), as the Linux sandbox covers them with an empty one
+    packages = ' '.join(f'(subpath "{p}")' for p in site_packages())
+    hidden = f'(deny file-read* {packages})\n' if packages else ''
     return f'''(version 1)
 (allow default)
 (deny network*)
@@ -171,7 +200,7 @@ def _profile(agent, run):
 (deny file-read*)
 (allow file-read-metadata)
 (allow file-read* {reads})
-'''
+{hidden}'''
 
 
 def _kind(stderr, code):

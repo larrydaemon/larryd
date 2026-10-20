@@ -134,6 +134,31 @@ class SandboxTest(unittest.TestCase):
             self.assertTrue(said(reason, 'read outside'), reason)
             self.assertEqual(self._control(folder).returncode, 0)
 
+    def test_reads_none_of_the_runtimes_packages(self):
+        """The plain runtime only: every packages folder the runtime's Python has on its path (where pip installs into a
+        Python that is not a venv, as on GitHub's machines) is empty or refused to the agent; without the sandbox the
+        same agent sees what is installed there."""
+        paths = [p for p in sandbox.site_packages() if os.path.isdir(p)]
+        self.assertTrue(paths, 'the runtime has no packages folder to prove this on')
+        folder = self._agent('import json, os\nseen = {}\n'
+                             f'for p in {paths!r}:\n'
+                             '    try:\n        seen[p] = sorted(os.listdir(p))\n    except OSError:\n        seen[p] = []\n'
+                             'print(json.dumps(seen))\n')
+        control = self._control(folder)
+        self.assertEqual(control.returncode, 0, control.stderr)
+        self.assertTrue(any(json.loads(control.stdout).values()), control.stdout)   # something really is installed there
+        state, answer, reason = sandbox.run(folder, 'agent.py', {})
+        self.assertEqual(state, 'DONE', reason)
+        self.assertEqual(answer, {p: [] for p in paths})
+
+    def test_imports_nothing_installed_into_the_runtime(self):
+        """pip, installed into the runtime's own Python: importable without the sandbox, not inside it."""
+        folder = self._agent('import json, pip\nprint(json.dumps({"had": True}))\n')
+        control = self._control(folder)
+        self.assertEqual(control.returncode, 0, control.stderr)
+        state, _answer, reason = sandbox.run(folder, 'agent.py', {})
+        self.assertEqual((state, reason), ('FAILED', 'ModuleNotFoundError'))
+
     def test_a_normal_agent_uses_the_standard_library(self):
         folder = self._agent('import csv, datetime, decimal, hashlib, json, math, random, re, sqlite3, statistics\n'
                              'print(json.dumps({"n": str(decimal.Decimal("1.1") * 2), "db": sqlite3.connect(":memory:").execute("select 6*7").fetchone()[0]}))\n')
