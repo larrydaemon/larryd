@@ -1,0 +1,66 @@
+name: tests
+
+# Every suite on the three machines LARRYD supports, for a release branch, before any tag exists.
+# It publishes nothing: no registry, no tag, no token (the publish is release.yml, on a tag only).
+
+on:
+  push:
+    branches:
+      - "release-*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux x86-64
+            os: ubuntu-latest
+          - name: Linux ARM64
+            os: ubuntu-24.04-arm
+          - name: macOS
+            os: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: |
+            3.11
+            3.12
+      - name: the tools the tests use (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq bubblewrap
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+          bwrap --ro-bind / / --dev /dev --proc /proc true && echo "bwrap works"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Claude Code
+        run: npm install -g @anthropic-ai/claude-code && claude --version
+      - name: versions agree
+        run: python release/check_versions.py
+      - name: the tool's suite
+        run: |
+          python -m pip install --quiet -e ".[door]" pytest build
+          python -m pytest -q tests
+      - name: the runtime's suite (server/, its own venv)
+        run: |
+          python -m venv "$RUNNER_TEMP/server-venv"
+          "$RUNNER_TEMP/server-venv/bin/pip" install --quiet -r server/requirements.txt pytest
+          cd server/tests && "$RUNNER_TEMP/server-venv/bin/python" -m pytest -q
+      - name: npm launcher tests
+        run: cd npm && npm test
+      - uses: dtolnay/rust-toolchain@stable
+      - name: cargo launcher tests
+        run: cd cargo && cargo test -q
