@@ -255,7 +255,7 @@ def test_the_doctor_comes_first(project):
     assert result.state == 'REFUSED' and result.problems and result.problems[0].check == 'the air gap'
 
 
-def test_the_job_is_what_hanzo_hands(project):
+def test_the_job_is_what_the_runtime_hands(project):
     (project / 'samples' / 'job.json').write_text('{"do": "answer", "members": []}')
     assert 'would not hand' in runner.run(project).reason
     (project / 'samples' / 'job.json').write_text('{"do": "sing"}')

@@ -1,4 +1,4 @@
-"""THE ONLY WAY OUT, proven against a real signed door on a real port (HANZO's own host): no stand-in for the platform."""
+"""THE ONLY WAY OUT, proven against a real signed door on a real port (the runtime's own host): no stand-in for the platform."""
 import json
 import pathlib
 import socket
@@ -42,7 +42,7 @@ class ClientTest(unittest.TestCase):
         return platform.Client({'wid': f'http://127.0.0.1:{port or self.port}'}, secret)
 
     def test_a_signed_get_is_answered(self):
-        self.assertEqual(self._client().get('wid', '/health'), (200, {'office': 'hanzo', 'locker': 0, 'runs': 0}))
+        self.assertEqual(self._client().get('wid', '/health'), (200, {'office': 'runtime', 'locker': 0, 'runs': 0}))
 
     def test_a_wrong_secret_is_refused(self):
         self.assertEqual(self._client(secret='another').get('wid', '/health'), (401, {'refused': 'not a signed call'}))
@@ -60,11 +60,11 @@ class ClientTest(unittest.TestCase):
         self.assertEqual((status, body), (0, {'refused': 'wid does not answer'}))
 
     def test_addresses_come_from_config(self):
-        cfg = json.loads((APP / 'schemas' / 'hanzo.json').read_text())
+        cfg = json.loads((APP / 'schemas' / 'runtime.json').read_text())
         self.assertEqual(platform.addresses(cfg, 'rnd', None), {'wid': 'http://127.0.0.1:5004', 'cc': 'http://127.0.0.1:5007', 'fs': 'http://127.0.0.1:5008', 'lryllm': 'http://127.0.0.1:5009', 'so': 'http://127.0.0.1:5006'})
 
     def test_scratch_addresses_replace_them(self):
-        cfg = json.loads((APP / 'schemas' / 'hanzo.json').read_text())
+        cfg = json.loads((APP / 'schemas' / 'runtime.json').read_text())
         with tempfile.TemporaryDirectory() as d:
             (pathlib.Path(d) / 'platform.json').write_text(json.dumps({'wid': 'http://127.0.0.1:1', 'cc': 'http://127.0.0.1:2'}))
             self.assertEqual(platform.addresses(cfg, 'rnd', d), {'wid': 'http://127.0.0.1:1', 'cc': 'http://127.0.0.1:2'})

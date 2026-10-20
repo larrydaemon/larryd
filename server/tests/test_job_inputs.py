@@ -1,4 +1,4 @@
-"""THE JOB'S INPUTS (hands ["job"]): an agent declares its inputs {name: slot 001-015}; on a RUN, HANZO reads that RUN's
+"""THE JOB'S INPUTS (hands ["job"]): an agent declares its inputs {name: slot 001-015}; on a RUN, the runtime reads that RUN's
 inputs from wid (/jobs/inputs), hands them in as job = {name: value}, and keeps none of them (data stays in wid). Refused:
 an input the agent does not declare, a value too large or not text; failed: wid silent, inputs not declared right.
 wid here is a Recorder (in this process, it answers only what the test gives it); what wid answers is proven live only."""
@@ -65,7 +65,7 @@ class JobInputs(unittest.TestCase):
         (folder / 'agent.json').write_text(json.dumps(manifest))
         (folder / 'agent.py').write_text('import json, sys\njob = json.load(sys.stdin)\nprint(json.dumps({"delivery": json.dumps(job.get("job"), sort_keys=True)}))\n')
         con = __import__('sqlite3').connect(self.db)
-        con.execute('DELETE FROM hanzo_locker')
+        con.execute('DELETE FROM runtime_locker')
         con.commit()
         con.close()
         locker.add(self.db, self.agents, KEY, 'echo')
@@ -114,9 +114,9 @@ class JobInputs(unittest.TestCase):
         silent = platform.Client({'wid': f'http://127.0.0.1:{_closed_port()}', 'cc': f'http://127.0.0.1:{_closed_port()}'}, 'scratch', timeout=2)
         self.assertEqual(self.run_with(silent), 'FAILED')
         con = __import__('sqlite3').connect(self.db)
-        reason = con.execute("SELECT reason FROM hanzo_runs WHERE lane = 'job' ORDER BY id DESC").fetchone()[0]
+        reason = con.execute("SELECT reason FROM runtime_runs WHERE lane = 'job' ORDER BY id DESC").fetchone()[0]
         con.close()
-        self.assertTrue(reason.startswith("HANZO could not read the job's inputs: wid does not answer"), reason)
+        self.assertTrue(reason.startswith("LARRYD could not read the job's inputs: wid does not answer"), reason)
         wid = Wid({}, status=400)
         self.assertEqual(self.run_with(wid), 'FAILED')
         self.assertIn('RUN 1 is already DONE', self.results(wid)[-1]['log'])
@@ -136,11 +136,11 @@ class JobInputs(unittest.TestCase):
         self.assertFalse([r for _o, r, _d in wid.said if r == '/jobs/inputs'])
         self.assertEqual(json.loads(self.results(wid)[-1]['delivery']), None)
 
-    def test_a_hand_hanzo_does_not_have_still_fails(self):
+    def test_a_hand_runtime_does_not_have_still_fails(self):
         self.agent({'name': '001'}, hands=('members',))
         wid = Wid({})
         self.assertEqual(self.run_with(wid), 'FAILED')
-        self.assertEqual(self.results(wid)[-1]['log'], "HANZO cannot hand ['members'] yet")
+        self.assertEqual(self.results(wid)[-1]['log'], "LARRYD cannot hand ['members'] yet")
 
 
 if __name__ == '__main__':

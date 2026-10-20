@@ -1,4 +1,4 @@
-"""THE SIGNED CALL, both directions: the platform's office scheme, with HANZO's own secret. The text signed is
+"""THE SIGNED CALL, both directions: the platform's office scheme, with the runtime's own secret. The text signed is
 route + ' ' + at + ' ' + the data as compact sorted JSON; HMAC-SHA256, hex. Headers: X-Office (the signature) and
 X-Office-At (the moment it signed, ISO UTC). A call is good only inside the window, before or after now."""
 import datetime

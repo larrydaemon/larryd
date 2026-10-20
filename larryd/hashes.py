@@ -1,4 +1,4 @@
-"""THE HASHES, one recipe each, as PF HANZO's locker computes them (so what larryd prints is what HANZO records).
+"""THE HASHES, one recipe each, as the LARRYD runtime's locker computes them (so what larryd prints is what the runtime records).
 - the code: every file of the folder but the manifest, by its path inside the folder and its bytes, in a fixed order
   (compiled caches are not the code);
 - the manifest: its bytes;

@@ -22,14 +22,14 @@ class StoreTest(unittest.TestCase):
 
     def test_database_name(self):
         with tempfile.TemporaryDirectory() as d:
-            self.assertTrue(store.open_store(d).endswith('/hanzo.db'))
+            self.assertTrue(store.open_store(d).endswith('/runtime.db'))
 
     def test_counts_are_rows(self):
         with tempfile.TemporaryDirectory() as d:
             path = store.open_store(d)
             self.assertEqual(store.counts(path), {'locker': 0, 'runs': 0})
             con = sqlite3.connect(path)
-            con.execute("INSERT INTO hanzo_runs (lane, agent_key, state, started_at) VALUES ('call','K','REFUSED','t')")
+            con.execute("INSERT INTO runtime_runs (lane, agent_key, state, started_at) VALUES ('call','K','REFUSED','t')")
             con.commit()
             con.close()
             self.assertEqual(store.counts(path), {'locker': 0, 'runs': 1})

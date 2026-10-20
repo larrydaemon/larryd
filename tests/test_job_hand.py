@@ -1,5 +1,5 @@
 """The job's own inputs (hands ["job"]): the doctor checks "inputs" ({name: slot 001-015}, one slot each, only with the
-hand), and `larryd run` hands the sample job's inputs exactly as PF HANZO would: only declared names, text, not too long."""
+hand), and `larryd run` hands the sample job's inputs exactly as the LARRYD runtime would: only declared names, text, not too long."""
 import json
 
 import pytest
@@ -34,7 +34,7 @@ def _manifest_problems(root):
     return [p.wrong for p in doctor.check(root) if p.check == 'the manifest']
 
 
-def test_hanzo_hands_the_job_today():
+def test_runtime_hands_the_job_today():
     assert shape.HANDS == ('cards', 'job')
 
 
@@ -67,7 +67,7 @@ def test_agents_without_the_hand_need_no_inputs(tmp_path):
     ({'name': 'Harbor', 'seed': '1'}, "holds ['seed']"), ({'name': 7}, 'not text'), ({'name': 'x' * (shape.MOST_INPUT + 1)}, 'not text'),
     (['Harbor'], 'is not {name: value}'),
 ])
-def test_a_sample_job_hanzo_would_refuse(agent, job, words):
+def test_a_sample_job_runtime_would_refuse(agent, job, words):
     (agent / 'samples' / 'job.json').write_text(json.dumps({'do': 'answer', 'job': job}))
     result = runner.run(agent)
     assert result.state == 'REFUSED' and words in result.reason and result.todo

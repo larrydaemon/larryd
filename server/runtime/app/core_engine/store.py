@@ -1,4 +1,4 @@
-"""hanzo.db, HANZO's only database, created from schemas/store.json and nothing else; a table that differs is refused, and a
+"""runtime.db, the runtime's only database, created from schemas/store.json and nothing else; a table that differs is refused, and a
 table the schema retired is dropped."""
 import json
 import pathlib
@@ -11,14 +11,14 @@ def open_store(instance):
     path = str(pathlib.Path(instance) / SCHEMA['database'])
     con = sqlite3.connect(path)
     try:
-        for name in SCHEMA.get('retired', {}).get('tables', []):   # a table HANZO no longer keeps goes, with what it held
+        for name in SCHEMA.get('retired', {}).get('tables', []):   # a table the runtime no longer keeps goes, with what it held
             if name not in SCHEMA['tables']:
                 con.execute(f'DROP TABLE IF EXISTS "{name}"')
         for name, table in SCHEMA['tables'].items():
             con.execute(f'CREATE TABLE IF NOT EXISTS "{name}" (' + ', '.join(f'"{c}" {kind}' for c, kind in table['columns']) + ')')
             have = [r[1] for r in con.execute(f'PRAGMA table_info("{name}")')]
             if have != [c for c, _kind in table['columns']]:
-                raise SystemExit(f'hanzo.db: {name} is not the schema\'s ({have}); HANZO refuses to keep it')
+                raise SystemExit(f'runtime.db: {name} is not the schema\'s ({have}); the runtime refuses to keep it')
         con.commit()
     finally:
         con.close()
@@ -28,7 +28,7 @@ def open_store(instance):
 def counts(path):
     con = sqlite3.connect(path)
     try:
-        return {'locker': con.execute('SELECT COUNT(*) FROM hanzo_locker').fetchone()[0],
-                'runs': con.execute('SELECT COUNT(*) FROM hanzo_runs').fetchone()[0]}
+        return {'locker': con.execute('SELECT COUNT(*) FROM runtime_locker').fetchone()[0],
+                'runs': con.execute('SELECT COUNT(*) FROM runtime_runs').fetchone()[0]}
     finally:
         con.close()

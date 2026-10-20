@@ -1,4 +1,4 @@
-"""HANZO'S HOST: the /api door, and nothing else. Every call must be signed with HANZO's secret (core_engine/signing.py);
+"""THE RUNTIME'S HOST: the /api door, and nothing else. Every call must be signed with the runtime's secret (core_engine/signing.py);
 an unsigned, stale or wrongly signed call is refused (401) before any route runs. (A developer's agent comes in through
 LARRYD's submit door and the owner's review, then `place` below; never through this door.) The routes hand the call to the
 harness; a RUN is accepted at once (202) and runs on its own thread, its result written back to the platform."""
@@ -17,7 +17,7 @@ sys.path.insert(0, str(APP))
 
 from core_engine import harness as lanes_harness, intake, platform, signing, store  # noqa: E402
 
-CONFIG = json.loads((APP / 'schemas' / 'hanzo.json').read_text())
+CONFIG = json.loads((APP / 'schemas' / 'runtime.json').read_text())
 INSTANCE = pathlib.Path(os.environ['LARRYD_INSTANCE']) if os.environ.get('LARRYD_INSTANCE') else APP.parent / 'instance'   # the daemon names it
 
 
@@ -29,14 +29,14 @@ NEEDS = ('account', 'scope', 'member')
 
 
 def create_app(instance, secret, now=_utc_now, addresses=None, agents=None):
-    """agents: the locker's folder (default HANZO's own; a test gives a scratch one)."""
+    """agents: the locker's folder (default the runtime's own; a test gives a scratch one)."""
     if not secret:
-        raise SystemExit(f"HANZO does not start without its secret '{CONFIG['secret']['name']}'")
+        raise SystemExit(f"LARRYD does not start without its secret '{CONFIG['secret']['name']}'")
     db = store.open_store(instance)
     h = lanes_harness.Harness(db, APP / 'agents' if agents is None else pathlib.Path(agents), platform.Client(addresses or {}, secret),
                               CONFIG['run']['seconds'])
     running, lock = set(), threading.Lock()
-    app = Flask('hanzo')
+    app = Flask('runtime')
     app.config['harness'] = h
 
     @app.before_request
@@ -129,7 +129,7 @@ def place(app, agent_key, data):
 
 
 def catch_up(app):
-    """At start, once (never a loop): the RUNs the platform queued while HANZO was away."""
+    """At start, once (never a loop): the RUNs the platform queued while the runtime was away."""
     status, body = app.config['harness'].client.get('wid', '/jobs/queued')
     for j in body.get('jobs', []) if status == 200 else []:
         app.config['start'](j['account'], j['scope'], j['member'], j['job_key'], int(j['run']))
@@ -144,10 +144,10 @@ def locker_root(instance):
 
 
 def main(argv):
-    """python hanzo/app/web/app.py                                   the host
-    python hanzo/app/web/app.py submit <key>                        an agent HANZO holds, to FROST's review (its key, its exact hashes, its manifest)
-    python hanzo/app/web/app.py place <card key> <file.larryd>      an agent the owner approved (LARRYD's review queue): into the locker, then to FROST's review
-    python hanzo/app/web/app.py review <card key>...                what HANZO records for those agents, with FROST's word on the hashes it holds"""
+    """python runtime/app/web/app.py                                   the host
+    python runtime/app/web/app.py submit <key>                        an agent the runtime holds, to FROST's review (its key, its exact hashes, its manifest)
+    python runtime/app/web/app.py place <card key> <file.larryd>      an agent the owner approved (LARRYD's review queue): into the locker, then to FROST's review
+    python runtime/app/web/app.py review <card key>...                what the runtime records for those agents, with FROST's word on the hashes it holds"""
     side = os.environ.get(CONFIG['environment_variable'], 'localhost.rnd').split('.')[-1]
     secret_file = INSTANCE / 'secrets' / CONFIG['secret']['name']
     secret = secret_file.read_text().strip() if secret_file.is_file() else ''

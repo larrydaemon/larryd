@@ -1,8 +1,8 @@
-"""THE HARNESS: how HANZO answers the platform. Everything it knows about a member comes from the platform over the
+"""THE HARNESS: how the runtime answers the platform. Everything it knows about a member comes from the platform over the
 one signed client (the cards, the member's hired shells, the account's subscriptions, FROST's approvals); every agent
-runs in the sandbox; every call and run is a hanzo_runs row. Nothing is assumed when the platform does not answer.
+runs in the sandbox; every call and run is a runtime_runs row. Nothing is assumed when the platform does not answer.
 DATA STAYS IN wid (the owner): what a run is handed lives in memory and its run folder only; its result goes back to wid
-and is not kept; hanzo.db never holds a record value, a delivery, an account or a member.
+and is not kept; runtime.db never holds a record value, a delivery, an account or a member.
 An agent counts as verified only when its folder matches the locker AND FROST approved those exact hashes."""
 import base64
 import binascii
@@ -30,7 +30,7 @@ def _skills():
 SKILLS = _skills()
 MOST_FILES = 10   # what the DA-M store keeps from one answer (all of it inside the sandbox's 1 MB answer)
 FILE_NAME = re.compile(r'^[A-Za-z0-9][A-Za-z0-9 ._-]{0,120}$')
-HANDED = {   # a skill's hand: the platform's door HANZO asks for the RUN's member and account (signed with hanzo_link)
+HANDED = {   # a skill's hand: the platform's door the runtime asks for the RUN's member and account (signed with runtime_link)
     'greeting': ('lryllm', '/larry/greeting', "the member's greeting", 'LARRY LLM'),
     'identity': ('fs', '/agents/identity', 'who the agent works for', 'FROST'),
 }
@@ -93,7 +93,7 @@ class Harness:
         return verify
 
     def submit(self, agent_key):
-        """HANZO submits an agent it holds to FROST's review: its key, its exact hashes, its manifest."""
+        """The runtime submits an agent it holds to FROST's review: its key, its exact hashes, its manifest."""
         ok, why = locker.verify(self.db, self.agents, agent_key)
         if not ok:
             raise Refused(409, why)
@@ -104,7 +104,7 @@ class Harness:
     def marketplace_key(self):
         con = sqlite3.connect(self.db)
         try:
-            row = con.execute('SELECT agent_key FROM hanzo_locker WHERE folder = ?', (MARKETPLACE,)).fetchone()
+            row = con.execute('SELECT agent_key FROM runtime_locker WHERE folder = ?', (MARKETPLACE,)).fetchone()
         finally:
             con.close()
         if row is None:
@@ -112,8 +112,8 @@ class Harness:
         return row[0]
 
     def review_state(self, keys):
-        """What HANZO records for these agents (the owner's `review` command): held or not, FROST's word on the exact
-        hashes, and the counts of hanzo_runs (runs by state, calls, hires, unhires, mTok charged). Only agent keys and
+        """What the runtime records for these agents (the owner's `review` command): held or not, FROST's word on the exact
+        hashes, and the counts of runtime_runs (runs by state, calls, hires, unhires, mTok charged). Only agent keys and
         counts: no account, no member."""
         approved = None   # FROST's approved list, asked only when FROST has no review_state door (a FROST before it)
         con = sqlite3.connect(self.db)
@@ -126,11 +126,11 @@ class Harness:
                     review = 'not submitted'
                 else:
                     review, note, approved = self._review(key, row, approved)
-                runs = dict(con.execute("SELECT state, COUNT(*) FROM hanzo_runs WHERE agent_key = ? AND lane = 'job' GROUP BY state", (key,)).fetchall())
+                runs = dict(con.execute("SELECT state, COUNT(*) FROM runtime_runs WHERE agent_key = ? AND lane = 'job' GROUP BY state", (key,)).fetchall())
                 count = lambda lane, state=None: con.execute(  # noqa: E731
-                    'SELECT COUNT(*) FROM hanzo_runs WHERE agent_key = ? AND lane = ?' + (' AND state = ?' if state else ''),
+                    'SELECT COUNT(*) FROM runtime_runs WHERE agent_key = ? AND lane = ?' + (' AND state = ?' if state else ''),
                     (key, lane) + ((state,) if state else ())).fetchone()[0]
-                charged = con.execute("SELECT COALESCE(SUM(charged), 0) FROM hanzo_runs WHERE agent_key = ? AND lane = 'job'", (key,)).fetchone()[0]
+                charged = con.execute("SELECT COALESCE(SUM(charged), 0) FROM runtime_runs WHERE agent_key = ? AND lane = 'job'", (key,)).fetchone()[0]
                 out.append({'agent_key': key, 'held': row is not None, 'code_sha256': row['code_sha256'] if row else '',
                             'manifest_sha256': row['manifest_sha256'] if row else '', 'review': review, 'note': note, 'runs': runs,
                             'calls': count('call'), 'hires': count('hire', 'ON'), 'unhires': count('hire', 'OFF'), 'charged': charged})
@@ -161,7 +161,7 @@ class Harness:
         account, a member, an input or a delivery (data stays in wid)."""
         con = sqlite3.connect(self.db)
         try:
-            con.execute('INSERT INTO hanzo_runs (lane, agent_key, job_key, run, state, reason, started_at, finished_at, charged) VALUES (?,?,?,?,?,?,?,?,?)',
+            con.execute('INSERT INTO runtime_runs (lane, agent_key, job_key, run, state, reason, started_at, finished_at, charged) VALUES (?,?,?,?,?,?,?,?,?)',
                         (lane, agent_key, job_key, run, state, reason, _now(), _now(), charged))
             con.commit()
         finally:
@@ -236,7 +236,7 @@ class Harness:
         try:
             cards, hired, groups, verify = self.facts(account, scope, member)
         except Refused as silent:
-            return self._end(account, scope, member, '', job_key, run, 'FAILED', f'HANZO could not read the platform: {silent.reason}')
+            return self._end(account, scope, member, '', job_key, run, 'FAILED', f'LARRYD could not read the platform: {silent.reason}')
         shell = next((h for h in hired if h.get('job_key') == job_key), None)
         if shell is None:
             return self._end(account, scope, member, '', job_key, run, 'REFUSED', 'the job is not in a hired shell')
@@ -252,7 +252,7 @@ class Harness:
         plan = manifest.get('run') or {}
         hands = plan.get('hands') or []
         if set(hands) - set(HANDS):
-            return self._end(account, scope, member, key, job_key, run, 'FAILED', f"HANZO cannot hand {sorted(set(hands) - set(HANDS))} yet")
+            return self._end(account, scope, member, key, job_key, run, 'FAILED', f"LARRYD cannot hand {sorted(set(hands) - set(HANDS))} yet")
         given = {'do': plan.get('do', 'run')}
         try:
             given.update(self._skill_hands(manifest, account, scope, member, job_key, run))
@@ -317,7 +317,7 @@ class Harness:
         return files
 
     def _skill_hands(self, manifest, account, scope, member, job_key, run):
-        """The skills the agent declares, carried out before the RUN: -> {hand: what it hands}. A skill HANZO does not have
+        """The skills the agent declares, carried out before the RUN: -> {hand: what it hands}. A skill LARRYD does not have
         fails the run; a skill with no hand (the mTok charge) hands nothing. What is handed is kept nowhere. Each call names
         the RUN it is for (scope, job_key, run): the platform answers only for a member of a RUN that is open now."""
         declared = manifest.get('skills') or []
@@ -325,7 +325,7 @@ class Harness:
             raise _Stop('FAILED', 'the agent\'s skills are not a list of hashes')
         unknown = [h for h in declared if h not in SKILLS]
         if unknown:
-            raise _Stop('FAILED', f'the agent declares a skill HANZO does not have: {unknown[0][:12]}')
+            raise _Stop('FAILED', f'the agent declares a skill LARRYD does not have: {unknown[0][:12]}')
         out = {}
         for h in declared:
             hand = SKILLS[h].get('hand')
@@ -334,7 +334,7 @@ class Harness:
             office, route, what, who = HANDED[hand]
             status, body = self.client.get(office, route, {'account': account, 'scope': scope, 'member': member, 'job_key': job_key, 'run': str(run)})
             if status != 200:
-                raise _Stop('FAILED', f"HANZO could not read {what}: {body.get('refused') or body.get('error') or f'{who} answered {status}'}")
+                raise _Stop('FAILED', f"LARRYD could not read {what}: {body.get('refused') or body.get('error') or f'{who} answered {status}'}")
             out[hand] = body
         return out
 
@@ -347,10 +347,10 @@ class Harness:
             raise _Stop('FAILED', 'the agent hands "job" but its inputs are not {name: slot 001-015}, one slot each')
         status, body = self.client.get('wid', '/jobs/inputs', {'account': account, 'scope': scope, 'job_key': job_key, 'run': str(run)})
         if status != 200:
-            raise _Stop('FAILED', f"HANZO could not read the job's inputs: {body.get('refused') or body.get('error') or f'wid answered {status}'}")
+            raise _Stop('FAILED', f"LARRYD could not read the job's inputs: {body.get('refused') or body.get('error') or f'wid answered {status}'}")
         held = body.get('inputs')
         if not isinstance(held, dict):
-            raise _Stop('FAILED', "HANZO could not read the job's inputs: not {slot: value}")
+            raise _Stop('FAILED', "LARRYD could not read the job's inputs: not {slot: value}")
         extra = sorted(set(held) - set(declared.values()))
         if extra:
             raise _Stop('REFUSED', f"the job holds input {', '.join(extra)}, which the agent does not declare")

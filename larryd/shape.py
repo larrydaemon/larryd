@@ -3,10 +3,10 @@ An agent project is a folder:
     CLAUDE.md                      the spec and the rules, for the developer's AI
     .claude/skills/larryd/SKILL.md the skill Claude Code loads
     samples/job.json               a sample job for `larryd run`
-    agent/                         THE AGENT: exactly what PF HANZO holds in its locker
+    agent/                         THE AGENT: exactly what the LARRYD runtime holds in its locker
         agent.json                 the manifest
         agent.py                   the code, one entry
-PF HANZO runs the agent as its own process with no network, one JSON object in on stdin, one JSON object out on stdout."""
+The LARRYD runtime runs the agent as its own process with no network, one JSON object in on stdin, one JSON object out on stdout."""
 
 AGENT = 'agent'
 MANIFEST = 'agent.json'
@@ -33,7 +33,7 @@ PACK_FIELDS = ('name', 'about')
 PACK_KINDS = {'.json', '.txt', '.md', '.csv'}
 NEEDED = tuple(k for k in FIELDS if k not in OPTIONAL)
 
-# what PF HANZO hands a RUN today: the cards the member sees; the job's own inputs (by the names in "inputs")
+# what the LARRYD runtime hands a RUN today: the cards the member sees; the job's own inputs (by the names in "inputs")
 HANDS = ('cards', 'job')
 SLOT = r'0(0[1-9]|1[0-5])'   # the job's input slots, 001-015
-MOST_INPUT = 10_000          # characters in one input (PF HANZO refuses more)
+MOST_INPUT = 10_000          # characters in one input (the LARRYD runtime refuses more)

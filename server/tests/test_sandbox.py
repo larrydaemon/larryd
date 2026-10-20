@@ -108,7 +108,7 @@ class SandboxTest(unittest.TestCase):
 
     def test_reads_nothing_private(self):
         """A file in the home folder of whoever runs the runtime (on macOS under /Users; on Linux, never mounted)."""
-        with tempfile.NamedTemporaryFile(dir=pathlib.Path.home(), prefix='.hanzo_probe_') as probe:
+        with tempfile.NamedTemporaryFile(dir=pathlib.Path.home(), prefix='.runtime_probe_') as probe:
             folder = self._agent(f'open({probe.name!r}).read()\nprint("{{}}")\n')
             state, _answer, reason = sandbox.run(folder, 'agent.py', {})
             self.assertEqual(state, 'FAILED')
@@ -125,7 +125,7 @@ class SandboxTest(unittest.TestCase):
 
     def test_reads_no_other_project(self):
         """Another folder in the shared temporary area, beside the agent's own."""
-        with tempfile.TemporaryDirectory(prefix='hanzo_other_project_') as other:
+        with tempfile.TemporaryDirectory(prefix='runtime_other_project_') as other:
             notes = pathlib.Path(other) / 'notes.txt'
             notes.write_text('not yours')
             folder = self._agent(f'open({str(notes)!r}).read()\nprint("{{}}")\n')

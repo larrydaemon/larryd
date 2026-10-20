@@ -73,7 +73,7 @@ MANIFEST_PLANTS = {
     'gives empty': _set(gives=[]),
     'run without hands': _set(run={'do': 'answer'}),
     'run do outside does': _set(run={'do': 'sing', 'hands': []}),
-    'hands HANZO does not hand': _set(run={'do': 'answer', 'hands': ['members']}),
+    'hands LARRYD does not hand': _set(run={'do': 'answer', 'hands': ['members']}),
     'skills not a list': _set(skills='x'),
 }
 
@@ -86,7 +86,7 @@ def test_the_manifest_catches(agent, name):
     assert all(p.wrong and p.todo for p in problems)
 
 
-def test_hands_names_what_hanzo_hands(agent):
+def test_hands_names_what_the_runtime_hands(agent):
     _set(run={'do': 'answer', 'hands': ['cards']})(agent)
     assert doctor.check(agent) == []
 
@@ -134,7 +134,6 @@ AIR_GAP_PLANTS = {
     'a path under ~': '\nopen("~/notes.txt")\n',
     'a path up and out': '\nopen("../secrets.txt")\n',
     'the platform': '\nWHERE = "virtual_workspace"\n',
-    'PF HANZO': '\nWHERE = "pfhanzo"\n',
 }
 
 

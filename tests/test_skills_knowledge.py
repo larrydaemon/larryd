@@ -1,4 +1,4 @@
-"""Step 6: skills and knowledge, the shape. A skill is a definition named by its hash; only PF HANZO's real doors are
+"""Step 6: skills and knowledge, the shape. A skill is a definition named by its hash; only the LARRYD runtime's real doors are
 skills (today: the mTok charge). A knowledge pack is a folder named by its hash. The doctor checks what an agent declares."""
 import hashlib
 import json
@@ -9,7 +9,7 @@ import pytest
 from larryd import cli, doctor, hashes, knowledge, new, skills
 
 
-MTOK = '3c8ad8bf218a8350b26a7fb4b9eb7f6c70073553437aec8d05afee60f9740dcb'       # pinned here and in PF HANZO's tests: drift on either side is red
+MTOK = '3c8ad8bf218a8350b26a7fb4b9eb7f6c70073553437aec8d05afee60f9740dcb'       # pinned here and in the LARRYD runtime's tests: drift on either side is red
 GREETING = '94686bdeef7ebf3df3e52f1a3086f280ee25b1457336b87f5ab39860f7248fa2'
 IDENTITY = '4db76a92980ff0a3b4cbe584d0b2de4c9821a5cbf7385c0b062c43f276f0ac0f'
 STORE = '1d0eb4d13f8a91b4d0cc67f8b5cb157a4b74ec2c937779d49d4bb80beecc670a'
@@ -95,7 +95,7 @@ def test_a_declared_skill_that_does_not_exist_fails_and_names_the_real_ones(agen
     assert problems and next(iter(skills.known())) in problems[0].todo
 
 
-def test_a_declared_knowledge_pack_fails_while_hanzo_holds_none(agent):
+def test_a_declared_knowledge_pack_fails_while_the_runtime_holds_none(agent):
     _set(agent, knowledge=['0' * 64])
     problems = [p for p in doctor.check(agent) if p.check == 'the knowledge']
     assert problems and 'holds no knowledge pack yet' in problems[0].todo
@@ -154,7 +154,7 @@ def test_a_pack_that_is_not_right(pack, name):
     assert digest == '' and wrong and all(' · ' in w for w in wrong)
 
 
-# ---------------------------------------------------------------- the hashes (PF HANZO's locker recipe)
+# ---------------------------------------------------------------- the hashes (the LARRYD runtime's locker recipe)
 def test_the_code_hash_is_the_lockers_recipe(tmp_path):
     folder = tmp_path / 'a'
     (folder / 'lib').mkdir(parents=True)

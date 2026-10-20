@@ -23,7 +23,7 @@ case "$ACTION" in
     chown larrydsubmit "$WORK"
     (cd /srv/larryd-submit && $DOOR export "$ID" "$WORK/agent.larryd")
     chown larryd "$WORK/agent.larryd"; chown larryd "$WORK"
-    OUT=$(cd /srv/larryd/current && sudo -u larryd env HANZO_ENV=larryd.pf /srv/larryd/venv/bin/python hanzo/app/web/app.py place "$KEY" "$WORK/agent.larryd")
+    OUT=$(cd /srv/larryd/current && sudo -u larryd env LARRYD_ENV=larryd.pf /srv/larryd/venv/bin/python runtime/app/web/app.py place "$KEY" "$WORK/agent.larryd")
     echo "$OUT"
     (cd /srv/larryd-submit && $DOOR mark "$ID" approved "$KEY")
     ;;

@@ -187,7 +187,7 @@ def _kind(stderr, code):
 def run(folder, entry, given, seconds=20):
     """-> (state, answer, reason): ('DONE', {...}, '') or ('FAILED', None, why)."""
     agent = os.path.realpath(folder)
-    run_dir = os.path.realpath(tempfile.mkdtemp(prefix='hanzo_run_'))
+    run_dir = os.path.realpath(tempfile.mkdtemp(prefix='runtime_run_'))
     try:
         try:
             if sys.platform == 'darwin' and os.path.isfile(SANDBOX_EXEC):

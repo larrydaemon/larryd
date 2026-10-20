@@ -1,4 +1,4 @@
-"""The lanes at HANZO's door, where no platform is needed to prove them: the refusals, and a RUN whose platform is
+"""The lanes at the runtime's door, where no platform is needed to prove them: the refusals, and a RUN whose platform is
 silent (a real closed port) ending FAILED with its reason, recorded. What the platform answers is proven live only."""
 import datetime
 import socket
@@ -77,13 +77,13 @@ class HostLanes(unittest.TestCase):
         self.assertEqual((r.status_code, r.get_json()), (202, {'accepted': 'MJOB_000000000009_0009', 'run': 1, 'already': False}))
         for _ in range(100):
             con = sqlite3.connect(self.db)
-            row = con.execute('SELECT lane, job_key, run, state, reason FROM hanzo_runs').fetchone()
+            row = con.execute('SELECT lane, job_key, run, state, reason FROM runtime_runs').fetchone()
             con.close()
             if row:
                 break
             time.sleep(0.05)
         self.assertEqual(row, ('job', 'MJOB_000000000009_0009', 1, 'FAILED',
-                               'HANZO could not read the platform: wid does not answer · the platform did not take the result: wid does not answer'))
+                               'LARRYD could not read the platform: wid does not answer · the platform did not take the result: wid does not answer'))
 
 
 if __name__ == '__main__':

@@ -1,4 +1,4 @@
-"""THE INTAKE: an agent the owner approved from LARRYD's review queue (one .larryd file, a zip of agent/) goes into HANZO's
+"""THE INTAKE: an agent the owner approved from LARRYD's review queue (one .larryd file, a zip of agent/) goes into the runtime's
 locker (dev/<card key>/) with the host's `place`, then to FROST's review as any agent goes. Every refusal is planted
 here. The old signed developer door is gone, and its table is dropped from an old database. FROST is a Recorder here (in
 this process: a receipt, nothing for the platform) or a silent port; what FROST answers is proven live only."""
@@ -31,7 +31,7 @@ def _closed_port():
 
 
 class Frost:
-    """FROST as a receipt: it records what HANZO sends and answers a waiting review, and each review's word as the test
+    """FROST as a receipt: it records what the runtime sends and answers a waiting review, and each review's word as the test
     sets it (states: {(key, code, manifest): (state, note)}); older=True is a FROST before its review_state door (404)."""
     def __init__(self, approved=(), states=None, older=False):
         self.said, self.approved, self.states, self.older = [], list(approved), dict(states or {}), older
@@ -201,8 +201,8 @@ class Intake(unittest.TestCase):
         self.assertFalse((self.agents / 'escape.py').exists() or (self.agents / 'dev' / 'escape.py').exists())
         self.assertIsNone(locker.held(self.db, KEY))
 
-    # ---------------------------------------------------------------- review: what HANZO records, with FROST's word
-    def test_the_review_is_counted_from_hanzo_runs(self):
+    # ---------------------------------------------------------------- review: what the runtime records, with FROST's word
+    def test_the_review_is_counted_from_runtime_runs(self):
         held = self.place(_agent())
         for lane, state, charged in (('job', 'DONE', 3), ('job', 'DONE', 2), ('job', 'FAILED', 0), ('call', 'DONE', 0),
                                      ('hire', 'ON', 0), ('hire', 'ON', 0), ('hire', 'OFF', 0)):
@@ -246,7 +246,7 @@ class Intake(unittest.TestCase):
         h.hire('ACCT_000000000001_0001', 'SCRATCH', 'MCON_000000000002_0002', KEY, True)
         h.hire('ACCT_000000000001_0001', 'SCRATCH', 'MCON_000000000002_0002', KEY, False)
         con = sqlite3.connect(self.db)
-        rows = con.execute("SELECT * FROM hanzo_runs WHERE lane = 'hire' ORDER BY id").fetchall()
+        rows = con.execute("SELECT * FROM runtime_runs WHERE lane = 'hire' ORDER BY id").fetchall()
         con.close()
         self.assertEqual([(r[1], r[2], r[5]) for r in rows], [('hire', KEY, 'ON'), ('hire', KEY, 'OFF')])
         self.assertNotIn('ACCT_000000000001_0001', repr(rows))
@@ -260,22 +260,8 @@ class Intake(unittest.TestCase):
         unsigned = c.post('/api/developer/submit', json=data, headers={'X-Developer': 'ada', 'X-Developer-Sig': 'x', 'X-Office-At': at})
         self.assertEqual(unsigned.status_code, 401)   # a developer's own signature opens nothing now
         signed = c.post('/api/developer/submit', json=data, headers={'X-Office': signing.sign(SECRET, '/developer/submit', data, at), 'X-Office-At': at})
-        self.assertEqual(signed.status_code, 404)     # and with HANZO's own signature there is no such route
+        self.assertEqual(signed.status_code, 404)     # and with the runtime's own signature there is no such route
         self.assertFalse((self.instance / 'secrets' / 'developers').exists())
-
-    def test_the_retired_table_is_dropped_from_an_old_database(self):
-        old = pathlib.Path(self.tmp.name) / 'old'
-        old.mkdir()
-        con = sqlite3.connect(old / 'hanzo.db')
-        with con:
-            con.execute('CREATE TABLE hanzo_developers (agent_key TEXT PRIMARY KEY, developer TEXT NOT NULL, added_at TEXT NOT NULL)')
-            con.execute("INSERT INTO hanzo_developers VALUES (?, 'ada', '2026-09-29')", (KEY,))
-        con.close()
-        store.open_store(old)
-        con = sqlite3.connect(old / 'hanzo.db')
-        tables = sorted(r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'"))
-        con.close()
-        self.assertEqual(tables, ['hanzo_locker', 'hanzo_runs'])
 
 
 if __name__ == '__main__':

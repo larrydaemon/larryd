@@ -1,6 +1,6 @@
-"""`larryd run`: runs the agent on this computer the way PF HANZO runs it, in a scratch world, with a sample job.
+"""`larryd run`: runs the agent on this computer the way the LARRYD runtime runs it, in a scratch world, with a sample job.
 - the doctor first: an agent it refuses is not run;
-- the job handed is what PF HANZO would hand a RUN: {"do": run.do, ...run.hands}, taken from the sample job;
+- the job handed is what the LARRYD runtime would hand a RUN: {"do": run.do, ...run.hands}, taken from the sample job;
 - its own process, sandboxed by the system as LARRYD sandboxes it: on a Mac, sandbox-exec; on Linux, LARRYD's own
   bubblewrap command with its seccomp filter (the runtime's sandbox, the very same profile and command): no network, no new
   process, writes only in a scratch run folder (made for the run, removed after), reads nothing but the agent's own
@@ -22,7 +22,7 @@ from dataclasses import dataclass, field
 from . import doctor, shape, skills
 
 SANDBOX = '/usr/bin/sandbox-exec'
-SECONDS = 20          # PF HANZO's run limit
+SECONDS = 20          # the LARRYD runtime's run limit
 MOST_BYTES = 1_000_000
 
 
@@ -32,7 +32,7 @@ class Result:
     answer: dict | None = None
     reason: str = ''                 # what is wrong, in plain words
     todo: str = ''                   # what to do
-    said: str = ''                   # what the agent wrote on stderr (on this computer only; PF HANZO keeps none of it)
+    said: str = ''                   # what the agent wrote on stderr (on this computer only; the LARRYD runtime keeps none of it)
     problems: list = field(default_factory=list)
 
 
@@ -44,7 +44,7 @@ def _runtime():
 
 
 def python():
-    """The plain Python runtime (no packages from any virtual environment), as PF HANZO runs agents: the runtime's own."""
+    """The plain Python runtime (no packages from any virtual environment), as the LARRYD runtime runs agents: the runtime's own."""
     return _runtime().PYTHON
 
 
@@ -105,7 +105,7 @@ def sandboxed(agent, entry, given, seconds=SECONDS):
 
 
 def job(root, card, sample):
-    """What PF HANZO would hand: {"do": run.do} + each of run.hands, from the sample job. -> (given, None) or (None, Result)."""
+    """What the LARRYD runtime would hand: {"do": run.do} + each of run.hands, from the sample job. -> (given, None) or (None, Result)."""
     try:
         wanted = json.loads(pathlib.Path(sample).read_text())
     except (OSError, ValueError) as e:

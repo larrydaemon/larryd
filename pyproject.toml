@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "larryd"
-version = "0.1.2"
+version = "0.1.3"
 description = "Your server has a daemon. Your agents should have one too. Build, test and ship AI agents with Claude Code."
 readme = "README.md"
 keywords = ["ai-agents", "claude-code", "mcp", "cli", "sandbox"]
@@ -25,12 +25,12 @@ Documentation = "https://github.com/larrydaemon/larryd/blob/main/GUIDE.md"
 larryd = "larryd.cli:main"
 
 [tool.setuptools]
-# the tool (larryd/) and the daemon's code (the runtime, server/hanzo/app, as larryd_runtime); never an instance, a secret or a test
+# the tool (larryd/) and the daemon's code (the runtime, server/runtime/app, as larryd_runtime); never an instance, a secret or a test
 packages = ["larryd", "larryd_runtime", "larryd_runtime.core_engine", "larryd_runtime.web"]
 
 [tool.setuptools.package-dir]
 larryd = "larryd"
-larryd_runtime = "server/hanzo/app"
+larryd_runtime = "server/runtime/app"
 
 [tool.setuptools.package-data]
 larryd = ["kit/*", "kit/**/*", "skills.json", "submit_door.json"]

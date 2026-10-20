@@ -1,6 +1,6 @@
 """A KNOWLEDGE PACK: a folder of plain text files an agent needs (pack.json {"name", "about"} + .md .txt .csv .json),
 named by its hash (every file, by the locker's recipe), so a changed pack is a new pack. A member hires a pack like a
-theme; no pack is held by PF HANZO yet, so `larryd pack` gives a pack its hash and checks its shape, nothing more."""
+theme; no pack is held by the LARRYD runtime yet, so `larryd pack` gives a pack its hash and checks its shape, nothing more."""
 import json
 import pathlib
 
@@ -8,7 +8,7 @@ from . import hashes, shape
 
 
 def held():
-    """-> {hash: pack}: the packs PF HANZO holds. None yet: PF HANZO has no knowledge door."""
+    """-> {hash: pack}: the packs the LARRYD runtime holds. None yet: the LARRYD runtime has no knowledge door."""
     return {}
 
 
