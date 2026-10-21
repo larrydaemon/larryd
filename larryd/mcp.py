@@ -65,7 +65,7 @@ TOOLS = {
                                                      'where': {'type': 'string', 'description': 'the folder to make it in (default: here)'},
                                                      'from': {'type': 'string', 'enum': list(new.EXAMPLES), 'description': 'start from a LARRYD example agent (marketplace: the PF agent marketplace)'}},
                     'required': ['name'], 'additionalProperties': False}),
-    'larryd_doctor': (_doctor, 'Check the agent before submission: the manifest, the entry, the air gap, no secret, the shape, the skills. '
+    'larryd_doctor': (_doctor, 'Check the agent before submission: the manifest, the entry, no network, no secret, the shape, the skills. '
                                'Every problem names the file and line, what is wrong and what to do; fix each one and check again.',
                       {'type': 'object', 'properties': {'path': PATH, 'fix': {'type': 'boolean', 'description': 'first turn a design sheet into the look record and fill the card\'s missing facts, as larryd doctor --fix'}},
                        'additionalProperties': False}),

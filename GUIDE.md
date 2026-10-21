@@ -252,7 +252,7 @@ The type roles (designed type on a part goes to the nearest role, nearest by siz
 | notes | 17.6px | 500 | uppercase | small notes |
 | annotation | 9.6px | 300 | uppercase | facts, the card's product, module and type |
 
-It checks the project, the manifest, the entry, the air gap, no secret, the shape, the skills and the knowledge.
+It checks the project, the manifest, the entry, no network, no secret, the shape, the skills and the knowledge.
 Every problem names the file and line, what is wrong and what to do. Do what it says, then run it again.
 Never silence a check to make it pass. What each check proves, and why: THE LARRYD CHECKS ([CHECKS.md](CHECKS.md),
 beside this guide in the package).

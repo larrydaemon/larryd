@@ -770,12 +770,12 @@ wrote /Users/Shared/weather-report/larryd-checks.svg: paste ![LARRYD checks](lar
 <section id="it-leaders" class="band">
   <div class="section-head">
     <p class="eyebrow">For IT leaders</p>
-    <h2>Air-gapped. On your own machines. Your models.</h2>
+    <h2>Offline, on your own machines. Your models.</h2>
   </div>
   <div class="cards">
     <article class="card">
       <img class="only-dark" src="/assets/img/pulse-green.png" alt="" width="56" height="28"><img class="only-light" src="/assets/img/pulse-amber.png" alt="" width="56" height="28">
-      <h3>Air-gapped</h3>
+      <h3>Offline</h3>
       <p>Every agent runs with no network at all. Nothing calls out; what it needs is handed to it. Agents reach the platform by API only, and the data never leaves it.</p>
     </article>
     <article class="card">
@@ -801,7 +801,7 @@ wrote /Users/Shared/weather-report/larryd-checks.svg: paste ![LARRYD checks](lar
     <li class="spec-row"><span class="step-n">1</span><div><h3>the project</h3><p><strong>Proves:</strong> There is an agent here: a real <code>agent/</code> folder (not a link) holding <code>agent.json</code>.</p><p><strong>Why:</strong> Everything else is checked inside <code>agent/</code>, and only <code>agent/</code> is ever sent or run.</p></div></li>
     <li class="spec-row"><span class="step-n">2</span><div><h3>the manifest</h3><p><strong>Proves:</strong> <code>agent.json</code> is one JSON object with every field and no others. <code>run.do</code> is one of <code>does</code>; <code>calls</code> only names what is in <code>does</code>; <code>run.hands</code> asks only for what LARRYD hands (<code>cards</code>, <code>job</code>); each input has its own slot.</p><p><strong>Why:</strong> The manifest is the agent's promise: what it does, what it is handed, what it answers. The runtime holds the agent to it.</p></div></li>
     <li class="spec-row"><span class="step-n">3</span><div><h3>the entry</h3><p><strong>Proves:</strong> The entry file exists, compiles, has a function for every name in <code>does</code>, and runs as a program.</p><p><strong>Why:</strong> An agent that cannot start, or that promises a function it does not have, fails in front of a person.</p></div></li>
-    <li class="spec-row"><span class="step-n">4</span><div><h3>the air gap</h3><p><strong>Proves:</strong> No network module, no module that starts processes, no hidden imports, nothing outside the Python standard library and the agent's own files, no path outside its own folder.</p><p><strong>Why:</strong> An agent never reaches out. What it needs is handed to it.</p></div></li>
+    <li class="spec-row"><span class="step-n">4</span><div><h3>no network</h3><p><strong>Proves:</strong> The agent has no network module and starts no process; no hidden imports, nothing outside the Python standard library and the agent's own files, no path outside its own folder.</p><p><strong>Why:</strong> An agent never reaches out. What it needs is handed to it.</p></div></li>
     <li class="spec-row"><span class="step-n">5</span><div><h3>no secret</h3><p><strong>Proves:</strong> No file named like a secret (<code>.env</code>, <code>.pem</code>, <code>id_rsa</code>, …) and no text that looks like a key, token or password.</p><p><strong>Why:</strong> An agent holds no secret. Keys belong to the developer, never to the agent.</p></div></li>
     <li class="spec-row"><span class="step-n">6</span><div><h3>the shape</h3><p><strong>Proves:</strong> <code>agent/</code> holds only plain, visible UTF-8 files of the kinds an agent holds (<code>.py</code>, <code>.json</code>, <code>.txt</code>, <code>.md</code>, <code>.csv</code>), and no links.</p><p><strong>Why:</strong> What is checked is exactly what runs: nothing hidden, nothing that points elsewhere.</p></div></li>
     <li class="spec-row"><span class="step-n">7</span><div><h3>the skills</h3><p><strong>Proves:</strong> Every skill the agent declares exists (<code>larryd skills</code> lists them by hash).</p><p><strong>Why:</strong> The runtime carries out declared skills for the agent; a skill that does not exist would fail the run.</p></div></li>

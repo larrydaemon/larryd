@@ -1,7 +1,7 @@
 # THE LARRYD CHECKS · version 4
 
 `larryd doctor` runs these eight checks on an agent, in this order, before it runs and before it is sent anywhere. Its
-output names them the same way (`PASS the air gap`, `FAIL no secret · agent/agent.py line 12: ...`). Every failure says
+output names them the same way (`PASS no network`, `FAIL no secret · agent/agent.py line 12: ...`). Every failure says
 the file, the line when there is one, what is wrong and what to do.
 
 A new or changed check raises the version. `larryd doctor --json` and the badge name it.
@@ -11,7 +11,7 @@ A new or changed check raises the version. `larryd doctor --json` and the badge 
 | 1 | **the project** | There is an agent here: a real `agent/` folder (not a link) holding `agent.json`. | Everything else is checked inside `agent/`, and only `agent/` is ever sent or run. |
 | 2 | **the manifest** | `agent.json` is one JSON object with every field and no others: `name`, `entry`, `about`, `does`, `calls`, `reads`, `run`, `gives`, `skills`, `knowledge` (and `inputs` only when the agent is handed the job; `look` when the card has one, every value a name on the menu: a theme colour variable, a step, an effect, a part and its role; `records` only on an agent that answers calls: {species: [verbs]}, each species a module of the platform, each verb read, add, edit or remove). Its `card` holds the platform's own values: a class, type, residency, authorization (PUBLIC or PRIVATE, the starting setting the authorize panel can change) and product from its lists, a whole mTok price (3 or "3"), a screen that exists (`<species>/<page>`) of that product, and the look's effect is the one the class picks. `run.do` is one of `does`; `calls` only names what is in `does`; `run.hands` asks only for what LARRYD hands (`cards`, `job`); each input has its own slot. | The manifest is the agent's promise: what it does, what it is handed, what it answers. The runtime holds the agent to it. |
 | 3 | **the entry** | The entry file exists, compiles, has a function for every name in `does`, and runs as a program (`if __name__ == '__main__':`). | An agent that cannot start, or that promises a function it does not have, fails in front of a person. |
-| 4 | **the air gap** | No network module, no module that starts processes, no hidden imports (`importlib`, `__import__`), nothing outside the Python standard library and the agent's own files, no path outside its own folder. | An agent never reaches out. What it needs is handed to it. |
+| 4 | **no network** | The agent has no network module and starts no process; no hidden imports (`importlib`, `__import__`), nothing outside the Python standard library and the agent's own files, no path outside its own folder. | An agent never reaches out. What it needs is handed to it. |
 | 5 | **no secret** | No file named like a secret (`.env`, `.pem`, `id_rsa`, ...) and no text that looks like a key, token or password. | An agent holds no secret. Keys belong to the developer, never to the agent. |
 | 6 | **the shape** | `agent/` holds only plain, visible UTF-8 files of the kinds an agent holds (`.py`, `.json`, `.txt`, `.md`, `.csv`), and no links. No CSS: `larryd doctor --fix` turns a design sheet into the look record. | What is checked is exactly what runs: nothing hidden, nothing that points elsewhere. |
 | 7 | **the skills** | Every skill the agent declares exists (`larryd skills` lists them by hash). | The runtime carries out declared skills for the agent; a skill that does not exist would fail the run. |

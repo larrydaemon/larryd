@@ -1,6 +1,6 @@
 """`larryd doctor`: the pretest before submission. It checks the agent the way the LARRYD runtime will hold and run it, and says
 for every problem what is wrong and what to do, in words an AI can act on without asking.
-The checks, in order: the project · the manifest · the entry · the air gap · no secret · the shape · the skills · the knowledge."""
+The checks, in order: the project · the manifest · the entry · no network · no secret · the shape · the skills · the knowledge."""
 import ast
 import json
 import pathlib
@@ -13,12 +13,12 @@ from dataclasses import asdict, dataclass
 from . import knowledge, look, shape, sheet, skills
 
 FIX = '`larryd doctor --fix`, or larryd_doctor with "fix": true,'   # every todo that asks for the fixer names both doors
-CHECKS = ('the project', 'the manifest', 'the entry', 'the air gap', 'no secret', 'the shape', 'the skills', 'the knowledge')
+CHECKS = ('the project', 'the manifest', 'the entry', 'no network', 'no secret', 'the shape', 'the skills', 'the knowledge')
 CHECKS_VERSION = '4'   # THE LARRYD CHECKS (CHECKS.md, larryd.ai/checks.html): a new or changed check raises it
 BADGE = 'larryd-checks.svg'   # `larryd doctor --badge` writes it beside agent/, never inside it (the shape keeps agent/ to its own kinds)
 GOLD, RED = '#FFB000', '#910E0D'   # the brand's gold (PASS) and red (FAIL)
 
-# the air gap: an agent never reaches out (the LARRYD runtime's sandbox denies all network) and never starts a process
+# no network: an agent never reaches out (the LARRYD runtime's sandbox denies all network) and never starts a process
 NETWORK = {'socket', 'ssl', 'http', 'urllib', 'ftplib', 'smtplib', 'poplib', 'imaplib', 'nntplib', 'telnetlib', 'xmlrpc',
            'socketserver', 'asyncio', 'selectors', 'select', 'webbrowser', 'wsgiref', 'mailbox', 'smtpd'}
 PROCESS = {'subprocess', 'multiprocessing', 'pty', 'ctypes', 'concurrent'}
@@ -167,7 +167,7 @@ def _tree(root, path, f):
     try:
         return ast.parse(path.read_text(), filename=where)
     except (SyntaxError, UnicodeDecodeError, ValueError) as e:
-        f.add('the entry' if path.name == 'agent.py' else 'the air gap', where, f'it does not compile ({type(e).__name__}: {getattr(e, "msg", e)})',
+        f.add('the entry' if path.name == 'agent.py' else 'no network', where, f'it does not compile ({type(e).__name__}: {getattr(e, "msg", e)})',
               'fix the code so `python -m py_compile` passes on it', getattr(e, 'lineno', 0) or 0)
         return None
 
@@ -203,7 +203,7 @@ def _local(agent):
 def _air_gap(root, trees, f):
     agent = root / shape.AGENT
     local = _local(agent)
-    c = 'the air gap'
+    c = 'no network'
     for path, tree in trees.items():
         where = _rel(root, path)
         for n in ast.walk(tree):
@@ -245,7 +245,7 @@ def _air_gap(root, trees, f):
             if i in seen:
                 continue
             if PLATFORM.search(line):
-                f.add(c, where, 'it names the platform\'s or LARRYD\'s folder; the agent is air gapped from both',
+                f.add(c, where, 'it names the platform\'s or LARRYD\'s folder',
                       'remove it. The agent reaches nothing; LARRYD hands it what it needs', i)
             elif PATHS.search(line):
                 f.add(c, where, 'it names a path outside the agent\'s own folder', 'remove it. The agent reads only what it is handed and writes only in the folder it is run in', i)

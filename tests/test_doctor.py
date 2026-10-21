@@ -115,7 +115,7 @@ def test_the_entry_never_runs(agent):
     assert _failed(agent) == {'the entry'}
 
 
-# ---------------------------------------------------------------- the air gap
+# ---------------------------------------------------------------- no network
 AIR_GAP_PLANTS = {
     'socket': '\nimport socket\n',
     'urllib': '\nfrom urllib.request import urlopen\n',
@@ -140,7 +140,7 @@ AIR_GAP_PLANTS = {
 @pytest.mark.parametrize('name', AIR_GAP_PLANTS)
 def test_the_air_gap_catches(agent, name):
     _code(agent, AIR_GAP_PLANTS[name])
-    problems = [p for p in doctor.check(agent) if p.check == 'the air gap']
+    problems = [p for p in doctor.check(agent) if p.check == 'no network']
     assert problems, name
     assert problems[0].line > 0 and problems[0].todo
 
@@ -173,7 +173,7 @@ DISGUISED_PLANTS = {
 @pytest.mark.parametrize('name', DISGUISED_PLANTS)
 def test_the_air_gap_sees_through(agent, name):
     _code(agent, DISGUISED_PLANTS[name])
-    problems = [p for p in doctor.check(agent) if p.check == 'the air gap']
+    problems = [p for p in doctor.check(agent) if p.check == 'no network']
     assert problems, name
     assert problems[0].file == 'agent/agent.py' and problems[0].line > 0 and problems[0].todo
 
@@ -188,7 +188,7 @@ def test_plain_code_the_disguise_rules_leave_alone(agent):
 
 def test_a_plant_in_another_file_of_the_agent(agent):
     (agent / 'agent' / 'helper.py').write_text('import socket\n')
-    problems = [p for p in doctor.check(agent) if p.check == 'the air gap']
+    problems = [p for p in doctor.check(agent) if p.check == 'no network']
     assert problems and problems[0].file == 'agent/helper.py'
 
 
@@ -296,10 +296,10 @@ def test_the_command(agent, capsys):
     assert cli.main(['doctor', str(agent), '--json']) == 1
     out = json.loads(capsys.readouterr().out)
     assert out['ok'] is False
-    gap = next(c for c in out['checks'] if c['check'] == 'the air gap')
+    gap = next(c for c in out['checks'] if c['check'] == 'no network')
     assert gap['ok'] is False and gap['problems'][0]['line'] > 0 and 'What to do' not in gap['problems'][0]['todo']
     assert cli.main(['doctor', str(agent)]) == 1
-    assert 'FAIL the air gap · agent/agent.py line' in capsys.readouterr().out
+    assert 'FAIL no network · agent/agent.py line' in capsys.readouterr().out
 
 
 # AN AGENT SHIPS NO CSS: its look is a record of names in agent.json; a sheet written while designing is turned into

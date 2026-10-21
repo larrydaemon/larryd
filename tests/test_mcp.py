@@ -71,7 +71,7 @@ def test_a_planted_problem_comes_back_to_the_ai(client, tmp_path):
     path = tmp_path / 'planted' / 'agent' / 'agent.py'
     path.write_text(path.read_text() + '\nimport socket\n')
     checked = client.call('larryd_doctor', path='planted')['structuredContent']
-    gap = next(c for c in checked['checks'] if c['check'] == 'the air gap')
+    gap = next(c for c in checked['checks'] if c['check'] == 'no network')
     assert checked['ok'] is False and gap['problems'][0]['file'] == 'agent/agent.py' and gap['problems'][0]['todo']
     ran = client.call('larryd_run', path='planted')['structuredContent']
     assert ran['state'] == 'REFUSED' and ran['problems']

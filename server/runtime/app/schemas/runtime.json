@@ -1,5 +1,5 @@
 {
-  "about": "The LARRYD runtime's own config. It is air gapped: its ONLY link to the platform is HTTP to the addresses below, signed with the secret named here. No path, file, database or module of the platform is ever named.",
+  "about": "The LARRYD runtime's own config. Its ONLY link to the platform is HTTP to the addresses below, signed with the secret named here. No path, file, database or module of the platform is ever named.",
   "office": "runtime",
   "environment_variable": "LARRYD_ENV",
   "ports": {

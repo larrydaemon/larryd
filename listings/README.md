@@ -4,7 +4,7 @@ Every listing is an outward act for the owner. Nothing here has been sent anywhe
 [text.md](text.md). The places were read on 2026-09-30; each row says whether that was verified.
 
 What is listed is LARRYD itself (the command, its MCP tool server, its Claude Code plugin and skill). The agents
-built with it (THE HIRE GUIDE, THE BRAND CATALOG) fit none of these places: they run only on LARRYD, air gapped, and
+built with it (THE HIRE GUIDE, THE BRAND CATALOG) fit none of these places: they run only on LARRYD, and
 these places list tools and servers that people install and run themselves.
 
 ## Before most of them (the owner's)

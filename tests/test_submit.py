@@ -49,7 +49,7 @@ def test_the_doctor_comes_first_and_nothing_is_sent(door, project):
     code.write_text(code.read_text() + '\nimport socket\n')
     with pytest.raises(submit.Refused) as no:
         submit.submit(project)
-    assert no.value.more['problems'][0]['check'] == 'the air gap' and _held(door) == [] and door['opened'] == []
+    assert no.value.more['problems'][0]['check'] == 'no network' and _held(door) == [] and door['opened'] == []
 
 
 def test_the_door_refusing_is_said_with_what_to_do(door, project, monkeypatch):
