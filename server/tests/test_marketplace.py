@@ -267,7 +267,7 @@ class TheAgentsOwnController(unittest.TestCase):
         h = self.html()
         for part in ('<div class="sub-controller-box wl-glass mk-ctl"><div class="wl-panel"><div class="sub-contacts-header"><div class="sub-controller-box"><div class="sub-controller">',
                      '<div class="emphasis">Controller</div>', '<div class="wl-cols"><div class="wl-col--1"><div class="subtitle">Agents</div><div class="emphasis">4 total in network</div>',
-                     '<div class="label wl-label">My agents (1)</div>', '<div class="wl-divider"></div><div class="wl-col--3"><div class="subtitle">Quick search</div>',
+                     '<div class="label wl-label">Hired agents (1)</div>', '<div class="wl-divider"></div><div class="wl-col--3"><div class="subtitle">Quick search</div>',
                      f'<form method="get" action="{P}" class="sub-search-form"><input type="hidden" name="site" value="9b7c7c13"><input type="hidden" name="mode" value="dark">',
                      '<input type="text" name="q" class="sub-search-input" placeholder="Find…" value="">', '<button class="btn btn--small" type="submit">Search</button>',
                      '<div class="label wl-label">Sort by</div><div class="annotation">'):
@@ -279,7 +279,7 @@ class TheAgentsOwnController(unittest.TestCase):
     def test_every_group_shows_its_selected_one_and_every_link_is_the_pages_own(self):
         h = self.html()
         base = (P + '?' + K).replace('&', '&amp;')
-        self.assertIn(f'<a class="btn btn--small" href="{base}" aria-current="true">All agents</a><a class="btn btn--small" href="{base}&amp;mine=1">My agents</a>', h)
+        self.assertIn(f'<a class="btn btn--small" href="{base}" aria-current="true">All agents</a><a class="btn btn--small" href="{base}&amp;mine=1">Hired agents</a>', h)
         self.assertIn(f'<a class="btn btn--small" href="{base}" aria-current="true">Animated</a><a class="btn btn--small" href="{base}&amp;view=simple">Simple</a>', h)
         self.assertIn(f'<a class="btn btn--small" href="{base}" aria-current="true">Off</a><a class="btn btn--small" href="{base}&amp;product=invoicemaps">Invoice Maps</a>', h)
         self.assertEqual(re.findall(r'>([^<]+)</a>', h[h.index('Product level'):h.index('wl-divider')]), ['Off', 'Invoice Maps', 'Agency Mgmt', 'Pace Shift', 'LARRYD'])   # the page's list, its order
