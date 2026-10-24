@@ -74,7 +74,7 @@ LIVE_MAY = ('rain.js',)   # and, if the page needs it, a second script. The page
 LIVE_SEATS = (1, 4)
 MAKES = {   # THE OUTSIDE HAND'S LIST (the same as the runtime's core_engine/outside.py): the model, what it makes, who runs it, the choices an ask may name
     'nano-banana-2': ('a picture', 'Replicate', {'aspect': ('1:1', '3:4', '4:3', '16:9', '9:16')}),
-    'seedance-2.5': ('a video', 'Replicate', {'aspect': ('16:9', '9:16', '1:1'), 'seconds': ('5', '10'), 'size': ('480p', '720p')}),
+    'seedance-2.5': ('a video', 'Replicate', {'aspect': ('16:9', '9:16', '1:1'), 'seconds': tuple(str(n) for n in range(4, 31)), 'size': ('480p', '720p')}),   # 4 to 30 seconds, the model's own range (R-0041)
 }
 RECORD_VERBS = ('read', 'add', 'edit', 'remove')   # what an agent may declare on a species' records
 RECORD_COUNTS = ('*', ['count'])   # THE COUNTS: "records": {"*": ["count"]}, of no one species: how many, never which

@@ -634,6 +634,7 @@ class Harness:
             provider_key = self._provider_key(provider, agent_key, job_key, run, account, scope, member)
             if not provider_key:
                 raise _Stop('FAILED', f'not made, no {outside.PROVIDERS[provider]["name"]} key: FROST\'s vault handed none; nothing was sent')
+            picture = self._reference(ask, account, scope, member, job_key, run)   # read before the day is counted: a reference that cannot be read sends nothing and costs nothing
             most = self.a_day.get(outside.MODELS[ask['model']]['kind'])
             if not (isinstance(most, int) and not isinstance(most, bool) and most >= 0 and member and agent_key):
                 raise _Stop('REFUSED', 'the day is not counted: no limit is set for this kind, or the member is not named; nothing was sent')
@@ -645,11 +646,35 @@ class Harness:
                 raise _Stop('REFUSED', 'the day is not counted: LARRYD could not write or read its own record; nothing was sent')
             if sent > most:
                 raise _Stop('REFUSED', f'the day is full: {most} a day; nothing was sent')
-            made, why = self.hand.make(ask, provider_key)
+            made, why = self.hand.make(ask, provider_key, picture)
             if why:
                 raise _Stop('FAILED', f'not made, {why}')
             out.append({'name': made['name'], 'content_b64': base64.b64encode(made['data']).decode('ascii'), 'asked_as': ask['name']})
         return out
+
+    def _reference(self, ask, account, scope, member, job_key, run):
+        """THE REFERENCE PICTURE (R-0040 / R-0041, the owner 2026-10-24): when the ask names one (a DA-M key the member typed on the
+        agent's page, checked by outside.check), its bytes are read from DA-M's own content door FOR THIS MEMBER, while their RUN is
+        open (the platform decides: its route must be open to the runtime, and a member reads only what their scope lets them).
+        -> the bytes, b'' when the ask names none. They live in this call's memory only and go to the provider's file door and
+        nowhere else: never to the agent, never kept. A key that cannot be read stops the errand before anything is sent."""
+        dam_key = ask.get('reference')
+        if not dam_key:
+            return b''
+        status, body = self.client.get('so', '/dam/file/content', {'account': account, 'scope': scope, 'member': member, 'job_key': job_key, 'run': str(run), 'dam_key': dam_key})
+        raw = body.get('content_b64') if status == 200 and isinstance(body, dict) else None
+        try:
+            picture = base64.b64decode(raw, validate=True) if isinstance(raw, str) else b''
+        except (binascii.Error, ValueError):
+            picture = b''
+        if not picture:
+            said = (body.get('refused') or body.get('error')) if isinstance(body, dict) else ''
+            raise _Stop('FAILED', f"not made, the reference {dam_key} could not be read from DA-M: {said if isinstance(said, str) and said else f'DA-M answered {status}'}; nothing was sent")
+        if outside.kind_of(picture) not in outside.REFERENCE_KINDS:
+            raise _Stop('FAILED', f'not made, the reference {dam_key} is not a picture; nothing was sent')
+        if len(picture) > outside.MOST_REFERENCE:
+            raise _Stop('FAILED', f'not made, the reference {dam_key} is larger than {outside.MOST_REFERENCE // (1024 * 1024)} MB; nothing was sent')
+        return picture
 
     def _keeps(self, manifest, answer, files, asks):
         """The records the answer asks for, one per stored file: keeps = [{species, values, file}], each an ADD the manifest
