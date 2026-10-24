@@ -186,7 +186,7 @@ _slug = lambda v: ''.join(ch for ch in str(v or '').lower() if ch.isalnum())
 def _controller(answer, find, page):
     """THE CONTROLLER, ABOVE THE CARDS, THE AGENT'S OWN (the owner, 2026-10-07: "keep it all in the agent, outside the core"), drawn with the
     platform's own controller classes and its one small button (the page's sheets stand inside the shadow root, so nothing of them is copied):
-    the wide column (the total · All agents / My agents · View · Product level, and under a picked product its Module level; every group always
+    the wide column (the total · All agents / Hired agents · View · Product level, and under a picked product its Module level; every group always
     shows its selected one, Off first) and the narrow one (Quick search · Sort by, as little links). EVERY LINK IS THE PAGE'S OWN, AS GIVEN
     (page.links; none is built here), the search a GET to page.links.search with the page's kept words (page.search) and q; the products and
     their modules are the page's lists (page.products, page.modules). No links given: no controller. A link not given: its button is left out."""
@@ -219,7 +219,7 @@ def _controller(answer, find, page):
     return ('<div class="sub-controller-box wl-glass mk-ctl"><div class="wl-panel"><div class="sub-contacts-header"><div class="sub-controller-box"><div class="sub-controller">'
             '<div class="wl-rule"></div><div class="emphasis">Controller</div><div class="wl-rule"></div><div class="wl-cols">'
             f'<div class="wl-col--1"><div class="subtitle">Agents</div><div class="emphasis">{answer["total"]} total in network</div><div class="wl-rule wl-rule--gap"></div>'
-            f'<div class="mk-ctl-row"><div><div class="label wl-label">My agents ({answer["hired"]})</div><div class="wl-btnrow">{small("All agents", not mine, links.get("mine_off"))}{small("My agents", mine, links.get("mine_on"))}</div></div>'
+            f'<div class="mk-ctl-row"><div><div class="label wl-label">Hired agents ({answer["hired"]})</div><div class="wl-btnrow">{small("All agents", not mine, links.get("mine_off"))}{small("Hired agents", mine, links.get("mine_on"))}</div></div>'
             f'<div><div class="label wl-label">View</div><div class="wl-btnrow">{small("Animated", not simple, links.get("view_animated"))}{small("Simple", simple, links.get("view_simple"))}</div></div></div>'
             f'{level}</div><div class="wl-divider"></div>'
             '<div class="wl-col--3"><div class="subtitle">Quick search</div><div class="emphasis">Lookup by</div><div class="wl-rule wl-rule--gap"></div>'
