@@ -669,11 +669,11 @@ class Harness:
             picture = b''
         if not picture:
             said = (body.get('refused') or body.get('error')) if isinstance(body, dict) else ''
-            raise _Stop('FAILED', f"not made, the reference {dam_key} could not be read from DA-M: {said if isinstance(said, str) and said else f'DA-M answered {status}'}; nothing was sent")
+            raise _Stop('FAILED', f"not made, reference unreadable: DA-M did not hand {dam_key} ({said if isinstance(said, str) and said else f'DA-M answered {status}'}); nothing was sent")
         if outside.kind_of(picture) not in outside.REFERENCE_KINDS:
-            raise _Stop('FAILED', f'not made, the reference {dam_key} is not a picture; nothing was sent')
+            raise _Stop('FAILED', f'not made, reference not a picture: {dam_key}; nothing was sent')
         if len(picture) > outside.MOST_REFERENCE:
-            raise _Stop('FAILED', f'not made, the reference {dam_key} is larger than {outside.MOST_REFERENCE // (1024 * 1024)} MB; nothing was sent')
+            raise _Stop('FAILED', f'not made, reference too large: {dam_key} is over {outside.MOST_REFERENCE // (1024 * 1024)} MB; nothing was sent')
         return picture
 
     def _keeps(self, manifest, answer, files, asks):

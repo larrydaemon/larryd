@@ -179,9 +179,9 @@ class Hand:
         place, name = self.places[spec['provider']], PROVIDERS[spec['provider']]['name']
         kind = kind_of(picture)
         if kind not in REFERENCE_KINDS:
-            return '', 'the reference is not a picture'
+            return '', 'reference not a picture'
         if len(picture) > MOST_REFERENCE:
-            return '', 'the reference picture is too large'
+            return '', 'reference too large'
         mime = {'png': 'image/png', 'jpg': 'image/jpeg', 'webp': 'image/webp'}[kind]
         edge = 'larryd' + hashlib.sha256(picture).hexdigest()[:24]
         body = (f'--{edge}\r\nContent-Disposition: form-data; name="content"; filename="reference.{kind}"\r\nContent-Type: {mime}\r\n\r\n').encode('ascii') + picture + f'\r\n--{edge}--\r\n'.encode('ascii')
@@ -191,7 +191,7 @@ class Hand:
         urls = self._json(raw).get('urls')
         address = urls.get('get') if isinstance(urls, dict) else None
         if not (isinstance(address, str) and address.startswith(place['api'] + '/files/') and len(address) < 400 and '..' not in address):
-            return '', f'{name} gave no address for the reference'
+            return '', f'{name} kept no reference'
         return address, ''
 
     def submit(self, ask, key, reference=''):
@@ -262,7 +262,7 @@ class Hand:
         reference = ''
         if ask.get('reference'):
             if not picture:
-                return None, 'the reference picture was not read'
+                return None, 'reference not read'
             reference, why = self.lend(ask, picture, key)
             if why:
                 return None, why

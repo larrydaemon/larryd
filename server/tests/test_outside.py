@@ -413,10 +413,10 @@ class TheReference(World):
             self.assertNotIn(REF, json.dumps(sent))   # the member's key never leaves
 
     def test_a_reference_that_is_not_a_picture_or_comes_back_elsewhere_makes_nothing(self):
-        self.assertEqual(hand(FileDoor()).make({**ASK, 'reference': REF}, SECRET_KEY, b''), (None, 'the reference picture was not read'))
-        self.assertEqual(hand(FileDoor()).make({**ASK, 'reference': REF}, SECRET_KEY, b'<html>'), (None, 'the reference is not a picture'))
+        self.assertEqual(hand(FileDoor()).make({**ASK, 'reference': REF}, SECRET_KEY, b''), (None, 'reference not read'))
+        self.assertEqual(hand(FileDoor()).make({**ASK, 'reference': REF}, SECRET_KEY, b'<html>'), (None, 'reference not a picture'))
         self.assertEqual(hand(FileDoor(files_answer={'urls': {'get': 'https://evil.example/f1'}})).make({**ASK, 'reference': REF}, SECRET_KEY, JPG),
-                         (None, 'Replicate gave no address for the reference'))
+                         (None, 'Replicate kept no reference'))
         self.assertEqual(hand(FileDoor(files_status=401)).make({**ASK, 'reference': REF}, SECRET_KEY, JPG), (None, 'Replicate refused the key'))
 
     def placed(self, answer):
@@ -441,3 +441,7 @@ class TheReference(World):
             self.assertEqual(f.asked, [])
             self.assertNotIn('/mtok/use', [r for _o, r, _d in platform.said])
             self.assertIn('nothing was sent', self.results(platform)[-1]['log'])
+        from core_engine.records import error_code
+        self.assertEqual([error_code(r) for r in ('not made, reference unreadable: DA-M did not hand x', 'not made, reference not a picture: x', 'not made, reference too large: x',
+                                                  'not made, Replicate kept no reference', 'not made, reference not read')],
+                         ['NOT_MADE_REFERENCE_UNREADABLE', 'NOT_MADE_REFERENCE_NOT_A_PICTURE', 'NOT_MADE_REFERENCE_TOO_LARGE', 'NOT_MADE_REPLICATE_KEPT_NO_REFERENCE', 'NOT_MADE_REFERENCE_NOT_READ'])   # each a whole code the agent's page can say
