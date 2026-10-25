@@ -16,7 +16,7 @@ record and says what to write. The runtime only hands and carries, as for every 
 Nothing is kept here: the files and rows live in the call's memory, the values go to wid, the state to FROST."""
 import re
 
-from . import member_records
+from . import member_records, view
 
 FILES = {'pf_contacts.csv': 'cont', 'pf_invoices.csv': 'invc', 'pf_locations.csv': 'locn', 'pf_operations.csv': 'opns',
          'pf_hierarchies.csv': 'hrcy', 'pf_media.csv': 'mdia', 'pf_brands.csv': 'brnd', 'pf_sprints.csv': 'sprt',
@@ -27,7 +27,7 @@ NEEDS = ('read', 'edit')   # what the records lane must declare on each Fabric m
 MOST_WRITES = 5000                # record writes one RUN may carry
 MOST_ROWS = 20000                 # rows one state list may hold
 MOST_TEXT = 10_000                # characters in one state value
-TABLES = {'files': ('file_name', 'dam_key', 'version', 'imported_at', 'rows_in', 'rows_held', 'rows_waiting'),
+TABLES = {'files': ('file_name', 'dam_key', 'version', 'imported_at', 'rows_in', 'rows_held', 'rows_waiting', 'held_dam_key'),
           'held': ('file_name', 'row_number', 'row_id', 'why', 'row_text', 'held_at'),
           'slots': ('segment', 'slot', 'header'),
           'ids': ('segment', 'row_id', 'id_import', 'id_lookup', 'record_key', 'made_at')}   # FROST's datafabric.db, per account (fabric_<table>)
@@ -125,6 +125,31 @@ def landed(saved, writes, rows, written):
         if out is not None:
             i['record_key'] = out['key'] if out['ok'] else ''
     return saved
+
+
+def held_name(name):
+    """The held rows file of one of the sixteen: pf_invoices.csv -> pf_invoices_held.csv (DA-M keeps it in the DATA FABRIC folder)."""
+    return name[:-len('.csv')] + '_held.csv'
+
+
+def with_held(saved, stored):
+    """THE DOWNLOAD (the owner, 2026-10-25: "we can do it without javascript just like any download"): each file's held rows
+    file this RUN stored in DA-M, by the key DA-M gave it (stored: {name: dam_key}); a file whose held rows this RUN did not
+    store keeps the key the agent handed back. The agent cannot know a key DA-M has not given yet: the runtime fills it."""
+    for f in saved['files']:
+        key = stored.get(held_name(f['file_name']))
+        if key:
+            f['held_dam_key'] = key
+    return saved
+
+
+def with_downloads(state, path):
+    """THE PAGE'S DOWNLOADS: each file row of the state handed to a CALL carries "download" (its official CSV) and
+    "held_download" (its held rows), DA-M's own download addresses on the page's own site ('' for none)."""
+    for f in state.get('files', []):
+        f['download'] = view.download_of(path, f.get('dam_key', ''))
+        f['held_download'] = view.download_of(path, f.get('held_dam_key', ''))
+    return state
 
 
 def save(post, account, scope, member, held, job_key, run, saved):

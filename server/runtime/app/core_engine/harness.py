@@ -259,7 +259,7 @@ class Harness:
         not_read = '; '.join(r for r in (not_read, self._counts(manifest, given, account, scope, member, agent_key)) if r)   # THE COUNTS, when the approved manifest declares them
         if fabric_modules:
             try:
-                given['fabric'] = {'state': fabric.state(self._ask, account, scope, member)}   # THE DATA FABRIC's page: the account's state as FROST keeps it, nothing else
+                given['fabric'] = {'state': fabric.with_downloads(fabric.state(self._ask, account, scope, member), (beside.get('page') or {}).get('path'))}   # THE DATA FABRIC's page: the account's state as FROST keeps it, with DA-M's own download of each file
             except Refused as no:
                 not_read = '; '.join(r for r in (not_read, 'fabric state not read') if r)
                 LOG.warning('fabric state not read for %s: %s', agent_key, no.reason)
@@ -582,6 +582,7 @@ class Harness:
             if good != len(written):
                 return self._end(account, scope, member, key, job_key, run, 'FAILED', f"{paid}, but not every record was added{kept_note}; no file was stored", charged=charged)
             record_of = {by_name[k['file']]: (w['key'], k['species']) for k, w in zip(keeps, written)}   # {the file's place: (its record's key, its species)}
+        stored_keys = {}   # {a stored file's name: the key DA-M gave it}
         for n, f in enumerate(files):
             status, stored = self.client.post('so', '/dam/upload', {'account': account, 'scope': scope, 'member': member, 'job_key': job_key, 'run': str(run), 'name': f['name'],
                                                                    'content_b64': f['content_b64'], 'source_key': record_of[n][0] if n in record_of else key})   # its record's key; a file no record keeps: the agent's card, as before
@@ -594,13 +595,14 @@ class Harness:
                     left = '; its record was taken back' if back and back[0]['ok'] else f"; ITS RECORD {record_of[n][0]} STANDS WITHOUT ITS FILE"
                 return self._end(account, scope, member, key, job_key, run, 'FAILED',
                                  f"{paid}{kept_note}, but DA-M did not store the files{left}: {stored.get('refused') or stored.get('error') or f'DA-M answered {status}'}", charged=charged)
+            stored_keys[f['name']] = str(stored.get('dam_key') or '')
         fabric_note = ''
         if fabric_modules and 'fabric' in answer:
             writes, rows, saved, why = fabric.check(answer, fabric_modules)
             if why:
                 return self._end(account, scope, member, key, job_key, run, 'FAILED', f'{paid}; nothing was written: {why}', charged=charged)
             written = member_records.carry(self.client.post, writes, account, scope, member, key)
-            ok, why = fabric.save(self.client.post, account, scope, member, locker.held(self.db, key), job_key, run, fabric.landed(saved, writes, rows, written))
+            ok, why = fabric.save(self.client.post, account, scope, member, locker.held(self.db, key), job_key, run, fabric.with_held(fabric.landed(saved, writes, rows, written), stored_keys))
             fabric_note = f" · {sum(1 for w in written if w['ok'])} of {len(written)} record write{'' if len(written) == 1 else 's'} carried"
             if not ok:
                 return self._end(account, scope, member, key, job_key, run, 'FAILED', f'{paid}{fabric_note}, but FROST did not keep the Data Fabric state: {why}', charged=charged)

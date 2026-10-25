@@ -12,7 +12,7 @@ import unittest
 from unittest import mock
 
 from _here import APP  # noqa: F401
-from core_engine import fabric, harness, locker, member_records, store
+from core_engine import fabric, harness, locker, member_records, store, view
 
 KEY, JOB = 'MAGT_00000000FAB1_0001', 'MJOB_00000000FAB1_0001'
 ACCOUNT, SCOPE, MEMBER = 'ACCT_' + 'A' * 12 + '_0001', 'SCRATCH', 'MCON_' + 'B' * 12 + '_0002'
@@ -193,6 +193,39 @@ class TheCheck(unittest.TestCase):
         written = [{'ok': True, 'key': INVOICE}, {'ok': False, 'key': ''}]
         out = fabric.landed(saved, writes, ['SO-1', 'SO-2'], written)
         self.assertEqual([i['record_key'] for i in out['ids']], [INVOICE, '', 'kept'])   # taken; refused by wid (it waits again); not written this RUN
+
+
+class TheDownload(unittest.TestCase):
+    """THE DOWNLOAD (the owner, 2026-10-25: "we can do it without javascript just like any download"): DA-M's own download of a
+    file, on the page's own site, side and language, built by the runtime; the held rows file's key filled once DA-M gave it."""
+    PAGE = '/wid/pf/en/app/larry/home'
+    KEY = 'DA-M_0123456789AB_C0DE'
+
+    def test_the_address_is_dam_own_download_on_the_pages_side_and_language(self):
+        self.assertEqual(view.download_of(self.PAGE, self.KEY), f'/so/pf/en/app/files/card/{self.KEY}/download')
+        self.assertEqual([view.download_of(p, k) for p, k in ((self.PAGE, ''), (self.PAGE, 'DA-M_0123456789ab_C0DE'), (self.PAGE, self.KEY + '/../x'), ('', self.KEY), ('/x', self.KEY))],
+                         ['', '', '', '', ''])
+
+    def test_the_gate_lets_that_link_through_and_nothing_like_it(self):
+        good = f'/so/pf/en/app/files/card/{self.KEY}/download'
+        self.assertEqual(view.checked({'view': {'html': f'<a href="{good}">get</a>', 'css': ''}}, self.PAGE)[1], '')
+        for bad in (f'/so/rnd/en/app/files/card/{self.KEY}/download',     # another side
+                    f'/so/pf/fr/app/files/card/{self.KEY}/download',      # another language
+                    f'/so/pf/en/app/files/card/{self.KEY}/raw',           # not the download
+                    f'/wid/pf/en/app/files/card/{self.KEY}/download',     # not DA-M
+                    f'https://evil.example/so/pf/en/app/files/card/{self.KEY}/download'):
+            self.assertNotEqual(view.checked({'view': {'html': f'<a href="{bad}">get</a>', 'css': ''}}, self.PAGE)[1], '', bad)
+        self.assertNotEqual(view.checked({'view': {'html': f'<a href="{good}" target="_blank" rel="noopener noreferrer">get</a>', 'css': ''}}, self.PAGE)[1], '')
+
+    def test_the_page_is_handed_each_files_downloads(self):
+        state = {'files': [{'file_name': 'pf_invoices.csv', 'dam_key': self.KEY, 'held_dam_key': ''}]}
+        got = fabric.with_downloads(state, self.PAGE)['files'][0]
+        self.assertEqual((got['download'], got['held_download']), (f'/so/pf/en/app/files/card/{self.KEY}/download', ''))
+
+    def test_the_held_file_key_is_the_one_dam_gave(self):
+        saved = {'files': [{'file_name': 'pf_invoices.csv', 'held_dam_key': ''}, {'file_name': 'pf_jobs.csv', 'held_dam_key': 'DA-M_AAAAAAAAAAAA_0001'}]}
+        got = fabric.with_held(saved, {'pf_invoices_held.csv': self.KEY})['files']
+        self.assertEqual([f['held_dam_key'] for f in got], [self.KEY, 'DA-M_AAAAAAAAAAAA_0001'])
 
 
 class TheRun(World):

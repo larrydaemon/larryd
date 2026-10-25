@@ -46,6 +46,27 @@ def page_address(address, path):
     return address.startswith(path + '?') and bool(_QUERY.fullmatch(address[len(path) + 1:]))
 
 
+_DAM_DOWNLOAD = re.compile(r'/so/([a-z0-9_-]{1,32})/([a-z]{2}(?:-[a-z]{2,4})?)/app/files/card/DA-M_[0-9A-F]{12}_[0-9A-F]{4}/download')
+_PAGE_SIDE = re.compile(r'/[a-z0-9_-]{1,32}/([a-z0-9_-]{1,32})/([a-z]{2}(?:-[a-z]{2,4})?)/app/.*')
+
+
+def download_address(address, path):
+    """Is this DA-M's own DOWNLOAD of one file, on the page's own site, side and language (the owner, 2026-10-25: "we can do
+    it without javascript just like any download")? Exactly /so/<side>/<lang>/app/files/card/<DA-M key>/download, nothing
+    more: DA-M's own door decides, with the member's own session, whether the file is theirs to have."""
+    page = _PAGE_SIDE.fullmatch(path) if isinstance(path, str) else None
+    got = _DAM_DOWNLOAD.fullmatch(address) if isinstance(address, str) else None
+    return bool(page and got and got.groups() == page.groups())
+
+
+def download_of(path, dam_key):
+    """DA-M's own DOWNLOAD address of one file on the page's own site, side and language, built by the runtime (an agent
+    never writes an address of the platform's): '' when the page's path or the key is not plain."""
+    page = _PAGE_SIDE.fullmatch(path) if isinstance(path, str) else None
+    address = f'/so/{page.group(1)}/{page.group(2)}/app/files/card/{dam_key}/download' if page and isinstance(dam_key, str) else ''
+    return address if address and download_address(address, path) else ''
+
+
 def package_address(address):
     """Is this a file of the look's own package, served by the page's own site (/themes/<plain path>: the dock's logos are package files, not the
     CDN's)? Plain names and one extension: no "..", no "%", no query, nothing that walks or hides."""
@@ -91,10 +112,10 @@ class _Check(html.parser.HTMLParser):
         if len(had) != len(attrs):
             return self._no('an attribute written twice')
         if tag == 'a':   # A LINK: either THE PAGE ITSELF with its query changed (no target, no rel), or A LINK OUT (href, target and rel all three, exactly)
-            same = page_address(had.get('href'), self.path) and 'target' not in had and 'rel' not in had
+            same = (page_address(had.get('href'), self.path) or download_address(had.get('href'), self.path)) and 'target' not in had and 'rel' not in had
             out = link_address(had.get('href')) and all(had.get(k) == v for k, v in LINK.items())
             if not (same or out):
-                return self._no('a link that is neither the page itself nor https to a named host in a new tab, noopener noreferrer')
+                return self._no('a link that is neither the page itself, DA-M\'s own download of a file, nor https to a named host in a new tab, noopener noreferrer')
         if tag == 'form':   # A SEARCH: a GET to the page itself, nothing else
             if had.get('method') != 'get' or not self.path or had.get('action') != self.path or set(had) - {'method', 'action', 'class'}:
                 return self._no('a form that is not a GET to the page itself')
