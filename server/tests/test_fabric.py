@@ -317,6 +317,15 @@ class TheRun(World):
             self.assertEqual(self.harness(p).run_job(ACCOUNT, SCOPE, MEMBER, JOB, 1), 'DONE')
         self.assertEqual(sorted(self.given[0]['records']), ['invc'])
 
+    def test_a_free_larryd_agent_is_not_sent_to_mtok(self):
+        """Found on B, 2026-10-25: a free agent of the LARRYD product (no plan) was refused by mTok (no group named): it costs
+        nothing and mTok keeps no line for a free one, so it is not asked."""
+        self.agent(FABRIC)
+        p = Platform()
+        with self.sandboxed(self.ANSWER):
+            self.assertEqual(self.harness(p).run_job(ACCOUNT, SCOPE, MEMBER, JOB, 1), 'DONE')
+        self.assertEqual(p.posted('/mtok/use'), [])
+
     def test_an_agent_without_fabric_gets_none_of_it(self):
         self.agent({'records': {'invc': ['read', 'edit']}})
         p = Platform()

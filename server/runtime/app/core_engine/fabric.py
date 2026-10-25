@@ -30,7 +30,7 @@ FIELDS, FIELD_BYTES = 100, 48     # THE SIZE LIMIT, BASED ON 100 FIELDS (the own
 MOST_ANSWER = MOST_WRITES * FIELDS * FIELD_BYTES + 1_000_000   # a Fabric RUN's answer: its most writes of 100 fields, and 1 MB for the rest (25 MB)
 MOST_ROWS = 20000                 # rows one state list may hold
 MOST_TEXT = 10_000                # characters in one state value
-TABLES = {'files': ('file_name', 'dam_key', 'version', 'imported_at', 'rows_in', 'rows_held', 'rows_waiting', 'held_dam_key'),
+TABLES = {'files': ('file_name', 'dam_key', 'version', 'imported_at', 'rows_in', 'rows_held', 'rows_waiting', 'held_dam_key', 'preview'),
           'held': ('file_name', 'row_number', 'row_id', 'why', 'row_text', 'held_at'),
           'slots': ('segment', 'slot', 'header'),
           'ids': ('segment', 'row_id', 'id_import', 'id_lookup', 'record_key', 'made_at')}   # FROST's datafabric.db, per account (fabric_<table>)
@@ -60,9 +60,10 @@ def custom(card, manifest, account):
 
 
 def state(ask, account, scope, member):
-    """The account's Fabric state from FROST: {files, held, slots, ids, apis}; a refusal propagates."""
+    """The account's Fabric state from FROST: {files, held, slots, ids, apis, databases} (the last two Positive Feedback's own
+    look, shown to every account); a refusal propagates."""
     body = ask('fs', 'GET', STATE_DOOR, {'account': account, 'scope': scope, 'member': member})
-    return {t: [r for r in (body.get(t) or []) if isinstance(r, dict)] for t in (*TABLES, 'apis')}
+    return {t: [r for r in (body.get(t) or []) if isinstance(r, dict)] for t in (*TABLES, 'apis', 'databases')}
 
 
 def files(ask, account, scope, member, job_key, run):

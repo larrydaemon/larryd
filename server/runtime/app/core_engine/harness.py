@@ -560,8 +560,11 @@ class Harness:
                 raise _Stop('FAILED', 'two files of this run would be stored under one name; nothing was stored')
         except _Stop as stop:
             return self._end(account, scope, member, key, job_key, run, stop.state, stop.reason)
-        status, body = self.client.post('cc', '/mtok/use', {'account': account, 'member': member, 'agent_key': key,
-                                                            'job_key': f'{job_key}#{run}', 'agent_group': gate.group_of(card), 'rate': str(gate.rate(card))})
+        if gate.rate(card) == 0 and not gate.group_of(card):   # A FREE AGENT OF NO PLAN (a LARRYD agent: found on B, 2026-10-25, PF DATA FABRIC): it costs nothing and mTok keeps no line for a free one, but refuses a charge naming no group
+            status, body = 200, {'charged': 0, 'free': True}
+        else:
+            status, body = self.client.post('cc', '/mtok/use', {'account': account, 'member': member, 'agent_key': key,
+                                                                'job_key': f'{job_key}#{run}', 'agent_group': gate.group_of(card), 'rate': str(gate.rate(card))})
         if status != 200:
             return self._end(account, scope, member, key, job_key, run, 'FAILED',
                              f"not charged: {body.get('refused') or f'mTok answered {status}'}; the delivery is withheld")
