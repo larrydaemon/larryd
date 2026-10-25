@@ -1,78 +1,84 @@
 {
-  "about": "The LARRYD runtime's own config. It is air gapped: its ONLY link to the platform is HTTP to the addresses below, signed with the secret named here. No path, file, database or module of the platform is ever named.",
-  "office": "runtime",
-  "environment_variable": "LARRYD_ENV",
-  "ports": {
-    "rnd": 5010,
-    "pf": 5010
+ "about": "The LARRYD runtime's own config. It is air gapped: its ONLY link to the platform is HTTP to the addresses below, signed with the secret named here. No path, file, database or module of the platform is ever named.",
+ "office": "runtime",
+ "environment_variable": "LARRYD_ENV",
+ "ports": {
+  "rnd": 5010,
+  "pf": 5010
+ },
+ "host": "127.0.0.1",
+ "platform": {
+  "about": "where the runtime calls the platform, per side (the platform's global_config offices: rnd = the stage, pf = live)",
+  "wid": {
+   "rnd": "http://127.0.0.1:5004",
+   "pf": "http://127.0.0.1:5005"
   },
-  "host": "127.0.0.1",
-  "platform": {
-    "about": "where the runtime calls the platform, per side (the platform's global_config offices: rnd = the stage, pf = live)",
-    "wid": {
-      "rnd": "http://127.0.0.1:5004",
-      "pf": "http://127.0.0.1:5005"
-    },
-    "cc": {
-      "rnd": "http://127.0.0.1:5007",
-      "pf": "http://127.0.0.1:5007"
-    },
-    "fs": {
-      "rnd": "http://127.0.0.1:5008",
-      "pf": "http://127.0.0.1:5008"
-    },
-    "lryllm": {
-      "rnd": "http://127.0.0.1:5009",
-      "pf": "http://127.0.0.1:5009"
-    },
-    "so": {
-      "rnd": "http://127.0.0.1:5006",
-      "pf": "http://127.0.0.1:5006"
-    }
+  "cc": {
+   "rnd": "http://127.0.0.1:5007",
+   "pf": "http://127.0.0.1:5007"
   },
-  "callers": {
-    "about": "the offices that may call the runtime's /api (X-Office), each checked with the secret",
-    "offices": [
-      "wid"
-    ]
+  "fs": {
+   "rnd": "http://127.0.0.1:5008",
+   "pf": "http://127.0.0.1:5008"
   },
-  "secret": {
-    "name": "runtime_link",
-    "purpose": "signs every call between the platform and the runtime; each side keeps its own copy in its own instance"
+  "lryllm": {
+   "rnd": "http://127.0.0.1:5009",
+   "pf": "http://127.0.0.1:5009"
   },
-  "intake": {
-    "about": "an agent the owner approved from LARRYD's review queue (one .larryd file) becomes a locker folder <folder>/<card key>/ (the host's place command)",
-    "folder": "dev",
-    "most_files": 200,
-    "most_bytes": 5000000
-  },
-  "signed_window_seconds": 60,
-  "run": {
-    "seconds": 20
-  },
-  "makes": {
-    "about": "THE OUTSIDE HAND (core_engine/outside.py): what an agent may ask LARRYD to have made by a model on its list (Nano Banana 2, Seedance 2.5). a_day: how many files of each kind ONE member may have made by ONE agent in a day (UTC); the provider is paid per file with the platform's own key (its one home is FROST's vault; the runtime asks for it per errand and keeps no copy), so this is the bill's guard. The owner's numbers.",
-    "a_day": {
-      "image": 25,
-      "video": 5
-    }
-  },
-  "slots": {
-    "about": "Cloud Run (the LARRYD runtime design): the one runtime serves every caller; a call's key id names who called (slot-a, slot-b, proof), and the runtime calls back THAT caller at <host>/<office>, signed with its own key 'runtime-to-<caller>'. A caller with no host here is never called back (slot A has none until it runs the new platform; the laptop's proof has none: it cannot be reached).",
-    "slot-a": "",
-    "slot-b": "https://frost-b.positivefeedback.ai",
-    "proof": "",
-    "offices": [
-      "wid",
-      "cc",
-      "fs",
-      "lryllm",
-      "so"
-    ]
-  },
-  "access": {
-    "about": "THE SECOND GUARD (the owner: two guards, never one): every hire and run the platform signs carries the platform's own access decision for the member (FROST's grid) in this field; the runtime refuses any hire or run whose signed body does not carry the value that grants. The field's name is the hire-rights lane's (provisional until it is named).",
-    "field": "access",
-    "grants": "allow"
+  "so": {
+   "rnd": "http://127.0.0.1:5006",
+   "pf": "http://127.0.0.1:5006"
   }
+ },
+ "callers": {
+  "about": "the offices that may call the runtime's /api (X-Office), each checked with the secret",
+  "offices": [
+   "wid"
+  ]
+ },
+ "secret": {
+  "name": "runtime_link",
+  "purpose": "signs every call between the platform and the runtime; each side keeps its own copy in its own instance"
+ },
+ "intake": {
+  "about": "an agent the owner approved from LARRYD's review queue (one .larryd file) becomes a locker folder <folder>/<card key>/ (the host's place command)",
+  "folder": "dev",
+  "most_files": 200,
+  "most_bytes": 5000000
+ },
+ "signed_window_seconds": 60,
+ "run": {
+  "seconds": 20
+ },
+ "makes": {
+  "about": "THE OUTSIDE HAND (core_engine/outside.py): what an agent may ask LARRYD to have made by a model on its list (Nano Banana 2, Seedance 2.5). a_day: how many files of each kind ONE member may have made by ONE agent in a day (UTC); the provider is paid per file with the platform's own key (its one home is FROST's vault; the runtime asks for it per errand and keeps no copy), so this is the bill's guard. The owner's numbers.",
+  "a_day": {
+   "image": 25,
+   "video": 5
+  }
+ },
+ "slots": {
+  "about": "Cloud Run (the LARRYD runtime design): the one runtime serves every caller; a call's key id names who called (slot-a, slot-b, proof), and the runtime calls back THAT caller at <host>/<office>, signed with its own key 'runtime-to-<caller>'. A caller with no host here is never called back (slot A has none until it runs the new platform; the laptop's proof has none: it cannot be reached).",
+  "slot-a": "",
+  "slot-b": "https://frost-b.positivefeedback.ai",
+  "proof": "",
+  "offices": [
+   "wid",
+   "cc",
+   "fs",
+   "lryllm",
+   "so"
+  ]
+ },
+ "access": {
+  "about": "THE SECOND GUARD (the owner: two guards, never one): every hire and run the platform signs carries the platform's own access decision for the member (FROST's grid) in this field; the runtime refuses any hire or run whose signed body does not carry the value that grants. The field's name is the hire-rights lane's (provisional until it is named).",
+  "field": "access",
+  "grants": "allow"
+ },
+ "pages": {
+  "about": "THE PAGES' OWN ADDRESS of each caller (the owner, 2026-10-25, THE LARRY DATA FABRIC's DOWNLOAD): where its members open their pages, so a link the runtime builds for a page (DA-M's own download of a file) is an https address of that very host, in a new tab (the platform's view gate takes nothing else). A caller with none here gets no such link.",
+  "slot-a": "",
+  "slot-b": "https://app.positivefeedback.ai",
+  "proof": ""
+ }
 }

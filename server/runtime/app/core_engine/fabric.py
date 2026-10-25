@@ -14,6 +14,8 @@ record and says what to write. The runtime only hands and carries, as for every 
   on a CALL (its dashboard view) it is handed given["fabric"] = {state} only.
 
 Nothing is kept here: the files and rows live in the call's memory, the values go to wid, the state to FROST."""
+import json
+import pathlib
 import re
 
 from . import member_records, view
@@ -156,12 +158,16 @@ def with_held(saved, stored):
     return saved
 
 
-def with_downloads(state, path):
+PAGES = json.loads((pathlib.Path(__file__).resolve().parent.parent / 'schemas' / 'runtime.json').read_text()).get('pages', {})   # each caller's page host
+
+
+def with_downloads(state, path, caller=''):
     """THE PAGE'S DOWNLOADS: each file row of the state handed to a CALL carries "download" (its official CSV) and
-    "held_download" (its held rows), DA-M's own download addresses on the page's own site ('' for none)."""
+    "held_download" (its held rows), DA-M's own download addresses on the caller's page host ('' for none)."""
+    origin = PAGES.get(caller, '') if isinstance(PAGES.get(caller, ''), str) else ''
     for f in state.get('files', []):
-        f['download'] = view.download_of(path, f.get('dam_key', ''))
-        f['held_download'] = view.download_of(path, f.get('held_dam_key', ''))
+        f['download'] = view.download_of(path, f.get('dam_key', ''), origin)
+        f['held_download'] = view.download_of(path, f.get('held_dam_key', ''), origin)
     return state
 
 

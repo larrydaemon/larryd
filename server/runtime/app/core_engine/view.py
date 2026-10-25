@@ -59,12 +59,17 @@ def download_address(address, path):
     return bool(page and got and got.groups() == page.groups())
 
 
-def download_of(path, dam_key):
-    """DA-M's own DOWNLOAD address of one file on the page's own site, side and language, built by the runtime (an agent
-    never writes an address of the platform's): '' when the page's path or the key is not plain."""
+def download_of(path, dam_key, origin=''):
+    """DA-M's own DOWNLOAD address of one file on the page's own side and language, built by the runtime (an agent never
+    writes an address of the platform's), as an https address of the caller's page host (origin), opened in a new tab:
+    the platform's own view gate takes no other link (found on B, 2026-10-25: a same-site path dropped the whole view).
+    '' when the page's path, the key or the host is not plain."""
     page = _PAGE_SIDE.fullmatch(path) if isinstance(path, str) else None
     address = f'/so/{page.group(1)}/{page.group(2)}/app/files/card/{dam_key}/download' if page and isinstance(dam_key, str) else ''
-    return address if address and download_address(address, path) else ''
+    if not (address and download_address(address, path) and isinstance(origin, str) and link_address(origin)):
+        return ''
+    whole = origin.rstrip('/') + address
+    return whole if link_address(whole) else ''
 
 
 def package_address(address):
