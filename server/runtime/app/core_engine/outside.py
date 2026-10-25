@@ -12,6 +12,7 @@ lane and the owner's errand standard:
    member's DA-M and nowhere else: never into an agent's run.
 Every refusal is LARRYD's own fixed words (never the provider's text, which is outside text: data, never orders), short
 and without a colon, so the run record's code keeps the whole of it (NOT_MADE_REPLICATE_REFUSED_THE_KEY)."""
+import hashlib
 import json
 import re
 import time
@@ -27,13 +28,17 @@ MODELS = {
         'provider': 'replicate', 'path': 'google/nano-banana-2', 'kind': 'image', 'name': 'Nano Banana 2',
         'choices': {'aspect': ('1:1', '3:4', '4:3', '16:9', '9:16')},
         'first': {'aspect': '1:1'},
+        'reference': 'image_input',   # THE REFERENCE (R-0040, the owner 2026-10-24: "the reference toggle and enter input box to add a key"): the member's own picture, by its DA-M key
         'most_bytes': 20 * 1024 * 1024, 'most_seconds': 180,
     },
     'seedance-2.5': {
         'provider': 'replicate', 'path': 'bytedance/seedance-2.5', 'kind': 'video', 'name': 'Seedance 2.5',
-        'choices': {'aspect': ('16:9', '9:16', '1:1'), 'seconds': ('5', '10'), 'size': ('480p', '720p')},
+        # EVERY LENGTH THE MODEL TAKES (R-0041, the owner 2026-10-24: "give it all duration options ... doe the most we can"): Replicate's own schema
+        # for bytedance/seedance-2.5 says duration is an integer, 4 to 30 seconds (-1, the model's own pick, is not offered: the member picks)
+        'choices': {'aspect': ('16:9', '9:16', '1:1'), 'seconds': tuple(str(n) for n in range(4, 31)), 'size': ('480p', '720p')},
         'first': {'aspect': '16:9', 'seconds': '5', 'size': '720p'},
-        'most_bytes': 24 * 1024 * 1024, 'most_seconds': 900,   # DA-M takes 25 MB with no zone named
+        'reference': 'reference_images',   # THE REFERENCE (R-0041): the member's own picture, by its DA-M key, as the model's reference image (style, character, scene)
+        'most_bytes': 24 * 1024 * 1024, 'most_seconds': 1800,   # DA-M takes 25 MB with no zone named; a 30 second render takes longer than a 5 second one
     },
 }
 KINDS = {'image': ('png', 'jpg', 'webp'), 'video': ('mp4',)}
@@ -41,6 +46,9 @@ MOST_PROMPT = 4000
 NAME = re.compile(r'^[A-Za-z0-9][A-Za-z0-9 _-]{0,79}$')   # the file's plain name, without its ending (the hand adds the kind's own)
 _ID = re.compile(r'^[A-Za-z0-9]{1,64}$')                  # a provider's request id, before it is put in an address
 EVERY_SECONDS = 3
+DAM_KEY = re.compile(r'DA-M_[0-9A-F]{12}_[0-9A-F]{4}')   # a member's file in DA-M, by DA-M's own key (so files.KEY): the only way a reference is named
+REFERENCE_KINDS = ('png', 'jpg', 'webp')                 # a reference is a picture, read from its first bytes
+MOST_REFERENCE = 10 * 1024 * 1024                        # bytes of one reference picture
 
 
 def declared(manifest):
@@ -61,7 +69,7 @@ def check(makes, allowed):
     if not (isinstance(model, str) and model in allowed):
         return [], 'the ask names a model the agent does not declare'
     spec = MODELS[model]
-    if set(ask) - {'model', 'prompt', 'name', *spec['choices']}:
+    if set(ask) - {'model', 'prompt', 'name', *spec['choices'], *(('reference',) if spec.get('reference') else ())}:
         return [], f'the ask holds more than {spec["name"]} takes'
     prompt = ask.get('prompt')
     if not (isinstance(prompt, str) and prompt.strip() and len(prompt) <= MOST_PROMPT):
@@ -75,17 +83,26 @@ def check(makes, allowed):
         if not (isinstance(value, str) and value in values):
             return [], f'the ask\'s {choice} is not one of {", ".join(values)}'
         out[choice] = value
+    if 'reference' in ask:   # optional: a DA-M key and nothing else (never an address: law 1); the harness reads the file for this member
+        if not (isinstance(ask['reference'], str) and DAM_KEY.fullmatch(ask['reference'])):
+            return [], 'the ask\'s reference is not a DA-M key'
+        out['reference'] = ask['reference']
     return [out], ''
 
 
-def goes_out(ask):
-    """What leaves for the provider, field by field (law 2): the words and the model's own choices, nothing else."""
+def goes_out(ask, reference=''):
+    """What leaves for the provider, field by field (law 2): the words and the model's own choices, and the reference picture's
+    address at the provider when the ask names one (reference: the address the provider's own file door gave it), nothing else."""
     if ask['model'] == 'nano-banana-2':
-        return {'prompt': ask['prompt'], 'aspect_ratio': ask['aspect'], 'resolution': '1K', 'output_format': 'png'}
-    if ask['model'] == 'seedance-2.5':
-        return {'prompt': ask['prompt'], 'duration': int(ask['seconds']), 'resolution': ask['size'], 'aspect_ratio': ask['aspect'],
-                'generate_audio': False}   # never a sound track nobody asked for
-    raise KeyError(ask['model'])
+        out = {'prompt': ask['prompt'], 'aspect_ratio': ask['aspect'], 'resolution': '1K', 'output_format': 'png'}
+    elif ask['model'] == 'seedance-2.5':
+        out = {'prompt': ask['prompt'], 'duration': int(ask['seconds']), 'resolution': ask['size'], 'aspect_ratio': ask['aspect'],
+               'generate_audio': False}   # never a sound track nobody asked for
+    else:
+        raise KeyError(ask['model'])
+    if reference:
+        out[MODELS[ask['model']]['reference']] = [reference]
+    return out
 
 
 def kind_of(data):
@@ -115,14 +132,17 @@ class Hand:
         self.sleep, self.clock = sleep, clock
         self.opener = opener or urllib.request.build_opener(_NoRedirect)
 
-    def _call(self, method, url, key, body=None, most=1024 * 1024, seconds=60):
-        """-> (status, bytes). 0 when the provider could not be reached. The key rides in the one header and nowhere else."""
+    def _call(self, method, url, key, body=None, most=1024 * 1024, seconds=60, raw=None):
+        """-> (status, bytes). 0 when the provider could not be reached. The key rides in the one header and nowhere else.
+        raw: (bytes, content type) sent as they are (a file for the provider's own file door)."""
         headers = {'Accept': 'application/json'}
         if key:
             headers['Authorization'] = f'Bearer {key}'
         data = None
         if body is not None:
             data, headers['Content-Type'] = json.dumps(body).encode('utf-8'), 'application/json'
+        elif raw is not None:
+            data, headers['Content-Type'] = raw
         try:
             with self.opener.open(urllib.request.Request(url, data=data, headers=headers, method=method), timeout=seconds) as r:
                 return r.status, r.read(most + 1)
@@ -150,11 +170,35 @@ class Hand:
             return f'{name} is busy'
         return f'{name} answered {status}'
 
-    def submit(self, ask, key):
+    def lend(self, ask, picture, key):
+        """THE REFERENCE PICTURE, LENT TO THE PROVIDER: the member's picture (bytes the harness read from their DA-M) put through the
+        provider's own file door (Replicate's /files, on the list's api address, with the key), so the model can read it there.
+        -> (its address at the provider, '') or ('', why). Only a picture goes (from its first bytes), within MOST_REFERENCE; the
+        address that comes back must be on the provider's own api address (law 1: nothing the provider says is followed elsewhere)."""
+        spec = MODELS[ask['model']]
+        place, name = self.places[spec['provider']], PROVIDERS[spec['provider']]['name']
+        kind = kind_of(picture)
+        if kind not in REFERENCE_KINDS:
+            return '', 'reference not a picture'
+        if len(picture) > MOST_REFERENCE:
+            return '', 'reference too large'
+        mime = {'png': 'image/png', 'jpg': 'image/jpeg', 'webp': 'image/webp'}[kind]
+        edge = 'larryd' + hashlib.sha256(picture).hexdigest()[:24]
+        body = (f'--{edge}\r\nContent-Disposition: form-data; name="content"; filename="reference.{kind}"\r\nContent-Type: {mime}\r\n\r\n').encode('ascii') + picture + f'\r\n--{edge}--\r\n'.encode('ascii')
+        status, raw = self._call('POST', f"{place['api']}/files", key, raw=(body, f'multipart/form-data; boundary={edge}'), seconds=120)
+        if status not in (200, 201):
+            return '', self._refusal(status, name)
+        urls = self._json(raw).get('urls')
+        address = urls.get('get') if isinstance(urls, dict) else None
+        if not (isinstance(address, str) and address.startswith(place['api'] + '/files/') and len(address) < 400 and '..' not in address):
+            return '', f'{name} kept no reference'
+        return address, ''
+
+    def submit(self, ask, key, reference=''):
         """-> (request id, '') or ('', why)."""
         spec = MODELS[ask['model']]
         place, name = self.places[spec['provider']], PROVIDERS[spec['provider']]['name']
-        status, raw = self._call('POST', f"{place['api']}/models/{spec['path']}/predictions", key, {'input': goes_out(ask)})
+        status, raw = self._call('POST', f"{place['api']}/models/{spec['path']}/predictions", key, {'input': goes_out(ask, reference)})
         if status not in (200, 201, 202):
             return '', self._refusal(status, name)
         rid = self._json(raw).get('id')
@@ -210,11 +254,19 @@ class Hand:
             return b'', '', f'file not {"a picture" if spec["kind"] == "image" else "a video"}'
         return data, kind, ''
 
-    def make(self, ask, key):
-        """The whole errand: -> ({'name', 'kind', 'data'}, '') or (None, why)."""
+    def make(self, ask, key, picture=b''):
+        """The whole errand: -> ({'name', 'kind', 'data'}, '') or (None, why). picture: the reference's bytes when the ask names one
+        (the harness read them from the member's DA-M); an ask that names a reference and has none makes nothing."""
         spec = MODELS[ask['model']]
         name = PROVIDERS[spec['provider']]['name']
-        rid, why = self.submit(ask, key)
+        reference = ''
+        if ask.get('reference'):
+            if not picture:
+                return None, 'reference not read'
+            reference, why = self.lend(ask, picture, key)
+            if why:
+                return None, why
+        rid, why = self.submit(ask, key, reference)
         if why:
             return None, why
         until = self.clock() + spec['most_seconds']

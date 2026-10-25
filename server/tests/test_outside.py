@@ -348,3 +348,100 @@ class TheRunAskedFromThePage(World):
             self.assertEqual(asked(self.MANIFEST, smuggled, sent), (None, 'run not asked: it carries a word the member did not send'), smuggled)
         for nothing_sent in (None, {}, 'x', {'words': 5}):
             self.assertIsNone(asked(self.MANIFEST, {'words': 'a fox'}, nothing_sent)[0], nothing_sent)
+
+
+# ---------------------------------------------------------------- R-0040 / R-0041 (the owner 2026-10-24): the reference picture and every length
+REF = 'DA-M_0123456789AB_00CD'
+JPG = b'\xff\xd8\xff\xe0' + b'1' * 64
+
+
+class FileDoor(Provider):
+    """Replicate with its file door: a POST to /files answers the file's own address on the api."""
+    def __init__(self, files_answer=None, files_status=201, **k):
+        super().__init__(**k)
+        self.files_answer = files_answer if files_answer is not None else {'id': 'f1', 'urls': {'get': 'https://api.replicate.com/v1/files/f1'}}
+        self.files_status = files_status
+
+    def open(self, req, timeout=0):
+        if req.full_url.endswith('/v1/files'):
+            self.asked.append((req.get_method(), req.full_url, dict(req.header_items()), req.data))
+            if self.files_status not in (200, 201):
+                raise urllib.error.HTTPError(req.full_url, self.files_status, 'no', {}, io.BytesIO(b'{}'))
+            return _Answer(self.files_status, json.dumps(self.files_answer).encode())
+        return super().open(req, timeout)
+
+
+class RefPlatform(Platform):
+    def __init__(self, content=JPG, status=200, **k):
+        super().__init__(**k)
+        self.content, self.status = content, status
+
+    def get(self, office, route, data=None):
+        if route == '/dam/file/content':
+            self.said.append((office, route, data))
+            if self.status != 200:
+                return self.status, {'refused': 'not open to the runtime'}
+            return 200, {'dam_key': REF, 'mime_type': 'image/jpeg', 'content_b64': base64.b64encode(self.content).decode()}
+        return super().get(office, route, data)
+
+
+class TheReference(World):
+    def test_every_length_seedance_takes_from_4_to_30_and_no_other(self):
+        ask = {'model': 'seedance-2.5', 'prompt': 'a boat', 'name': 'A boat', 'size': '720p'}
+        for n in range(4, 31):
+            checked, why = outside.check([{**ask, 'seconds': str(n)}], ('seedance-2.5',))
+            self.assertEqual((why, outside.goes_out(checked[0])['duration']), ('', n))
+        for wrong in ('3', '31', '-1', '0', '15.5', 15):
+            self.assertEqual(outside.check([{**ask, 'seconds': wrong}], ('seedance-2.5',))[0], [], wrong)
+
+    def test_a_reference_is_a_dam_key_and_nothing_else(self):
+        self.assertEqual(outside.check([{**ASK, 'reference': REF}], ('nano-banana-2',))[0][0]['reference'], REF)
+        for wrong in ('https://evil.example/x.png', 'DA-M_0123456789ab_00cd', 'MIMG_0123456789AB_0002', '', REF + 'X', ['x']):
+            self.assertEqual(outside.check([{**ASK, 'reference': wrong}], ('nano-banana-2',))[0], [], wrong)
+        self.assertNotIn('image_input', outside.goes_out(ASK))   # no reference: the words alone, as before
+
+    def test_the_reference_is_lent_through_the_providers_file_door_then_named_in_the_models_own_field(self):
+        for model_ask, field in ((ASK, 'image_input'), ({'model': 'seedance-2.5', 'prompt': 'a boat', 'name': 'A boat', 'aspect': '16:9', 'seconds': '15', 'size': '720p'}, 'reference_images')):
+            p = FileDoor(output='https://x.replicate.delivery/out.' + ('png' if field == 'image_input' else 'mp4'), data=PNG if field == 'image_input' else MP4)
+            made, why = hand(p).make({**model_ask, 'reference': REF}, SECRET_KEY, JPG)
+            self.assertEqual(why, '')
+            self.assertEqual([(m, u) for m, u, _h, _d in p.asked][:2], [('POST', 'https://api.replicate.com/v1/files'), ('POST', f"https://api.replicate.com/v1/models/{outside.MODELS[model_ask['model']]['path']}/predictions")])
+            self.assertIn(JPG, p.asked[0][3])
+            self.assertEqual(p.asked[0][2].get('Authorization'), f'Bearer {SECRET_KEY}')
+            sent = json.loads(p.asked[1][3])['input']
+            self.assertEqual(sent[field], ['https://api.replicate.com/v1/files/f1'])
+            self.assertNotIn(REF, json.dumps(sent))   # the member's key never leaves
+
+    def test_a_reference_that_is_not_a_picture_or_comes_back_elsewhere_makes_nothing(self):
+        self.assertEqual(hand(FileDoor()).make({**ASK, 'reference': REF}, SECRET_KEY, b''), (None, 'reference not read'))
+        self.assertEqual(hand(FileDoor()).make({**ASK, 'reference': REF}, SECRET_KEY, b'<html>'), (None, 'reference not a picture'))
+        self.assertEqual(hand(FileDoor(files_answer={'urls': {'get': 'https://evil.example/f1'}})).make({**ASK, 'reference': REF}, SECRET_KEY, JPG),
+                         (None, 'Replicate kept no reference'))
+        self.assertEqual(hand(FileDoor(files_status=401)).make({**ASK, 'reference': REF}, SECRET_KEY, JPG), (None, 'Replicate refused the key'))
+
+    def placed(self, answer):
+        TheRun.placed(self, answer, {'makes': ['nano-banana-2'], 'records': {'imgs': ['read', 'add']}}, ('makes', 'keeps', 'delivery'))
+
+    def run_with(self, client, provider):
+        return TheRun.run_with(self, client, provider, a_day={'image': 25})
+
+    def test_a_run_reads_the_members_reference_from_dam_for_this_run_and_lends_it(self):
+        self.placed({**TheRun.ANSWER, 'makes': [{**ASK, 'reference': REF}]})
+        p, f = RefPlatform(), FileDoor()
+        self.assertEqual(self.run_with(p, f), 'DONE')
+        read = next(d for o, r, d in p.said if (o, r) == ('so', '/dam/file/content'))
+        self.assertEqual(read, {'account': ACCOUNT, 'scope': SCOPE, 'member': MEMBER, 'job_key': JOB, 'run': '1', 'dam_key': REF})
+        self.assertIn(JPG, f.asked[0][3])
+
+    def test_a_reference_dam_will_not_hand_sends_nothing_and_costs_nothing(self):
+        for platform in (RefPlatform(status=403), RefPlatform(content=b'<html>not a picture</html>')):
+            self.placed({**TheRun.ANSWER, 'makes': [{**ASK, 'reference': REF}]})
+            f = FileDoor()
+            self.assertEqual(self.run_with(platform, f), 'FAILED')
+            self.assertEqual(f.asked, [])
+            self.assertNotIn('/mtok/use', [r for _o, r, _d in platform.said])
+            self.assertIn('nothing was sent', self.results(platform)[-1]['log'])
+        from core_engine.records import error_code
+        self.assertEqual([error_code(r) for r in ('not made, reference unreadable: DA-M did not hand x', 'not made, reference not a picture: x', 'not made, reference too large: x',
+                                                  'not made, Replicate kept no reference', 'not made, reference not read')],
+                         ['NOT_MADE_REFERENCE_UNREADABLE', 'NOT_MADE_REFERENCE_NOT_A_PICTURE', 'NOT_MADE_REFERENCE_TOO_LARGE', 'NOT_MADE_REPLICATE_KEPT_NO_REFERENCE', 'NOT_MADE_REFERENCE_NOT_READ'])   # each a whole code the agent's page can say
