@@ -101,8 +101,9 @@ class World(unittest.TestCase):
         """The sandbox's stand-in: each run hands back the next answer and keeps what it was given."""
         self.given, queue = [], list(answers)
 
-        def run(folder, entry, given, seconds=20, on_start=None):
+        def run(folder, entry, given, seconds=20, on_start=None, most_bytes=harness.sandbox.MOST_BYTES):
             self.given.append(json.loads(json.dumps(given)))
+            self.most_bytes = most_bytes
             return 'DONE', queue.pop(0) if queue else {}, ''
         return mock.patch.object(harness.sandbox, 'run', run)
 
@@ -228,6 +229,22 @@ class TheDownload(unittest.TestCase):
         self.assertEqual([f['held_dam_key'] for f in got], [self.KEY, 'DA-M_AAAAAAAAAAAA_0001'])
 
 
+class TheSizeLimit(unittest.TestCase):
+    """THE SIZE LIMIT, BASED ON 100 FIELDS (the owner, 2026-10-25): a Fabric RUN's answer may hold its most writes of 100
+    custom fields each (25 MB); an answer names only the ids that changed, the runtime keeps the rest."""
+    def test_the_limit_is_its_most_writes_of_100_fields(self):
+        self.assertEqual((fabric.FIELDS, fabric.MOST_ANSWER), (100, 25_000_000))
+        self.assertGreater(fabric.MOST_ANSWER, harness.sandbox.MOST_BYTES)
+
+    def test_the_ids_named_over_the_ids_handed(self):
+        handed = {'ids': [{'segment': 'invc', 'row_id': 'SO-1', 'id_import': 'IMP-1', 'id_lookup': 'INV-1', 'record_key': '', 'made_at': 'a'},
+                          {'segment': 'invc', 'row_id': 'SO-2', 'id_import': 'IMP-2', 'id_lookup': '', 'record_key': '', 'made_at': 'a'}]}
+        saved = {'ids': [{'segment': 'invc', 'row_id': 'SO-1', 'id_import': 'IMP-1', 'id_lookup': 'INV-1', 'record_key': INVOICE, 'made_at': 'a'},
+                         {'segment': 'invc', 'row_id': 'SO-3', 'id_import': 'IMP-3', 'id_lookup': '', 'record_key': '', 'made_at': 'b'}]}
+        got = fabric.merged(handed, saved)['ids']
+        self.assertEqual([(i['row_id'], i['record_key']) for i in got], [('SO-1', INVOICE), ('SO-2', ''), ('SO-3', '')])
+
+
 class TheRun(World):
     ANSWER = {'fabric': {'writes': [{'do': 'edit', 'species': 'invc', 'key': INVOICE, 'values': {'custom_0001': 'SO-1', 'custom_0004': '100.00'}, 'row': {'segment': 'invc', 'row_id': 'SO-1'}},
                                     {'do': 'edit', 'species': 'invc', 'key': 'MINV_' + 'E' * 12 + '_0005', 'values': {'custom_0001': 'SO-2'}, 'row': {'segment': 'invc', 'row_id': 'SO-2'}}],
@@ -244,6 +261,7 @@ class TheRun(World):
         self.assertEqual(given['fabric']['files'][0]['content'], FILE['content'])
         self.assertEqual(given['fabric']['state']['apis'][0]['api_name'], 'VIRTUAL WIRE API')
         self.assertEqual(given['records']['invc'][0]['custom_0004'], '100.00')
+        self.assertEqual(self.most_bytes, fabric.MOST_ANSWER)   # its own answer limit, based on 100 fields
         self.assertEqual(p.asked('/dam/fabric')[0], {'account': ACCOUNT, 'scope': SCOPE, 'member': MEMBER, 'job_key': JOB, 'run': '1', 'content': 'yes'})
 
     def test_the_writes_are_carried_and_the_state_saved_with_where_each_row_landed(self):
@@ -294,6 +312,7 @@ class TheRun(World):
         with self.sandboxed(self.ANSWER):
             self.assertEqual(self.harness(p).run_job(ACCOUNT, SCOPE, MEMBER, JOB, 1), 'DONE')
         self.assertNotIn('fabric', self.given[0])
+        self.assertEqual(self.most_bytes, harness.sandbox.MOST_BYTES)   # every other agent: the runtime's own 1 MB
         self.assertEqual((p.asked('/dam/fabric'), p.posted('/agnt/records/edit'), p.posted('/fabric/state')), ([], [], []))
 
 

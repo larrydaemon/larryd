@@ -31,12 +31,12 @@ MOST_CPU_SECONDS = 30             # a run's CPU time; the wall clock is `seconds
 MOST_FILE_BYTES = MOST_BYTES + 1  # any file a run writes, its answer included, is cut at this size
 
 
-def limits():
+def limits(most_file=MOST_FILE_BYTES):
     """Applied in the child before the sandbox starts (Linux): memory, CPU and file size, enforced by the kernel."""
     import resource
     resource.setrlimit(resource.RLIMIT_AS, (MOST_MEMORY, MOST_MEMORY))
     resource.setrlimit(resource.RLIMIT_CPU, (MOST_CPU_SECONDS, MOST_CPU_SECONDS))
-    resource.setrlimit(resource.RLIMIT_FSIZE, (MOST_FILE_BYTES, MOST_FILE_BYTES))
+    resource.setrlimit(resource.RLIMIT_FSIZE, (most_file, most_file))
 
 # LINUX: before the agent's code runs, a start-up written with the standard library alone installs a seccomp filter
 # (x86_64): fork, vfork, execve, execveat and a clone that is not a thread are refused with EPERM ("Operation not
@@ -166,10 +166,11 @@ def _kill_group(pid):
         pass
 
 
-def run(folder, entry, given, seconds=20, on_start=None):
+def run(folder, entry, given, seconds=20, on_start=None, most_bytes=MOST_BYTES):
     """-> (state, answer, reason): ('DONE', {...}, '') or ('FAILED', None, why). The run is its own process group
     (start_new_session); on_start(pid) is told it before the run is fed, so the slot can kill the whole group if it
-    ever has to; on the time limit the whole group is killed and waited for."""
+    ever has to; on the time limit the whole group is killed and waited for. most_bytes: the answer's limit (the
+    runtime's own 1 MB; a Data Fabric RUN's is its own, fabric.MOST_ANSWER)."""
     agent = os.path.realpath(folder)
     run_dir = os.path.realpath(tempfile.mkdtemp(prefix='runtime_run_'))   # private (0o700), this run's only place
     out_dir = os.path.realpath(tempfile.mkdtemp(prefix='runtime_out_'))   # its answer, outside the folder the agent can write
@@ -185,7 +186,7 @@ def run(folder, entry, given, seconds=20, on_start=None):
             out_path, err_path = os.path.join(out_dir, 'out'), os.path.join(out_dir, 'err')
             with open(out_path, 'w') as out, open(err_path, 'w') as err:
                 child = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=out, stderr=err, text=True, cwd=run_dir,
-                                         preexec_fn=limits if linux else None, start_new_session=True,
+                                         preexec_fn=(lambda: limits(most_bytes + 1)) if linux else None, start_new_session=True,
                                          env={'PATH': '/usr/bin:/bin', 'HOME': run_dir, 'TMPDIR': run_dir, 'LC_CTYPE': 'UTF-8'})
                 try:
                     if on_start:
@@ -203,12 +204,12 @@ def run(folder, entry, given, seconds=20, on_start=None):
                     if on_start:
                         on_start(None)   # the run's process is gone: the slot holds no process any more
             with open(out_path) as f:
-                stdout = f.read(MOST_BYTES + 2)
+                stdout = f.read(most_bytes + 2)
             with open(err_path) as f:
                 stderr = f.read(MOST_BYTES)
         except subprocess.TimeoutExpired:
             return 'FAILED', None, f'over the time limit ({seconds} s)'
-        if len(stdout) > MOST_BYTES:
+        if len(stdout) > most_bytes:
             return 'FAILED', None, 'the answer is too long'
         if child.returncode != 0:
             return 'FAILED', None, _kind(stderr, child.returncode)

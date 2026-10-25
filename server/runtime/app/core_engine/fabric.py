@@ -25,6 +25,9 @@ FILES = {'pf_contacts.csv': 'cont', 'pf_invoices.csv': 'invc', 'pf_locations.csv
 MODULES = frozenset(FILES.values())
 NEEDS = ('read', 'edit')   # what the records lane must declare on each Fabric module: it reads them and edits their custom fields
 MOST_WRITES = 5000                # record writes one RUN may carry
+FIELDS, FIELD_BYTES = 100, 48     # THE SIZE LIMIT, BASED ON 100 FIELDS (the owner, 2026-10-25): a row's write names up to 100 custom
+                                  # fields, each about 48 bytes as JSON (its name and a typical value)
+MOST_ANSWER = MOST_WRITES * FIELDS * FIELD_BYTES + 1_000_000   # a Fabric RUN's answer: its most writes of 100 fields, and 1 MB for the rest (25 MB)
 MOST_ROWS = 20000                 # rows one state list may hold
 MOST_TEXT = 10_000                # characters in one state value
 TABLES = {'files': ('file_name', 'dam_key', 'version', 'imported_at', 'rows_in', 'rows_held', 'rows_waiting', 'held_dam_key'),
@@ -114,6 +117,15 @@ def check(answer, modules):
         if why:
             return [], [], None, why
     return checked, rows, saved, ''
+
+
+def merged(handed, saved):
+    """The ids the answer names (new, or changed since the state handed) over the ids FROST handed, one per module and row
+    id: an answer never carries every id back, only what changed."""
+    ids = {(i.get('segment'), i.get('row_id')): i for i in handed.get('ids', [])}
+    ids.update({(i['segment'], i['row_id']): i for i in saved['ids']})
+    saved['ids'] = sorted(({c: i.get(c, '') for c in TABLES['ids']} for i in ids.values()), key=lambda i: (i['segment'], i['row_id']))
+    return saved
 
 
 def landed(saved, writes, rows, written):
