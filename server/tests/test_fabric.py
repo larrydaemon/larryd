@@ -345,6 +345,16 @@ class TheCall(World):
         self.assertEqual(self.given[0]['fabric']['state']['apis'][0]['api_state'], 'live')
         self.assertNotIn('records', self.given[0])                 # its modules are read on its RUN, not on every page
         self.assertEqual(p.asked('/dam/fabric'), [])
+        self.assertEqual(self.given[0]['fabric']['viewer'], {'member_type': ''})   # FROST did not say who looks: the page masks
+
+    def test_the_page_is_told_who_looks_for_its_mask(self):
+        self.agent(FABRIC, calls=['panel'])
+        p = Platform()
+        asked = p.get
+        p.get = lambda office, route, data=None: (200, {'first_name': 'Ann', 'member_type': 'system_owner', 'account_name': 'X'}) if route == '/agents/identity' else asked(office, route, data)
+        with self.sandboxed({'view': {'html': '<section>ok</section>', 'css': ''}}):
+            self.harness(p).answer(ACCOUNT, SCOPE, MEMBER, KEY)
+        self.assertEqual(self.given[0]['fabric']['viewer'], {'member_type': 'system_owner'})   # its member type alone, never the name
 
     def test_a_public_agent_reading_records_is_handed_no_custom_field(self):
         self.agent({'records': {'invc': ['read']}}, calls=['panel'])

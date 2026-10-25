@@ -42,7 +42,7 @@ FIELDS['makes'] = ('what the agent asks LARRYD to have made by an outside model 
 FIELDS['fabric'] = ('THE DATA FABRIC (optional, Positive Feedback\'s own PF DATA FABRIC): {"modules": [module codes]}, each also declared in '
                     '"records" with read and edit; on a RUN LARRYD hands fabric = {files: the newest official pf_<module>.csv of each, '
                     'state: the account\'s Fabric state} and those modules\' records with their custom fields, and carries the answer\'s '
-                    '"fabric": {"writes": [edits of custom fields only], "state": {...}}; on a CALL it hands fabric = {"state": the account\'s state} alone')
+                    '"fabric": {"writes": [edits of custom fields only], "state": {...}}; on a CALL it hands fabric = {"state": the account\'s state, "viewer": {"member_type": who looks, for the page\'s mask}}')
 FIELDS['card'] = ('the card the marketplace shows, as the member sees it: {class, pitch, price, type, residency, screen, product, '
                   'module, developer, sends_to, data_sent} and, if you like, developer_site; the number and the art are LARRYD\'s to give at approval')
 CARD = {
