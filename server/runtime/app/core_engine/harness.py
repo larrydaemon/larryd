@@ -540,7 +540,8 @@ class Harness:
             # FROST, and the records of its modules WITH their custom fields (it fills them); not handed whole, nothing runs: nothing is guessed
             try:
                 given['fabric'] = {'files': fabric.files(self._ask, account, scope, member, job_key, run), 'state': fabric.state(self._ask, account, scope, member)}
-                given['records'] = member_records.read(self._ask, {m: ('read',) for m in fabric_modules}, account, scope, member, key, custom=True, most=fabric.MOST_ROWS)
+                dropped = {fabric.FILES[f['name']] for f in given['fabric']['files']}   # ONLY THE MODULES WITH A FILE (found on B, 2026-10-25: a member may not list every module)
+                given['records'] = member_records.read(self._ask, {m: ('read',) for m in fabric_modules if m in dropped}, account, scope, member, key, custom=True, most=fabric.MOST_ROWS)
             except Refused as no:
                 return self._end(account, scope, member, key, job_key, run, 'FAILED', f'the Data Fabric could not read the platform: {no.reason}')
         state, answer, reason = sandbox.run(self.agents / folder, manifest['entry'], given, self.seconds, on_start=self.on_start,

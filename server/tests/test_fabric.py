@@ -306,6 +306,17 @@ class TheRun(World):
             self.assertEqual(self.harness(p).run_job(ACCOUNT, SCOPE, MEMBER, JOB, 1), 'FAILED')
         self.assertIn('FROST did not keep the Data Fabric state: no open run', self.result(p)['log'])
 
+    def test_only_the_modules_with_a_file_are_read(self):
+        """Found on B, 2026-10-25: a member who may not list one module (AGENTS: wid answered 403) failed every RUN, though
+        no file of that module was dropped. A RUN reads the records of the modules with a file, nothing else."""
+        self.agent({'fabric': {'modules': ['invc', 'agnt']}, 'records': {'invc': ['read', 'edit'], 'agnt': ['read', 'edit']}})
+        p = Platform()
+        listed = p.get
+        p.get = lambda office, route, data=None: (403, {'refused': 'not yours'}) if route == '/agnt/records/list' and (data or {}).get('segment') == 'agnt' else listed(office, route, data)
+        with self.sandboxed(self.ANSWER):
+            self.assertEqual(self.harness(p).run_job(ACCOUNT, SCOPE, MEMBER, JOB, 1), 'DONE')
+        self.assertEqual(sorted(self.given[0]['records']), ['invc'])
+
     def test_an_agent_without_fabric_gets_none_of_it(self):
         self.agent({'records': {'invc': ['read', 'edit']}})
         p = Platform()
