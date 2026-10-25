@@ -190,6 +190,15 @@ class Local:
         if (method, office, route) == ('GET', 'cc', '/mtok/balance'):
             groups = sorted({c['product_slug'] for c in cards.values() if c['product_slug']})
             return 200, {'account': ACCOUNT, 'balance': 0, 'subscriptions': [{'agent_group': g} for g in groups]}
+        if (method, office, route) == ('GET', 'fs', '/fabric/state'):
+            # THE DATA FABRIC's state on the developer's own runtime: fabric_state.json beside the records files when the developer
+            # wrote one ({files, held, slots, ids, apis}, by hand, to try the page); else an account that has imported nothing yet
+            try:
+                said = json.loads((self.place / 'fabric_state.json').read_text())
+            except (OSError, ValueError):
+                said = {}
+            said = said if isinstance(said, dict) else {}
+            return 200, {t: said.get(t) if isinstance(said.get(t), list) else [] for t in ('files', 'held', 'slots', 'ids', 'apis')}
         if (method, office, route) == ('GET', 'fs', '/agents/approved'):
             return 200, {'approved': [{'agent_key': r['agent_key'], 'code_sha256': r['code_sha256'], 'manifest_sha256': r['manifest_sha256']}
                                       for r in self._rows()]}

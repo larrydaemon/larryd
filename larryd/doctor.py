@@ -161,6 +161,8 @@ def _manifest(root, f):
         _live(root, card, c, where, f)
     if 'makes' in card:
         _makes(card, c, where, f)
+    if 'fabric' in card:
+        _fabric(card, c, where, f)
     for k, what in (('skills', 'skills that exist (`larryd skills`)'), ('knowledge', 'knowledge packs (`larryd pack`)')):
         if k in card and not (isinstance(card[k], list) and all(isinstance(x, str) for x in card[k])):
             f.add(c, where, f'"{k}" is not a list of hashes', f'set "{k}" to [] or to the hashes of {what}')
@@ -447,6 +449,23 @@ def _makes(card, c, where, f):
     if not all(p.lower() in said.lower() for p in providers):
         f.add(c, where, f'"makes" sends the member\'s words to {", ".join(providers)}, but card "sends_to" does not say so',
               f'name {", ".join(providers)} in card "sends_to", and say in "data_sent" what is sent (the words the member types)')
+
+
+def _fabric(card, c, where, f):
+    """"fabric": THE DATA FABRIC's modules, {"modules": [codes]}, each a module with a pf_<module>.csv and declared in "records"
+    with read and edit (its writes are edits of custom fields, through the record doors); the answer names "fabric" in gives."""
+    asked = card['fabric']
+    modules = asked.get('modules') if isinstance(asked, dict) and set(asked) == {'modules'} else None
+    if not (isinstance(modules, list) and modules and all(isinstance(m, str) and m in shape.FABRIC_MODULES for m in modules)):
+        f.add(c, where, '"fabric" is not {"modules": [module codes]}', f'set "fabric" to {{"modules": [...]}} from: {", ".join(shape.FABRIC_MODULES)}')
+        return
+    records = card.get('records') if isinstance(card.get('records'), dict) else {}
+    short = [m for m in modules if not all(v in (records.get(m) or []) for v in shape.FABRIC_NEEDS)]
+    if short:
+        f.add(c, where, f'"fabric" names {", ".join(short)}, which "records" does not declare with {", ".join(shape.FABRIC_NEEDS)}',
+              f'add {", ".join(f"{chr(34)}{m}{chr(34)}: {json.dumps(list(shape.FABRIC_NEEDS))}" for m in short)} to "records"')
+    if isinstance(card.get('gives'), list) and 'fabric' not in card['gives']:
+        f.add(c, where, '"fabric" is declared, but "gives" does not name "fabric"', 'add "fabric" to "gives": a RUN\'s answer carries "fabric": {"writes", "state"}')
 
 
 def _records(card, c, where, f):

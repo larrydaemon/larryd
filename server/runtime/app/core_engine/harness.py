@@ -14,7 +14,7 @@ import pathlib
 import re
 import sqlite3
 
-from . import gate, lanes, live, locker, look, member_records, outside, records as run_records, sandbox, view
+from . import fabric, gate, lanes, live, locker, look, member_records, outside, records as run_records, sandbox, view
 
 MARKETPLACE = 'marketplace'   # the one agent's locker folder: it answers the collection, hires, and places defaults
 SAMPLE_RATING = {'rating': '4.8', 'reviews': '212'}   # THE DESIGN'S SAMPLE, ON EVERY CARD, UNTIL A RATING SYSTEM EXISTS (the owner, 2026-10-07: "we can build that later, for now just keep them all the same as the design"): not a member's rating of anything; one line to take out ({} shows no strip)
@@ -228,7 +228,9 @@ class Harness:
         beside = {k: v for k, v in (beside or {}).items() if k in BESIDE and isinstance(v, dict)}   # the page's own, beside the cards; never over them
         handed = self._dressed(lanes.assemble(cards, hired, groups, verify, own=agent_key), beside.get('page') or {})
         manifest = locker.manifest(self.agents, held['folder'])
-        wanted = member_records.declared(manifest)   # THE MEMBER'S RECORDS: only what the approved manifest declares, read and written through wid's own doors
+        fabric_modules = fabric.declared(manifest)   # THE DATA FABRIC reads its modules' records on its RUN only: its page shows its own state
+        wanted = {k: v for k, v in member_records.declared(manifest).items() if k not in fabric_modules}   # THE MEMBER'S RECORDS: only what the approved manifest declares, read and written through wid's own doors
+        custom = fabric.custom(card, manifest, account)   # CUSTOM DATA ONLY ON CUSTOM AGENTS (the owner, 2026-10-25): any other agent never sees nor writes a custom field
         given = {**beside, 'do': calls[0], 'cards': handed}
         if live.declared(manifest) and live.settings()[1]:
             # THE AGENT IS TOLD ONLY THAT ITS ROOM IS THERE (the security review of the room rule, 2026-10-08): never the room's address and never
@@ -242,7 +244,7 @@ class Harness:
         not_read = ''
         try:
             if wanted:
-                given['records'] = member_records.read(self._ask, wanted, account, scope, member, agent_key)
+                given['records'] = member_records.read(self._ask, wanted, account, scope, member, agent_key, custom=custom)
                 given['who'] = {'member': member}   # WHO THE RECORDS ARE FOR: the member's own key, so an agent can tell their own rows (system_member_roles) from the account's; nothing else of them
                 if live.declared(manifest):
                     # AN AGENT WITH A LIVE PAGE IS HANDED THE FIRST NAME ITS OWN PASS ALREADY CARRIES (PF Virtual Wire, 2026-10-08: the messenger
@@ -255,6 +257,12 @@ class Harness:
             not_read = 'records not read'   # and says so on its page; nothing is guessed, nothing is written without them. THE RECORD KEEPS THE RUNTIME'S OWN WORDS ONLY:
             LOG.warning('records not read for %s: %s', agent_key, no.reason)   # the platform's refusal text goes to the log, never into the audit row (fixed words, never cut, nothing written by another)
         not_read = '; '.join(r for r in (not_read, self._counts(manifest, given, account, scope, member, agent_key)) if r)   # THE COUNTS, when the approved manifest declares them
+        if fabric_modules:
+            try:
+                given['fabric'] = {'state': fabric.state(self._ask, account, scope, member)}   # THE DATA FABRIC's page: the account's state as FROST keeps it, nothing else
+            except Refused as no:
+                not_read = '; '.join(r for r in (not_read, 'fabric state not read') if r)
+                LOG.warning('fabric state not read for %s: %s', agent_key, no.reason)
         state, answer, reason = sandbox.run(self.agents / held['folder'], manifest['entry'], given, self.seconds, on_start=self.on_start)
         outside = _outside_gives(manifest, answer) if state == 'DONE' else ''
         if outside:
@@ -268,7 +276,7 @@ class Harness:
             answer = {k: v for k, v in answer.items() if k != 'writes'}
             reason = 'writes not carried: the call is not the member\'s confirmed act'
         if state == 'DONE' and answer.get('writes'):
-            state, answer, reason = self._written(held, manifest, wanted, given, answer, account, scope, member, agent_key)
+            state, answer, reason = self._written(held, manifest, wanted, given, answer, account, scope, member, agent_key, custom=custom)
         if state == 'DONE' and 'run' in answer:
             # A RUN ASKED FROM THE PAGE: only on the member's own confirmed act, only the inputs the manifest declares, each on its slot, and EACH ONE A
             # WORD OF THAT ACT ITSELF (what the member typed or picked in the form they sent: the platform hands those words in page.search). An agent
@@ -302,7 +310,7 @@ class Harness:
                 out['room'] = room
         return out
 
-    def _written(self, held, manifest, wanted, given, answer, account, scope, member, agent_key=''):
+    def _written(self, held, manifest, wanted, given, answer, account, scope, member, agent_key='', custom=False):
         """THE WRITES AN ANSWER ASKS FOR: checked against the declaration (one fault refuses them all), carried to wid's own
         doors for this member, then the agent runs ONCE MORE on the same page with the records as they are now and
         written = what wid said of each, so the page shows the truth (a new record with its key, a refused write said);
@@ -310,13 +318,13 @@ class Harness:
         -> (state, answer, reason)."""
         if not wanted:
             return 'FAILED', None, 'the answer carries writes, but the manifest declares no records'
-        writes, why = member_records.check(answer['writes'], wanted)
+        writes, why = member_records.check(answer['writes'], wanted, custom=custom)
         if why:
             return 'FAILED', None, why
         written = member_records.carry(self.client.post, writes, account, scope, member, agent_key)
         carried = f'{sum(1 for w in written if w["ok"])} of {len(written)} record write{"" if len(written) == 1 else "s"} carried'   # THE RECORD SAYS WHAT WAS WRITTEN, whatever happens after: the writes are on the platform now
         try:
-            given = {**given, 'records': member_records.read(self._ask, wanted, account, scope, member, agent_key), 'written': written}
+            given = {**given, 'records': member_records.read(self._ask, wanted, account, scope, member, agent_key, custom=custom), 'written': written}
         except Refused as no:
             LOG.warning('records not read back: %s', no.reason)
             return 'FAILED', None, f'{carried}; the records could not be read back'
@@ -335,7 +343,7 @@ class Harness:
         more = answer.get('writes')
         if not (made and isinstance(more, list) and more and all(isinstance(w, dict) and w.get('do') == 'edit' and w.get('key') in made for w in more)):
             return 'DONE', answer, carried
-        writes, why = member_records.check(more, wanted)
+        writes, why = member_records.check(more, wanted, custom=custom)
         if why:
             return 'FAILED', None, f'{carried}; the second run: {why}'
         try:   # THE RECORD SAYS WHAT WAS WRITTEN, whatever happens in this round (the commit's security review, 2026-10-08): the first writes are on the platform now, so a fault carrying the second never leaves the run without its word
@@ -345,7 +353,7 @@ class Harness:
             return 'FAILED', None, f'{carried}; the second round of writes could not be carried'
         carried = f'{sum(1 for w in written if w["ok"])} of {len(written)} record write{"" if len(written) == 1 else "s"} carried'
         try:
-            given = {**given, 'records': member_records.read(self._ask, wanted, account, scope, member, agent_key), 'written': written}
+            given = {**given, 'records': member_records.read(self._ask, wanted, account, scope, member, agent_key, custom=custom), 'written': written}
         except Refused as no:
             LOG.warning('records not read back: %s', no.reason)
             return 'FAILED', None, f'{carried}; the records could not be read back'
@@ -526,6 +534,15 @@ class Harness:
         if 'cards' in hands:
             given['cards'] = lanes.assemble(cards, hired, groups, verify, own=key)
         self._counts(manifest, given, account, scope, member, key)   # THE COUNTS, when the approved manifest declares them: handed on a RUN as on a CALL; not handed, the agent runs without
+        fabric_modules = fabric.declared(manifest)
+        if fabric_modules:
+            # THE DATA FABRIC (the owner, 2026-10-25): the newest official files from DA-M (only while this RUN is open), the account's state from
+            # FROST, and the records of its modules WITH their custom fields (it fills them); not handed whole, nothing runs: nothing is guessed
+            try:
+                given['fabric'] = {'files': fabric.files(self._ask, account, scope, member, job_key, run), 'state': fabric.state(self._ask, account, scope, member)}
+                given['records'] = member_records.read(self._ask, {m: ('read',) for m in fabric_modules}, account, scope, member, key, custom=True, most=fabric.MOST_ROWS)
+            except Refused as no:
+                return self._end(account, scope, member, key, job_key, run, 'FAILED', f'the Data Fabric could not read the platform: {no.reason}')
         state, answer, reason = sandbox.run(self.agents / folder, manifest['entry'], given, self.seconds, on_start=self.on_start)
         if state != 'DONE':
             return self._end(account, scope, member, key, job_key, run, 'FAILED', reason)
@@ -535,7 +552,7 @@ class Harness:
         try:
             files = self._files(manifest, answer)
             asks = self._asks(manifest, answer, key, member)
-            keeps = self._keeps(manifest, answer, files, asks)
+            keeps = self._keeps(manifest, answer, files, asks, custom=fabric.custom(card, manifest, account))
             files = files + self._made(asks, key, job_key, run, account, member, scope)   # THE ERRAND, before anything is charged or stored: a file that was not made costs the member nothing and leaves nothing behind
             if len({f['name'] for f in files}) != len(files):   # a made file's own name is its ask's plus the kind that came back: it may not land on a carried file's name
                 raise _Stop('FAILED', 'two files of this run would be stored under one name; nothing was stored')
@@ -577,10 +594,20 @@ class Harness:
                     left = '; its record was taken back' if back and back[0]['ok'] else f"; ITS RECORD {record_of[n][0]} STANDS WITHOUT ITS FILE"
                 return self._end(account, scope, member, key, job_key, run, 'FAILED',
                                  f"{paid}{kept_note}, but DA-M did not store the files{left}: {stored.get('refused') or stored.get('error') or f'DA-M answered {status}'}", charged=charged)
-        kept = {k: v for k, v in answer.items() if k not in ('files', 'makes', 'keeps')}
+        fabric_note = ''
+        if fabric_modules and 'fabric' in answer:
+            writes, rows, saved, why = fabric.check(answer, fabric_modules)
+            if why:
+                return self._end(account, scope, member, key, job_key, run, 'FAILED', f'{paid}; nothing was written: {why}', charged=charged)
+            written = member_records.carry(self.client.post, writes, account, scope, member, key)
+            ok, why = fabric.save(self.client.post, account, scope, member, locker.held(self.db, key), job_key, run, fabric.landed(saved, writes, rows, written))
+            fabric_note = f" · {sum(1 for w in written if w['ok'])} of {len(written)} record write{'' if len(written) == 1 else 's'} carried"
+            if not ok:
+                return self._end(account, scope, member, key, job_key, run, 'FAILED', f'{paid}{fabric_note}, but FROST did not keep the Data Fabric state: {why}', charged=charged)
+        kept = {k: v for k, v in answer.items() if k not in ('files', 'makes', 'keeps', 'fabric')}
         delivery = answer.get('delivery') if isinstance(answer.get('delivery'), str) else json.dumps(kept, sort_keys=True)
         stored_note = f" · {len(files)} file{'' if len(files) == 1 else 's'} in DA-M" if files else ''
-        return self._end(account, scope, member, key, job_key, run, 'DONE', f'RUN {run} DONE · {paid}{stored_note}{kept_note}', charged=charged, delivery=delivery)
+        return self._end(account, scope, member, key, job_key, run, 'DONE', f'RUN {run} DONE · {paid}{stored_note}{kept_note}{fabric_note}', charged=charged, delivery=delivery)
 
     def started(self, agent_key, job_key, run, account, member):
         """A RUN the runtime took is written down as STARTED, once (at the door when the platform names the agent, else here as it
@@ -651,7 +678,7 @@ class Harness:
             out.append({'name': made['name'], 'content_b64': base64.b64encode(made['data']).decode('ascii'), 'asked_as': ask['name']})
         return out
 
-    def _keeps(self, manifest, answer, files, asks):
+    def _keeps(self, manifest, answer, files, asks, custom=False):
         """The records the answer asks for, one per stored file: keeps = [{species, values, file}], each an ADD the manifest
         declares on that species (checked as a CALL's writes are), each naming a file this RUN stores (a file the answer
         carries, by its name; a made one, by the ask's name). -> [{species, values, file: the stored file's name}]."""
@@ -661,7 +688,7 @@ class Harness:
         wanted = member_records.declared(manifest)
         if not (isinstance(keeps, list) and keeps and len(keeps) <= MOST_KEEPS and all(isinstance(k, dict) and set(k) == {'species', 'values', 'file'} for k in keeps)):
             raise _Stop('FAILED', f'the answer\'s keeps are not a list of at most {MOST_KEEPS} of {{species, values, file}}; nothing was sent')
-        _writes, why = member_records.check([{'do': 'add', 'species': k['species'], 'values': k['values']} for k in keeps], wanted)
+        _writes, why = member_records.check([{'do': 'add', 'species': k['species'], 'values': k['values']} for k in keeps], wanted, custom=custom)
         if why:
             raise _Stop('FAILED', f'not kept: {why}; nothing was sent')
         names = [f['name'] for f in files] + [a['name'] for a in asks]   # a carried file by its own name, a made one by its ask's name
@@ -747,9 +774,10 @@ class Harness:
         if not ok:
             self._record('live', agent_key, 'REFUSED', why, account=account, member=member)
             raise Refused(403, why)
+        custom = fabric.custom(card, manifest, account)
         if do == 'list':
-            return {'rows': member_records.read(self._ask, {species: ('read',)}, account, scope, member, agent_key).get(species, [])}
-        writes, why = member_records.check([{'do': do, 'species': species, 'key': key, 'values': values}], wanted)
+            return {'rows': member_records.read(self._ask, {species: ('read',)}, account, scope, member, agent_key, custom=custom).get(species, [])}
+        writes, why = member_records.check([{'do': do, 'species': species, 'key': key, 'values': values}], wanted, custom=custom)
         if why:
             raise Refused(400, why)
         written = member_records.carry(self.client.post, writes, account, scope, member, agent_key)[0]

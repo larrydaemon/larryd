@@ -39,6 +39,10 @@ FIELDS['live'] = ('the agent\'s own live page (optional, only on an agent that a
 FIELDS['makes'] = ('what the agent asks LARRYD to have made by an outside model on a RUN (optional): a list of models on LARRYD\'s list, e.g. '
                    '["nano-banana-2"]; the agent never reaches out: its answer carries "makes": [one ask], LARRYD\'s own hand does the errand and '
                    'stores the file in the member\'s DA-M; the card\'s "sends_to" and "data_sent" must say where the words go')
+FIELDS['fabric'] = ('THE DATA FABRIC (optional, Positive Feedback\'s own PF DATA FABRIC): {"modules": [module codes]}, each also declared in '
+                    '"records" with read and edit; on a RUN LARRYD hands fabric = {files: the newest official pf_<module>.csv of each, '
+                    'state: the account\'s Fabric state} and those modules\' records with their custom fields, and carries the answer\'s '
+                    '"fabric": {"writes": [edits of custom fields only], "state": {...}}; on a CALL it hands fabric = {"state": the account\'s state} alone')
 FIELDS['card'] = ('the card the marketplace shows, as the member sees it: {class, pitch, price, type, residency, screen, product, '
                   'module, developer, sends_to, data_sent} and, if you like, developer_site; the number and the art are LARRYD\'s to give at approval')
 CARD = {
@@ -67,7 +71,9 @@ CARD_OPTIONAL = {   # a card fact an agent may leave out
 SITE = r'https://(?=[^/?#]{1,253}(?:[/?#]|$))(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}(?:[/?#][^\s"\'<>\\`]*)?'   # https to a named host: no user, no port, no number for a host
 SCREEN = r'[a-z][a-z0-9]{1,15}/[a-z][a-z0-9]{1,15}'   # <species>/<page>
 MOST_PITCH = 140                                      # characters on the card
-OPTIONAL = ('inputs', 'look', 'records', 'live', 'makes')
+OPTIONAL = ('inputs', 'look', 'records', 'live', 'makes', 'fabric')
+FABRIC_MODULES = ('cont', 'invc', 'locn', 'opns', 'hrcy', 'mdia', 'brnd', 'sprt', 'imgs', 'vdeo', 'audo', 'prdn', 'agnt', 'mdls', 'logs', 'jobs')   # one pf_<module>.csv each (the runtime's core_engine/fabric.py)
+FABRIC_NEEDS = ('read', 'edit')   # what "records" must declare on each Fabric module: read, and edit their custom fields
 LIVE = 'live'   # the live half's folder, beside agent/
 LIVE_FILES = ('live.json', 'page.html', 'page.js', 'room.py')   # all of it, and nothing else
 LIVE_MAY = ('rain.js',)   # and, if the page needs it, a second script. The page's own rules are written IN the page (one <style> block), as every agent's are

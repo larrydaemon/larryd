@@ -497,3 +497,34 @@ def test_records_need_a_call(agent):
     _records(agent, {'opns': ['read']}, calls=())
     problems = [p.wrong for p in doctor.check(agent) if p.check == 'the manifest']
     assert problems == ['"records" is declared, but "calls" is empty']
+
+
+# ---------------------------------------------------------------- THE DATA FABRIC (the owner, 2026-10-25)
+def _fabric(agent, fabric, records=None, gives=None):
+    card = _card(agent)
+    card['fabric'] = fabric
+    card['records'] = records if records is not None else {'invc': ['read', 'edit']}
+    card['calls'] = card['does'][:1]
+    card['gives'] = gives if gives is not None else sorted(set(card['gives']) | {'fabric'})
+    _write_card(agent, card)
+
+
+def test_a_declared_fabric_passes(agent):
+    _fabric(agent, {'modules': ['invc']})
+    assert doctor.check(agent) == []
+
+
+@pytest.mark.parametrize('fabric, records, gives, said', [
+    ('invc', None, None, 'not {"modules": [module codes]}'),
+    ({'modules': []}, None, None, 'not {"modules": [module codes]}'),
+    ({'modules': ['zzzz']}, None, None, 'not {"modules": [module codes]}'),
+    ({'modules': ['invc'], 'more': 1}, None, None, 'not {"modules": [module codes]}'),
+    ({'modules': ['invc', 'cont']}, None, None, 'names cont, which "records" does not declare with read, edit'),
+    ({'modules': ['invc']}, {'invc': ['read']}, None, 'names invc, which "records" does not declare'),
+    ({'modules': ['invc']}, None, ['view', 'delivery'], '"gives" does not name "fabric"'),
+])
+def test_fabric_catches(agent, fabric, records, gives, said):
+    _fabric(agent, fabric, records, gives)
+    problems = [p for p in doctor.check(agent) if p.check == 'the manifest']
+    assert problems and any(said in p.wrong for p in problems), [p.wrong for p in problems]
+    assert all(p.todo for p in problems)
