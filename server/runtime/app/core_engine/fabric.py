@@ -68,6 +68,14 @@ def state(ask, account, scope, member):
     return {t: [r for r in (body.get(t) or []) if isinstance(r, dict)] for t in (*TABLES, 'apis', 'databases')}
 
 
+def viewer(ask, account, scope, member):
+    """The account's Fabric state and who looks -> (state, {member_type}): FROST's own word with the state (the page's mask, the
+    owner 2026-10-25, UI only); {member_type: ''} when FROST does not say."""
+    body = ask('fs', 'GET', STATE_DOOR, {'account': account, 'scope': scope, 'member': member})
+    who = body.get('viewer') if isinstance(body.get('viewer'), dict) else {}
+    return {t: [r for r in (body.get(t) or []) if isinstance(r, dict)] for t in (*TABLES, 'apis', 'databases')}, {'member_type': str(who.get('member_type') or '')}
+
+
 def files(ask, account, scope, member, job_key, run):
     """The newest official version of each of the sixteen files, with its text, from DA-M (only while this RUN is open:
     DA-M's own rule); a refusal propagates."""

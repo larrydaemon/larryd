@@ -349,8 +349,7 @@ class TheCall(World):
     def test_the_page_is_told_who_looks_for_its_mask(self):
         self.agent(FABRIC, calls=['panel'])
         p = Platform()
-        asked = p.get
-        p.get = lambda office, route, data=None: (200, {'first_name': 'Ann', 'member_type': 'system_owner', 'account_name': 'X'}) if route == '/agents/identity' else asked(office, route, data)
+        p.state = {**p.state, 'viewer': {'member_type': 'system_owner', 'first_name': 'never handed'}}   # FROST says who looks with the state
         with self.sandboxed({'view': {'html': '<section>ok</section>', 'css': ''}}):
             self.harness(p).answer(ACCOUNT, SCOPE, MEMBER, KEY)
         self.assertEqual(self.given[0]['fabric']['viewer'], {'member_type': 'system_owner'})   # its member type alone, never the name

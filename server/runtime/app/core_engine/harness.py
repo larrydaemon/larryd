@@ -259,8 +259,9 @@ class Harness:
         not_read = '; '.join(r for r in (not_read, self._counts(manifest, given, account, scope, member, agent_key)) if r)   # THE COUNTS, when the approved manifest declares them
         if fabric_modules:
             try:
-                given['fabric'] = {'state': fabric.with_downloads(fabric.state(self._ask, account, scope, member), (beside.get('page') or {}).get('path'), self.caller),   # THE DATA FABRIC's page: the account's state as FROST keeps it, with DA-M's own download of each file
-                                   'viewer': {'member_type': str(self._identity(account, scope, member).get('member_type') or '')}}   # THE PAGE'S MASK (the owner, 2026-10-25, UI only): who looks, by FROST's own word; nothing else of them
+                state, who = fabric.viewer(self._ask, account, scope, member)   # FROST's identity door answers only on an open RUN (found on B, 2026-10-25): who looks comes with the state
+                given['fabric'] = {'state': fabric.with_downloads(state, (beside.get('page') or {}).get('path'), self.caller),   # THE DATA FABRIC's page: the account's state as FROST keeps it, with DA-M's own download of each file
+                                   'viewer': who}   # THE PAGE'S MASK (the owner, 2026-10-25, UI only): who looks, by FROST's own word; nothing else of them
             except Refused as no:
                 not_read = '; '.join(r for r in (not_read, 'fabric state not read') if r)
                 LOG.warning('fabric state not read for %s: %s', agent_key, no.reason)
