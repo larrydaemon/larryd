@@ -76,6 +76,26 @@ def viewer(ask, account, scope, member):
     return {t: [r for r in (body.get(t) or []) if isinstance(r, dict)] for t in (*TABLES, 'apis', 'databases')}, {'member_type': str(who.get('member_type') or '')}
 
 
+FIELDS_DOOR = '/agnt/records/fields'
+
+
+def custom_fields(ask, account, scope, member, agent_key, modules, strict=True):
+    """THE ACCOUNT'S OWN CUSTOM FIELDS (the owner, 2026-10-25: "custom fields are the only fields used"): for each module, the
+    fields this account defined (EDIT CUSTOM FIELDS) as wid hands them: {segment: [{slot, name, type}]}. strict (a RUN): a
+    refusal propagates, nothing is guessed; not strict (a page): a module wid does not hand is left out."""
+    out = {}
+    for segment in modules:
+        try:
+            body = ask('wid', 'GET', FIELDS_DOOR, {'account': account, 'scope': scope, 'member': member, 'agent_key': agent_key, 'segment': segment})
+        except Exception:   # noqa: BLE001
+            if strict:
+                raise
+            continue
+        out[segment] = [{'slot': str(f.get('slot', '')), 'name': str(f.get('name', '')), 'type': str(f.get('type', ''))}
+                        for f in (body.get('fields') or []) if isinstance(f, dict) and member_records.CUSTOM.fullmatch(str(f.get('slot', '')))]
+    return out
+
+
 def files(ask, account, scope, member, job_key, run):
     """The newest official version of each of the sixteen files, with its text, from DA-M (only while this RUN is open:
     DA-M's own rule); a refusal propagates."""

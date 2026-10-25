@@ -261,7 +261,8 @@ class Harness:
             try:
                 state, who = fabric.viewer(self._ask, account, scope, member)   # FROST's identity door answers only on an open RUN (found on B, 2026-10-25): who looks comes with the state
                 given['fabric'] = {'state': fabric.with_downloads(state, (beside.get('page') or {}).get('path'), self.caller),   # THE DATA FABRIC's page: the account's state as FROST keeps it, with DA-M's own download of each file
-                                   'viewer': who}   # THE PAGE'S MASK (the owner, 2026-10-25, UI only): who looks, by FROST's own word; nothing else of them
+                                   'viewer': who,   # THE PAGE'S MASK (the owner, 2026-10-25, UI only): who looks, by FROST's own word; nothing else of them
+                                   'fields': fabric.custom_fields(self._ask, account, scope, member, agent_key, fabric_modules, strict=False)}   # each module's own custom fields, for its file's format
             except Refused as no:
                 not_read = '; '.join(r for r in (not_read, 'fabric state not read') if r)
                 LOG.warning('fabric state not read for %s: %s', agent_key, no.reason)
@@ -543,6 +544,7 @@ class Harness:
             try:
                 given['fabric'] = {'files': fabric.files(self._ask, account, scope, member, job_key, run), 'state': fabric.state(self._ask, account, scope, member)}
                 dropped = {fabric.FILES[f['name']] for f in given['fabric']['files']}   # ONLY THE MODULES WITH A FILE (found on B, 2026-10-25: a member may not list every module)
+                given['fabric']['fields'] = fabric.custom_fields(self._ask, account, scope, member, key, [m for m in fabric_modules if m in dropped])   # the account's own custom fields: the only buckets a column goes into
                 given['records'] = member_records.read(self._ask, {m: ('read',) for m in fabric_modules if m in dropped}, account, scope, member, key, custom=True, most=fabric.MOST_ROWS)
             except Refused as no:
                 return self._end(account, scope, member, key, job_key, run, 'FAILED', f'the Data Fabric could not read the platform: {no.reason}')

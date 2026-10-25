@@ -42,6 +42,8 @@ class Platform:
             return 200, {'rows': self.rows, 'total': len(self.rows), 'first': []}
         if route == '/dam/fabric':
             return 200, {'files': self.files}
+        if route == '/agnt/records/fields':   # the account's own custom fields of a module (EDIT CUSTOM FIELDS)
+            return 200, {'fields': [{'slot': 'custom_0004', 'name': 'total', 'type': 'text'}, {'slot': 'not_a_bucket', 'name': 'x', 'type': 'text'}]}
         if route == '/fabric/state':
             return 200, self.state
         return 404, {'refused': route}
@@ -261,6 +263,7 @@ class TheRun(World):
         self.assertEqual(given['fabric']['state']['apis'][0]['api_name'], 'VIRTUAL WIRE API')
         self.assertEqual(given['records']['invc'][0]['custom_0004'], '100.00')
         self.assertEqual(self.most_bytes, fabric.MOST_ANSWER)   # its own answer limit, based on 100 fields
+        self.assertEqual(given['fabric']['fields'], {'invc': [{'slot': 'custom_0004', 'name': 'total', 'type': 'text'}]})   # the account's own custom fields, a bucket alone
         self.assertEqual(p.asked('/dam/fabric')[0], {'account': ACCOUNT, 'scope': SCOPE, 'member': MEMBER, 'job_key': JOB, 'run': '1', 'content': 'yes'})
 
     def test_the_writes_are_carried_and_the_state_saved_with_where_each_row_landed(self):
