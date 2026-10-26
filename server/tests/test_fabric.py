@@ -42,8 +42,8 @@ class Platform:
             return 200, {'rows': self.rows, 'total': len(self.rows), 'first': []}
         if route == '/dam/fabric':
             return 200, {'files': self.files}
-        if route == '/agnt/records/fields':   # the account's own custom fields of a module (EDIT CUSTOM FIELDS)
-            return 200, {'fields': [{'slot': 'custom_0004', 'name': 'total', 'type': 'text'}, {'slot': 'not_a_bucket', 'name': 'x', 'type': 'text'}]}
+        if route == '/agnt/records/fields':   # the account's own custom fields, every module asked in one answer (EDIT CUSTOM FIELDS)
+            return 200, {'fields_by': {g: [{'slot': 'custom_0004', 'name': 'total', 'type': 'text'}, {'slot': 'not_a_bucket', 'name': 'x', 'type': 'text'}] for g in data['segments'].split(',')}}
         if route == '/fabric/state':
             return 200, self.state
         return 404, {'refused': route}
@@ -345,6 +345,20 @@ class TheRun(World):
             with self.sandboxed({**self.ANSWER, 'fabric': {**self.ANSWER['fabric'], 'fields': [bad]}}):
                 self.assertEqual(self.harness(p).run_job(ACCOUNT, SCOPE, MEMBER, JOB, 1), 'FAILED')
         self.assertEqual((p.posted('/agnt/records/fields'), p.posted('/agnt/records/edit')), ([], []))
+
+    def test_every_modules_fields_in_one_ask(self):
+        """The owner, 2026-10-25: "its slow to load": sixteen asks each checking the agent again took seconds; one ask names
+        every module, and on a RUN a module wid leaves out fails it, nothing guessed."""
+        self.agent({'fabric': {'modules': ['invc', 'cont']}, 'records': {'invc': ['read', 'edit'], 'cont': ['read', 'edit']}})
+        p = Platform(files=[dict(FILE), {**FILE, 'name': 'pf_mapping.csv', 'content': 'module,slot,name,type,on\n'}])
+        with self.sandboxed(self.ANSWER):
+            self.assertEqual(self.harness(p).run_job(ACCOUNT, SCOPE, MEMBER, JOB, 1), 'DONE')
+        self.assertEqual([d['segments'] for d in p.asked('/agnt/records/fields')], ['invc,cont'])   # one ask
+        q = Platform()
+        q.get = lambda office, route, data=None, real=q.get: (200, {'fields_by': {}}) if route == '/agnt/records/fields' else real(office, route, data)
+        with self.sandboxed(self.ANSWER):
+            self.assertEqual(self.harness(q).run_job(ACCOUNT, SCOPE, MEMBER, JOB, 1), 'FAILED')
+        self.assertIn('did not hand the custom fields of invc', self.result(q)['log'])
 
     def test_a_free_larryd_agent_is_not_sent_to_mtok(self):
         """Found on B, 2026-10-25: a free agent of the LARRYD product (no plan) was refused by mTok (no group named): it costs

@@ -14,7 +14,6 @@ record and says what to write. The runtime only hands and carries, as for every 
   on a CALL (its dashboard view) it is handed given["fabric"] = {state} only.
 
 Nothing is kept here: the files and rows live in the call's memory, the values go to wid, the state to FROST."""
-import concurrent.futures
 import json
 import pathlib
 import re
@@ -87,22 +86,25 @@ def custom_fields(ask, account, scope, member, agent_key, modules, strict=True):
     """THE ACCOUNT'S OWN CUSTOM FIELDS (the owner, 2026-10-25: "custom fields are the only fields used"): for each module, the
     fields this account defined (EDIT CUSTOM FIELDS) as wid hands them: {segment: [{slot, name, type}]}. strict (a RUN): a
     refusal propagates, nothing is guessed; not strict (a page): a module wid does not hand is left out."""
-    def one(segment):
-        try:
-            return segment, ask('wid', 'GET', FIELDS_DOOR, {'account': account, 'scope': scope, 'member': member, 'agent_key': agent_key, 'segment': segment}), None
-        except Exception as failed:   # noqa: BLE001
-            return segment, None, failed
     modules = list(modules)
-    with concurrent.futures.ThreadPoolExecutor(max_workers=max(1, min(len(modules), len(FILES)))) as pool:   # ALL AT ONCE (the owner, 2026-10-25: "its slow to load"): 16 asks one after another took 2.5 s
-        answers = list(pool.map(one, modules))
+    if not modules:
+        return {}
+    try:   # ONE ASK FOR EVERY MODULE (the owner, 2026-10-25: "its slow to load"): sixteen asks, each checking the agent again, took seconds
+        body = ask('wid', 'GET', FIELDS_DOOR, {'account': account, 'scope': scope, 'member': member, 'agent_key': agent_key, 'segments': ','.join(modules)})
+    except Exception:   # noqa: BLE001
+        if strict:
+            raise
+        return {}
+    by = body.get('fields_by') if isinstance(body.get('fields_by'), dict) else {}
+    if strict and set(modules) - set(by):
+        from .harness import Refused   # the harness's own refusal, as its asks raise it (here only: the harness imports this module)
+        raise Refused(403, f"wid did not hand the custom fields of {', '.join(sorted(set(modules) - set(by)))}")
     out = {}
-    for segment, body, failed in answers:
-        if failed is not None:
-            if strict:
-                raise failed
+    for segment in modules:
+        if not isinstance(by.get(segment), list):
             continue
         out[segment] = [{'slot': str(f.get('slot', '')), 'name': str(f.get('name', '')), 'type': str(f.get('type', ''))}
-                        for f in (body.get('fields') or []) if isinstance(f, dict) and member_records.CUSTOM.fullmatch(str(f.get('slot', '')))]
+                        for f in by[segment] if isinstance(f, dict) and member_records.CUSTOM.fullmatch(str(f.get('slot', '')))]
     return out
 
 
