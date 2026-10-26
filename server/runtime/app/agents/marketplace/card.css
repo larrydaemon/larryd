@@ -113,8 +113,15 @@
   background-position: 4% 0%, 15% 30%, 27% 75%, 38% 10%, 52% 52%, 64% 87%, 79% 22%, 91% 65%, 0 0; background-size: 3px 50%, 3px 50%, 3px 50%, 3px 50%, 3px 50%, 3px 50%, 3px 50%, 3px 50%, 100% 100%; background-repeat: repeat-y, repeat-y, repeat-y, repeat-y, repeat-y, repeat-y, repeat-y, repeat-y, repeat }
 .mk-rain { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none }   /* THE CODE RAIN (card.js: the platform's own storm, typing real live code), over the box's picture, behind the cat */
 @keyframes mk-fall { from { transform: translateY(0) } to { transform: translateY(50%) } }
+/* MARK IV · REPLICA: THE HOLOGRAM (the platform's fourth class, R-0222; the owner 2026-10-26: "finish these up you have permission"): the fine
+   projection lines of a hologram across the box, never moving, and ONE soft band of the theme's own light rising slowly up through them,
+   as a figure being projected; the theme's colours only, none moving for a viewer who asks for less motion. */
+[data-mark="4"] .mk-frame::before { content: ""; position: absolute; inset: 0; pointer-events: none; background-image: repeating-linear-gradient(to bottom, color-mix(in srgb, var(--mk-01) 8%, transparent) 0 1px, transparent 1px 4px) }
+[data-mark="4"] .mk-frame::after { content: ""; position: absolute; left: 0; top: 0; width: 100%; height: 40%; pointer-events: none; opacity: .16; background-image: linear-gradient(to top, transparent, var(--mk-01), transparent); transform: translateY(260%); animation: mk-rise 11s ease-in-out infinite }
+@keyframes mk-rise { from { transform: translateY(260%) } to { transform: translateY(-100%) } }
 @media (prefers-reduced-motion: reduce) {
   [data-mark="1"] .mk-frame::before, [data-mark="1"] .mk-frame::after { display: none }
+  [data-mark="4"] .mk-frame::after { display: none }
   [data-mark="2"] .mk-frame::before, [data-mark="2"] .mk-frame::after, [data-mark="3"] .mk-frame::before, [data-mark="3"] .mk-frame::after { animation: none }
   [data-mark="3"] .mk-frame::before { display: none }
   [data-mark="3"] .mk-frame::after { background-image: repeating-linear-gradient(to right, color-mix(in srgb, var(--mk-04) 4%, transparent) 0 1px, color-mix(in srgb, var(--mk-01) 3%, transparent) 1px 2px, color-mix(in srgb, var(--mk-05) 4%, transparent) 2px 3px); background-position: 0 0; background-size: 100% 100%; background-repeat: repeat } }

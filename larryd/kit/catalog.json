@@ -219,7 +219,8 @@
   "class": {
    "MARK I AGENT (NORMAL)": "crt",
    "MARK II SUPER AGENT (HARNESS)": "wellness",
-   "MARK III QUANTUM AI (AGENTIC CODE)": "glitch"
+   "MARK III QUANTUM AI (AGENTIC CODE)": "glitch",
+   "MARK IV REPLICA (FULL-HUMAN REPLACEMENT)": "hologram"
   },
   "type": [
    "OFF-THE-SHELF",
@@ -441,7 +442,8 @@
   "class_means": {
    "MARK I AGENT (NORMAL)": "simple",
    "MARK II SUPER AGENT (HARNESS)": "complex",
-   "MARK III QUANTUM AI (AGENTIC CODE)": "extremely complex"
+   "MARK III QUANTUM AI (AGENTIC CODE)": "extremely complex",
+   "MARK IV REPLICA (FULL-HUMAN REPLACEMENT)": "a full human replacement"
   },
   "residency_means": {
    "INTERNAL": "Positive Feedback's own agent marketplace only",
