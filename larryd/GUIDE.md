@@ -135,6 +135,119 @@ nothing is carried. The declaration is in the manifest's hash: FROST approves wh
 agent itself. A RUN is handed no records; a CALL is handed `records` only. On your own LARRYD the records live in one
 small file (`~/.larryd/preview/records_<species>.json`), which you may write by hand to try an agent.
 
+### The counts
+An agent that only needs to know HOW MUCH there is (a picture of the account, a meter) asks for the counts, never the
+records:
+
+    "records": {"*": ["count"]}
+
+Written exactly so (`"*"` takes `["count"]` alone; `count` is not a verb of a species), alone or beside species. On a
+CALL and on a RUN LARRYD asks the platform for the member it named and hands in
+
+    "counts": {"scope": "ACME",
+               "modules": {"cont": 400, "invc": 2, "mdia": 1569},
+               "products": {"cont": "invoicemaps", "invc": "invoicemaps", "mdia": "agencymgmt"},
+               "ties": [["invc", "cont", 1], ["mdia", "hrcy", 1317]]}
+
+`scope` is the account's name as the page shows it to the member. `modules` has one entry for each module that member
+may list, with the number the list would hand them (all of the account's, or their own only: the platform decides, the
+agent never asks); a module they may not list is absent, never 0. `ties` are `[from, to, how many]`: how many of
+`from`'s records name a record of `to`, only between two modules in `modules`. No record, key or name is in it. When
+the platform does not hand them, `counts` is absent: draw without. The agent must be hired and on, and its approved card
+must carry the declaration (it is in the manifest's hash). On your own LARRYD the counts are the number of rows in each
+`records_<species>.json`; or write `~/.larryd/preview/counts.json` (`{"modules": {...}, "ties": [...]}`) by hand.
+
+## The agent's own live page
+An agent that needs something live (people talking to each other, a page that changes by itself) has a live page of its
+own, outside the platform. The platform's page never runs an agent's script, and that stays so. Declare it:
+
+    "calls": ["door"],
+    "live": {"seats": 4}
+
+and put the live half in `live/` beside `agent/`, these four files and nothing else:
+
+- `page.html`: the one page. It loads `/page.js` and the platform's sheets (the line `<!--sheets-->` in its head), with
+  no script, style attribute or handler written into it.
+- `page.js`: the page's script. It reaches only its own room program (paths that start with `/`), names no outside
+  address, and builds nothing from text (no eval, no innerHTML).
+- `room.py`: the room program, the Python standard library only. It listens and answers; it starts no process and calls
+  out to nothing.
+- `live.json`: what it declares (its ports, its seats, its limits).
+- and, if the page needs it, `rain.js` (a second script, held to the script's rules).
+
+The page's own rules are written in the page, as every agent's are: ONE plain `<style>` block in `page.html`, rules only,
+every colour a theme variable such as `var(--active-color-01)`, no `url()`, no `@import`. There is no sheet file.
+
+On a CALL LARRYD tells the agent only that its room is there: `live = {"room": true}`. The agent is handed no address and
+no pass, and holds no secret. Its view marks where the room goes with ONE empty element, `<div data-room></div>`, and
+nothing else: no link out, no frame. LARRYD signs the pass for the member the platform named (the account, the member, a
+first name, the theme), good once and for ten minutes, and answers the platform in its own field beside the view,
+`room = "https://<the room program>/#<pass>"`; an agent's own `room` refuses its whole answer. The platform checks the
+address against its own list and draws the room inside the page with its own script. Told of no room, the agent draws no
+placeholder. The doctor checks the live half with the agent, and it is approved with the agent.
+
+The live half is part of the agent: `larryd submit` packs it with `agent/` (under `live/` in the file), its bytes are in
+the code's hash, and a changed live page is a changed agent, reviewed again.
+
+What the members write on a live page is kept in the member's own records on the platform, never in a store of the
+agent's. Declare the species beside `live`, e.g. `"records": {"sprt": ["read", "add", "edit"]}`. The room program asks
+LARRYD (the one address it may ask, handed in its environment), marked with the key its passes are signed with, and
+LARRYD carries the ask to the platform's own record doors for that member: list, add, edit, only what the approved
+manifest declares, only for a member who hired the agent. The pass names the member's scope and the slot their call came
+through; the room program sends both back with each ask.
+
+## Something made by an outside model
+An agent never reaches out. An agent that needs a picture or a video made asks LARRYD for it, and LARRYD's own hand does
+the errand. Declare the models, from LARRYD's list, and say on the card where the member's words go:
+
+    "makes": ["nano-banana-2"],
+    "gives": ["makes", "keeps", "delivery"],
+    "card": {"sends_to": "Replicate (Google Nano Banana 2)", "data_sent": "The words you type for the picture and the shape you pick."}
+
+| Model | Makes | Run by | An ask may name |
+|---|---|---|---|
+| `nano-banana-2` | a picture (png, jpg or webp) | Replicate | `aspect`: 1:1, 3:4, 4:3, 16:9, 9:16 |
+| `seedance-2.5` | a video (mp4) | Replicate | `aspect`: 16:9, 9:16, 1:1 · `seconds`: 5, 10 · `size`: 480p, 720p |
+
+On a RUN the answer carries one ask:
+
+    "makes": [{"model": "nano-banana-2", "prompt": "A red fox in fresh snow", "name": "A red fox", "aspect": "16:9"}]
+
+`prompt` is the words (at most 4,000 characters), `name` the file's plain name without an ending (letters, digits, spaces,
+`_` and `-`; LARRYD adds the ending of what came back). A choice left out takes the model's first. LARRYD sends the model
+only those fields, with its own key, waits for the file, checks that it IS a picture or a video (from its first bytes,
+whatever it is called) and keeps it in the member's DA-M. The file never passes through the agent, and nothing the
+provider says is ever handed to it. A model the manifest does not declare, a field the model does not take, a member's day
+that is full (LARRYD's own daily limit: every ask counts from the moment it is sent, whatever comes back) or a provider that refuses: the RUN ends FAILED or REFUSED with LARRYD's plain
+reason, nothing is charged and nothing is kept. `larryd run` runs the agent and shows the ask; nothing leaves your computer.
+
+## A stored file as the member's record
+On the platform a picture, a video or a sound IS a record of its module (Images, Videos, Audio): the DA-M file is the
+record's identity. A RUN that stores a file (a made one, or one the answer carries with the DA-M store) may ask for its
+record:
+
+    "records": {"imgs": ["read", "add"]},
+    "keeps": [{"species": "imgs", "file": "A red fox", "values": {"data_nickname": "A red fox", "data_psgen_prompt": "A red fox in fresh snow"}}]
+
+`file` names a file this RUN stores: a made one by its ask's `name`, a carried one by its own name (`"Click.wav"`).
+LARRYD adds the record through the platform's own door for that member, with the file's DA-M key as its identity (the
+agent never writes `identity_dam_file`). The species needs `add` in `"records"`; at most 10 in one answer.
+
+## A RUN asked from the agent's page
+An agent whose page has its own button for the work (Generate) names `"run"` in `gives`. When the member presses it (a
+form on the page carrying a hidden input named `act`: the member's own confirmed act), the CALL's answer may carry the
+RUN's inputs by the names `"inputs"` declares:
+
+    "run": {"words": "A red fox in fresh snow", "shape": "16:9"}
+
+LARRYD passes them on to the platform on their slots, and the platform starts the RUN as its own Run button does. Each
+value must be EXACTLY a word the member sent in that act (a value of the form they submitted, as `page.search` hands it):
+an agent cannot put anything else into a RUN, not a record it was handed and not words of its own; clean the words up in
+the RUN itself. One value the member did not send refuses the ask whole. On a page merely opened LARRYD drops `run`: an
+address never starts a RUN. Such an agent's CALL is also handed
+`runs = [{"run", "state", "code", "at"}]`, how the member's last five RUNs of it ended (LARRYD's own record: the state and
+a short code such as `NOT_MADE_REPLICATE_FAILED`, never an input or a delivery), so the page can say what became of an ask.
+
 ## The app's own parts in a view
 An agent's view draws with the platform's own classes (they work inside the view: the page's sheets stand in it), so a view
 reads like the app. Buttons: `btn btn--small` (a selected one carries `aria-current="true"`), a row of them in
@@ -308,9 +421,9 @@ are not there yet: nothing here promises a money value or a share.
   Offline where its price stands, and it cannot be hired. Leave the field out for an agent that can be hired.
 - `developer_site` (optional): your website, a plain https address such as `https://example.com`. The card links your
   name to it, in a new tab. Leave the field out for no link.
-- `sends_to` and `data_sent`: the agent itself never reaches out. When the platform sends a member's data to an outside
-  AI service for the agent, `sends_to` names that service and `data_sent` says what is sent; the platform asks the
-  member before anything goes out. An agent that sends nothing leaves both `""`.
+- `sends_to` and `data_sent`: the agent itself never reaches out. When LARRYD sends a member's words to an outside
+  AI service for the agent (`"makes"`), `sends_to` names that service and `data_sent` says what is sent; it goes out
+  only on the member's own act. An agent that sends nothing leaves both `""`.
 - `residency` is which marketplaces the agent is offered on: INTERNAL = Positive Feedback's own agent marketplace only;
   EXTERNAL = other marketplaces only (e.g. the Microsoft marketplace), not Positive Feedback; BOTH = Positive Feedback
   and at least one external marketplace. It is not where the agent runs: every LARRYD agent runs in LARRYD.

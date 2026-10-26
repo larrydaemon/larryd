@@ -468,7 +468,63 @@ def test_records_catches(agent, records, said):
     assert all(p.todo for p in problems)
 
 
+def test_the_counts_declaration_passes_alone_beside_species_and_without_a_call(agent):
+    for records, calls in (({'*': ['count']}, ('answer',)), ({'*': ['count'], 'opns': ['read']}, ('answer',)), ({'*': ['count']}, ())):
+        _records(agent, records, calls=calls)
+        assert doctor.check(agent) == [], (records, calls)
+
+
+@pytest.mark.parametrize('records, said', [
+    ({'*': ['read']}, 'records "*" is not ["count"]'),
+    ({'*': ['count', 'read']}, 'records "*" is not ["count"]'),
+    ({'*': 'count'}, 'records "*" is not ["count"]'),
+    ({'*': True}, 'records "*" is not ["count"]'),
+    ({'opns': ['count']}, 'not a list of verbs'),
+])
+def test_the_counts_declaration_catches(agent, records, said):
+    _records(agent, records)
+    problems = [p for p in doctor.check(agent) if p.check == 'the manifest']
+    assert problems and any(said in p.wrong for p in problems), [p.wrong for p in problems]
+    assert all(p.todo for p in problems)
+
+
+def test_the_counts_beside_species_still_need_a_call(agent):
+    _records(agent, {'*': ['count'], 'opns': ['read']}, calls=())
+    assert [p.wrong for p in doctor.check(agent) if p.check == 'the manifest'] == ['"records" is declared, but "calls" is empty']
+
+
 def test_records_need_a_call(agent):
     _records(agent, {'opns': ['read']}, calls=())
     problems = [p.wrong for p in doctor.check(agent) if p.check == 'the manifest']
     assert problems == ['"records" is declared, but "calls" is empty']
+
+
+# ---------------------------------------------------------------- THE DATA FABRIC (the owner, 2026-10-25)
+def _fabric(agent, fabric, records=None, gives=None):
+    card = _card(agent)
+    card['fabric'] = fabric
+    card['records'] = records if records is not None else {'invc': ['read', 'edit']}
+    card['calls'] = card['does'][:1]
+    card['gives'] = gives if gives is not None else sorted(set(card['gives']) | {'fabric'})
+    _write_card(agent, card)
+
+
+def test_a_declared_fabric_passes(agent):
+    _fabric(agent, {'modules': ['invc']})
+    assert doctor.check(agent) == []
+
+
+@pytest.mark.parametrize('fabric, records, gives, said', [
+    ('invc', None, None, 'not {"modules": [module codes]}'),
+    ({'modules': []}, None, None, 'not {"modules": [module codes]}'),
+    ({'modules': ['zzzz']}, None, None, 'not {"modules": [module codes]}'),
+    ({'modules': ['invc'], 'more': 1}, None, None, 'not {"modules": [module codes]}'),
+    ({'modules': ['invc', 'cont']}, None, None, 'names cont, which "records" does not declare with read, edit'),
+    ({'modules': ['invc']}, {'invc': ['read']}, None, 'names invc, which "records" does not declare'),
+    ({'modules': ['invc']}, None, ['view', 'delivery'], '"gives" does not name "fabric"'),
+])
+def test_fabric_catches(agent, fabric, records, gives, said):
+    _fabric(agent, fabric, records, gives)
+    problems = [p for p in doctor.check(agent) if p.check == 'the manifest']
+    assert problems and any(said in p.wrong for p in problems), [p.wrong for p in problems]
+    assert all(p.todo for p in problems)

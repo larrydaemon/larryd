@@ -73,7 +73,7 @@ class NoDataKept(unittest.TestCase):
                     self.assertNotIn(value.encode(), body, f'{path.name} keeps {value!r}')
         con = sqlite3.connect(self.db)
         self.assertEqual(con.execute("SELECT account, member FROM runtime_runs WHERE lane = 'job'").fetchall(),
-                         [('ACCT_' + 'A' * 12 + '_0001', 'MCON_' + 'B' * 12 + '_0002')])   # the caller, by its keys only
+                         [('ACCT_' + 'A' * 12 + '_0001', 'MCON_' + 'B' * 12 + '_0002')] * 2)   # the RUN's start and its end, each with the caller by its keys only
         con.close()
         self.assertEqual(list(pathlib.Path(tempfile.gettempdir()).glob('runtime_run_*')), [])   # the run's folder is gone
 

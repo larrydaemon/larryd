@@ -111,10 +111,10 @@ class DeveloperMarketplace(unittest.TestCase):
         self.assertIn('Not on the shelf', html)
         self.assertIn('Odd price: the price is not a whole mTok rate', html)
 
-    def test_sends_to_is_on_the_card(self):
+    def test_sends_to_is_never_on_the_card(self):
         self.place(KEY_A, _agent('Teller', {**GOOD_CARD, 'sends_to': 'An outside model', 'data_sent': 'the contact\'s city'}))
         html = self.page()
-        self.assertIn('Sends data to An outside model: the contact&#39;s city', html)
+        self.assertNotIn('Sends data to', html)   # the owner, 2026-10-09: "delete this from the card. we do not add extra info on cards" (said under the agent's block and in the terms)
         card = next(c for c in self.client.get('/marketplace.json').get_json()['cards'] if c['key'] == KEY_A)
         self.assertEqual((card['sends_to'], card['data_sent']), ('An outside model', 'the contact\'s city'))
 

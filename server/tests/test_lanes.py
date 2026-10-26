@@ -31,6 +31,14 @@ class AssembleTest(unittest.TestCase):
         out = lanes.assemble([card('MARKET'), card('WEEKLY')], [], [], lambda k: OK, own='MARKET')
         self.assertEqual([c['key'] for c in out], ['WEEKLY'])
 
+    def test_a_screens_sequence_is_never_a_card_in_a_listing(self):
+        """The card's role SEQUENCE, the platform's word: no agent is handed it (the marketplace's collection lists none);
+        the runtime's own doors (no agent asking: hire, defaults) still find it."""
+        cards = [card('MARKET'), card('FLOW', role='SEQUENCE', screen='paceshift/prdn/home'), card('WEEKLY', role='')]
+        self.assertEqual([c['key'] for c in lanes.assemble(cards, [], [], lambda k: OK, own='MARKET')], ['WEEKLY'])
+        self.assertEqual([c['key'] for c in lanes.assemble(cards, [], [], lambda k: OK)], ['MARKET', 'FLOW', 'WEEKLY'])
+        self.assertEqual([c['key'] for c in lanes.assemble([card('X', role='sequence'), card('Y', role=True)], [], [], lambda k: OK, own='MARKET')], ['X', 'Y'])   # only the platform's exact word
+
     def test_a_subscription_opens_its_group(self):
         cards = [card('PAID', price='10', product_slug='paceshift', product='PACE SHIFT')]
         self.assertEqual(lanes.assemble(cards, [], ['paceshift'], lambda k: OK)[0]['hireable'], True)

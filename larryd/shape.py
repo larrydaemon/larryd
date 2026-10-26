@@ -30,8 +30,19 @@ FIELDS = {
     'inputs': 'only with "job" in run.hands: the job\'s inputs by name, each on one of the job\'s slots 001-015, e.g. {"mood": "001"}',
     'records': 'the member\'s records the agent reads and writes on a CALL (optional): {"<species>": ["read", "add", "edit", "remove"]}, '
                'e.g. {"opns": ["read", "add", "edit", "remove"]}; LARRYD hands them as records = {species: [rows]} and carries the '
-               'answer\'s "writes" to the platform\'s own record doors, only what is declared',
+               'answer\'s "writes" to the platform\'s own record doors, only what is declared. THE COUNTS: {"*": ["count"]} (alone or beside '
+               'species) hands counts = {scope, modules: {species: how many}, products, ties: [[from, to, how many]]} on a CALL and on a RUN: '
+               'the numbers of the member\'s own account, never a record',
 }
+FIELDS['live'] = ('the agent\'s own live page (optional, only on an agent that answers calls): {"seats": 1 to 4}; its files sit in live/ beside '
+                  'agent/ (page.html, page.js, room.py, live.json) and LARRYD tells the call live = {"room": true}; the view holds one empty <div data-room></div>, and the address and the member\'s pass go to the platform alone')
+FIELDS['makes'] = ('what the agent asks LARRYD to have made by an outside model on a RUN (optional): a list of models on LARRYD\'s list, e.g. '
+                   '["nano-banana-2"]; the agent never reaches out: its answer carries "makes": [one ask], LARRYD\'s own hand does the errand and '
+                   'stores the file in the member\'s DA-M; the card\'s "sends_to" and "data_sent" must say where the words go')
+FIELDS['fabric'] = ('THE DATA FABRIC (optional, Positive Feedback\'s own PF DATA FABRIC): {"modules": [module codes]}, each also declared in '
+                    '"records" with read and edit; on a RUN LARRYD hands fabric = {files: the newest official pf_<module>.csv of each, '
+                    'state: the account\'s Fabric state} and those modules\' records with their custom fields, and carries the answer\'s '
+                    '"fabric": {"writes": [edits of custom fields only], "state": {...}}; on a CALL it hands fabric = {"state": the account\'s state, "viewer": {"member_type": who looks, for the page\'s mask}}')
 FIELDS['card'] = ('the card the marketplace shows, as the member sees it: {class, pitch, price, type, residency, screen, product, '
                   'module, developer, sends_to, data_sent} and, if you like, developer_site; the number and the art are LARRYD\'s to give at approval')
 CARD = {
@@ -60,8 +71,19 @@ CARD_OPTIONAL = {   # a card fact an agent may leave out
 SITE = r'https://(?=[^/?#]{1,253}(?:[/?#]|$))(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}(?:[/?#][^\s"\'<>\\`]*)?'   # https to a named host: no user, no port, no number for a host
 SCREEN = r'[a-z][a-z0-9]{1,15}/[a-z][a-z0-9]{1,15}'   # <species>/<page>
 MOST_PITCH = 140                                      # characters on the card
-OPTIONAL = ('inputs', 'look', 'records')
+OPTIONAL = ('inputs', 'look', 'records', 'live', 'makes', 'fabric')
+FABRIC_MODULES = ('cont', 'invc', 'locn', 'opns', 'hrcy', 'mdia', 'brnd', 'sprt', 'imgs', 'vdeo', 'audo', 'prdn', 'agnt', 'mdls', 'logs', 'jobs')   # one pf_<module>.csv each (the runtime's core_engine/fabric.py)
+FABRIC_NEEDS = ('read', 'edit')   # what "records" must declare on each Fabric module: read, and edit their custom fields
+LIVE = 'live'   # the live half's folder, beside agent/
+LIVE_FILES = ('live.json', 'page.html', 'page.js', 'room.py')   # all of it, and nothing else
+LIVE_MAY = ('rain.js',)   # and, if the page needs it, a second script. The page's own rules are written IN the page (one <style> block), as every agent's are
+LIVE_SEATS = (1, 4)
+MAKES = {   # THE OUTSIDE HAND'S LIST (the same as the runtime's core_engine/outside.py): the model, what it makes, who runs it, the choices an ask may name
+    'nano-banana-2': ('a picture', 'Replicate', {'aspect': ('1:1', '3:4', '4:3', '16:9', '9:16')}),
+    'seedance-2.5': ('a video', 'Replicate', {'aspect': ('16:9', '9:16', '1:1'), 'seconds': tuple(str(n) for n in range(4, 31)), 'size': ('480p', '720p')}),   # 4 to 30 seconds, the model's own range (R-0041)
+}
 RECORD_VERBS = ('read', 'add', 'edit', 'remove')   # what an agent may declare on a species' records
+RECORD_COUNTS = ('*', ['count'])   # THE COUNTS: "records": {"*": ["count"]}, of no one species: how many, never which
 PACK = 'pack.json'   # a knowledge pack: a folder of plain text files with pack.json {"name", "about"}
 PACK_FIELDS = ('name', 'about')
 PACK_KINDS = {'.json', '.txt', '.md', '.csv'}

@@ -25,7 +25,7 @@ from werkzeug.exceptions import HTTPException
 APP = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(APP))
 
-from core_engine import callers, harness as lanes_harness, intake, jobs as long_runs, locker, lockers as bucket_lockers, look as card_look, platform, preview, records as run_records, sandbox, signing, slot as one_slot, store, warmup  # noqa: E402
+from core_engine import callers, harness as lanes_harness, intake, jobs as long_runs, live, locker, lockers as bucket_lockers, look as card_look, platform, preview, records as run_records, sandbox, signing, slot as one_slot, store, warmup  # noqa: E402
 
 CONFIG = json.loads((APP / 'schemas' / 'runtime.json').read_text())
 INSTANCE = pathlib.Path(os.environ['LARRYD_INSTANCE']) if os.environ.get('LARRYD_INSTANCE') else APP.parent / 'instance'   # the daemon names it
@@ -46,7 +46,7 @@ KEY = re.compile(r'[A-Z]{4}_[0-9A-F]{12}_[0-9A-F]{4}')   # a key as the platform
 
 
 def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, developer=False, keys=None, nonces=None, cloud=None,
-               retry_seconds=RETRY_IN_REQUEST):
+               retry_seconds=RETRY_IN_REQUEST, outside=None):
     """agents: the locker's folder (default the runtime's own; a test gives a scratch one). developer: the developer's runtime
     (the marketplace page; the platform's answers from the instance when no address is declared).
     keys: the hardened call (Cloud Run): {key id: [versions]} of the callers. cloud: Cloud Run's parts (the runtime design):
@@ -75,7 +75,10 @@ def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, deve
         preview.hold_marketplace(db, locker_dir)
     records = cloud.get('records') or run_records.SqliteRecords(db)
     client = preview.Local(db, locker_dir, instance) if local else platform.Client(addresses or {}, secret)
-    h = lanes_harness.Harness(db, locker_dir, client, CONFIG['run']['seconds'], records=records)
+    # THE OUTSIDE HAND (core_engine/outside.py). The runtime holds NO provider key, anywhere: each errand asks FROST's vault on the platform
+    # for it (harness._provider_key; the owner: "a single source setup"). outside = {'hand', 'a_day'} replaces the hand or the limit (the lab, a test)
+    hand_parts = {'a_day': (CONFIG.get('makes') or {}).get('a_day'), **(outside or {})}
+    h = lanes_harness.Harness(db, locker_dir, client, CONFIG['run']['seconds'], records=records, **hand_parts)
     harnesses = {}
     if keys is not None:   # one harness per slot: its calls go back to THAT slot, signed with the runtime's key for it
         slots = CONFIG['slots']
@@ -84,7 +87,7 @@ def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, deve
             harnesses[caller] = lanes_harness.Harness(
                 db, locker_dir, platform.Client({o: f'{base}/{o}' for o in slots['offices']} if base else {}, '',
                                                 outbound=cloud['outbound'], slot=caller, retry_seconds=retry_seconds),
-                CONFIG['run']['seconds'], records=records, caller=caller)
+                CONFIG['run']['seconds'], records=records, caller=caller, **hand_parts)
     claims = cloud.get('claims') or long_runs.MemoryClaims()
     job_starter = cloud.get('jobs')
     running, lock = set(), threading.Lock()
@@ -118,6 +121,8 @@ def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, deve
             return None   # the startup probe; the route answers one word and runs nothing
         if developer and request.path.startswith('/marketplace'):
             return None   # the developer's own page, on 127.0.0.1, in the browser: no office signs it
+        if request.path == '/api/live/records' and request.method == 'POST':
+            return None   # an agent's own room program: no office; the door itself checks its mark, made with the key LARRYD shares with it alone
         route = request.path.removeprefix('/api')
         if keys is not None:   # THE HARDENED CALL (Cloud Run): a key per caller and a nonce, never the shared secret
             known, h = keys.now(), request.headers
@@ -199,6 +204,20 @@ def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, deve
             run_with.on_start = None
             slot.give_back(token)
 
+    @app.post('/api/live/records')
+    def live_records():
+        """AN AGENT'S ROOM PROGRAM ASKS FOR THE MEMBER'S RECORD (list, add, edit): the body marked with the live key, made within
+        the minute; the harness of the slot the member's CALL came through carries it, held to the agent's approved manifest."""
+        raw = request.stream.read(live.MOST_ASK + 1)
+        ask, why = live.read_ask(raw, request.headers.get('X-Talk-Mark'))
+        if ask is None:
+            return jsonify({'refused': why}), 401
+        run_with = harnesses.get(ask['via'], h) if keys is not None else h
+        try:
+            return jsonify(run_with.live_records(ask['agent'], ask['account'], ask['scope'], ask['member'], ask['do'], ask['species'], ask['key'], ask['values'])), 200
+        except lanes_harness.Refused as no:
+            return jsonify({'refused': no.reason}), no.status
+
     @app.post('/api/agents/hire')
     def hire():
         def work():
@@ -272,6 +291,9 @@ def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, deve
             return jsonify({'refused': no.reason}), no.status
         if started is None:
             return busy()
+        card = str(d.get('card_key') or '')
+        if started and KEY.fullmatch(card):   # THE RUN IS IN FLIGHT FROM THIS MOMENT (its own job starts in up to a minute): written down now, so its agent's page can say so on its very next load
+            (harnesses.get(caller) or h).started(card, d['job_key'], int(d['run']), d['account'], d['member'])
         return jsonify({'accepted': d['job_key'], 'run': int(d['run']), 'already': not started}), 202
 
     app.config['start'] = start
@@ -532,9 +554,15 @@ def main(argv):
         return
     if argv[1:2] == ['submit'] and len(argv) == 3:
         try:
-            print(json.dumps(harness_for_slot(app, slot).submit(argv[2])))
+            review = harness_for_slot(app, slot).submit(argv[2])
         except lanes_harness.Refused as no:
             raise SystemExit(f'refused ({no.status}): {no.reason}')
+        card_key = str(review.get('card_key') or '')
+        if KEY.fullmatch(card_key):   # BOTH KEYS LINKED here too (PF Virtual Wire, 2026-10-08: sent again by its key, its card was approved and never shown: the bucket held no card.json)
+            locker.link(harness_for_slot(app, slot).db, argv[2], card_key)
+            if app.config.get('lockers') is not None:
+                app.config['lockers'].link(argv[2], card_key)
+        print(json.dumps(review))
         return
     if argv[1:2] == ['job'] and len(argv) == 8:
         _slot, account, scope, member, job_key, run = argv[2:]

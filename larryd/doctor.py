@@ -2,6 +2,7 @@
 for every problem what is wrong and what to do, in words an AI can act on without asking.
 The checks, in order: the project · the manifest · the entry · no network · no secret · the shape · the skills · the knowledge."""
 import ast
+from html.parser import HTMLParser
 import json
 import pathlib
 import re
@@ -14,7 +15,7 @@ from . import knowledge, look, shape, sheet, skills
 
 FIX = '`larryd doctor --fix`, or larryd_doctor with "fix": true,'   # every todo that asks for the fixer names both doors
 CHECKS = ('the project', 'the manifest', 'the entry', 'no network', 'no secret', 'the shape', 'the skills', 'the knowledge')
-CHECKS_VERSION = '4'   # THE LARRYD CHECKS (CHECKS.md, larryd.ai/checks.html): a new or changed check raises it
+CHECKS_VERSION = '5'   # THE LARRYD CHECKS (CHECKS.md, larryd.ai/checks.html): a new or changed check raises it
 BADGE = 'larryd-checks.svg'   # `larryd doctor --badge` writes it beside agent/, never inside it (the shape keeps agent/ to its own kinds)
 GOLD, RED = '#FFB000', '#910E0D'   # the brand's gold (PASS) and red (FAIL)
 
@@ -156,6 +157,12 @@ def _manifest(root, f):
         f.add(c, where, '"inputs" is declared, but run "hands" has no "job"', 'add "job" to run "hands", or take "inputs" out')
     if 'records' in card:
         _records(card, c, where, f)
+    if 'live' in card:
+        _live(root, card, c, where, f)
+    if 'makes' in card:
+        _makes(card, c, where, f)
+    if 'fabric' in card:
+        _fabric(card, c, where, f)
     for k, what in (('skills', 'skills that exist (`larryd skills`)'), ('knowledge', 'knowledge packs (`larryd pack`)')):
         if k in card and not (isinstance(card[k], list) and all(isinstance(x, str) for x in card[k])):
             f.add(c, where, f'"{k}" is not a list of hashes', f'set "{k}" to [] or to the hashes of {what}')
@@ -426,22 +433,219 @@ def _card(root, card, f):
         f.add(c, where, 'card "sends_to" names an outside service, but "data_sent" says nothing', 'say in card "data_sent" what is sent there, in plain words')
 
 
+def _makes(card, c, where, f):
+    """"makes": the models the agent asks LARRYD to have something made by, on a RUN: each on LARRYD's list; the answer names
+    "makes" in gives; and the card says, to the member, where their words go ("sends_to") and what is sent ("data_sent")."""
+    asked = card['makes']
+    listed = ', '.join(shape.MAKES)
+    if not (isinstance(asked, list) and asked and all(isinstance(m, str) and m in shape.MAKES for m in asked)):
+        f.add(c, where, '"makes" is not a list of models on LARRYD\'s list', f'set "makes" to the models the agent asks for, from: {listed}')
+        return
+    if isinstance(card.get('gives'), list) and 'makes' not in card['gives']:
+        f.add(c, where, '"makes" is declared, but "gives" does not name "makes"', 'add "makes" to "gives": the answer carries the ask as "makes": [{"model", "prompt", "name", ...}]')
+    facts = card.get('card') if isinstance(card.get('card'), dict) else {}
+    providers = sorted({shape.MAKES[m][1] for m in asked})
+    said = str(facts.get('sends_to') or '')
+    if not all(p.lower() in said.lower() for p in providers):
+        f.add(c, where, f'"makes" sends the member\'s words to {", ".join(providers)}, but card "sends_to" does not say so',
+              f'name {", ".join(providers)} in card "sends_to", and say in "data_sent" what is sent (the words the member types)')
+
+
+def _fabric(card, c, where, f):
+    """"fabric": THE DATA FABRIC's modules, {"modules": [codes]}, each a module with a pf_<module>.csv and declared in "records"
+    with read and edit (its writes are edits of custom fields, through the record doors); the answer names "fabric" in gives."""
+    asked = card['fabric']
+    modules = asked.get('modules') if isinstance(asked, dict) and set(asked) == {'modules'} else None
+    if not (isinstance(modules, list) and modules and all(isinstance(m, str) and m in shape.FABRIC_MODULES for m in modules)):
+        f.add(c, where, '"fabric" is not {"modules": [module codes]}', f'set "fabric" to {{"modules": [...]}} from: {", ".join(shape.FABRIC_MODULES)}')
+        return
+    records = card.get('records') if isinstance(card.get('records'), dict) else {}
+    short = [m for m in modules if not all(v in (records.get(m) or []) for v in shape.FABRIC_NEEDS)]
+    if short:
+        f.add(c, where, f'"fabric" names {", ".join(short)}, which "records" does not declare with {", ".join(shape.FABRIC_NEEDS)}',
+              f'add {", ".join(f"{chr(34)}{m}{chr(34)}: {json.dumps(list(shape.FABRIC_NEEDS))}" for m in short)} to "records"')
+    if isinstance(card.get('gives'), list) and 'fabric' not in card['gives']:
+        f.add(c, where, '"fabric" is declared, but "gives" does not name "fabric"', 'add "fabric" to "gives": a RUN\'s answer carries "fabric": {"writes", "state"}')
+
+
 def _records(card, c, where, f):
     """"records": the member's records an agent reads and writes on a CALL: {species: [verbs]}, each species a module of the
-    platform (the screens table's codes), each verb one of read, add, edit, remove; only an agent that answers calls."""
+    platform (the screens table's codes), each verb one of read, add, edit, remove; only an agent that answers calls.
+    THE COUNTS: "*": ["count"], of no one species, alone or beside species; handed on a CALL and on a RUN."""
     asked = card['records']
     species = sorted({s.split('/')[0] for s in sheet.catalog()['card']['screens'] if not s.startswith('larry/')})
     shape_todo = 'set "records" to {"<species>": [verbs]}, e.g. {"opns": ["read", "add", "edit", "remove"]}'
     if not (isinstance(asked, dict) and asked):
         f.add(c, where, '"records" is not {species: [verbs]}', shape_todo)
         return
+    every, count = shape.RECORD_COUNTS
     for name, verbs in asked.items():
+        if name == every:   # THE COUNTS: "*" takes ["count"] alone
+            if verbs != count:
+                f.add(c, where, f'records "{every}" is not {json.dumps(count)}', f'"{every}" asks for the counts alone: set it to {json.dumps(count)}, or take it out')
+            continue
         if not (isinstance(name, str) and name in species):
             f.add(c, where, f'records names "{name}", not a module of the platform', f'use a module\'s code: {", ".join(species)}')
         if not (isinstance(verbs, list) and verbs and all(isinstance(v, str) and v in shape.RECORD_VERBS for v in verbs)):
             f.add(c, where, f'records "{name}" is not a list of verbs', f'list what the agent does with them, from: {", ".join(shape.RECORD_VERBS)}')
-    if not card.get('calls'):
+    if not card.get('calls') and set(asked) != {every}:   # the counts alone are handed on a RUN too
         f.add(c, where, '"records" is declared, but "calls" is empty', 'records are handed on a CALL (the member\'s screen): name the call in "calls", or take "records" out')
+
+
+OUTSIDE = re.compile(r'(?:https?:|wss?:)?//[A-Za-z0-9]')   # an address of anywhere, written into the live page or its script
+LIVE_BANNED = {'subprocess', 'multiprocessing', 'ctypes', 'importlib', 'http', 'ftplib', 'smtplib', 'telnetlib', 'xmlrpc', 'webbrowser', 'pty'}   # urllib stays: its one use is LARRYD's own door, an address LARRYD hands in the environment
+LIVE_ADDRESS = re.compile(r'(?:https?:|wss?:)?//(?!127\.0\.0\.1[:/\'"])[A-Za-z0-9]')   # an address written into the room program (its own machine aside)
+
+
+PAGE_TAGS = {   # THE LIVE PAGE IS A SHELL, AND ONLY THIS (the security review, 2026-10-08): every element and attribute it may hold, by name
+    'html': {'lang', 'data-theme', 'data-brilliance-hierarchy', 'data-font-scale', 'data-case'}, 'head': set(), 'title': set(), 'style': set(),
+    'meta': {'charset', 'name', 'content'}, 'body': {'class'}, 'main': {'class', 'id'}, 'script': {'src', 'defer'}}
+
+
+class _Page(HTMLParser):
+    """The live page read as the standard parser reads it: anything that is not on the list is a fault. A page that may hold
+    only these few plain parts has no place for a frame, a form, a link out, an object, markup hidden in an attribute, or a
+    second way to write a rule: there is nothing to tell apart from what a browser would do with it."""
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.wrong, self.scripts = [], []
+
+    def handle_starttag(self, tag, attrs):
+        if tag not in PAGE_TAGS:
+            self.wrong.append(f'the live page holds a <{tag[:20]}> element')
+            return
+        names = [k for k, _v in attrs]
+        if len(set(names)) != len(names) or set(names) - PAGE_TAGS[tag]:
+            self.wrong.append(f'the live page\'s <{tag}> holds an attribute it may not ({", ".join(sorted(set(names) - PAGE_TAGS[tag]))[:60] or "one written twice"})')
+        had = dict(attrs)
+        if tag == 'script':
+            self.scripts.append(had.get('src'))
+            if had.get('src') not in ('/page.js', '/rain.js'):
+                self.wrong.append('the live page loads a script that is not /page.js or /rain.js')
+        if tag == 'meta' and not (set(had) == {'charset'} or (had.get('name') == 'viewport' and set(had) == {'name', 'content'})):
+            self.wrong.append('the live page holds a <meta> that is not its charset or its viewport')
+        if any(isinstance(v, str) and ('<' in v or '>' in v or '&' in v) for v in had.values()):
+            self.wrong.append('the live page holds markup inside an attribute')
+
+    def handle_startendtag(self, tag, attrs):
+        self.handle_starttag(tag, attrs)
+
+    def handle_comment(self, data):
+        if data != 'sheets':
+            self.wrong.append('the live page holds a comment that is not <!--sheets-->')
+
+    def handle_pi(self, data):
+        self.wrong.append('the live page holds a processing instruction')
+
+    def unknown_decl(self, data):
+        self.wrong.append('the live page holds a declaration that is not its doctype')
+
+    def handle_decl(self, decl):
+        if decl.strip().lower() != 'doctype html':
+            self.wrong.append('the live page holds a declaration that is not its doctype')
+
+
+def _page_shape(text):
+    """-> [what is wrong with the live page's own markup] (empty: it is the plain shell and nothing else)."""
+    if len(text) > 200_000 or '\x00' in text:
+        return ['the live page is not a plain small page']
+    p = _Page()
+    try:
+        p.feed(text)
+        p.close()
+    except Exception:   # a page the standard parser cannot read is not a page LARRYD takes
+        return ['the live page is not markup the standard parser reads']
+    if p.scripts.count('/page.js') != 1 or len(p.scripts) != len(set(p.scripts)):
+        p.wrong.append('the live page does not load /page.js exactly once')
+    return list(dict.fromkeys(p.wrong))
+
+
+def _live(root, card, c, where, f):
+    """"live": the agent's own live page, served by its own room program outside the platform. The manifest says
+    {"seats": 1 to 4}; the live half is the folder live/ beside agent/: page.html, page.js, room.py, live.json and nothing else.
+    The page and its script name no outside address and build no code from text; the program is the standard library only,
+    starts no process and names no address (the one door it asks is LARRYD's, handed in its environment)."""
+    asked, low, high = card['live'], *shape.LIVE_SEATS
+    if not (isinstance(asked, dict) and set(asked) == {'seats'} and isinstance(asked['seats'], int) and not isinstance(asked['seats'], bool) and low <= asked['seats'] <= high):
+        f.add(c, where, f'"live" is not {{"seats": {low} to {high}}}', f'set "live" to {{"seats": N}}, N from {low} to {high}')
+    if not card.get('calls'):
+        f.add(c, where, '"live" is declared, but "calls" is empty', 'the room is drawn on a CALL (the member\'s screen): name the call in "calls", or take "live" out')
+    if (root / shape.AGENT / shape.LIVE).exists():
+        f.add(c, _rel(root, root / shape.AGENT / shape.LIVE), 'agent/ holds something named live', 'that name is the live half\'s place in LARRYD\'s locker: rename it')
+    half = root / shape.LIVE
+    if half.is_symlink() or not half.is_dir():
+        f.add(c, _rel(root, half), '"live" is declared, but there is no live/ folder beside agent/', f'make live/ with {", ".join(shape.LIVE_FILES)}')
+        return
+    held = sorted(p.name for p in half.iterdir() if p.name not in ('__pycache__', 'store'))
+    for name in held:
+        if name not in shape.LIVE_FILES + shape.LIVE_MAY or (half / name).is_symlink() or not (half / name).is_file():
+            f.add(c, _rel(root, half / name), 'live/ holds something that is not part of the live half', f'live/ holds only: {", ".join(shape.LIVE_FILES)}')
+    for name in shape.LIVE_FILES:
+        if name not in held:
+            f.add(c, _rel(root, half / name), f'live/ has no {name}', f'the live half is: {", ".join(shape.LIVE_FILES)}')
+    for name in ('page.html', 'page.js', 'rain.js'):
+        path = half / name
+        if not path.is_file() or path.is_symlink():
+            continue
+        for n, line in enumerate(path.read_text(encoding='utf-8', errors='replace').splitlines(), 1):
+            if OUTSIDE.search(line):
+                f.add(c, _rel(root, path), 'the live page names an outside address', 'the page reaches only its own room program: use paths that start with /', n)
+            if name != 'page.html' and re.search(r'\beval\s*\(|new\s+Function\s*\(|\.innerHTML\b|document\.write', line):
+                f.add(c, _rel(root, path), 'the live page builds code or markup from text', 'make elements and set their text; never eval, new Function, innerHTML or document.write', n)
+        if name == 'page.html':
+            for wrong in _page_shape(path.read_text(encoding='utf-8', errors='replace')):
+                f.add(c, _rel(root, path), wrong, 'the page is a shell: html, head (meta, title, the line <!--sheets-->, one <style> block), body, main, and its scripts /page.js and /rain.js; everything else is built by the script')
+    page = half / 'page.html'
+    if page.is_file() and not page.is_symlink():   # THE PAGE'S OWN RULES ARE WRITTEN IN THE PAGE (the owner, 2026-10-08: "the css is inline all the agents use inline"): one <style> block, rules only, no file, no address, no import, and no colour of its own (the theme's variables only)
+        text = page.read_text(encoding='utf-8', errors='replace')
+        # ONE BLOCK, WRITTEN EXACTLY `<style>` ... `</style>` (the security review, 2026-10-08): a doctor that read the page one way while a
+        # browser read it another could be walked past. So nothing that even looks like a style tag is allowed but that one plain pair,
+        # and the block between is cut out by those exact words, not by a guess at how a browser would parse.
+        opens, closes = len(re.findall(r'<\s*style', text, re.I)), len(re.findall(r'<\s*/\s*style', text, re.I))
+        plain = text.count('<style>') == 1 and text.count('</style>') == 1 and opens == 1 and closes == 1 and text.index('<style>') < text.index('</style>')
+        if (opens or closes) and not plain:
+            f.add(c, _rel(root, page), 'the live page holds more than one plain <style> block', 'write the page\'s own rules in ONE <style> block with no attribute, closed by </style>')
+        elif plain:
+            body = text[text.index('<style>') + 7:text.index('</style>')]
+            first = text[:text.index('<style>')].count('\n') + 1
+            if '\\' in body:   # a rule may hide a word behind an escape (\75rl for url): no rule needs one, so none is allowed
+                f.add(c, _rel(root, page), 'the live page\'s rules hold a backslash', 'write every word of a rule plainly: no escapes', first + body[:body.index('\\')].count('\n'))
+            if '<' in body:
+                f.add(c, _rel(root, page), 'the live page\'s rules hold markup', 'rules only inside the <style> block')
+            for n, line in enumerate(re.sub(r'/\*.*?\*/', lambda m: '\n' * m.group(0).count('\n'), body, flags=re.S).splitlines(), first):
+                if re.search(r'url|image-set|image\s*\(|src\s*\(|element\s*\(|expression|binding|behavior|//', line, re.I) or re.search(r'@(?!media\b|supports\b)', line, re.I):
+                    f.add(c, _rel(root, page), 'the live page\'s rules name a file or an address', 'rules only: no url(), no @import, no @font-face; of the @ rules only @media and @supports', n)
+                if re.search(r'#[0-9a-fA-F]{3,8}\b|\brgba?\s*\(|\bhsla?\s*\(|\b(?:hwb|lab|lch|oklab|oklch|color)\s*\(', line, re.I):
+                    f.add(c, _rel(root, page), 'the live page\'s rules write a colour of their own', 'use the theme\'s colour variables, e.g. var(--active-color-01): the page then follows the brand, dark and light', n)
+    program = half / 'room.py'
+    if program.is_file() and not program.is_symlink():
+        try:
+            tree = ast.parse(program.read_text(encoding='utf-8'))
+        except (SyntaxError, ValueError) as e:
+            f.add(c, _rel(root, program), f'the room program does not compile: {e}', 'fix it')
+            return
+        for n, line in enumerate(program.read_text(encoding='utf-8').splitlines(), 1):
+            if LIVE_ADDRESS.search(line):
+                f.add(c, _rel(root, program), 'the room program names an address', 'the one address it may ask is LARRYD\'s own door, handed in its environment: write none into the program', n)
+        for node in ast.walk(tree):
+            names = [a.name for a in node.names] if isinstance(node, ast.Import) else [node.module or ''] if isinstance(node, ast.ImportFrom) else []
+            for name in names:
+                top = name.split('.')[0]
+                if top not in sys.stdlib_module_names:
+                    f.add(c, _rel(root, program), f'the room program imports {top}, not the standard library', 'the room program is the Python standard library only', node.lineno)
+                elif top in LIVE_BANNED:
+                    f.add(c, _rel(root, program), f'the room program imports {top}', 'the room program starts no process and calls out to nothing: it listens and answers', node.lineno)
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr in ('system', 'popen', 'create_connection', 'open_connection', 'create_subprocess_exec', 'create_subprocess_shell') \
+                    or isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id in ('eval', 'exec', '__import__'):
+                f.add(c, _rel(root, program), 'the room program starts a process, calls out or runs text as code', 'it listens and answers; take it out', node.lineno)
+    limits = half / 'live.json'
+    if limits.is_file() and not limits.is_symlink():
+        try:
+            said = json.loads(limits.read_text(encoding='utf-8'))
+        except ValueError:
+            said = None
+        if not isinstance(said, dict) or said.get('seats') != (asked.get('seats') if isinstance(asked, dict) else None):
+            f.add(c, _rel(root, limits), 'live.json does not say the same seats as the manifest', 'set "seats" in live/live.json to the manifest\'s "live" seats')
 
 
 PLACEHOLDER = re.compile(r'^What .+ (answers, in one plain sentence|does for the member, in one line)\.$')   # the blank's own words

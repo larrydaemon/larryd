@@ -115,6 +115,14 @@ class Local:
     def _records_door(self, method, route, data):
         """wid's record doors for the runtime (/agnt/records/list, add, edit, remove), answered from the file: the same
         shapes and refusals the platform's doors give, so an agent tried here behaves the same on the platform."""
+        if (method, route) == member_records.COUNTS_DOOR:
+            # THE COUNTS, on the developer's own runtime: counts.json beside the records files when the developer wrote one
+            # ({modules, ties}, by hand, to try a picture); else how many rows each records file holds, no ties
+            try:
+                return 200, member_records.counted({'products': {}, 'ties': [], **json.loads((self.place / 'counts.json').read_text()), 'scope': SCOPE})
+            except (OSError, ValueError, TypeError):
+                found = sorted(p.name[len('records_'):-len('.json')] for p in self.place.glob('records_*.json'))
+                return 200, {'scope': SCOPE, 'modules': {sp: len(self._records(sp)) for sp in found if member_records.SPECIES.fullmatch(sp)}, 'products': {}, 'ties': []}
         species = str(data.get('segment') or '')
         if not member_records.SPECIES.fullmatch(species):
             return 404, {'refused': 'nothing by that key'}
@@ -182,6 +190,15 @@ class Local:
         if (method, office, route) == ('GET', 'cc', '/mtok/balance'):
             groups = sorted({c['product_slug'] for c in cards.values() if c['product_slug']})
             return 200, {'account': ACCOUNT, 'balance': 0, 'subscriptions': [{'agent_group': g} for g in groups]}
+        if (method, office, route) == ('GET', 'fs', '/fabric/state'):
+            # THE DATA FABRIC's state on the developer's own runtime: fabric_state.json beside the records files when the developer
+            # wrote one ({files, held, slots, ids, apis}, by hand, to try the page); else an account that has imported nothing yet
+            try:
+                said = json.loads((self.place / 'fabric_state.json').read_text())
+            except (OSError, ValueError):
+                said = {}
+            said = said if isinstance(said, dict) else {}
+            return 200, {t: said.get(t) if isinstance(said.get(t), list) else [] for t in ('files', 'held', 'slots', 'ids', 'apis')}
         if (method, office, route) == ('GET', 'fs', '/agents/approved'):
             return 200, {'approved': [{'agent_key': r['agent_key'], 'code_sha256': r['code_sha256'], 'manifest_sha256': r['manifest_sha256']}
                                       for r in self._rows()]}

@@ -10,8 +10,9 @@ import sqlite3
 
 KEEP_DAYS = 396   # 13 months: past a year of billing disputes
 KEY = re.compile(r'^[A-Z]{4}_[0-9A-F]{12}_[0-9A-F]{4}$')   # a platform key, as the platform mints it
-LANES = ('call', 'hire', 'job', 'selftest')
-STATES = ('DONE', 'FAILED', 'REFUSED', 'ON', 'OFF', 'INTERRUPTED', 'CALLBACK_FAILED')   # CALLBACK_FAILED: the run ended, its result never reached the platform
+LANES = ('call', 'hire', 'job', 'selftest', 'make')   # make: one errand of the outside hand, written BEFORE anything is sent (the daily limit counts these)
+STATES = ('DONE', 'FAILED', 'REFUSED', 'ON', 'OFF', 'INTERRUPTED', 'CALLBACK_FAILED', 'SENT', 'STARTED')   # STARTED: a RUN the runtime took and has not ended yet (an agent's page shows it in flight)
+IN_FLIGHT_SECONDS = 20 * 60   # a RUN that started and never ended is no longer said to be in flight after this (the longest errand is fifteen minutes)   # CALLBACK_FAILED: the run ended, its result never reached the platform
 CALLERS = ('', 'slot-a', 'slot-b', 'proof', 'selftest')
 DOMAIN = re.compile(r'^[a-z0-9.-]{1,253}$')
 
@@ -90,6 +91,48 @@ class SqliteRecords:
         finally:
             con.close()
 
+    def recent(self, agent_key, member, most):
+        """The member's last RUNs of one agent, newest first: [{run, state, code, at}] (the record's own fields: never an input or a delivery)."""
+        con = sqlite3.connect(self.db)
+        try:
+            rows = con.execute("SELECT run, state, reason, finished_at FROM runtime_runs WHERE agent_key = ? AND member = ? AND lane = 'job' AND state != 'STARTED' "
+                               'ORDER BY id DESC LIMIT ?', (agent_key, member or '', int(most))).fetchall()
+        finally:
+            con.close()
+        return [{'run': r[0], 'state': r[1], 'code': r[2] or '', 'at': r[3] or ''} for r in rows]
+
+    def has_start(self, job_key, run):
+        """Is this RUN already written down as started?"""
+        con = sqlite3.connect(self.db)
+        try:
+            return con.execute("SELECT 1 FROM runtime_runs WHERE job_key = ? AND run = ? AND lane = 'job' AND state = 'STARTED' LIMIT 1", (job_key, int(run))).fetchone() is not None
+        finally:
+            con.close()
+
+    def in_flight(self, agent_key, member):
+        """The member's RUNs of one agent that STARTED and have not ended, newest first: [{run, at}]. A start older than
+        IN_FLIGHT_SECONDS with no end is left out: a RUN lost on the way is never said to be in flight for ever."""
+        since = (_now() - datetime.timedelta(seconds=IN_FLIGHT_SECONDS)).isoformat(timespec='seconds')
+        con = sqlite3.connect(self.db)
+        try:
+            rows = con.execute("SELECT s.run, s.started_at FROM runtime_runs s WHERE s.agent_key = ? AND s.member = ? AND s.lane = 'job' AND s.state = 'STARTED' AND s.started_at >= ? "
+                               "AND NOT EXISTS (SELECT 1 FROM runtime_runs e WHERE e.job_key = s.job_key AND e.run = s.run AND e.lane = 'job' AND e.state != 'STARTED') ORDER BY s.id DESC",
+                               (agent_key, member, since)).fetchall()
+        finally:
+            con.close()
+        return [{'run': r[0], 'at': r[1] or ''} for r in rows]
+
+    def sent_today(self, agent_key, member):
+        """How many errands of one agent were sent for this member since midnight UTC (the outside hand's daily limit): every
+        errand is counted from the moment it is about to leave, whatever became of it after."""
+        since = _now().strftime('%Y-%m-%dT00:00:00')
+        con = sqlite3.connect(self.db)
+        try:
+            return con.execute("SELECT COUNT(*) FROM runtime_runs WHERE agent_key = ? AND member = ? AND lane = 'make' AND finished_at >= ?",
+                               (agent_key, member, since)).fetchone()[0]
+        finally:
+            con.close()
+
 
 class FirestoreRecords:
     """Cloud Run's records: Firestore `runs`, one document per call or run, the 13-month expire_at its TTL field. The
@@ -144,3 +187,33 @@ class FirestoreRecords:
 
     def charged(self, agent_key):
         return sum(int((d.to_dict() or {}).get('charged') or 0) for d in self._query(agent_key, 'job').stream())
+
+    def _of_member(self, agent_key, member, lane='job'):
+        q = self._query(agent_key, lane).where(field_path='member', op_string='==', value=member or '')
+        return [d.to_dict() or {} for d in q.stream()]
+
+    def recent(self, agent_key, member, most):
+        """The member's last RUNs of one agent, newest first: [{run, state, code, at}] (the record's own fields only)."""
+        rows = sorted((d for d in self._of_member(agent_key, member) if d.get('state') != 'STARTED'), key=lambda d: d.get('finished_at') or _now(), reverse=True)[:int(most)]
+        return [{'run': int(d.get('run') or 0), 'state': d.get('state') or '', 'code': d.get('error_code') or '',
+                 'at': d['finished_at'].isoformat(timespec='seconds') if hasattr(d.get('finished_at'), 'isoformat') else ''} for d in rows]
+
+    def has_start(self, job_key, run):
+        """Is this RUN already written down as started?"""
+        q = self.col.where(field_path='job_key', op_string='==', value=job_key).where(field_path='run', op_string='==', value=int(run))
+        return any((d.to_dict() or {}).get('state') == 'STARTED' and (d.to_dict() or {}).get('lane') == 'job' for d in q.stream())
+
+    def in_flight(self, agent_key, member):
+        """The member's RUNs of one agent that STARTED and have not ended, newest first: [{run, at}]; a start older than
+        IN_FLIGHT_SECONDS with no end is left out."""
+        since, rows = _now() - datetime.timedelta(seconds=IN_FLIGHT_SECONDS), self._of_member(agent_key, member)
+        ended = {(d.get('job_key'), int(d.get('run') or 0)) for d in rows if d.get('state') != 'STARTED'}
+        open_ = [d for d in rows if d.get('state') == 'STARTED' and (d.get('job_key'), int(d.get('run') or 0)) not in ended
+                 and hasattr(d.get('started_at'), 'timestamp') and d['started_at'] >= since]
+        open_.sort(key=lambda d: d['started_at'], reverse=True)
+        return [{'run': int(d.get('run') or 0), 'at': d['started_at'].isoformat(timespec='seconds')} for d in open_]
+
+    def sent_today(self, agent_key, member):
+        """How many errands of one agent were sent for this member since midnight UTC (the outside hand's daily limit)."""
+        since = _now().replace(hour=0, minute=0, second=0, microsecond=0)
+        return sum(1 for d in self._of_member(agent_key, member, 'make') if hasattr(d.get('finished_at'), 'timestamp') and d['finished_at'] >= since)

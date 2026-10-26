@@ -140,7 +140,7 @@
 .mk-foot { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space); margin-top: auto; padding-top: var(--space); border-top: 1px solid var(--accent) }
 .mk-foot > [data-part="price"] { flex: none; white-space: nowrap; margin-left: auto }   /* the price alone on the foot's line, at its right end */
 .mk-kind { font-size: 9px }   /* the word Agent, tiny, in the card's bottom left corner */
-.mk-needs, .mk-sends { font-size: 12px }
+.mk-needs { font-size: 12px }
 /* THE HIRE TOGGLE IS THE PLATFORM'S OFFICIAL TOGGLE, rule for rule: its shape as wid's core.css has it (.toggle, .toggle__knob), its colours and its
    glide as every theme sheet has them (--toggle-off, --toggle-on, --toggle-knob, --toggle-knob-on, the button's transition), from the theme the page wears */
 .toggle { position: relative; display: block; flex: none; width: 42px; height: 22px; padding: 0; border: 1px solid; border-radius: 22px; cursor: pointer;
@@ -176,7 +176,7 @@
 /* AN OFFLINE CARD (the owner's design, approved in the lab 2026-10-07): its words at 35%, each text part by itself, so no line, border or picture dims with them;
    the toggle at 50% and never pressed; the two words that say its state, Locked and Offline, bright (the theme's highlight); its outer rounded frame at 35% (the
    border's line and the glow inside it). The cat's box, its glass border, its picture and its animation stay as they are. */
-.agent-card.mk-offline :is(.mk-name, .mk-info, .mk-flavour, .mk-credit, .mk-kind, .mk-sends) { opacity: .35 }
+.agent-card.mk-offline :is(.mk-name, .mk-info, .mk-flavour, .mk-credit, .mk-kind) { opacity: .35 }
 .agent-card.mk-offline .mk-price { color: var(--active-color-01, inherit); opacity: 1 }   /* Offline: the very colour Free has on the other cards, at full strength */
 .agent-card.mk-offline .mk-flavour { color: var(--active-color-01, inherit) }   /* the pitch on an offline card: the theme's own colour dimmed (dim blue on a blue theme), never the near-white highlight dimmed to grey */
 .agent-card.mk-offline { border-color: color-mix(in srgb, var(--accent) 35%, transparent);
@@ -196,7 +196,7 @@
 .mk-ctl .btn--small { color: var(--active-color-01); background-color: var(--active-color-09); border-color: var(--active-color-01) }
 .mk-ctl .btn--small[aria-current] { color: var(--toggle-knob-on, var(--active-color-09)); background-color: var(--toggle-on, var(--active-color-05, var(--active-color-01))); border-color: var(--toggle-on, var(--active-color-05, var(--active-color-01))) }
 @media (max-width: 768px) { .mk-ctl .wl-col--3 { width: auto } }
-.mk-name { min-height: 2.3em }   /* THE BOXES LINE UP ACROSS A ROW (the owner, 2026-10-07): the name always keeps the room of two lines (2 x its 1.15 line), so a one-line name and a two-line name leave the cat's box at the same height */
+.mk-name { min-height: 3.45em }   /* THE BOXES LINE UP ACROSS A ROW (the owner, 2026-10-07; three lines since 2026-10-08: "so they all lineup with 3 rows instead of 2 on top", for PF Messenger and Video Meetings): the name always keeps the room of three lines (3 x its 1.15 line), so a one-line, a two-line and a three-line name leave the cat's box at the same height */
 .mk-credit { margin-top: auto }
 .mk-credit + .mk-foot { margin-top: 0 }   /* THE DEVELOPER LINE HAS A FIXED PLACE (the owner, 2026-10-07): it stands just above the foot on every card, so it lines up across a row whatever the length of the pitch above it */
 .mk-name { display: flex; align-items: flex-end }   /* A SHORT NAME SITS AT THE BOTTOM OF ITS ROOM (the owner, 2026-10-07: "bottom justified to look good"): a one-line name stands just above the box, the blank line above it */
