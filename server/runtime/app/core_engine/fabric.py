@@ -5,7 +5,7 @@ record and says what to write. The runtime only hands and carries, as for every 
 
   on a RUN of an agent whose approved manifest declares "fabric": {"modules": [...]} (and the records lane for those
   modules: read, edit), it is handed given["fabric"] = {files: the newest official version of each file, from
-  DA-M while the RUN is open; state: the account's Fabric state, from FROST's datafabric.db} and the records of those
+  DA-M while the RUN is open; state: the account's Fabric state, from FROST's own store} and the records of those
   modules WITH their custom fields; its answer's "fabric" = {writes, state} is checked whole (one fault refuses it
   all), the writes carried through wid's own record doors for the member, and the state saved back to FROST with the
   record each row landed on. THE FABRIC ONLY EDITS: a row lands on a record that exists; a row that matches none stays in
@@ -38,7 +38,7 @@ MOST_TEXT = 10_000                # characters in one state value
 TABLES = {'files': ('file_name', 'dam_key', 'version', 'imported_at', 'rows_in', 'rows_held', 'rows_waiting', 'held_dam_key', 'preview'),
           'held': ('file_name', 'row_number', 'row_id', 'why', 'row_text', 'held_at'),
           'slots': ('segment', 'slot', 'header'),
-          'ids': ('segment', 'row_id', 'id_import', 'id_lookup', 'record_key', 'made_at')}   # FROST's datafabric.db, per account (fabric_<table>)
+          'ids': ('segment', 'row_id', 'id_import', 'id_lookup', 'record_key', 'made_at')}   # FROST's own store, per account (fabric_<table>)
 STATE_DOOR = '/fabric/state'
 FILES_DOOR = '/dam/fabric'
 ROW_ID = re.compile(r'^[^\x00-\x1f]{1,200}$')
@@ -240,7 +240,7 @@ def with_downloads(state, path, caller=''):
 
 
 def save(post, account, scope, member, held, job_key, run, saved):
-    """The state back to FROST's datafabric.db for this account, only while this RUN is open and only for the agent FROST
+    """The state back to FROST's own store for this account, only while this RUN is open and only for the agent FROST
     approved under exactly these hashes (held: its locker row), as the provider key is asked; -> (ok, why)."""
     status, body = post('fs', STATE_DOOR, {'account': account, 'scope': scope, 'member': member, 'job_key': job_key, 'run': str(run), 'agent_key': held['agent_key'],
                                            'code_sha256': held['code_sha256'], 'manifest_sha256': held['manifest_sha256'], **saved})
