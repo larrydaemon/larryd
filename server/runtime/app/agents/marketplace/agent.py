@@ -126,8 +126,8 @@ def _card(c, simple=False):
     # "Sends data to ..." note: "delete this from the card. we do not add extra info on cards"): no "lives on", no "needs", no "sends data to" on its face.
     # What an agent sends and to whom is said under the agent's own block on its page and in the terms (the platform's), never on the card.
     extra = ''
-    mark = next((n for n, word in ((3, 'MARK III'), (2, 'MARK II'), (1, 'MARK I')) if c['class'].upper().startswith(word)), 0)   # the class picks the box's animation: I CRT, II Wellness, III Glitch
-    label = {1: 'Mark I', 2: 'Mark II', 3: 'Mark III'}.get(mark, c['class'])   # THE CARD SAYS ITS MARK AND NOTHING MORE (the owner's design: "the top should just be Mark I"), whatever longer name the platform's class carries
+    mark = next((n for n, word in ((4, 'MARK IV'), (3, 'MARK III'), (2, 'MARK II'), (1, 'MARK I')) if c['class'].upper().startswith(word)), 0)   # the class picks the box's animation: I CRT, II Wellness, III Glitch; IV (the platform's fourth class, R-0222) before I, never read as it
+    label = {1: 'Mark I', 2: 'Mark II', 3: 'Mark III', 4: 'Mark IV'}.get(mark, c['class'])   # THE CARD SAYS ITS MARK AND NOTHING MORE (the owner's design: "the top should just be Mark I"), whatever longer name the platform's class carries
     rain = '<canvas class="mk-rain" aria-hidden="true"></canvas>' if mark == 3 and not simple else ''   # Mark III: the code rain's canvas (card.js), behind the cat; none in the SIMPLE view
     locked = ('<button type="button" class="toggle" aria-disabled="true" aria-pressed="' + ('true' if c['hired'] else 'false') + '" title="Locked"><span class="toggle__knob"></span></button>')
     hire = f'{locked}<span class="mk-annotation">Locked</span>' if c['offline'] else f'{toggle}<span class="mk-annotation">Hire</span>'
