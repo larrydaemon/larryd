@@ -25,11 +25,14 @@ FILES = {'pf_contacts.csv': 'cont', 'pf_invoices.csv': 'invc', 'pf_locations.csv
          'pf_images.csv': 'imgs', 'pf_videos.csv': 'vdeo', 'pf_audio.csv': 'audo', 'pf_productions.csv': 'prdn',
          'pf_agents.csv': 'agnt', 'pf_models.csv': 'mdls', 'pf_logs.csv': 'logs', 'pf_jobs.csv': 'jobs'}   # THE SIXTEEN NAMES, one per module (DA-M knows the same list)
 MODULES = frozenset(FILES.values())
+MAPPING = 'pf_mapping.csv'   # THE SEVENTEENTH NAME (the owner, 2026-10-25: "define the name and custom slot 001 to 100 and type"): the custom fields the sixteen fill, one row a bucket
+TYPES = ('text', 'textarea', 'integer', 'decimal', 'date', 'checkbox')   # wid's field types (EDIT CUSTOM FIELDS)
 NEEDS = ('read', 'edit')   # what the records lane must declare on each Fabric module: it reads them and edits their custom fields
 MOST_WRITES = 5000                # record writes one RUN may carry
 FIELDS, FIELD_BYTES = 100, 48     # THE SIZE LIMIT, BASED ON 100 FIELDS (the owner, 2026-10-25): a row's write names up to 100 custom
                                   # fields, each about 48 bytes as JSON (its name and a typical value)
 MOST_ANSWER = MOST_WRITES * FIELDS * FIELD_BYTES + 1_000_000   # a Fabric RUN's answer: its most writes of 100 fields, and 1 MB for the rest (25 MB)
+MOST_DEFINITIONS = len(FILES) * FIELDS   # pf_mapping.csv: every bucket of every module, at most
 MOST_ROWS = 20000                 # rows one state list may hold
 MOST_TEXT = 10_000                # characters in one state value
 TABLES = {'files': ('file_name', 'dam_key', 'version', 'imported_at', 'rows_in', 'rows_held', 'rows_waiting', 'held_dam_key', 'preview'),
@@ -100,7 +103,7 @@ def files(ask, account, scope, member, job_key, run):
     """The newest official version of each of the sixteen files, with its text, from DA-M (only while this RUN is open:
     DA-M's own rule); a refusal propagates."""
     body = ask('so', 'GET', FILES_DOOR, {'account': account, 'scope': scope, 'member': member, 'job_key': job_key, 'run': str(run), 'content': 'yes'})
-    return [f for f in (body.get('files') or []) if isinstance(f, dict) and f.get('name') in FILES]
+    return [f for f in (body.get('files') or []) if isinstance(f, dict) and (f.get('name') in FILES or f.get('name') == MAPPING)]
 
 
 def _rows(rows, columns, table):
@@ -119,8 +122,8 @@ def check(answer, modules):
     on a declared Fabric module, an edit naming its record, its values custom field buckets alone; each may name
     the row it carries ("row": {segment, row_id}). state: {files, held, slots, ids} of text rows."""
     asked = answer.get('fabric') if isinstance(answer, dict) else None
-    if not isinstance(asked, dict) or set(asked) - {'writes', 'state'}:
-        return [], [], None, 'the answer\'s fabric is not {writes, state}'
+    if not isinstance(asked, dict) or set(asked) - {'writes', 'state', 'fields'}:
+        return [], [], None, 'the answer\'s fabric is not {writes, state, fields}'
     writes = asked.get('writes', [])
     if not (isinstance(writes, list) and len(writes) <= MOST_WRITES):
         return [], [], None, f'the fabric\'s writes are not a list of at most {MOST_WRITES}'
@@ -148,6 +151,34 @@ def check(answer, modules):
         if why:
             return [], [], None, why
     return checked, rows, saved, ''
+
+
+def definitions(answer, modules):
+    """The answer's pf_mapping.csv fields checked whole -> (fields, why): each {segment, slot, name, type, on} on a declared
+    Fabric module, a custom bucket, a name of 1 to 60 characters, one of wid's types, on '1' or '0'."""
+    given = ((answer.get('fabric') or {}) if isinstance(answer, dict) else {}).get('fields', [])
+    if not (isinstance(given, list) and len(given) <= MOST_DEFINITIONS):
+        return [], f'the fabric\'s fields are not a list of at most {MOST_DEFINITIONS}'
+    out = []
+    for n, f in enumerate(given, 1):
+        if not (isinstance(f, dict) and set(f) == {'segment', 'slot', 'name', 'type', 'on'} and all(isinstance(v, str) for v in f.values())
+                and f['segment'] in modules and member_records.CUSTOM.fullmatch(f['slot']) and 0 < len(f['name'].strip()) <= 60
+                and f['type'] in TYPES and f['on'] in ('1', '0')):
+            return [], f'fabric field {n} is not {{segment, slot, name, type, on}} of a custom bucket of a Fabric module the agent declares'
+        out.append(dict(f))
+    return out, ''
+
+
+def define(post, fields, account, scope, member, agent_key):
+    """Each checked field to wid's own door (the same saves EDIT CUSTOM FIELDS makes), in order, before any row is written;
+    -> defined = [{segment, slot, ok, why}], a refusal said as wid said it, the next still carried."""
+    out = []
+    for f in fields:
+        status, body = post('wid', FIELDS_DOOR, {'account': account, 'scope': scope, 'member': member, 'agent_key': agent_key, **f})
+        body = body if isinstance(body, dict) else {}
+        out.append({'segment': f['segment'], 'slot': f['slot'], 'ok': status == 200,
+                    'why': '' if status == 200 else str(body.get('refused') or body.get('error') or f'wid answered {status}')[:300]})
+    return out
 
 
 def merged(handed, saved):

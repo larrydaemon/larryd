@@ -58,6 +58,8 @@ class Platform:
             return 200, {'key': ''}   # custom values alone: the platform keeps the row waiting at its entry (RULE 13)
         if route == '/fabric/state':
             return 200, {'saved': {t: len(data.get(t, [])) for t in fabric.TABLES}}
+        if route == '/agnt/records/fields':   # pf_mapping.csv: one custom field set (a REMOVEd bucket refused)
+            return (400, {'refused': 'custom_0009 is not a free custom bucket of this module'}) if data['slot'] == 'custom_0009' else (200, {'slot': data['slot']})
         if route == '/mtok/use':
             return 200, {'charged': 0, 'free': True}
         return 200, {'saved': True}
@@ -172,8 +174,8 @@ class TheCheck(unittest.TestCase):
         self.assertEqual((len(writes), why), (fabric.MOST_WRITES, ''))   # a page's answer carries at most 20 (member_records.MOST_WRITES); a RUN of the Fabric 5000
 
     def test_one_fault_refuses_it_all(self):
-        bad = [({'fabric': 'x'}, 'not {writes, state}'),
-               ({'fabric': {'writes': [], 'more': 1}}, 'not {writes, state}'),
+        bad = [({'fabric': 'x'}, 'not {writes, state, fields}'),
+               ({'fabric': {'writes': [], 'more': 1}}, 'not {writes, state, fields}'),
                ({'fabric': {'writes': [{'do': 'remove', 'species': 'invc', 'key': INVOICE}]}}, 'not an edit of a record'),
                ({'fabric': {'writes': [{'do': 'add', 'species': 'invc', 'values': {'custom_0001': 'x'}}]}}, 'not an edit of a record'),   # a row with no record waits in its file: never an add
                ({'fabric': {'writes': [{'do': 'edit', 'species': 'cont', 'key': INVOICE, 'values': {'custom_0001': 'x'}}]}}, 'not an edit of a record'),
@@ -318,6 +320,31 @@ class TheRun(World):
         with self.sandboxed(self.ANSWER):
             self.assertEqual(self.harness(p).run_job(ACCOUNT, SCOPE, MEMBER, JOB, 1), 'DONE')
         self.assertEqual(sorted(self.given[0]['records']), ['invc'])
+
+    def test_the_mapping_file_defines_the_fields_before_any_row_is_written(self):
+        """pf_mapping.csv (the owner, 2026-10-25: "define the name and custom slot 001 to 100 and type"): handed with the files,
+        each module's fields handed with it; the answer's fields go to wid's door first, each said, a refusal said as wid
+        said it, then the rows."""
+        self.agent(FABRIC)
+        p = Platform(files=[dict(FILE), {**FILE, 'name': 'pf_mapping.csv', 'content': 'module,slot,name,type,on\ninvc,custom_0004,Total,decimal,ON\n'}])
+        fields = [{'segment': 'invc', 'slot': 'custom_0004', 'name': 'Total', 'type': 'decimal', 'on': '1'}, {'segment': 'invc', 'slot': 'custom_0009', 'name': 'Gone', 'type': 'text', 'on': '1'}]
+        with self.sandboxed({**self.ANSWER, 'fabric': {**self.ANSWER['fabric'], 'fields': fields}}):
+            self.assertEqual(self.harness(p).run_job(ACCOUNT, SCOPE, MEMBER, JOB, 1), 'DONE')
+        self.assertEqual([f['name'] for f in self.given[0]['fabric']['files']], ['pf_invoices.csv', 'pf_mapping.csv'])
+        routes = [r for m, r, _d in p.said if m == 'POST' and r in ('/agnt/records/fields', '/agnt/records/edit')]
+        self.assertEqual(routes[:2], ['/agnt/records/fields'] * 2)   # defined first
+        self.assertEqual({k: p.posted('/agnt/records/fields')[0][k] for k in ('segment', 'slot', 'name', 'type', 'on', 'agent_key')}, {**fields[0], 'agent_key': KEY})
+        self.assertIn('1 of 2 custom fields defined', self.result(p)['log'])
+
+    def test_a_bad_field_defines_nothing_and_writes_nothing(self):
+        self.agent(FABRIC)
+        p = Platform()
+        for bad in ({'segment': 'invc', 'slot': 'identity_invoice_number', 'name': 'x', 'type': 'text', 'on': '1'},
+                    {'segment': 'opns', 'slot': 'custom_0001', 'name': 'x', 'type': 'text', 'on': '1'},
+                    {'segment': 'invc', 'slot': 'custom_0001', 'name': 'x', 'type': 'money', 'on': '1'}):
+            with self.sandboxed({**self.ANSWER, 'fabric': {**self.ANSWER['fabric'], 'fields': [bad]}}):
+                self.assertEqual(self.harness(p).run_job(ACCOUNT, SCOPE, MEMBER, JOB, 1), 'FAILED')
+        self.assertEqual((p.posted('/agnt/records/fields'), p.posted('/agnt/records/edit')), ([], []))
 
     def test_a_free_larryd_agent_is_not_sent_to_mtok(self):
         """Found on B, 2026-10-25: a free agent of the LARRYD product (no plan) was refused by mTok (no group named): it costs

@@ -543,8 +543,9 @@ class Harness:
             # FROST, and the records of its modules WITH their custom fields (it fills them); not handed whole, nothing runs: nothing is guessed
             try:
                 given['fabric'] = {'files': fabric.files(self._ask, account, scope, member, job_key, run), 'state': fabric.state(self._ask, account, scope, member)}
-                dropped = {fabric.FILES[f['name']] for f in given['fabric']['files']}   # ONLY THE MODULES WITH A FILE (found on B, 2026-10-25: a member may not list every module)
-                given['fabric']['fields'] = fabric.custom_fields(self._ask, account, scope, member, key, [m for m in fabric_modules if m in dropped])   # the account's own custom fields: the only buckets a column goes into
+                dropped = {fabric.FILES[f['name']] for f in given['fabric']['files'] if f['name'] in fabric.FILES}   # ONLY THE MODULES WITH A FILE (found on B, 2026-10-25: a member may not list every module)
+                mapped = any(f['name'] == fabric.MAPPING for f in given['fabric']['files'])   # pf_mapping.csv names any module's fields: each module's fields are handed (its records only with a file)
+                given['fabric']['fields'] = fabric.custom_fields(self._ask, account, scope, member, key, [m for m in fabric_modules if mapped or m in dropped])   # the account's own custom fields: the only buckets a column goes into
                 given['records'] = member_records.read(self._ask, {m: ('read',) for m in fabric_modules if m in dropped}, account, scope, member, key, custom=True, most=fabric.MOST_ROWS)
             except Refused as no:
                 return self._end(account, scope, member, key, job_key, run, 'FAILED', f'the Data Fabric could not read the platform: {no.reason}')
@@ -608,11 +609,14 @@ class Harness:
         fabric_note = ''
         if fabric_modules and 'fabric' in answer:
             writes, rows, saved, why = fabric.check(answer, fabric_modules)
+            fields, why = (fabric.definitions(answer, fabric_modules) if not why else ([], why))
             if why:
                 return self._end(account, scope, member, key, job_key, run, 'FAILED', f'{paid}; nothing was written: {why}', charged=charged)
+            defined = fabric.define(self.client.post, fields, account, scope, member, key)   # pf_mapping.csv first: the buckets the rows fill are defined before any row is written
             written = member_records.carry(self.client.post, writes, account, scope, member, key)
             ok, why = fabric.save(self.client.post, account, scope, member, locker.held(self.db, key), job_key, run, fabric.with_held(fabric.landed(fabric.merged(given['fabric']['state'], saved), writes, rows, written), stored_keys))
-            fabric_note = f" · {sum(1 for w in written if w['ok'])} of {len(written)} record write{'' if len(written) == 1 else 's'} carried"
+            fabric_note = (f" · {sum(1 for d in defined if d['ok'])} of {len(defined)} custom field{'' if len(defined) == 1 else 's'} defined" if defined else '') + \
+                f" · {sum(1 for w in written if w['ok'])} of {len(written)} record write{'' if len(written) == 1 else 's'} carried"
             if not ok:
                 return self._end(account, scope, member, key, job_key, run, 'FAILED', f'{paid}{fabric_note}, but FROST did not keep the Data Fabric state: {why}', charged=charged)
         kept = {k: v for k, v in answer.items() if k not in ('files', 'makes', 'keeps', 'fabric')}
