@@ -61,7 +61,7 @@
   "about": "Cloud Run (the LARRYD runtime design): the one runtime serves every caller; a call's key id names who called (slot-a, slot-b, proof), and the runtime calls back THAT caller at <host>/<office>, signed with its own key 'runtime-to-<caller>'. A caller with no host here is never called back (slot A has none until it runs the new platform; the laptop's proof has none: it cannot be reached).",
   "slot-a": "",
   "slot-b": "https://frost-b.positivefeedback.ai",
-  "proof": "",
+  "proof": "https://frost-b.positivefeedback.ai/proof",
   "offices": [
    "wid",
    "cc",
