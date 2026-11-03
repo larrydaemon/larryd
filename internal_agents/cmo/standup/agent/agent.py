@@ -16,7 +16,9 @@ DATA = os.path.expanduser('~/larryd/server/runtime/internal/instance/data/cmo')
 
 def main():
     given = sys.stdin.read()
-    env = {**os.environ, 'PYTHONPATH': APP, 'REPLICA_OFFICE_APP': APP, 'REPLICA_INSTANCE': DATA, 'PYTHONDONTWRITEBYTECODE': '1'}
+    path = os.environ.get('PATH') or '/usr/bin:/bin'
+    path = path if '/opt/homebrew/bin' in path.split(':') else '/opt/homebrew/bin:/usr/local/bin:' + path   # the office's tools (ffprobe, ffmpeg) wherever the runtime was started from
+    env = {**os.environ, 'PATH': path, 'PYTHONPATH': APP, 'REPLICA_OFFICE_APP': APP, 'REPLICA_INSTANCE': DATA, 'PYTHONDONTWRITEBYTECODE': '1'}
     env.pop('LARRYD_INTERNAL', None)
     got = subprocess.run([PYTHON, '-B', os.path.join(APP, 'bridge.py'), KEY], input=given, capture_output=True, text=True, cwd=APP, env=env)
     if got.returncode != 0:

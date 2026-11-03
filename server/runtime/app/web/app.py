@@ -190,7 +190,8 @@ def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, deve
         """GET: the agent's answer for the member's screen. POST (a JSON body, signed whole like every POST door): the same, and
         the body may hand the agent what the page asks beside its cards: find (the controller's search, sort and filters), themes
         (each theme a card may wear) and page (the page's own already-loaded logos); each a JSON object, else left out."""
-        token = slot.take()   # the slot first, atomically, before any of the agent's code
+        inside = os.environ.get('LARRYD_INTERNAL') == '1'   # LARRYD RUNTIME INTERNAL (this computer, internal agents): every page's agents answered at once, never one at a time (the owner 2026-11-03: "it loads very slow")
+        token = object() if inside else slot.take()   # the slot first, atomically, before any of the agent's code
         if not token:
             return busy()
         run_with = harness_for()
@@ -205,7 +206,8 @@ def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, deve
             return answered(work)
         finally:
             run_with.on_start = None
-            slot.give_back(token)
+            if not inside:
+                slot.give_back(token)
 
     @app.post('/api/live/records')
     def live_records():
