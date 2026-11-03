@@ -8,7 +8,8 @@
 .mk-ctl .mk-sorted { font-size: .6rem }
 .mk-ctl .btn--small { color: var(--active-color-01); background-color: var(--active-color-09); border-color: var(--active-color-01) }
 .mk-ctl .btn--small[aria-current] { color: var(--toggle-knob-on, var(--active-color-09)); background-color: var(--toggle-on, var(--active-color-05, var(--active-color-01))); border-color: var(--toggle-on, var(--active-color-05, var(--active-color-01))) }
-/* THE GRID: THREE FULL CARDS TO A ROW (the owner 2026-11-03: "on the bottom it only has 2 cards per row now"), each card the one standard (218 x 352, the widget's own), as many across as fit, one even gap of 10 px between every card across and down (the owner 2026-11-03: "make a nice smaller gap and the same sides and top bottom so it looks like a grid"); the ORG CHART view's mini cards (112px) as many as fit */
-.mk-grid { display: grid; grid-template-columns: repeat(auto-fill, 218px); gap: 10px; justify-content: center; align-items: start; justify-items: start }
+/* THE GRID: THREE FULL CARDS TO A ROW (the owner 2026-11-03: "on the bottom it only has 2 cards per row now"), each card the one standard (218 x 352, the widget's own), four across (fewer only on a narrow screen), one even gap of 10 px between every card across and down (the owner 2026-11-03: "make a nice smaller gap and the same sides and top bottom so it looks like a grid"); the ORG CHART view's mini cards (112px) as many as fit */
+.mk-grid { display: grid; grid-template-columns: repeat(4, 218px); gap: 10px; justify-content: center; align-items: start; justify-items: start }   /* FOUR ACROSS (the owner 2026-11-03) */
+@media (max-width: 1000px) { .mk-grid:not(.mk-orgchart) { grid-template-columns: repeat(auto-fill, 218px) } }   /* a narrower screen: as many as fit */
 .mk-grid.mk-orgchart { grid-template-columns: repeat(auto-fill, 112px); gap: 10px }
 @media (max-width: 768px) { .mk-ctl .wl-cols { flex-direction: column } .mk-ctl .wl-col--3 { width: auto; padding-left: 0 } }
