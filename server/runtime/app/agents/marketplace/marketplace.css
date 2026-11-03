@@ -1,6 +1,8 @@
 /* THE MARKETPLACE'S OWN SHEET: its controller at the top and its grid of cards below, nothing of a card (the card is the platform's one
    embedded widget, its own sheet with it: themes/embedded/agent_cards). */
 .mk-ctl { margin: 0 0 18px }
+/* THE LEFT COLUMN THE WIDEST (the owner 2026-11-03: "the left column should be the widest it has all the info"): it takes the room; the search and sort its own 180px */
+.mk-ctl .wl-col--1 { flex: 1 1 0; width: auto; min-width: 0 }
 .mk-ctl .wl-col--3 { flex: none; width: 180px }
 .mk-ctl-row { display: flex; flex-wrap: wrap; gap: 0 24px }
 .mk-ctl .mk-sorted { font-size: .6rem }
@@ -9,4 +11,4 @@
 /* THE GRID: each full card its own width (297px), as many to a row as fit; the ORG CHART view's mini cards (112px) the same way */
 .mk-grid { display: grid; grid-template-columns: repeat(auto-fill, 297px); gap: 18px; justify-content: start; align-items: start }
 .mk-grid.mk-orgchart { grid-template-columns: repeat(auto-fill, 112px); gap: 12px }
-@media (max-width: 768px) { .mk-ctl .wl-col--3 { width: auto } }
+@media (max-width: 768px) { .mk-ctl .wl-cols { flex-direction: column } .mk-ctl .wl-col--3 { width: auto; padding-left: 0 } }
