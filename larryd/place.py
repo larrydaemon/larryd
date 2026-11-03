@@ -67,7 +67,7 @@ def _post_once(url, data, timeout):
 
 def place(root):
     """-> {ok, agent_key, sha256, held, marketplace}. Refused with what is wrong and what to do."""
-    doctor.fix_look(root)   # a design sheet becomes the look record, as submit does (never a reason to refuse)
+    doctor.fix_sheets(root)   # a design sheet leaves the agent, as submit does (never a reason to refuse)
     problems = doctor.check(root)
     if problems:
         raise Refused('the doctor found problems; LARRYD would not hold this agent', 'fix each one (`larryd doctor`), then place it again',

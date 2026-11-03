@@ -148,14 +148,14 @@ def test_the_failure_count_always_equals_the_named_problems():
     assert sum(len(c['problems']) for c in as_json(problems)['checks']) == len(problems)
 
 
-def test_the_class_picks_the_effect(tmp_path):
+def test_a_look_is_no_manifest_field_and_fix_removes_it(tmp_path):   # the platform draws the card from its data (the owner 2026-11-03)
     root = _with_card(tmp_path, 'mark2', {'class': 'MARK II SUPER AGENT (HARNESS)'})
     path, manifest = _manifest(root)
     manifest['look'] = {'effect': 'crt'}
     path.write_text(json.dumps(manifest))
-    assert any('but the class MARK II SUPER AGENT (HARNESS) draws wellness' in p.wrong for p in doctor.check(root))
+    assert any('"look" is not a manifest field' in p.wrong for p in doctor.check(root))
     changed = doctor.fix(root)
-    assert any('look "effect" = "wellness"' in c for c in changed) and _manifest(root)[1]['look']['effect'] == 'wellness'
+    assert any('"look" removed' in c for c in changed) and 'look' not in _manifest(root)[1]
     assert doctor.check(root) == []
 
 
@@ -207,16 +207,6 @@ def test_a_missing_authorization_says_fix_fills_it(tmp_path):
     assert todo.endswith('or run `larryd doctor --fix`, or larryd_doctor with "fix": true (fills PUBLIC)')
 
 
-def test_plain_doctor_says_the_class_picks_the_effect(tmp_path, capsys):
-    from larryd import cli
-    root = new.make('fx', tmp_path, example='marketplace')
-    (root / 'agent' / 'card.css').write_text('.mk-glow { animation: breathe 6s; filter: blur(8px) }\n')
-    cli.main(['doctor', str(root)])
-    out = capsys.readouterr().out
-    assert 'WILL CONVERT effect -> crt (the class MARK I AGENT (NORMAL) picks it)' in out
-    assert 'WILL DROP card.css: .mk-glow: animation, filter -> no name on the menu (the class picks the effect' in out
-
-
 def test_class_and_residency_carry_their_meanings(tmp_path):
     """The owner: residency is which marketplaces it is offered on; the class, as a guide, how complex it is."""
     from larryd import sheet
@@ -226,7 +216,7 @@ def test_class_and_residency_carry_their_meanings(tmp_path):
     todo = next(p.todo for p in doctor.check(_with_card(tmp_path, 'cls', {'class': 'MARK IV'})) if 'class' in p.wrong)
     assert '(simple)' in todo and '(complex)' in todo and '(extremely complex)' in todo
     table, guide = sheet.card_table(), (pathlib.Path(doctor.__file__).parent / 'GUIDE.md').read_text()
-    assert 'MARK I AGENT (NORMAL): simple (effect crt)' in table and 'INTERNAL: Positive Feedback\'s own agent marketplace only' in table
+    assert 'MARK I AGENT (NORMAL): simple;' in table and 'effect' not in table and 'INTERNAL: Positive Feedback\'s own agent marketplace only' in table
     assert table in (new.make('mean', tmp_path) / 'CLAUDE.md').read_text() and table in guide
     assert 'It is not where the agent runs: every LARRYD agent runs in LARRYD.' in guide and 'where it runs' not in table
 

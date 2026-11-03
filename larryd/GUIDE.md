@@ -67,7 +67,7 @@ This makes the folder `<name>/`:
 - `agent/`: the agent, and only the agent. It is exactly what LARRYD holds.
   - `agent/agent.json`: the manifest (its fields are explained in the project's CLAUDE.md)
   - `agent/agent.py`: the code, with one entry: `answer(job)`
-  - an agent ships no CSS: the card's look is the `"look"` record in `agent/agent.json` (section 4)
+  - an agent ships no look and no CSS: the platform draws its card from the card's facts in `agent/agent.json`
 - `CLAUDE.md`: the spec and the rules, for Claude Code
 - `.claude/skills/larryd/SKILL.md`: the larryd skill Claude Code loads
 - `samples/job.json`: a sample job for `larryd run`; `samples/job_inputs.edit-me.json`: a job with its own inputs, for
@@ -81,8 +81,8 @@ To start from a LARRYD example instead of a blank agent:
 
     larryd new marketplace --from marketplace
 
-makes the PF AGENT MARKETPLACE: its code, its manifest with a doctor-clean card, its look record, its design sheet
-(`design/card.css`, not shipped) and a sample job. It is the agent the platform's own marketplace is built from.
+makes the PF AGENT MARKETPLACE: its code, its manifest with a doctor-clean card and a sample job. It is the agent the
+platform's own marketplace is built from.
 
 ## 3. The rules
 LARRYD's sandbox refuses 1, 2 and 3 when the agent runs; the doctor checks all of them before that.
@@ -273,97 +273,15 @@ sheen, the border and glyph in the button colour; the fill, dark words, glow and
 ## 4. The doctor
     larryd doctor --fix      (write normally, then this; or plain `larryd doctor` to check only, --json for JSON)
 
-Your card's look is a small record of NAMES in `agent/agent.json`, never CSS:
+The platform draws every card itself, from the card's facts in `agent/agent.json`, in its own look, in every brand, mode
+and size. The agent ships no look and no CSS.
 
-    "look": {"accent": "active-color-04", "radius": "step-2", "space": "step-3", "effect": "wellness",
-             "text": {"name": "title", "price": "callout"}}
-
-The platform's one card template draws every card and puts the record on the card as custom properties that point at
-the live theme (`--accent: var(--active-color-04)`), so your card follows the brand and light or dark by itself. Every
-value must be a name on the menu below; the platform checks it again at submission and when it draws the card, and
-drops anything else. A look the record does not name keeps the template's default.
-
-Design in CSS if you like: write `agent/card.css` normally and run `larryd doctor --fix`.
-
-- It maps each value to the nearest name on the menu and says each mapping (CONVERTED ...):
-  - the card's first colour to the theme colour variable nearest as the eye sees it (OKLab distance against the
-    reference theme, done once; only the name is kept);
-  - its corner radius and its padding to the nearest step;
-  - written type on a part of the card to the nearest role (by size and weight, a different case costing 6px, an
-    unwritten case being none as in CSS; a role made for navigation, a link or a field's label only when the selector
-    says so).
-- Never an effect: the card's class picks it (Mark I crt, Mark II wellness, Mark III glitch).
-- Every other value is said too, as DROPPED ... with why:
-  - colour is card-wide (the accent only), so a part's colour is dropped: a part takes a role, never a colour;
-  - gap and margin: "space" is the card's padding, and the template sets the gaps from it;
-  - layout, position, hover and other states are the template's;
-  - shadows, transforms, transitions and animation belong to the effect the class picks;
-  - @import, @font-face and @keyframes never become a name.
-- It writes the look record, moves the sheet to `design/card.css` (agents ship no CSS), and keeps your original
-  manifest, and the design sheet it replaces, in `.larryd/doctor_backup/`.
-- Plain `larryd doctor` changes nothing: while a sheet is in `agent/` it fails the shape and says what it WILL CONVERT
-  and WILL DROP. `larryd place` and `larryd submit` convert it the same way first, so CSS is never a reason to refuse.
-- `--fix` also fills the card's missing facts with honest defaults it names. The same files always give the same
-  result.
-
-### The menu (a fixed list, the same for the doctor, this guide and the platform)
-
-"accent": a theme colour variable, `active-color-01` to `active-color-64`. The number names a slot that every theme
-fills with its own colour, in each brand and in light and dark: the same number is the same slot everywhere, so the
-card follows the live theme. The colours below are the reference theme's only; a designed colour goes to the nearest
-as the eye sees it.
-
-| Colour (reference theme) | active-color-NN |
-|---|---|
-| `#92866F` | 01, 02, 03, 04, 06, 13, 15, 16, 17, 18, 21, 22, 25, 26, 31, 32, 33, 35, 36, 37, 38, 40, 41, 43, 52, 56, 57, 59, 62, 63, 64 |
-| `#D5C5AA` | 05, 23, 28 |
-| `#EFE5C6` | 07, 46, 48, 50 |
-| `#FDFDFD` | 08 |
-| `#121212` | 09, 14, 24, 27, 29, 54, 60 |
-| `#1F1F1D` | 10, 20, 34, 42, 44, 53, 55, 61 |
-| `#17191A` | 11, 12, 30, 39, 45, 47, 49, 51, 58 |
-| `#F1E8C7` | 19 |
-
-"radius" is the card's corner, "space" its padding (the template sets the gaps inside from it); each is a step of the
-scale (a designed length goes to the nearest step; a tie rounds down):
-
-| Step | step-0 | step-1 | step-2 | step-3 | step-4 | step-5 | step-6 | step-7 | step-8 | step-9 |
-|---|---|---|---|---|---|---|---|---|---|---|
-| px | 0 | 2 | 4 | 8 | 12 | 16 | 22 | 32 | 48 | 64 |
-
-"effect": none, crt, wellness, glitch.
-
-"text": a part of the card and its type role (each part has a default; name only the ones you change). A part takes a
-role, never a colour: colour is card-wide, the accent only.
-
-| Part | Default role | What it is |
-|---|---|---|
-| number | caption | the card's number (No. 001) |
-| class | caption | the class line (MARK I AGENT) |
-| name | title | the agent's name |
-| info | annotation | the product and module |
-| pitch | body | the one-line pitch |
-| developer | annotation | the developer credit |
-| facts | annotation | the type and residency |
-| price | callout | the price |
-
-The type roles (designed type on a part goes to the nearest role, nearest by size and weight, a different case costing
-6px (an unwritten case is none, as in CSS); the role brings its own font, style and letter spacing):
-
-| Role | Size | Weight | Case | For |
-|---|---|---|---|---|
-| heading | 48px | 900 | uppercase | the page or card heading |
-| title | 32px | 900 | uppercase | a name, the card's name |
-| subtitle | 14.4px | 900 | uppercase | a section's title |
-| body | 14.4px | 300 | none | running text, the card's pitch |
-| caption | 11.2px | 600 | uppercase | an eyebrow, the card's class line |
-| label | 14.4px | 500 | uppercase | a field's label (chosen only for a selector naming label, field) |
-| link | 14.4px | 500 | none | a link (chosen only for a selector naming link, a, href) |
-| nav | 11.2px | 400 | uppercase | the main navigation (chosen only for a selector naming nav, menu, navigation) |
-| subnav | 14.4px | 400 | uppercase | a sub navigation (chosen only for a selector naming subnav, tabs, tab, navigation) |
-| callout | 17.6px | 500 | uppercase | a figure that stands out, the card's price |
-| notes | 17.6px | 500 | uppercase | small notes |
-| annotation | 9.6px | 300 | uppercase | facts, the card's product, module and type |
+- A sheet in `agent/` fails the shape. `larryd doctor --fix` moves it out to `design/` (a previous one there is kept in
+  `.larryd/doctor_backup/`), and removes an old `"look"` or `"style"` field from the manifest. `larryd place` and
+  `larryd submit` do the same first, so CSS is never a reason to refuse.
+- `--fix` also fills the card's missing facts with honest defaults it names, and keeps your original manifest in
+  `.larryd/doctor_backup/`. The same files always give the same result.
+- Plain `larryd doctor` changes nothing.
 
 It checks the project, the manifest, the entry, no network, no secret, the shape, the skills and the knowledge.
 Every problem names the file and line, what is wrong and what to do. Do what it says, then run it again.
@@ -427,8 +345,7 @@ are not there yet: nothing here promises a money value or a share.
 - `residency` is which marketplaces the agent is offered on: INTERNAL = Positive Feedback's own agent marketplace only;
   EXTERNAL = other marketplaces only (e.g. the Microsoft marketplace), not Positive Feedback; BOTH = Positive Feedback
   and at least one external marketplace. It is not where the agent runs: every LARRYD agent runs in LARRYD.
-- `class`, as a guide to how much the agent does: Mark I = simple, Mark II = complex, Mark III = extremely complex. The
-  class also picks the card's effect.
+- `class`, as a guide to how much the agent does: Mark I = simple, Mark II = complex, Mark III = extremely complex.
 - `authorization`: who may hire it, PUBLIC (every account) or PRIVATE (one account). It is your starting setting; the
   platform's authorize panel (in FROST) can change it at any time after, and a PRIVATE agent's owning account is
   entered there.
@@ -480,7 +397,7 @@ The card's allowed values:
 
 | Field | Allowed values |
 |---|---|
-| class | MARK I AGENT (NORMAL): simple (effect crt); MARK II SUPER AGENT (HARNESS): complex (effect wellness); MARK III QUANTUM AI (AGENTIC CODE): extremely complex (effect glitch) |
+| class | MARK I AGENT (NORMAL): simple; MARK II SUPER AGENT (HARNESS): complex; MARK III QUANTUM AI (AGENTIC CODE): extremely complex; MARK IV REPLICA (FULL-HUMAN REPLACEMENT): a full human replacement |
 | type | OFF-THE-SHELF, DEVELOPER |
 | residency | which marketplaces it is offered on: INTERNAL: Positive Feedback's own agent marketplace only; EXTERNAL: other marketplaces only (e.g. the Microsoft marketplace), not Positive Feedback; BOTH: Positive Feedback and at least one other marketplace (every LARRYD agent runs in LARRYD) |
 | authorization | PUBLIC, PRIVATE (who may hire it: your starting setting; the platform's authorize panel can change it at any time after, and a PRIVATE agent's owning account is entered there) |
@@ -507,11 +424,10 @@ The card's allowed values:
 | jobs/home, jobs/list, jobs/card | LARRYD | Jobs |
 | larry/home | any | the product's dashboard |
 
-The class picks the card's effect: Mark I crt, Mark II wellness, Mark III glitch. `larryd doctor --fix` sets the
-look's "effect" from the class, and `larryd doctor` fails when they differ. A value off these lists fails with the
-ones to use.
+The platform draws the card from these values (an agent ships no look). A value off these lists fails with the ones to
+use.
 
-See your card the way a member will, on your own LARRYD:
+See what your own LARRYD holds, on its shelf (the card itself is drawn by the platform, from these facts):
 
     larryd                   (in another terminal: your runtime, on 127.0.0.1:5010)
     larryd card              (places the agent in its locker and opens http://127.0.0.1:5010/marketplace)
@@ -531,8 +447,7 @@ marketplace cannot show (no screen, a price that is not whole mTok) is listed un
 - **CALL and RUN**: the two lanes. A CALL answers at once on the member's screen (the names in `"calls"`); a RUN is a
   request on a job, run in the sandbox, whose `delivery` lands in the job and which costs the agent's price.
 - **MARK classes**: the platform's three agent classes, as a guide: MARK I AGENT (NORMAL) = simple, MARK II SUPER
-  AGENT (HARNESS) = complex, MARK III QUANTUM AI (AGENTIC CODE) = extremely complex. On the card the class picks the
-  effect: Mark I crt, Mark II wellness, Mark III glitch.
+  AGENT (HARNESS) = complex, MARK III QUANTUM AI (AGENTIC CODE) = extremely complex.
 - **residency**: which marketplaces an agent is offered on: INTERNAL (Positive Feedback only), EXTERNAL (other
   marketplaces only), BOTH (Positive Feedback and at least one other).
 - **species**: the first half of a screen's name, its module's short code (`cont` for Contacts, `agnt` for Agents).

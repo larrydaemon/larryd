@@ -34,7 +34,7 @@ larryd_runtime = "server/runtime/app"
 
 [tool.setuptools.package-data]
 larryd = ["kit/*", "kit/**/*", "skills.json", "submit_door.json", "GUIDE.md", "CHECKS.md"]
-larryd_runtime = ["schemas/*.json", "agents/marketplace/agent.json", "agents/marketplace/agent.py", "agents/marketplace/card.css", "web/*.html", "web/*.css", "web/*.js"]
+larryd_runtime = ["schemas/*.json", "agents/marketplace/agent.json", "agents/marketplace/agent.py", "agents/marketplace/marketplace.css", "web/*.html", "web/*.css", "web/*.js"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]   # the tool's tests; the runtime (server/) runs its own suite with its own venv

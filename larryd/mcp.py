@@ -29,9 +29,6 @@ def _doctor(args):
     out['warnings'] = [w + ' (larryd_submit refuses it until then)' for w in doctor.placeholders(path)]
     if args.get('fix'):
         out['fixed'] = fixed
-    notes = doctor.conversions(args.get('path') or '.')
-    out['will_convert'] = [n for verb, n in notes if verb == 'CONVERT']
-    out['will_drop'] = [n for verb, n in notes if verb == 'DROP']   # what a design sheet in agent/ maps to: larryd doctor --fix writes the look record
     return out, False
 
 
@@ -67,7 +64,7 @@ TOOLS = {
                     'required': ['name'], 'additionalProperties': False}),
     'larryd_doctor': (_doctor, 'Check the agent before submission: the manifest, the entry, no network, no secret, the shape, the skills. '
                                'Every problem names the file and line, what is wrong and what to do; fix each one and check again.',
-                      {'type': 'object', 'properties': {'path': PATH, 'fix': {'type': 'boolean', 'description': 'first turn a design sheet into the look record and fill the card\'s missing facts, as larryd doctor --fix'}},
+                      {'type': 'object', 'properties': {'path': PATH, 'fix': {'type': 'boolean', 'description': 'first move a design sheet out of agent/ and fill the card\'s missing facts, as larryd doctor --fix'}},
                        'additionalProperties': False}),
     'larryd_run': (_run, 'Run the agent here the way LARRYD runs it (no network, no new process, a scratch run folder, a time limit) '
                          'with the sample job, and see its answer or why it failed. On a Mac or Linux.',

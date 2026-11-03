@@ -104,7 +104,7 @@ def make(name, where='.', example=None):
         # the job's own inputs, for once the agent declares them ("job" in run.hands, "inputs" {"name": "001", "mood": "002"}):
         # its name says edit me, so every samples/*.json of a fresh project matches what the agent declares and runs DONE
         EDIT_ME: resources.files('larryd').joinpath('kit', 'job_inputs.json').read_text(),
-        'CLAUDE.md': _kit('CLAUDE.md').format(name=name, fields=fields, hands=', '.join(shape.HANDS), tools=tools, sheet=sheet.table(), card=sheet.card_table()),
+        'CLAUDE.md': _kit('CLAUDE.md').format(name=name, fields=fields, hands=', '.join(shape.HANDS), tools=tools, card=sheet.card_table()),
         shape.SKILL: skill(),
         '.mcp.json': json.dumps(mcp_config(), indent=2) + '\n',
     }
@@ -112,8 +112,8 @@ def make(name, where='.', example=None):
         if example not in EXAMPLES:
             raise ValueError(f'no example "{example}": the examples are {", ".join(EXAMPLES)}')
         for file, text in _example(example).items():
-            # its sample job where `larryd run` reads one; its design sheet beside agent/, never in it (agents ship no CSS)
-            files[shape.SAMPLE if file == 'job.json' else 'design/card.css' if file == 'design.css' else f'{shape.AGENT}/{file}'] = text
+            # its sample job where `larryd run` reads one
+            files[shape.SAMPLE if file == 'job.json' else f'{shape.AGENT}/{file}'] = text
     for rel, text in files.items():
         path = root / rel
         path.parent.mkdir(parents=True, exist_ok=True)

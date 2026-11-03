@@ -25,8 +25,6 @@ FIELDS = {
     'gives': 'the list of what its answer holds (its outputs); "delivery" is what lands in the member\'s job',
     'skills': 'the list of skill hashes the agent uses (empty when none; `larryd skills` lists the skills that exist)',
     'knowledge': 'the list of knowledge pack hashes the agent needs (empty when none; `larryd pack` gives a pack its hash)',
-    'look': 'the card\'s look, names only (optional): {"accent": a theme colour variable, "radius": a step, "space": a step, '
-            '"effect": none, crt, wellness or glitch, "text": {"<part>": "<role>"}}; the menu: `larryd guide`, section 4',
     'inputs': 'only with "job" in run.hands: the job\'s inputs by name, each on one of the job\'s slots 001-015, e.g. {"mood": "001"}',
     'records': 'the member\'s records the agent reads and writes on a CALL (optional): {"<species>": ["read", "add", "edit", "remove"]}, '
                'e.g. {"opns": ["read", "add", "edit", "remove"]}; LARRYD hands them as records = {species: [rows]} and carries the '
@@ -71,7 +69,7 @@ CARD_OPTIONAL = {   # a card fact an agent may leave out
 SITE = r'https://(?=[^/?#]{1,253}(?:[/?#]|$))(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}(?:[/?#][^\s"\'<>\\`]*)?'   # https to a named host: no user, no port, no number for a host
 SCREEN = r'[a-z][a-z0-9]{1,15}/[a-z][a-z0-9]{1,15}'   # <species>/<page>
 MOST_PITCH = 140                                      # characters on the card
-OPTIONAL = ('inputs', 'look', 'records', 'live', 'makes', 'fabric')
+OPTIONAL = ('inputs', 'records', 'live', 'makes', 'fabric')
 FABRIC_MODULES = ('cont', 'invc', 'locn', 'opns', 'hrcy', 'mdia', 'brnd', 'sprt', 'imgs', 'vdeo', 'audo', 'prdn', 'agnt', 'mdls', 'logs', 'jobs')   # one pf_<module>.csv each (the runtime's core_engine/fabric.py)
 FABRIC_NEEDS = ('read', 'edit')   # what "records" must declare on each Fabric module: read, and edit their custom fields
 LIVE = 'live'   # the live half's folder, beside agent/

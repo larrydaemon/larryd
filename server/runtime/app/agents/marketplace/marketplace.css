@@ -1,0 +1,12 @@
+/* THE MARKETPLACE'S OWN SHEET: its controller at the top and its grid of cards below, nothing of a card (the card is the platform's one
+   embedded widget, its own sheet with it: themes/embedded/agent_cards). */
+.mk-ctl { margin: 0 0 18px }
+.mk-ctl .wl-col--3 { flex: none; width: 180px }
+.mk-ctl-row { display: flex; flex-wrap: wrap; gap: 0 24px }
+.mk-ctl .mk-sorted { font-size: .6rem }
+.mk-ctl .btn--small { color: var(--active-color-01); background-color: var(--active-color-09); border-color: var(--active-color-01) }
+.mk-ctl .btn--small[aria-current] { color: var(--toggle-knob-on, var(--active-color-09)); background-color: var(--toggle-on, var(--active-color-05, var(--active-color-01))); border-color: var(--toggle-on, var(--active-color-05, var(--active-color-01))) }
+/* THE GRID: each full card its own width (297px), as many to a row as fit; the ORG CHART view's mini cards (112px) the same way */
+.mk-grid { display: grid; grid-template-columns: repeat(auto-fill, 297px); gap: 18px; justify-content: start; align-items: start }
+.mk-grid.mk-orgchart { grid-template-columns: repeat(auto-fill, 112px); gap: 12px }
+@media (max-width: 768px) { .mk-ctl .wl-col--3 { width: auto } }

@@ -315,22 +315,19 @@ body { display: none }
 def test_the_marketplace_example_is_doctor_clean_and_ships_no_css(tmp_path):
     from larryd import new as larryd_new
     root = larryd_new.make('marketplace', tmp_path, example='marketplace')
-    assert not list((root / 'agent').glob('*.css')) and (root / 'design' / 'card.css').is_file()
-    assert doctor.check(root) == [] and doctor.conversions(root) == [] and doctor.fix(root) == []
+    assert not list((root / 'agent').glob('*.css')) and not (root / 'design').exists()
+    assert doctor.check(root) == [] and doctor.fix(root) == []
 
 
-def test_a_shipped_sheet_fails_and_says_what_it_will_convert(tmp_path):
+def test_a_shipped_sheet_fails_and_says_what_to_do(tmp_path):
     from larryd import new as larryd_new
     root = larryd_new.make('m', tmp_path, example='marketplace')
     (root / 'agent' / 'card.css').write_text(SHEET)
     problems = doctor.check(root)
     assert [p.check for p in problems] == ['the shape'] and 'agents ship no CSS' in problems[0].wrong and '--fix' in problems[0].todo
-    said = doctor.conversions(root)
-    for line in ('-> accent active-color-', 'border-radius 20px -> radius step-6', 'padding 14px -> space step-4', '.mk-name: font-size: 40px; font-weight: 900 -> text name: the heading role'):
-        assert any(line in n for _verb, n in said), (line, said)
 
 
-def test_fix_writes_the_record_moves_the_sheet_and_is_deterministic(tmp_path):
+def test_fix_moves_the_sheet_and_is_deterministic(tmp_path):
     from larryd import new as larryd_new
     root = larryd_new.make('m', tmp_path, example='marketplace')
     (root / 'agent' / 'card.css').write_text(SHEET)
@@ -339,8 +336,7 @@ def test_fix_writes_the_record_moves_the_sheet_and_is_deterministic(tmp_path):
     (root / 'agent' / 'agent.json').write_text(json.dumps(manifest))
     changed = doctor.fix(root)
     assert any('moved to design/card.css' in c for c in changed) and any("price = '0'" in c for c in changed), changed
-    look = json.loads((root / 'agent' / 'agent.json').read_text())['look']
-    assert look['radius'] == 'step-6' and look['space'] == 'step-4' and look['text'] == {'name': 'heading'} and look['accent'].startswith('active-color-')
+    assert 'look' not in json.loads((root / 'agent' / 'agent.json').read_text())
     assert (root / 'design' / 'card.css').read_text() == SHEET and not (root / 'agent' / 'card.css').exists()
     assert (root / '.larryd' / 'doctor_backup' / 'agent.json').is_file()
     assert doctor.check(root) == [] and doctor.fix(root) == []   # nothing left; the same files give the same result
@@ -355,17 +351,6 @@ def test_an_old_style_field_goes(tmp_path):
     assert any('"style" is not a manifest field' in p.wrong for p in doctor.check(root))
     doctor.fix(root)
     assert 'style' not in json.loads((root / 'agent' / 'agent.json').read_text()) and doctor.check(root) == []
-
-
-def test_a_look_value_off_the_menu_fails_with_the_names(tmp_path):
-    from larryd import new as larryd_new
-    root = larryd_new.make('m', tmp_path, example='marketplace')
-    manifest = json.loads((root / 'agent' / 'agent.json').read_text())
-    manifest['look'] = {'accent': '#8a8a8a', 'radius': '20px', 'effect': 'sparkle', 'text': {'name': 'huge', 'footer': 'body'}, 'shadow': 'x'}
-    (root / 'agent' / 'agent.json').write_text(json.dumps(manifest))
-    wrong = ' | '.join(p.wrong for p in doctor.check(root))
-    for w in ('"accent": "#8a8a8a"', '"radius": "20px"', '"effect": "sparkle"', '"huge" is not a type role', '"footer" is not a part', '"shadow" is not a look field'):
-        assert w in wrong, (w, wrong)
 
 
 def test_submit_converts_first_and_never_refuses_on_css(tmp_path, monkeypatch):
@@ -399,6 +384,8 @@ def test_fix_never_writes_through_a_linked_backup_folder(tmp_path):
     elsewhere.mkdir()
     (root / '.larryd').mkdir()
     (root / '.larryd' / 'doctor_backup').symlink_to(elsewhere)
+    (root / 'design').mkdir()
+    (root / 'design' / 'card.css').write_text('h1 { font-size: 20px }\n')   # a previous sheet to keep: a backup is needed
     (root / 'agent' / 'card.css').write_text('h1 { font-size: 40px }\n')
     with pytest.raises(PermissionError):
         doctor.fix(root)
@@ -411,8 +398,6 @@ def test_fix_never_moves_a_sheet_into_a_linked_design_folder(tmp_path):
     root = larryd_new.make('m', tmp_path, example='marketplace')
     elsewhere = tmp_path / 'elsewhere'
     elsewhere.mkdir()
-    import shutil
-    shutil.rmtree(root / 'design')
     (root / 'design').symlink_to(elsewhere)
     (root / 'agent' / 'card.css').write_text('.mk-card { border-radius: 4px }\n')
     with pytest.raises(PermissionError):
@@ -434,7 +419,9 @@ def test_fix_never_follows_a_linked_manifest(tmp_path):
 def test_the_backup_folder_is_private(tmp_path):
     from larryd import new as larryd_new
     root = larryd_new.make('m', tmp_path, example='marketplace')
-    (root / 'agent' / 'card.css').write_text('h1 { font-size: 40px }\n')
+    manifest = json.loads((root / 'agent' / 'agent.json').read_text())
+    manifest['look'] = {'accent': 'active-color-01'}   # an old look: the manifest is kept before it goes
+    (root / 'agent' / 'agent.json').write_text(json.dumps(manifest))
     doctor.fix(root)
     assert oct((root / '.larryd' / 'doctor_backup').stat().st_mode & 0o777) == '0o700'
 

@@ -1,6 +1,6 @@
-"""THE ANSWER DOOR TAKES THE PAGE'S OWN, BESIDE THE CARDS (the owner's final card, 2026-10-07): a signed POST to /api/agents/answer may hand the agent find
-(the controller's asks), themes (each theme a card may wear) and page (its path and its own links, its loaded logos, which theme each product wears, each theme's
-picture); the harness dresses each card on that one call (wears, art, the agent's own manifest's developer_site) and keeps nothing. A GET still answers."""
+"""THE ANSWER DOOR TAKES THE PAGE'S OWN, BESIDE THE CARDS: a signed POST to /api/agents/answer may hand the agent find (the controller's asks) and page
+(its path and its own links); the cards ride as data alone, never dressed (the owner 2026-11-03: "larryd should just have the agent code and data to populate
+the database and our endpoint dynamically generates the card from dynamic data / no other info from larryd"). Nothing is kept. A GET still answers."""
 import datetime
 import json
 import pathlib
@@ -56,22 +56,19 @@ class TheAnswerDoor(unittest.TestCase):
         self.assertNotIn('mk-ctl', out['view']['html'])
         self.assertNotIn('data-wears="A', out['view']['html'])
 
-    def test_a_signed_post_hands_find_themes_and_page_and_the_view_passes(self):
+    def test_a_signed_post_hands_find_and_page_and_the_view_passes(self):
         r = self.post(self.body())
         self.assertEqual(r.status_code, 200, r.get_data(as_text=True)[:300])
         out = r.get_json()
         self.assertIn('view', out)   # passed the runtime's own check, with the page's path told
         self.assertEqual(view.refused(out['view'], PATH), '')
         h, css = out['view']['html'], out['view']['css']
-        self.assertTrue(css.startswith((APP / 'agents' / 'marketplace' / 'card.css').read_text()))   # view.css = the final sheet, then the call's own rules
+        self.assertEqual(css, (APP / 'agents' / 'marketplace' / 'marketplace.css').read_text())   # its own sheet alone: nothing the call adds
         self.assertIn('mk-ctl', h)
         self.assertEqual([c['name'] for c in out['cards']], ['Other agent', 'Scratch agent'])        # find.sort = name
-        self.assertEqual(h.count(f'data-wears="{THEME}"'), 2)                                         # page.wears by the card's product
-        self.assertIn(f'<img class="mk-art" src="{CDN}/0dd98026/images/agent_card_larry.png" alt="" loading="lazy">', h)   # page.arts by the theme worn
-        self.assertIn(f'.agent-card[data-wears="{THEME}"] .mk-frame, .agent-card[data-wears="{THEME}"].mk-on {{ --active-color-01: #76AAD9; }}', css)
-        self.assertEqual(h.count('<a class="mk-site" href="https://positivefeedback.ai" target="_blank" rel="noopener noreferrer">Scratch Dev</a>'), 1)   # the agent's own manifest's site
-        self.assertNotIn('javascript:', h)                                                            # a site that is not plain https is no link
-        self.assertEqual(h.count('<span class="mk-rating" data-part="rating">★ 4.8 (212)</span>'), 2)     # the design's sample on every card, until a rating system exists
+        self.assertEqual(h.count('data-inject="agent_card"'), 2)                                    # where each card stands, the platform draws it
+        for never in ('data-wears', '<img', 'mk-site', 'mk-rating', 'javascript:'):
+            self.assertNotIn(never, h)
 
     def test_the_body_is_signed_whole(self):
         body = self.body()
@@ -86,18 +83,16 @@ class TheAnswerDoor(unittest.TestCase):
         r = self.post({**self.who, 'page': {'path': PATH, 'wears': 'junk', 'arts': 5, 'links': 'junk', 'search': 5, 'products': 'x', 'modules': []}})
         self.assertEqual(r.status_code, 200, r.get_data(as_text=True)[:300])
 
-    def test_a_card_may_not_name_its_own_rating_theme_or_picture(self):   # only the page dresses a card; nothing is kept
-        out = self.post(self.body()).get_json()
-        for c in out['cards']:
-            self.assertEqual((c['wears'], c['rating']), (THEME, ['4.8', 212]))   # the harness's one sample, whatever a card's own manifest says
+    def test_a_card_is_data_alone(self):   # nothing of a card's look rides from LARRYD, whatever the page or a manifest says
+        for c in self.post(self.body()).get_json()['cards']:
+            self.assertEqual(set(c), {'key', 'number', 'name', 'class', 'product', 'module', 'hired', 'hireable', 'offline'})
 
-    def test_the_simple_view_through_the_door(self):
+    def test_the_org_chart_view_through_the_door(self):   # the org chart: the mini cards (the old Simple view is gone)
         body = self.body()
-        body['find'] = {'simple': True}
-        out = self.post(body).get_json()
-        self.assertIn('mk-simple', out['view']['html'])
-        self.assertNotIn('<img', out['view']['html'])
-        self.assertIn(f'.mk-simple .agent-card[data-wears="{THEME}"] {{ --mk-logo: url("/themes/9b7c7c13/images/dark/logo_dock_01.png") }}', out['view']['css'])
+        body['find'] = {'orgchart': True}
+        h = self.post(body).get_json()['view']['html']
+        self.assertIn('<div class="mk-grid mk-orgchart">', h)
+        self.assertEqual(h.count('data-size="mini"'), 2)
 
 
 if __name__ == '__main__':
@@ -118,25 +113,3 @@ class AlwaysOn(TheAnswerDoor):
         self.hire(KEY_A, False)
         self.hire(preview.MARKETPLACE_KEY, True)   # hiring it (again) is never refused
         self.assertNotIn(f'data-agent="{preview.MARKETPLACE_KEY}"', self.post(self.body()).get_json()['view']['html'])   # and it never lists itself
-
-
-class TheDashboardsAgentWearsItsProducts(unittest.TestCase):
-    """An agent that lives on a dashboard (larry/home) wears its own product's theme and that theme's cat, as every other card does (the owner, 2026-10-08:
-    pf Today's Meetings in Invoice Maps's theme, not Positive Feedback's); a theme handed for LARRY LLM or the global one changes no card."""
-    def test_by_its_product(self):
-        from core_engine import harness
-        import core_engine.locker as locker
-        h = harness.Harness.__new__(harness.Harness)
-        h.db, h.agents = ':memory:', pathlib.Path('/nonexistent')
-        held, locker.held = locker.held, (lambda db, key: None)
-        try:
-            cards = [{'key': 'A', 'product': 'INVOICE MAPS', 'screen': 'invoicemaps/larry/home'}, {'key': 'B', 'product': 'INVOICE MAPS', 'screen': 'invoicemaps/opns/home'},
-                     {'key': 'C', 'product': 'PACE SHIFT', 'screen': 'larry/home'}]
-            page = {'wears': {'INVOICE MAPS': 'A37089573E6F', 'PACE SHIFT': '701504D635EE', 'global': 'AAD97D32163C', 'lryllm': 'BD746833F3E6'},
-                    'arts': {'A37089573E6F': 'cat-im', '701504D635EE': 'cat-ps', 'AAD97D32163C': 'cat-pf', 'BD746833F3E6': 'cat-llm'}}
-            got = lambda: {c['key']: (c['wears'], c['art']) for c in h._dressed(cards, page)}
-            self.assertEqual(got(), {'A': ('A37089573E6F', 'cat-im'), 'B': ('A37089573E6F', 'cat-im'), 'C': ('701504D635EE', 'cat-ps')})
-            page['wears'] = {'INVOICE MAPS': 'A37089573E6F', 'PACE SHIFT': '701504D635EE'}
-            self.assertEqual({k: v[0] for k, v in got().items()}, {'A': 'A37089573E6F', 'B': 'A37089573E6F', 'C': '701504D635EE'})
-        finally:
-            locker.held = held

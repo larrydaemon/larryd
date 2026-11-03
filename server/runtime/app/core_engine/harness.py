@@ -10,14 +10,14 @@ import datetime
 import hashlib
 import json
 import logging
+import os
 import pathlib
 import re
 import sqlite3
 
-from . import fabric, gate, lanes, live, locker, look, member_records, outside, records as run_records, sandbox, view
+from . import fabric, gate, lanes, live, locker, member_records, outside, records as run_records, sandbox, view
 
 MARKETPLACE = 'marketplace'   # the one agent's locker folder: it answers the collection, hires, and places defaults
-SAMPLE_RATING = {'rating': '4.8', 'reviews': '212'}   # THE DESIGN'S SAMPLE, ON EVERY CARD, UNTIL A RATING SYSTEM EXISTS (the owner, 2026-10-07: "we can build that later, for now just keep them all the same as the design"): not a member's rating of anything; one line to take out ({} shows no strip)
 BESIDE = ('find', 'themes', 'page')   # what an ANSWER call may hand the agent beside its cards (the page's own: its controller's asks, the themes a card may wear, its loaded logos); each a JSON object
 HANDS = ('cards', 'job')      # what a RUN can be handed: the cards the member sees; the job's own inputs (read from wid, kept nowhere)
 SLOT = re.compile(r'^0(0[1-9]|1[0-5])$')   # a job's agent input slots, as wid's jobs species holds them: data_job_001 .. data_job_015
@@ -226,7 +226,7 @@ class Harness:
             self._record('call', agent_key, 'REFUSED', why, account=account, member=member)
             raise Refused(403, why)
         beside = {k: v for k, v in (beside or {}).items() if k in BESIDE and isinstance(v, dict)}   # the page's own, beside the cards; never over them
-        handed = self._dressed(lanes.assemble(cards, hired, groups, verify, own=agent_key), beside.get('page') or {})
+        handed = lanes.assemble(cards, hired, groups, verify, own=agent_key)   # the cards as data alone: the platform draws each card from its own record (the owner 2026-11-03: "larryd should just have the agent code and data")
         manifest = locker.manifest(self.agents, held['folder'])
         fabric_modules = fabric.declared(manifest)   # THE DATA FABRIC reads its modules' records on its RUN only: its page shows its own state
         wanted = {k: v for k, v in member_records.declared(manifest).items() if k not in fabric_modules}   # THE MEMBER'S RECORDS: only what the approved manifest declares, read and written through wid's own doors
@@ -266,7 +266,7 @@ class Harness:
             except Refused as no:
                 not_read = '; '.join(r for r in (not_read, 'fabric state not read') if r)
                 LOG.warning('fabric state not read for %s: %s', agent_key, no.reason)
-        state, answer, reason = sandbox.run(self.agents / held['folder'], manifest['entry'], given, self.seconds, on_start=self.on_start)
+        state, answer, reason = self._run(held['folder'], manifest, given)
         outside = _outside_gives(manifest, answer) if state == 'DONE' else ''
         if outside:
             state, reason = 'FAILED', outside
@@ -295,7 +295,6 @@ class Harness:
         if state != 'DONE':
             raise Refused(500, reason)
         answer.pop('writes', None)
-        self._looks(answer, verify)
         path = (beside.get('page') or {}).get('path')
         answer, why = view.checked(answer, path if isinstance(path, str) else '')   # the agent's own view, passed on only when it holds nothing that runs or reaches out
         if why:
@@ -331,7 +330,7 @@ class Harness:
         except Refused as no:
             LOG.warning('records not read back: %s', no.reason)
             return 'FAILED', None, f'{carried}; the records could not be read back'
-        state, answer, reason = sandbox.run(self.agents / held['folder'], manifest['entry'], given, self.seconds, on_start=self.on_start)
+        state, answer, reason = self._run(held['folder'], manifest, given)
         outside = _outside_gives(manifest, answer) if state == 'DONE' else ''
         if outside:
             return 'FAILED', None, f'{carried}; the second run: {outside}'
@@ -360,7 +359,7 @@ class Harness:
         except Refused as no:
             LOG.warning('records not read back: %s', no.reason)
             return 'FAILED', None, f'{carried}; the records could not be read back'
-        state, answer, reason = sandbox.run(self.agents / held['folder'], manifest['entry'], given, self.seconds, on_start=self.on_start)
+        state, answer, reason = self._run(held['folder'], manifest, given)
         outside = _outside_gives(manifest, answer) if state == 'DONE' else ''
         if outside:
             return 'FAILED', None, f'{carried}; the third run: {outside}'
@@ -384,41 +383,22 @@ class Harness:
             return None, 'run not asked: it carries a word the member did not send'
         return {'inputs': {declared[n]: v for n, v in asked.items() if v != ''}}, ''
 
-    def _dressed(self, cards, page):
-        """EACH CARD AS THE PAGE DRESSES IT, on this one call and kept nowhere: wears = the theme the page gives the card's product
-        (page.wears), art = that theme's picture (page.arts), developer_site = the agent's OWN manifest's card.developer_site from its
-        locker (plain https to a named host, else none). The rating is the design's one sample on every card (SAMPLE_RATING), never a card's own claim."""
-        wears = page.get('wears') if isinstance(page.get('wears'), dict) else {}
-        arts = page.get('arts') if isinstance(page.get('arts'), dict) else {}
-        out = []
-        for c in cards:
-            worn = wears.get(c.get('product'))
-            worn = worn if isinstance(worn, str) and worn.isalnum() else ''
-            art = arts.get(worn) if worn else ''   # the cat is its product's
-            # A DASHBOARD'S AGENT WEARS ITS PRODUCT'S THEME LIKE EVERY OTHER CARD (the owner, 2026-10-08, of pf Today's Meetings: "change the agent to invoice
-            # maps theme instead of positive feedback"; this replaces his 2026-10-07 word that a larry/home agent wore LARRY LLM's or Positive Feedback's)
-            held = locker.held(self.db, c['key'])
-            try:
-                site = ((locker.manifest(self.agents, held['folder']).get('card') or {}).get('developer_site') if held else '') or ''
-            except (OSError, ValueError, AttributeError):   # a manifest that cannot be read names no site
-                site = ''
-            out.append({**{k: v for k, v in c.items() if k not in ('rating', 'reviews')}, **SAMPLE_RATING, 'wears': worn, 'art': art if isinstance(art, str) else '',
-                        'developer_site': site if view.link_address(site) else ''})
-        return out
+    INTERNAL = os.environ.get('LARRYD_INTERNAL') == '1'   # LARRYD RUNTIME INTERNAL: this runtime runs on this computer for internal agents (its start says so); the external one never
+    MOST_INTERNAL_SECONDS = 3 * 3600   # an internal agent's own limit at most (a hot fix walk takes up to 3 hours)
 
-    def _looks(self, answer, verify):
-        """EACH CARD'S LOOK IS ITS OWN AGENT'S: the record of names from that agent's held manifest, only while FROST
-        approved its exact hashes (the look is in the manifest's hash), cleaned against the menu. Whatever an answering
-        agent wrote as a card's look is dropped: no agent speaks for another's card."""
-        for c in answer.get('cards') or []:
-            if not isinstance(c, dict):
-                continue
-            c.pop('look', None)
-            held = locker.held(self.db, c.get('key') or '')
-            if held and verify(c['key'])[0]:
-                record = look.clean(locker.manifest(self.agents, held['folder']).get('look'))
-                if record:
-                    c['look'] = record
+    def internal_for(self, manifest):
+        """Does this agent run with this computer's reach? Only on LARRYD RUNTIME INTERNAL, and only when its approved manifest declares
+        "internal" (the owner 2026-11-03: "all virtual sanity agents will use 1 single internal larryd run")."""
+        return self.INTERNAL and isinstance(manifest.get('internal'), dict)
+
+    def _run(self, folder, manifest, given, **kw):
+        """ONE RUN OF AN AGENT: in the sandbox (every external agent, and any agent on the external runtime); an internal agent on
+        LARRYD RUNTIME INTERNAL as this computer's own process, its time limit its manifest's own (internal.seconds, at most 3 hours)."""
+        if self.internal_for(manifest):
+            seconds = manifest['internal'].get('seconds')
+            seconds = min(int(seconds), self.MOST_INTERNAL_SECONDS) if isinstance(seconds, int) and seconds > 0 else self.seconds
+            return sandbox.run(self.agents / folder, manifest['entry'], given, seconds, on_start=self.on_start, internal=True, **kw)
+        return sandbox.run(self.agents / folder, manifest['entry'], given, self.seconds, on_start=self.on_start, **kw)
 
     def hire(self, account, scope, member, agent_key, on):
         """THE MARKETPLACE'S HIRE: only a card in the collection the member may hire; the marketplace itself can always be hired again."""
@@ -549,8 +529,14 @@ class Harness:
                 given['records'] = member_records.read(self._ask, {m: ('read',) for m in fabric_modules if m in dropped}, account, scope, member, key, custom=True, most=fabric.MOST_ROWS)
             except Refused as no:
                 return self._end(account, scope, member, key, job_key, run, 'FAILED', f'the Data Fabric could not read the platform: {no.reason}')
-        state, answer, reason = sandbox.run(self.agents / folder, manifest['entry'], given, self.seconds, on_start=self.on_start,
-                                            **({'most_bytes': fabric.MOST_ANSWER} if fabric_modules else {}))   # THE SIZE LIMIT, BASED ON 100 FIELDS: a Fabric RUN's own
+        if self.internal_for(manifest) and not fabric_modules:   # RECORDS ON A RUN, internal agents (the owner 2026-11-03): what its manifest declares, read as a CALL reads them
+            wanted = member_records.declared(manifest)
+            if wanted:
+                try:
+                    given['records'] = member_records.read(self._ask, wanted, account, scope, member, key, custom=False)
+                except Refused as no:
+                    return self._end(account, scope, member, key, job_key, run, 'FAILED', f'the records could not be read: {no.reason}')
+        state, answer, reason = self._run(folder, manifest, given, **({'most_bytes': fabric.MOST_ANSWER} if fabric_modules else {}))   # THE SIZE LIMIT, BASED ON 100 FIELDS: a Fabric RUN's own
         if state != 'DONE':
             return self._end(account, scope, member, key, job_key, run, 'FAILED', reason)
         outside = _outside_gives(manifest, answer)

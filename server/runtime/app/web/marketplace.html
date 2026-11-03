@@ -16,9 +16,9 @@
 </div>
 {% else %}
 <div class="mk-view" data-answer="{{ A.agent_key }}">{% if A.view %}<template shadowrootmode="open"><link rel="stylesheet" href="/marketplace/view.css">{{ A.view.html|safe }}</template>{% else %}<div class="caption mk-verdict">The marketplace's view was not shown (it answered none, or the runtime's check refused it).</div>{% endif %}</div>
-{# THE AGENT'S OWN VIEW (the owner, 2026-10-07): the marketplace draws its panel and cards itself, markup and sheet in its
-   own folder; the runtime checked it; this page only holds it in one shadow root, exactly as the platform does. A card's
-   hire button (data-hire) is turned into this page's own hire post by view.js. #}
+{# THE AGENT'S OWN VIEW: its panel, its controller, where each card stands; the runtime checked it; this page only holds it in one
+   shadow root. The cards themselves are the platform's (themes/embedded/agent_cards), put there by the platform's host alone: this
+   shelf shows where they stand (the owner 2026-11-03: the card "100% fully encapsulated in our themes folder with zero outside"). #}
 {% if no %}<div class="caption mk-verdict">{{ no }}</div>{% endif %}
 <form method="post" action="/marketplace/hire" class="mk-form" id="mk-hire" hidden><input type="hidden" name="token" value="{{ token }}"><input type="hidden" name="key" value=""><input type="hidden" name="value" value=""></form>
 <section class="mk-shelf">
@@ -28,7 +28,7 @@
   <ul>{% for name, why in hidden %}<li>{{ name }}: {{ why }}</li>{% endfor %}</ul>
  </div>
  {% endif %}
- <p class="shelf-note">This is your own LARRYD's marketplace, on this computer: every agent it holds, as a card with its hire toggle. The platform shows the same cards in its own look and in the member's language; the number and the art are given at approval.</p>
+ <p class="shelf-note">This is your own LARRYD's marketplace, on this computer: every agent it holds, in order. The cards are drawn by the platform alone, in its own look and in the member's language; the number and the art are given at approval.</p>
 </section>
 {% endif %}
 </div>

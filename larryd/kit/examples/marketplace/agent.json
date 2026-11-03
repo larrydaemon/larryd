@@ -42,11 +42,5 @@
     "data_sent": ""
   },
   "skills": [],
-  "knowledge": [],
-  "look": {
-    "accent": "active-color-01",
-    "radius": "step-5",
-    "space": "step-3",
-    "effect": "crt"
-  }
+  "knowledge": []
 }

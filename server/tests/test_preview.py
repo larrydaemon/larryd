@@ -66,8 +66,7 @@ class DeveloperMarketplace(unittest.TestCase):
 
     def test_the_first_visit_places_the_marketplace_and_the_page_is_it_never_a_card_inside_itself(self):
         html = self.page()   # the marketplace is the page (the owner, 2026-10-06): never a card inside itself
-        self.assertIn('THE AGENT MARKETPLACE', html)
-        self.assertNotIn('total in network', html)   # the platform's controller says the totals (the final card)
+        self.assertIn('<div class="mk-grid"></div>', html)   # the marketplace: its grid, empty (no controller without the platform's links)
         self.assertNotIn(f'data-agent="{preview.MARKETPLACE_KEY}"', html)
         self.assertNotIn('No. 000', html)
         j = self.client.get('/marketplace.json').get_json()
@@ -78,26 +77,23 @@ class DeveloperMarketplace(unittest.TestCase):
         self.assertEqual(r.status_code, 201, r.get_data(as_text=True))
         self.assertEqual(r.get_json()['held']['name'], 'Scratch agent')
         html = self.page()
-        for said in ('Scratch agent', 'Says hi.', 'Invoice Maps · CONTACTS', 'Developer · Scratch Dev', '<span class="mk-annotation mk-kind">Agent</span>',
-                     f'data-agent="{KEY_A}" data-on="0"'):
-            self.assertIn(said, html)
-        for never in ('lives on', 'Needs the', 'Sends data to'):   # (this agent sends nothing out)   # the card carries no line the owner did not design
+        self.assertIn(f'<div data-inject="agent_card" data-agent="{KEY_A}" data-size="full"></div>', html)   # where its card stands: the platform draws it
+        self.assertEqual(html.count('data-inject="agent_card"'), 1)
+        for never in ('Says hi.', 'Scratch Dev', 'agent-card'):   # nothing of the card drawn in LARRYD
             self.assertNotIn(never, html)
-        self.assertEqual(html.count('<article class="agent-card'), 1)
         self.assertNotIn(f'data-agent="{preview.MARKETPLACE_KEY}"', html)
         self.assertEqual(self.toggle(html, KEY_A, True), '/marketplace')
         j = self.client.get('/marketplace.json').get_json()
         self.assertEqual(j['hired'], 1)
         self.assertTrue(next(c for c in j['cards'] if c['key'] == KEY_A)['hired'])
-        self.assertIn(f'data-agent="{KEY_A}" data-on="1"', self.page())
         self.toggle(self.page(), KEY_A, False)
         self.assertEqual(self.client.get('/marketplace.json').get_json()['hired'], 0)
 
     def test_the_same_agent_placed_again_replaces_itself(self):
         self.place(KEY_A, _agent('Scratch agent', GOOD_CARD))
-        self.place(KEY_A, _agent('Scratch agent', {**GOOD_CARD, 'pitch': 'Says hello now.'}))
+        self.place(KEY_A, _agent('Scratch agent again', GOOD_CARD))
         j = self.client.get('/marketplace.json').get_json()
-        self.assertEqual([c['pitch'] for c in j['cards'] if c['key'] == KEY_A], ['Says hello now.'])
+        self.assertEqual([c['name'] for c in j['cards'] if c['key'] == KEY_A], ['Scratch agent again'])
         self.assertEqual(j['total'], 1)
 
     def test_a_card_the_gate_cannot_show_is_listed_with_why(self):
@@ -116,7 +112,7 @@ class DeveloperMarketplace(unittest.TestCase):
         html = self.page()
         self.assertNotIn('Sends data to', html)   # the owner, 2026-10-09: "delete this from the card. we do not add extra info on cards" (said under the agent's block and in the terms)
         card = next(c for c in self.client.get('/marketplace.json').get_json()['cards'] if c['key'] == KEY_A)
-        self.assertEqual((card['sends_to'], card['data_sent']), ('An outside model', 'the contact\'s city'))
+        self.assertNotIn('sends_to', card)   # the marketplace answers the cards as data alone: what an agent sends is the platform's record, said there
 
     def test_a_stale_form_is_told_so_and_nothing_changes(self):
         self.place(KEY_A, _agent('Scratch agent', GOOD_CARD))
@@ -149,7 +145,7 @@ class DeveloperMarketplace(unittest.TestCase):
         self.assertIn('?no=', self.toggle(html, preview.MARKETPLACE_KEY, False))   # refused, and said
         r = self.client.get('/marketplace')
         self.assertEqual(r.status_code, 200)
-        self.assertEqual(r.get_data(as_text=True).count('<article class="agent-card'), 1)
+        self.assertEqual(r.get_data(as_text=True).count('data-inject="agent_card"'), 1)
 
 
 class LocalAnswers(unittest.TestCase):

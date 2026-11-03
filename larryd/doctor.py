@@ -11,7 +11,7 @@ import os
 import sys
 from dataclasses import asdict, dataclass
 
-from . import knowledge, look, shape, sheet, skills
+from . import knowledge, shape, sheet, skills
 
 FIX = '`larryd doctor --fix`, or larryd_doctor with "fix": true,'   # every todo that asks for the fixer names both doors
 CHECKS = ('the project', 'the manifest', 'the entry', 'no network', 'no secret', 'the shape', 'the skills', 'the knowledge')
@@ -50,7 +50,7 @@ SECRET_TEXT = (
     (re.compile(r'\bAIza[0-9A-Za-z_-]{35}\b'), 'a Google API key'),
     (re.compile(r'(?i)\b\w*(secret|password|passwd|token|api_?key|private_?key)\w*["\']?\s*[:=]\s*["\'][^"\'\s]{8,}["\']'), 'a secret written into the code'),
 )
-KINDS = {'.py', '.json', '.txt', '.md', '.csv'}   # never .css: an agent ships no sheet, its look is a record of names (look.py)
+KINDS = {'.py', '.json', '.txt', '.md', '.csv'}   # never .css: an agent ships no sheet, the platform draws its card from the card's data
 DESIGN = 'design'   # where --fix keeps a sheet written while designing, beside agent/, never in it
 
 
@@ -115,9 +115,6 @@ def _manifest(root, f):
             f.add(c, where, f'"{k}" is empty or not text', f'set "{k}" to {shape.FIELDS[k]}')
     if 'entry' in card and not (text('entry') and re.fullmatch(r'[A-Za-z_]\w*\.py', card['entry'])):
         f.add(c, where, '"entry" is not a .py file name inside agent/', 'set "entry" to the file name only, e.g. "agent.py" (no folder, no path)')
-    if 'look' in card:
-        for wrong, todo in look.check(card['look']):
-            f.add(c, where, wrong, todo)
     if 'does' in card and not (names('does') and card['does']):
         f.add(c, where, '"does" is not a list of function names', 'set "does" to the names of the functions that answer a job, e.g. ["answer"]')
     does = set(card['does']) if names('does') else set()
@@ -333,8 +330,8 @@ def _shape(root, f):
             f.add(c, where, 'a hidden file or folder is in the agent', 'remove it from agent/; everything the agent is must be visible')
         elif path.is_file():
             if path.suffix.lower() == '.css':
-                f.add(c, where, 'agents ship no CSS: the card\'s look is the "look" record in agent.json',
-                      f'run {FIX[:-1]}: it turns this sheet into the look record (the nearest names) and moves it to {DESIGN}/{path.name}')
+                f.add(c, where, 'agents ship no CSS: the platform draws the card itself, from the card\'s data in agent.json',
+                      f'take it out of agent/, or run {FIX[:-1]}: it moves it to {DESIGN}/{path.name}')
             elif path.suffix not in KINDS:
                 f.add(c, where, f'"{path.suffix or path.name}" is not a kind of file an agent holds',
                       f'keep only {", ".join(sorted(KINDS))} files in agent/; anything else stays outside it')
@@ -402,11 +399,6 @@ def _card(root, card, f):
         if text(k) and facts[k].strip() and facts[k].strip().upper() not in allowed:
             named = [f'{v} ({means[k][v]})' if k in means else v for v in allowed]
             f.add(c, where, f'card "{k}" is "{facts[k]}", not one the platform knows', f'use one of: {", ".join(named)}')
-    effect = lists['class'].get(facts['class'].strip().upper()) if text('class') else None
-    held = card.get('look', {}).get('effect') if isinstance(card.get('look'), dict) else None
-    if effect and held and held != effect:
-        f.add(c, where, f'look "effect" is "{held}", but the class {facts["class"]} draws {effect}',
-              f'set look "effect" to "{effect}" (the class picks the effect), or run {FIX[:-1]}')
     if text('pitch') and len(facts['pitch']) > shape.MOST_PITCH:
         f.add(c, where, f'card "pitch" is longer than {shape.MOST_PITCH} characters', 'say it in one line; the card has room for one')
     price = facts.get('price')
@@ -730,88 +722,55 @@ def as_json(problems):
                                             'problems': [asdict(p) for p in problems if p.check == n]} for n in CHECKS + tuple(sorted({p.check for p in problems} - set(CHECKS)))]}
 
 
-def _sheets(agent):
-    return [p for p in _files(agent) if p.suffix == '.css' and p.is_file() and not p.is_symlink()]
-
-
-def conversions(root):
-    """-> [(verb, str)]: what `larryd doctor --fix` will make of a sheet in agent/, every declaration said once:
-    ('CONVERT', the name it becomes) or ('DROP', why it becomes none)."""
-    notes = []
-    for path in _sheets(pathlib.Path(root).resolve() / shape.AGENT):
-        try:
-            _look, said, dropped = look.from_sheet(path.read_text())
-        except UnicodeDecodeError:
-            continue
-        notes += [('CONVERT', f'{path.name}: {n}') for n in said] + [('DROP', f'{path.name}: {n}') for n in dropped]
-    if notes:   # the effect is never read from a sheet: the card's class picks it
-        try:
-            klass = json.loads((pathlib.Path(root).resolve() / shape.AGENT / shape.MANIFEST).read_text()).get('card', {}).get('class') or ''
-        except (OSError, ValueError, AttributeError):
-            klass = ''
-        effect = sheet.catalog()['card']['class'].get(str(klass).strip().upper())
-        notes.append(('CONVERT', f'effect -> {effect} (the class {klass} picks it)' if effect else
-                      'effect: the card\'s class picks it (MARK I crt, MARK II wellness, MARK III glitch)'))
-    return notes
-
-
-def fix_look(root):
-    """A SHEET WRITTEN WHILE DESIGNING BECOMES THE LOOK RECORD: each .css in agent/ is converted to the nearest names
-    (look.from_sheet), merged into agent.json's "look" (the sheet's names win), and moved out of agent/ to design/ (the
-    manifest kept in .larryd/doctor_backup/ first). An old "style" field goes. Never written through a link.
-    -> [str]: what changed. --fix, place and submit all run it: CSS is never a reason to refuse."""
+def fix_sheets(root):
+    """A SHEET WRITTEN WHILE DESIGNING LEAVES THE AGENT (the owner 2026-11-03: "larryd should just have the agent code and data to populate
+    the database and our endpoint dynamically generates the card from dynamic data / no other info from larryd"): an old "look" or "style"
+    field leaves agent.json (the manifest kept in .larryd/doctor_backup/ first), then each .css in agent/ is moved to design/ (a previous
+    one there kept in .larryd/doctor_backup/ first). Every backup is made before anything moves: a backup refused changes nothing. Never
+    written through a link. -> [str]: what changed. --fix, place and submit all run it: CSS is never a reason to refuse."""
     root = pathlib.Path(os.path.realpath(root))
     agent, changed = root / shape.AGENT, []
     if not _inside(root, agent):
         return [f'{agent}: a link or outside the project: nothing fixed']
-    manifest = agent / shape.MANIFEST
-    try:
-        data = json.loads(manifest.read_text()) if manifest.is_file() and _inside(root, manifest) else None
-    except (ValueError, UnicodeDecodeError):
-        data = None
-    if not isinstance(data, dict):
-        return changed
-    record, moved = dict(data.get('look') or {}) if isinstance(data.get('look'), dict) else {}, []
+    moved = []
     for path in _files(agent):
         if path.suffix.lower() != '.css':
             continue
         if not _inside(root, path) or not path.is_file():
             changed.append(f'{path.relative_to(root)}: a link, left as it is (not moved)')
             continue
-        try:
-            found, _said, _dropped = look.from_sheet(path.read_text())
-        except UnicodeDecodeError:
-            continue
-        text = {**(record.get('text') or {}), **found.pop('text', {})}
-        record.update(found)
-        if text:
-            record['text'] = text
         moved.append(path)
-    if not moved and 'style' not in data:
-        return changed
     design = root / DESIGN
     if moved and (design.is_symlink() or (design.exists() and not design.is_dir())):
         raise PermissionError(f'{design} is a link or not a folder: nothing changed')
-    _backup(root, manifest)
-    data.pop('style', None)
-    if record:
-        data['look'] = look.clean(record)
-    _write(root, manifest, json.dumps(data, indent=2) + '\n')
+    manifest = agent / shape.MANIFEST
+    try:
+        data = json.loads(manifest.read_text()) if manifest.is_file() and _inside(root, manifest) else None
+    except (ValueError, UnicodeDecodeError):
+        data = None
+    old = [k for k in ('look', 'style') if isinstance(data, dict) and k in data]
+    if old:
+        _backup(root, manifest)
+    for path in moved:   # the previous design sheets kept first, every one, before any sheet moves
+        target = design / path.name
+        if target.is_file() and not target.is_symlink():
+            kept = root / '.larryd' / 'doctor_backup' / DESIGN
+            for f in (root / '.larryd', root / '.larryd' / 'doctor_backup', kept):
+                if f.is_symlink() or (f.exists() and not f.is_dir()):
+                    raise PermissionError(f'{f} is a link or not a folder: nothing moved')
+                f.mkdir(mode=0o700, exist_ok=True)
+            _write(root, kept / path.name, target.read_text())
+            changed.append(f'{DESIGN}/{path.name}: the previous design sheet kept in .larryd/doctor_backup/{DESIGN}/{path.name}')
+    if old:
+        for k in old:
+            data.pop(k)
+        _write(root, manifest, json.dumps(data, indent=2) + '\n')
+        changed.append(f'{manifest.relative_to(root)}: {" and ".join(chr(34) + k + chr(34) for k in old)} removed (the platform draws the card from its data)')
     if moved:
         design.mkdir(exist_ok=True)
     for path in moved:
-        target = design / path.name
-        if target.is_file() and not target.is_symlink():   # the previous design sheet is kept too, never lost to the new one
-            kept = root / '.larryd' / 'doctor_backup' / DESIGN
-            if kept.is_symlink() or (kept.exists() and not kept.is_dir()):
-                raise PermissionError(f'{kept} is a link or not a folder: nothing moved')
-            kept.mkdir(mode=0o700, exist_ok=True)
-            _write(root, kept / path.name, target.read_text())
-            changed.append(f'{DESIGN}/{path.name}: the previous design sheet kept in .larryd/doctor_backup/{DESIGN}/{path.name}')
-        os.replace(path, target)
-        changed.append(f'{path.relative_to(root)}: turned into the look record in agent.json and moved to {DESIGN}/{path.name} (agents ship no CSS)')
-    if 'look' in data:
-        changed.append(f'{manifest.relative_to(root)}: "look": {json.dumps(data["look"])}')
+        os.replace(path, design / path.name)
+        changed.append(f'{path.relative_to(root)}: moved to {DESIGN}/{path.name} (agents ship no CSS: the platform draws the card)')
     return changed
 
 
@@ -858,13 +817,13 @@ def _backup(root, path):
 
 
 def fix(root):
-    """`larryd doctor --fix` (the owner, 2026-10-06: "instead of just doctor it fixes it too"): rewrites the developer's
-    design sheet into the look record (fix_look, look.py's menu) and fills the card's missing facts with honest defaults it names;
+    """`larryd doctor --fix` (the owner, 2026-10-06: "instead of just doctor it fixes it too"): moves a design sheet out of the agent
+    (fix_sheets) and fills the card's missing facts with honest defaults it names;
     the originals are kept in .larryd/doctor_backup/. -> [str]: what it changed (and what it would not touch: a link, a
     path outside the project). Deterministic: the same files give the same result. Never writes through a link."""
     root = pathlib.Path(os.path.realpath(root))
     agent = root / shape.AGENT
-    changed = fix_look(root)
+    changed = fix_sheets(root)
     if not _inside(root, agent):
         return changed
     manifest = agent / shape.MANIFEST
@@ -879,13 +838,6 @@ def fix(root):
                         'product': 'LARRYD', 'module': 'Agents', 'developer': 'Independent developer', 'sends_to': '', 'data_sent': '',
                         'pitch': f"What {data.get('name') or 'this agent'} does for the member, in one line."}
             missing = [k for k in defaults if k not in card]
-            effect = sheet.catalog()['card']['class'].get(str(card.get('class') or defaults['class']).strip().upper())
-            record = data.get('look') if isinstance(data.get('look'), dict) else {}
-            if effect and record.get('effect') != effect:   # the class picks the effect (Mark I crt, II wellness, III glitch)
-                _backup(root, manifest)
-                data['look'] = {**record, 'effect': effect}
-                _write(root, manifest, json.dumps(data, indent=2) + '\n')
-                changed.append(f'{manifest.relative_to(root)}: look "effect" = "{effect}", from the class {card.get("class") or defaults["class"]}')
             if missing:
                 _backup(root, manifest)
                 for k in missing:

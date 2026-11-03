@@ -1,7 +1,7 @@
 {
   "name": "THE AGENT MARKETPLACE",
   "entry": "agent.py",
-  "about": "The collection: every card the harness shows (LIVE, a screen, a whole mTok rate, in the locker and verified), laid out as the original's cards, with the member's hired state; its RUN delivers the collection report.",
+  "about": "The marketplace: a controller at the top and a grid of cards below (each card the platform's own, put where the grid says); its RUN delivers the collection report.",
   "does": [
     "collection",
     "report"
@@ -29,12 +29,6 @@
     "view",
     "delivery"
   ],
-  "look": {
-    "accent": "active-color-01",
-    "radius": "step-5",
-    "space": "step-3",
-    "effect": "crt"
-  },
   "card": {
     "class": "MARK I AGENT (NORMAL)",
     "pitch": "Every agent of the platform as a card: hire one with its toggle.",

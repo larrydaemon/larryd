@@ -66,16 +66,15 @@ def test_help_ends_with_where_to_start(capsys):
 GREY = '.mk-card { border: 1px solid #8a8a8a; border-radius: 20px }\n.mk-foot { font-size: 0.85rem; letter-spacing: 0.08em }\n'
 
 
-def test_plain_doctor_says_will_convert_and_changes_nothing(tmp_path, capsys):
+def test_plain_doctor_fails_a_shipped_sheet_and_changes_nothing(tmp_path, capsys):
     root = made(tmp_path)
     css = root / 'agent' / 'card.css'
     css.write_text(GREY)
     before = (root / 'agent' / 'agent.json').read_text()
     assert cli.main(['doctor', str(root)]) == 1   # a shipped sheet fails the shape
     out = capsys.readouterr().out
-    assert css.read_text() == GREY and (root / 'agent' / 'agent.json').read_text() == before and 'CONVERTED' not in out
-    assert 'WILL CONVERT card.css: .mk-card: border-radius 20px -> radius step-6 (22px, the nearest step)' in out
-    assert 'run `larryd doctor --fix`, or larryd_doctor with "fix": true to write these into the look record' in out
+    assert css.read_text() == GREY and (root / 'agent' / 'agent.json').read_text() == before
+    assert 'agents ship no CSS: the platform draws the card itself' in out and 'it moves it to design/card.css' in out
 
 
 def test_fix_says_what_it_did_then_the_agent_is_clean(tmp_path, capsys):
@@ -83,36 +82,12 @@ def test_fix_says_what_it_did_then_the_agent_is_clean(tmp_path, capsys):
     (root / 'agent' / 'card.css').write_text(GREY)
     assert cli.main(['doctor', '--fix', str(root)]) == 0
     out = capsys.readouterr().out
-    assert 'CONVERTED card.css: .mk-card: border-radius 20px -> radius step-6' in out and 'moved to design/card.css' in out
-    assert 'WILL CONVERT' not in out and out.rstrip().endswith('agent/ holds no CSS: the look record is in agent.json, nothing left to convert')
+    assert 'FIXED agent/card.css: moved to design/card.css (agents ship no CSS: the platform draws the card)' in out
+    assert (root / 'design' / 'card.css').read_text() == GREY and not (root / 'agent' / 'card.css').exists()
     assert cli.main(['doctor', str(root)]) == 0
-    assert 'CONVERT' not in capsys.readouterr().out
 
 
 # 6. the nearest name, as the eye sees it, and the menu written down from the one fixed list
-def test_roles_by_what_the_eye_sees_case_a_cost_purpose_roles_only_when_asked():
-    cat = sheet.catalog()
-    assert sheet.nearest_role({'font-size': '40px', 'font-weight': '900'}, cat, '.mk-name') in ('heading', 'title')   # a big black name stays a heading
-    assert sheet.nearest_role({'font-size': '30px', 'font-weight': '800', 'text-transform': 'uppercase'}, cat, '.mk-name') == 'title'
-    assert sheet.nearest_role({'font-size': '15px', 'font-style': 'italic'}, cat, '.mk-pitch') == 'body'
-    assert sheet.nearest_role({'font-size': '12px', 'font-weight': '400'}, cat, '.mk-price') in ('caption', 'body')
-    assert sheet.nearest_role({'font-size': '11px', 'font-weight': '400', 'text-transform': 'uppercase'}, cat, '.mk-price') == 'annotation'   # nav is as near; a price is not navigation
-    assert sheet.nearest_role({'font-size': '11px', 'font-weight': '400', 'text-transform': 'uppercase'}, cat, '.mk-nav') == 'nav'   # it says it is navigation
-    assert sheet.nearest_role({'font-size': '14px', 'font-weight': '500'}, cat, 'a.more') == 'link'
-    assert '(chosen only for a selector naming nav, menu, navigation)' in sheet.table()
-
-
-def test_the_menu_is_in_the_guide_and_every_project(tmp_path):
-    table = sheet.table()
-    cat = sheet.catalog()
-    for role in cat['roles']:
-        assert f'| {role} |' in table
-    for name in cat['colours']:
-        assert re.search(rf'\b{name.rsplit("-", 1)[1]}\b', table), name
-    for step in cat['steps']:
-        assert step in table
-    assert table in (PACKAGE / 'GUIDE.md').read_text()
-    assert table in (made(tmp_path) / 'CLAUDE.md').read_text()
 
 
 # 7. the project's tools start with no venv on PATH
@@ -136,12 +111,12 @@ def test_no_internal_word_in_the_kit_the_guide_or_a_made_project(tmp_path):
 
 
 # 9. what ships is plain: agent/ holds no CSS; the look is in the manifest, and the guide says so
-def test_the_example_ships_a_look_record_and_no_sheet(tmp_path):
+def test_the_example_ships_no_look_and_no_sheet(tmp_path):
     root = made(tmp_path)
     manifest = json.loads((root / 'agent' / 'agent.json').read_text())
-    assert manifest['look'] == {'accent': 'active-color-01', 'radius': 'step-5', 'space': 'step-3', 'effect': 'crt'} and 'style' not in manifest
-    assert not list((root / 'agent').glob('*.css')) and doctor.check(root) == []
-    assert 'ships no CSS' in (root / 'CLAUDE.md').read_text() and 'ships no CSS' in (PACKAGE / 'GUIDE.md').read_text()
+    assert 'look' not in manifest and 'style' not in manifest   # the platform draws the card from its data (the owner 2026-11-03)
+    assert not list((root / 'agent').glob('*.css')) and not (root / 'design').exists() and doctor.check(root) == []
+    assert 'An agent ships no CSS.' in (root / 'CLAUDE.md').read_text() and 'The agent ships no\nlook and no CSS' in (root / 'CLAUDE.md').read_text() and 'ships no look and no CSS' in (PACKAGE / 'GUIDE.md').read_text()
 
 
 def test_a_plain_agent_needs_no_look(tmp_path):
@@ -161,13 +136,6 @@ def test_the_guide_names_every_tool_the_server_serves():
     assert ', '.join(mcp.TOOLS) + '.' in (PACKAGE / 'GUIDE.md').read_text()
 
 
-def test_a_tie_on_the_scale_rounds_down_and_says_so():
-    from larryd import look
-    record, said, _ = look.from_sheet('.mk-card { padding: 10px }')
-    assert record == {'space': 'step-3'} and said[0].endswith('(8px, the nearest step; tie: rounds down)')
-    assert 'a tie rounds down' in sheet.table()
-
-
 def test_install_leads_with_the_line_that_works_today():
     text = (PACKAGE / 'GUIDE.md').read_text()
     first = text.split('## 1. Install\n', 1)[1].splitlines()[0]
@@ -175,25 +143,15 @@ def test_install_leads_with_the_line_that_works_today():
 
 
 # rc11's rerun: what a design sheet loses is said in both modes; the design sheet it replaces is kept
-def test_doctor_says_will_drop_and_fix_says_dropped(tmp_path, capsys):
-    root = made(tmp_path)
-    sheet_text = '.mk-card { border: 1px solid #8a8a8a; gap: 12px }\n.mk-name { color: #ffb000 }\n'
-    (root / 'agent' / 'card.css').write_text(sheet_text)
-    cli.main(['doctor', str(root)])
-    out = capsys.readouterr().out
-    assert 'WILL DROP card.css: .mk-name: color -> no name on the menu (colour is card-wide' in out
-    assert 'WILL DROP card.css: .mk-card: gap -> no name on the menu' in out
-    assert cli.main(['doctor', '--fix', str(root)]) == 0
-    out = capsys.readouterr().out
-    assert 'DROPPED card.css: .mk-name: color -> no name on the menu' in out and 'WILL DROP' not in out
 
 
 def test_fix_keeps_the_design_sheet_it_replaces(tmp_path, capsys):
     root = made(tmp_path)
-    before = (root / 'design' / 'card.css').read_text()
+    (root / 'design').mkdir()
+    (root / 'design' / 'card.css').write_text('.mk-card { border-radius: 2px }\n')
     (root / 'agent' / 'card.css').write_text('.mk-card { border-radius: 4px }\n')
     changed = doctor.fix(root)
-    assert (root / '.larryd' / 'doctor_backup' / 'design' / 'card.css').read_text() == before
+    assert (root / '.larryd' / 'doctor_backup' / 'design' / 'card.css').read_text() == '.mk-card { border-radius: 2px }\n'
     assert any('the previous design sheet kept' in c for c in changed)
     assert (root / 'design' / 'card.css').read_text() == '.mk-card { border-radius: 4px }\n'
     (root / 'agent' / 'card.css').write_text('.mk-card { border-radius: 8px }\n')
@@ -216,22 +174,6 @@ def test_no_short_line_inside_a_paragraph_of_the_doctor_section_and_the_menu():
         if any(line.startswith(('    ', '|', '#', '-')) for line in lines):
             continue
         assert all(len(line) >= 40 for line in lines[:-1]), lines
-
-
-def test_a_part_s_rules_cascade_then_map_once():
-    from larryd import look
-    record, said, dropped = look.from_sheet('.mk-name { font-family: Inter, sans-serif; font-size: 30px; font-weight: 800; text-transform: uppercase }\n'
-                                            '.mk-name { font-size: 40px; font-weight: 900 }\n')
-    assert record == {'text': {'name': 'heading'}} and dropped == []   # 40px, 900, uppercase: what the browser draws
-    assert len(said) == 1 and said[0].startswith('.mk-name (2 rules merged as the browser cascades them, the later wins): '
-                                                 'font-family: Inter, sans-serif; text-transform: uppercase; font-size: 40px; font-weight: 900 -> text name: the heading role')
-
-
-def test_the_unwritten_case_clause_only_where_no_case_was_written():
-    from larryd import look
-    _r, said, _d = look.from_sheet('.mk-name { font-size: 30px; text-transform: uppercase }\n.mk-pitch { font-size: 15px }\n')
-    assert 'unwritten case' not in said[0] and 'a different case costing 6px;' in said[0]
-    assert '(an unwritten case is none, as in CSS)' in said[1]
 
 
 def test_the_blank_ships_a_sample_with_the_job_s_own_inputs(tmp_path):
@@ -270,19 +212,6 @@ def test_claude_md_names_this_larryd_by_its_full_path(tmp_path):
     assert pathlib.Path(exe.split()[0]).is_absolute()
     text = (root / 'CLAUDE.md').read_text()
     assert f"This project's larryd: `{exe}`" in text and f'- `{exe} doctor`:' in text and f'- `{exe} run`:' in text
-
-
-def test_every_named_colour_is_read_and_the_accent_is_never_claimed_unwritten():
-    """Z3: tomato (and every CSS named colour, rgb(), hsl()) is a colour; a drop line names the accent only when one was written."""
-    from larryd import look
-    record, said, dropped = look.from_sheet('.mk-card { border: 1px solid tomato; background: white }')
-    assert record == {'accent': 'active-color-01'} and said[0].startswith('.mk-card: border tomato -> accent active-color-01')
-    assert dropped == ['.mk-card: background -> no name on the menu (one accent per card: .mk-card border tomato became it; '
-                       'the template draws the border and the ground)']
-    assert len(sheet.NAMED) == 148 and all(look.from_sheet(f'.mk-card {{ color: {n} }}')[0].get('accent') for n in sheet.NAMED)
-    assert look.from_sheet('.mk-card { color: rgb(255 99 71) }')[0]['accent'] and look.from_sheet('.mk-card { color: hsl(9, 100%, 64%) }')[0]['accent']
-    record, said, dropped = look.from_sheet('.mk-card { border: 1px solid transparent }')
-    assert record == {} and 'became it' not in dropped[0] and 'transparent and currentColor are not colours' in dropped[0]
 
 
 def test_plain_doctor_warns_of_the_blank_s_placeholders(tmp_path, capsys):

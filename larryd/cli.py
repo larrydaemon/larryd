@@ -21,7 +21,7 @@ def parser():
     d = sub.add_parser('doctor', help='check the agent before submission')
     d.add_argument('path', nargs='?', default='.', help='the agent project (default: here)')
     d.add_argument('--json', action='store_true', help='the result as JSON')
-    d.add_argument('--fix', action='store_true', help='turn a design sheet (agent/card.css) into the look record by the nearest names, fill the card (originals kept in .larryd/doctor_backup/), then check again')
+    d.add_argument('--fix', action='store_true', help='move a design sheet out of agent/ to design/, fill the card\'s missing facts (originals kept in .larryd/doctor_backup/), then check again')
     d.add_argument('--badge', action='store_true', help=f'also write {doctor.BADGE} beside agent/: PASS or FAIL, the day, the checks\' version, for your README')
     r = sub.add_parser('run', help='run the agent here, the way LARRYD runs it, with a sample job')
     r.add_argument('path', nargs='?', default='.', help='the agent project (default: here)')
@@ -68,10 +68,7 @@ def main(argv=None):
         print(f'made {root}/ · read {root}/CLAUDE.md first, then open it with Claude Code: cd {root} && claude')
         return 0
     if args.command == 'doctor':
-        notes = [] if args.json else doctor.conversions(args.path)   # what a design sheet maps to: said before --fix writes it, so the author learns it
         if args.fix:
-            for verb, note in notes:
-                print(f'{"CONVERTED" if verb == "CONVERT" else "DROPPED"} {note}')
             for change in doctor.fix(args.path):
                 print(f'FIXED {change}')
         problems = doctor.check(args.path)
@@ -79,13 +76,6 @@ def main(argv=None):
         if not args.json:
             for warn in doctor.placeholders(args.path):
                 print(f'WARN {warn} (larryd submit refuses it until then)')
-            left = doctor.conversions(args.path)   # read from the files as they are now: after --fix, agent/ holds no sheet
-            for verb, note in left:
-                print(f'WILL {verb} {note}')
-            if left:
-                print(f'run {doctor.FIX[:-1]} to write these into the look record (the sheet moves to design/)')
-            elif args.fix and notes:
-                print('agent/ holds no CSS: the look record is in agent.json, nothing left to convert')
         if args.badge:
             root = pathlib.Path(args.path).resolve()
             if root.is_dir():

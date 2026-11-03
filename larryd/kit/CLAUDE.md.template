@@ -36,20 +36,9 @@ The platform's own fixed lists; the doctor checks each one:
 
 {card}
 
-## The card's look (`"look"` in `agent/agent.json`, optional)
-The card's look is a small record of NAMES, never CSS: the platform's one card template draws every card and points
-each name at the live theme, so the card follows the brand and light or dark by itself.
-
-    "look": {{"accent": "active-color-04", "radius": "step-2", "space": "step-3", "effect": "wellness",
-             "text": {{"name": "title", "price": "callout"}}}}
-
-You may design in CSS: write `agent/card.css` normally, then run `larryd doctor --fix`. It maps each value to the
-nearest name below (the card's colour as the eye sees it, its radius and padding to the nearest step, type on a part to
-the nearest role; never the effect, which the card's class picks), says each mapping, says every value it drops and why (a part's colour, gaps, layout, hover, shadows),
-writes the look record, and moves the sheet to `design/card.css`. Plain `larryd doctor` fails while a sheet is in
-`agent/` and says what it WILL CONVERT and WILL DROP. The menu, a fixed list:
-
-{sheet}
+## The card itself
+The platform draws every card from the facts above, in its own look, in every brand, mode and size. The agent ships no
+look and no CSS: a sheet in `agent/` fails the doctor, and `larryd doctor --fix` moves it out to `design/`.
 
 ## The tools
 {tools}

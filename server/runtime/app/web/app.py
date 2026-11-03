@@ -25,7 +25,7 @@ from werkzeug.exceptions import HTTPException
 APP = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(APP))
 
-from core_engine import callers, harness as lanes_harness, intake, jobs as long_runs, live, locker, lockers as bucket_lockers, look as card_look, platform, preview, records as run_records, sandbox, signing, slot as one_slot, store, warmup  # noqa: E402
+from core_engine import callers, harness as lanes_harness, intake, jobs as long_runs, live, locker, lockers as bucket_lockers, platform, preview, records as run_records, sandbox, signing, slot as one_slot, store, warmup  # noqa: E402
 
 CONFIG = json.loads((APP / 'schemas' / 'runtime.json').read_text())
 INSTANCE = pathlib.Path(os.environ['LARRYD_INSTANCE']) if os.environ.get('LARRYD_INSTANCE') else APP.parent / 'instance'   # the daemon names it
@@ -82,10 +82,13 @@ def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, deve
     harnesses = {}
     if keys is not None:   # one harness per slot: its calls go back to THAT slot, signed with the runtime's key for it
         slots = CONFIG['slots']
+        here = pathlib.Path(instance) / 'slots.json'   # THE RUNTIME ON THIS COMPUTER (LARRYD Runtime (internal), the owner 2026-11-03: "the localhost one is on the computer localhost here"): its instance names where each caller's offices answer, {caller: {office: address}}
+        local = json.loads(here.read_text()) if here.is_file() else {}
         for caller in cloud['outbound'].slots():
             base = slots.get(caller, '')
+            offices = local[caller] if isinstance(local.get(caller), dict) else {o: f'{base}/{o}' for o in slots['offices']} if base else {}
             harnesses[caller] = lanes_harness.Harness(
-                db, locker_dir, platform.Client({o: f'{base}/{o}' for o in slots['offices']} if base else {}, '',
+                db, locker_dir, platform.Client(offices, '',
                                                 outbound=cloud['outbound'], slot=caller, retry_seconds=retry_seconds),
                 CONFIG['run']['seconds'], records=records, caller=caller, **hand_parts)
     claims = cloud.get('claims') or long_runs.MemoryClaims()
@@ -353,9 +356,9 @@ def _marketplace_pages(app, h, instance, token):
         try:
             answer, not_shown = collection()
         except lanes_harness.Refused as why:
-            return _strict(render_template('marketplace.html', refused=why.reason, token=token, marketplace_key=preview.MARKETPLACE_KEY, menu=card_look.MENU), why.status)
+            return _strict(render_template('marketplace.html', refused=why.reason, token=token, marketplace_key=preview.MARKETPLACE_KEY), why.status)
         return _strict(render_template('marketplace.html', A=answer, hidden=not_shown, no=request.args.get('no', ''), token=token,
-                                       marketplace_key=preview.MARKETPLACE_KEY, menu=card_look.MENU))
+                                       marketplace_key=preview.MARKETPLACE_KEY))
 
     @app.get('/marketplace/<name>')
     def marketplace_file(name):
@@ -366,7 +369,7 @@ def _marketplace_pages(app, h, instance, token):
 
     @app.get('/marketplace/view.css')
     def marketplace_view_sheet():
-        """The marketplace's own sheet (its card.css, in its view), served from this origin: the page's policy allows no inline style."""
+        """The marketplace's own sheet (its marketplace.css, in its view), served from this origin: the page's policy allows no inline style."""
         if mine():
             return refused(mine())
         try:
