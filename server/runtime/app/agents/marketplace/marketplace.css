@@ -8,7 +8,7 @@
 .mk-ctl .mk-sorted { font-size: .6rem }
 .mk-ctl .btn--small { color: var(--active-color-01); background-color: var(--active-color-09); border-color: var(--active-color-01) }
 .mk-ctl .btn--small[aria-current] { color: var(--toggle-knob-on, var(--active-color-09)); background-color: var(--toggle-on, var(--active-color-05, var(--active-color-01))); border-color: var(--toggle-on, var(--active-color-05, var(--active-color-01))) }
-/* THE GRID: THREE FULL CARDS TO A ROW (the owner 2026-11-03: "on the bottom it only has 2 cards per row now"), each card the one standard (290 x 470, the widget's own), three across the page, fewer on a narrower screen; the ORG CHART view's mini cards (112px) as many as fit */
-.mk-grid { display: grid; grid-template-columns: repeat(auto-fill, 290px); gap: 14px; justify-content: center; align-items: start }
+/* THE GRID: THREE FULL CARDS TO A ROW (the owner 2026-11-03: "on the bottom it only has 2 cards per row now"), each card the one standard (250 x 405, the widget's own), three across the page, fewer on a narrower screen; the ORG CHART view's mini cards (112px) as many as fit */
+.mk-grid { display: grid; grid-template-columns: repeat(auto-fill, 250px); gap: 14px; justify-content: center; align-items: start }
 .mk-grid.mk-orgchart { grid-template-columns: repeat(auto-fill, 112px); gap: 12px }
 @media (max-width: 768px) { .mk-ctl .wl-cols { flex-direction: column } .mk-ctl .wl-col--3 { width: auto; padding-left: 0 } }
