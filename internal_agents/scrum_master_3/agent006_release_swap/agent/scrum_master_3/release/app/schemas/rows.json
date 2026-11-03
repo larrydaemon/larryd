@@ -1,0 +1,1123 @@
+{
+ "about": "THE 42 ROWS, in order, in their 8 groups and 3 sections (PART D under BUILD ITEMS A AND B, the owner 2026-10-21). was: the old row numbers 1..48 (old_rows) a row came from. when: WHEN THE ROUND RUNS THE ROW: \"every round\"; \"daily HH:MM\" or \"nightly HH:MM\" (each round from that hour on, until the day ends at the reset, 07:00); \"on the owner's word\" (never by the round).",
+ "groups_about": "THE TWO GROUPS OF A RED ROW (the owner 2026-10-24: \"we have two groups and it should be clear. group 1 the thing to fix is in the virtual_workspace it has access can automatically go fix it. group 2 the agent itself is broken and this should require an unlock\"). WORKSPACE: the cause is under the workspace (settings reads.workspace): the red-row fix loop fixes it by itself, a fixer per red row at once. AGENT: the cause is under ~/virtual_sanity (settings reads.sanity), the agent itself: healed only while the master lock is OPEN by his press (settings master.mark). SORTED FROM THE RECORDS, NEVER A LIST OF ROWS (the owner: \"make sure its dynamic and not hard coded because all are changing constantly\"): agent_words, the round's own first words for a row whose program failed; a BROKEN file's path root; a fixer's last word AGENT. A step only his hands can do (a PIN, a seal, a GO, a secret, live data) stays red with his step in either group, never counted as forced. A row's own keys here, read each round: container; chain false (no piece of the night's chain: its red is never held on the chain); app (the app its facts come from, built by the hot fix utility: iphone, macos); own_fix (a subcommand of the row's own program, run before any hired fixer once its ready() says so); stop (the night step whose stop is this row's fault, as the rows name it); measure (the detector's measure taken again when a fixer's turn ends); rerun (a chain or steps of the night run again: his 3 minute line when the loop has no word; note: words before the line); step (a line of his own).",
+ "groups": {
+  "agent_words": [
+   "its program",
+   "he could not read it"
+  ]
+ },
+ "containers": [
+  {
+   "container": "top",
+   "title": "TOP",
+   "note": "is the work on track",
+   "when": "every round",
+   "section": "day",
+   "x_says": "AGENT IS ONLINE",
+   "x_says_broken": "AGENT IS BROKEN · UNLOCK AGENT TO LET IT HEAL ITSELF",
+   "x_says_healing": "AGENT UNLOCKED · HEALING ITSELF · LOCK AGENT WHEN GREEN"
+  },
+  {
+   "container": "sprint",
+   "title": "THE SPRINT",
+   "note": "the requests, A, and their build items, B",
+   "when": "every round",
+   "section": "day",
+   "x_says": "NO REQUEST OPEN"
+  },
+  {
+   "container": "build_work",
+   "title": "THE BUILD WORK",
+   "note": "the Developer, per request",
+   "when": "every round",
+   "section": "day",
+   "x_says": "NOTHING IN THE PIPE"
+  },
+  {
+   "container": "checks",
+   "title": "THE CHECKS",
+   "note": "put back 2026-10-22: removed without his word",
+   "when": "every round",
+   "section": "day",
+   "x_says": "ALL CHECKS PASSED"
+  },
+  {
+   "container": "fixes",
+   "title": "THE FIXES",
+   "note": "put back 2026-10-22: removed without his word",
+   "when": "every round",
+   "section": "day",
+   "x_says": "FIX LIST CLEAR"
+  },
+  {
+   "container": "lists",
+   "title": "THE LISTS",
+   "note": "put back 2026-10-22: removed without his word",
+   "when": "every round",
+   "section": "day",
+   "x_says": "FULL CONTEXT"
+  },
+  {
+   "container": "nightly",
+   "title": "THE NIGHTLY",
+   "note": "the release train, in order",
+   "when": "every round, live: the newest night as it stands",
+   "section": "night",
+   "x_says": "ALL DEVICES IN SYNC"
+  },
+  {
+   "container": "release",
+   "title": "RELEASE",
+   "note": "the end of the sprint: the freeze, then the swap",
+   "when": "every round",
+   "section": "release",
+   "x_says": "SWAP COMPLETE"
+  }
+ ],
+ "rows": [
+  {
+   "n": 1,
+   "container": "top",
+   "name": "SUMMARY",
+   "job": "Requests green of all, days to freeze and swap, pace, the round, the idle alarm",
+   "module": "agent.agent001_top_summary",
+   "when": "every round",
+   "was": [
+    47
+   ]
+  },
+  {
+   "n": 2,
+   "container": "top",
+   "name": "STANDUP",
+   "job": "Built yesterday, building today, stuck: in requests, the one-minute standup",
+   "module": "agent.agent002_top_standup",
+   "when": "daily 07:00",
+   "was": [
+    3,
+    29
+   ]
+  },
+  {
+   "n": 3,
+   "container": "top",
+   "name": "LIVE",
+   "job": "Who is building what right now, and the stream",
+   "module": "agent.agent003_top_live",
+   "when": "every round",
+   "was": []
+  },
+  {
+   "n": 4,
+   "container": "sprint",
+   "name": "THE REQUESTS",
+   "job": "Every request: id, his words, state since when, its B items; heard, not recorded",
+   "module": "agent.agent004_sprint_the_requests",
+   "when": "every round",
+   "was": []
+  },
+  {
+   "n": 5,
+   "container": "sprint",
+   "name": "BUILDING NOW",
+   "job": "The one request in building, its turn and approach; the B items in building",
+   "module": "agent.agent005_sprint_building_now",
+   "when": "every round",
+   "was": []
+  },
+  {
+   "n": 6,
+   "container": "sprint",
+   "name": "DONE",
+   "job": "Requests green or shipped, each with its proof",
+   "module": "agent.agent006_sprint_done",
+   "when": "every round",
+   "was": []
+  },
+  {
+   "n": 7,
+   "container": "sprint",
+   "name": "STUCK TODAY",
+   "job": "Requests and B items stuck today, each with its machine reason and its resume",
+   "module": "agent.agent007_sprint_stuck_today",
+   "when": "every round",
+   "was": []
+  },
+  {
+   "n": 8,
+   "container": "sprint",
+   "name": "PACE",
+   "job": "Are we on pace for the freeze? Opus 5.5 guesses the sprint % every round",
+   "module": "agent.agent008_sprint_pace",
+   "when": "every round",
+   "was": []
+  },
+  {
+   "n": 9,
+   "container": "sprint",
+   "name": "TODAY'S BUILD",
+   "job": "Today's commits, main clean or not, the take-in streak",
+   "module": "agent.agent009_sprint_todays_build",
+   "when": "every round",
+   "was": [
+    2
+   ]
+  },
+  {
+   "n": 10,
+   "container": "sprint",
+   "name": "YOUR ORDERS",
+   "job": "Counts every order in ~/virtual_workspace only",
+   "module": "agent.agent010_sprint_your_orders",
+   "when": "every round",
+   "was": [
+    1
+   ]
+  },
+  {
+   "n": 11,
+   "container": "build_work",
+   "name": "PLAN",
+   "job": "The next request in build order and its plan: its tests, written and frozen",
+   "module": "agent.agent011_build_work_plan",
+   "when": "every round",
+   "was": [
+    24
+   ]
+  },
+  {
+   "n": 12,
+   "container": "build_work",
+   "name": "BUILD",
+   "job": "The Developer's build on the hot fix tree: turns and approaches",
+   "module": "agent.agent012_build_work_build",
+   "when": "every round",
+   "was": [
+    14
+   ]
+  },
+  {
+   "n": 13,
+   "container": "build_work",
+   "name": "PROVE",
+   "job": "Each request's own tests and the touched offices' suites",
+   "module": "agent.agent013_build_work_prove",
+   "when": "every round",
+   "was": [
+    23
+   ]
+  },
+  {
+   "n": 14,
+   "container": "build_work",
+   "name": "REVIEW",
+   "job": "The hired read of each built request: clean or refused",
+   "module": "agent.agent014_build_work_review",
+   "when": "every round",
+   "was": []
+  },
+  {
+   "n": 15,
+   "container": "build_work",
+   "name": "READY",
+   "job": "Requests proven and reviewed, committed, waiting for tonight's take-in",
+   "module": "agent.agent015_build_work_ready",
+   "when": "every round",
+   "was": []
+  },
+  {
+   "n": 16,
+   "container": "checks",
+   "name": "SECURITY",
+   "job": "The security scan, on his switch only, and the SECURITY list, in one row",
+   "module": "agent.agent016_checks_security",
+   "when": "every round",
+   "was": [
+    9
+   ]
+  },
+  {
+   "n": 17,
+   "container": "checks",
+   "name": "AUDIT",
+   "job": "The compliance audit as the files say it: logs, vaults, offices",
+   "module": "agent.agent017_checks_audit",
+   "when": "every round",
+   "was": [
+    10
+   ]
+  },
+  {
+   "n": 18,
+   "container": "checks",
+   "name": "MOIRÉ",
+   "job": "Shows changes: written ones yellow, unwritten ones red",
+   "module": "agent.agent018_checks_moire",
+   "when": "every round",
+   "was": [
+    11
+   ],
+   "measure": "cebf"
+  },
+  {
+   "n": 19,
+   "container": "checks",
+   "name": "LIE DETECTOR",
+   "job": "Every probe of the lie detector, read from its own report",
+   "module": "agent.agent019_checks_lie_detector",
+   "when": "every round",
+   "was": [
+    13
+   ],
+   "measure": "cebf"
+  },
+  {
+   "n": 20,
+   "container": "checks",
+   "name": "THE PIN",
+   "job": "Checks the Judge and the sealed core still match their pin",
+   "module": "agent.agent020_checks_the_pin",
+   "when": "every round",
+   "was": [
+    5,
+    6
+   ],
+   "measure": "cebf"
+  },
+  {
+   "n": 21,
+   "container": "checks",
+   "name": "NEW FILES AND PAGES",
+   "job": "Every file new, changed or gone, and what is on the radar",
+   "module": "agent.agent021_checks_new_files",
+   "when": "every round",
+   "was": [
+    8
+   ]
+  },
+  {
+   "n": 22,
+   "container": "checks",
+   "name": "NO SHORTCUTS",
+   "job": "The ways around a red against his line, and the speed lock",
+   "module": "agent.agent022_checks_no_shortcuts",
+   "when": "every round",
+   "was": [
+    7
+   ]
+  },
+  {
+   "n": 23,
+   "container": "fixes",
+   "name": "SELF HEALING",
+   "job": "Keeps each repair for next time: a lesson for every fix",
+   "module": "agent.agent023_fixes_self_healing",
+   "when": "every round",
+   "was": [
+    21
+   ]
+  },
+  {
+   "n": 24,
+   "container": "fixes",
+   "name": "CORE CHANGE REQUESTS",
+   "job": "The open requests that need the sealed core, by cause",
+   "module": "agent.agent024_fixes_core_change_requests",
+   "when": "every round",
+   "was": [
+    22
+   ]
+  },
+  {
+   "n": 25,
+   "container": "fixes",
+   "name": "RED ROWS FORCE THEIR FIX",
+   "job": "Every red row now, and whether each forces its own fix",
+   "module": "agent.agent025_fixes_reds_force_their_fix",
+   "when": "every round",
+   "was": []
+  },
+  {
+   "n": 26,
+   "container": "lists",
+   "name": "MEMORY",
+   "job": "Proves the 3 way switch is wired to every prompt and answers its questions right",
+   "module": "agent.agent026_lists_memory",
+   "when": "every round",
+   "was": [
+    28
+   ]
+  },
+  {
+   "n": 27,
+   "container": "lists",
+   "name": "WORK LIST",
+   "job": "Open items, plans and known bugs, as one list",
+   "module": "agent.agent027_lists_work_list",
+   "when": "every round",
+   "was": [
+    25,
+    26,
+    27
+   ]
+  },
+  {
+   "n": 28,
+   "container": "nightly",
+   "name": "TAKE IN",
+   "job": "Merges the day's reviewed work into main, with its cool down",
+   "module": "agent.agent028_nightly_take_in",
+   "when": "every round",
+   "was": [
+    31,
+    32
+   ],
+   "history_row": 30,
+   "rerun": {
+    "chain": "local",
+    "note": "the take-in runs again with the night's local chain: "
+   }
+  },
+  {
+   "n": 29,
+   "container": "nightly",
+   "name": "BACKUPS",
+   "job": "Checks that every backup is fresh",
+   "module": "agent.agent029_nightly_backups",
+   "when": "every round",
+   "was": [
+    4
+   ],
+   "rerun": {
+    "steps": [
+     "backups"
+    ]
+   }
+  },
+  {
+   "n": 30,
+   "container": "nightly",
+   "name": "WRITE THE APPS",
+   "job": "Writes the native apps from the web code",
+   "module": "agent.agent030_nightly_write_the_apps",
+   "when": "every round",
+   "was": [
+    33
+   ],
+   "rerun": {
+    "steps": [
+     "native_generate"
+    ]
+   }
+  },
+  {
+   "n": 31,
+   "container": "nightly",
+   "name": "ECHO",
+   "job": "Brings every office up to the day's code, ready to publish",
+   "module": "agent.agent031_nightly_echo",
+   "when": "every round",
+   "was": [
+    34
+   ],
+   "rerun": {
+    "steps": [
+     "step5",
+     "step6"
+    ]
+   }
+  },
+  {
+   "n": 32,
+   "container": "nightly",
+   "name": "THE GATE",
+   "job": "The Judge's and the smoke test's verdicts, read from their reports, never worked",
+   "module": "agent.agent032_nightly_the_gate",
+   "when": "every round",
+   "was": [
+    12,
+    35
+   ],
+   "stop": [
+    "step12",
+    "THE JUDGE"
+   ]
+  },
+  {
+   "n": 33,
+   "container": "nightly",
+   "name": "PUBLISH LOCALHOST PF",
+   "job": "Puts the build live on this laptop, its data level with the live side",
+   "module": "agent.agent033_nightly_publish_localhost_pf",
+   "when": "every round",
+   "was": [
+    30,
+    36
+   ],
+   "rerun": {
+    "steps": [
+     "step13",
+     "step14",
+     "step15",
+     "step16",
+     "step17",
+     "step18"
+    ]
+   }
+  },
+  {
+   "n": 34,
+   "container": "nightly",
+   "name": "THE LOOK",
+   "job": "Draws every page and checks how it looks",
+   "module": "agent.agent034_nightly_the_look",
+   "when": "every round",
+   "was": [
+    39
+   ],
+   "stop": [
+    "look",
+    "THE LOOK"
+   ],
+   "rerun": {
+    "steps": [
+     "look"
+    ]
+   }
+  },
+  {
+   "n": 35,
+   "container": "nightly",
+   "name": "PUBLISH B RND",
+   "job": "Puts the build on slot B for testing, its data level with the live side",
+   "module": "agent.agent035_nightly_publish_b_rnd",
+   "when": "every round",
+   "was": [
+    37,
+    38
+   ]
+  },
+  {
+   "n": 36,
+   "container": "nightly",
+   "name": "IPHONE BUILD + WALK",
+   "job": "Builds the iPhone app and clicks through every screen",
+   "module": "agent.agent036_nightly_iphone_build_walk",
+   "when": "every round",
+   "was": [
+    40,
+    41
+   ],
+   "app": "iphone"
+  },
+  {
+   "n": 37,
+   "container": "nightly",
+   "name": "MAC BUILD + WALK",
+   "job": "Builds the Mac app, walks every screen, compares it with the web pixel by pixel",
+   "module": "agent.agent037_nightly_mac_build_walk",
+   "when": "every round",
+   "was": [
+    42,
+    43,
+    44
+   ],
+   "app": "macos"
+  },
+  {
+   "n": 38,
+   "container": "nightly",
+   "name": "INSTALL ON THE MAC",
+   "job": "Installs the tested Mac app on this laptop",
+   "module": "agent.agent038_nightly_install_on_the_mac",
+   "when": "every round",
+   "was": [
+    45
+   ],
+   "app": "macos",
+   "own_fix": "install"
+  },
+  {
+   "n": 39,
+   "container": "nightly",
+   "name": "IN SYNC",
+   "job": "Checks that today's data sync reached this laptop and slot B exactly",
+   "module": "agent.agent039_nightly_in_sync",
+   "when": "every round",
+   "was": [
+    46
+   ],
+   "chain": false
+  },
+  {
+   "n": 40,
+   "container": "nightly",
+   "name": "MEMORY NIGHT STEP",
+   "job": "The night step: the knowledge store updated, then every skills index",
+   "module": "agent.agent040_nightly_memory",
+   "when": "every round",
+   "was": [],
+   "step": "~/virtual_sanity/scrum_master_3/release/app/agent/run rules; then python3 -m knowledge.night run in ~/virtual_sanity/knowledge/app (the MEMORY step by hand)"
+  },
+  {
+   "n": 41,
+   "container": "release",
+   "name": "FREEZE",
+   "job": "Counts down to the freeze and to the swap from A to B",
+   "module": "agent.agent041_release_freeze",
+   "when": "every round",
+   "was": []
+  },
+  {
+   "n": 42,
+   "container": "release",
+   "name": "THE SWAP",
+   "job": "A to B on December 13, behind the owner's PIN",
+   "module": "agent.agent042_release_the_swap",
+   "when": "every round",
+   "was": [
+    48
+   ]
+  }
+ ],
+ "old_rows_about": "THE OLD 48 ROWS (was shared_where.OLD_ROWS): n -> section, name, at (its hour), runner (who does the work, never he; null: the row's own file), his (a red here is Christensen's to answer), report (a report of what changed, never red), check (the function in its row's module that judges it). A row's `was` names these numbers.",
+ "old_rows": [
+  {
+   "n": 1,
+   "section": "FIND",
+   "name": "YOUR ORDERS",
+   "at": "07:00",
+   "runner": "his own count of every file, once an hour",
+   "his": false,
+   "report": false,
+   "check": "check"
+  },
+  {
+   "n": 2,
+   "section": "FIND",
+   "name": "TODAY'S BUILD",
+   "at": "07:00",
+   "runner": "his own read of git and of the take-in",
+   "his": false,
+   "report": false,
+   "check": "check"
+  },
+  {
+   "n": 3,
+   "section": "FIND",
+   "name": "MORNING REPORT",
+   "at": "07:00",
+   "runner": null,
+   "his": false,
+   "report": false,
+   "check": "morning_report"
+  },
+  {
+   "n": 4,
+   "section": "FIND",
+   "name": "BACKUPS",
+   "at": "07:05",
+   "runner": "launchd on the laptop, the timers on the slots",
+   "his": false,
+   "report": false,
+   "check": "check"
+  },
+  {
+   "n": 5,
+   "section": "FIND",
+   "name": "THE HAMMER IS PINNED",
+   "at": "07:10",
+   "runner": "the lie detector's probe A3",
+   "his": true,
+   "report": false,
+   "check": "hammer"
+  },
+  {
+   "n": 6,
+   "section": "FIND",
+   "name": "THE SEAL",
+   "at": "07:12",
+   "runner": "the lie detector's probes A5 and B",
+   "his": true,
+   "report": false,
+   "check": "seal"
+  },
+  {
+   "n": 7,
+   "section": "FIND",
+   "name": "NO SHORTCUTS",
+   "at": "07:14",
+   "runner": "his own count",
+   "his": true,
+   "report": false,
+   "check": "check"
+  },
+  {
+   "n": 8,
+   "section": "FIND",
+   "name": "NEW FILES AND PAGES",
+   "at": "07:17",
+   "runner": "his own count of every file",
+   "his": true,
+   "report": false,
+   "check": "check"
+  },
+  {
+   "n": 9,
+   "section": "FIND",
+   "name": "SECURITY",
+   "at": "07:00",
+   "runner": "the daily schedule's SECURITY SCAN job, then the Developer on the SECURITY list",
+   "his": false,
+   "report": false,
+   "check": "check"
+  },
+  {
+   "n": 10,
+   "section": "FIND",
+   "name": "AUDIT",
+   "at": "07:00",
+   "runner": null,
+   "his": false,
+   "report": false,
+   "check": "check"
+  },
+  {
+   "n": 11,
+   "section": "FIND",
+   "name": "MOIRÉ",
+   "at": "07:00",
+   "runner": "the lie detector's probe D3",
+   "his": true,
+   "report": true,
+   "check": "check"
+  },
+  {
+   "n": 12,
+   "section": "FIND",
+   "name": "SMOKE TEST",
+   "at": "07:00",
+   "runner": "the daily schedule, after MOIRÉ",
+   "his": false,
+   "report": false,
+   "check": "check"
+  },
+  {
+   "n": 13,
+   "section": "FIND",
+   "name": "LIE DETECTOR",
+   "at": "07:16",
+   "runner": "its own clock in the console host",
+   "his": false,
+   "report": false,
+   "check": "check"
+  },
+  {
+   "n": 14,
+   "section": "DEVELOP",
+   "name": "HOT FIXES FROM THE NIGHT",
+   "at": "09:30",
+   "runner": "no runner yet",
+   "his": false,
+   "report": false,
+   "check": "check"
+  },
+  {
+   "n": 15,
+   "section": "DEVELOP",
+   "name": "APP ROWS LEFT STUCK",
+   "at": "09:35",
+   "runner": null,
+   "his": false,
+   "report": false,
+   "check": "check"
+  },
+  {
+   "n": 16,
+   "section": "DEVELOP",
+   "name": "JUDGE FIXES",
+   "at": "09:40",
+   "runner": null,
+   "his": false,
+   "report": false,
+   "check": "check"
+  },
+  {
+   "n": 17,
+   "section": "DEVELOP",
+   "name": "LOOK FIXES",
+   "at": "09:45",
+   "runner": null,
+   "his": false,
+   "report": false,
+   "check": "check"
+  },
+  {
+   "n": 18,
+   "section": "DEVELOP",
+   "name": "SMOKE FIXES",
+   "at": "12:30",
+   "runner": null,
+   "his": false,
+   "report": false,
+   "check": "check"
+  },
+  {
+   "n": 19,
+   "section": "DEVELOP",
+   "name": "HEALTH FIXES",
+   "at": "12:35",
+   "runner": null,
+   "his": false,
+   "report": false,
+   "check": "check"
+  },
+  {
+   "n": 20,
+   "section": "DEVELOP",
+   "name": "NEW FEATURES",
+   "at": "09:00",
+   "runner": "Christensen with a session",
+   "his": false,
+   "report": false,
+   "check": "check"
+  },
+  {
+   "n": 21,
+   "section": "DEVELOP",
+   "name": "SELF HEALING",
+   "at": "09:55",
+   "runner": null,
+   "his": false,
+   "report": false,
+   "check": "check"
+  },
+  {
+   "n": 22,
+   "section": "DEVELOP",
+   "name": "CORE CHANGE REQUESTS",
+   "at": "23:30",
+   "runner": null,
+   "his": false,
+   "report": false,
+   "check": "check"
+  },
+  {
+   "n": 23,
+   "section": "DEVELOP",
+   "name": "PROVE THE DAY",
+   "at": "23:35",
+   "runner": null,
+   "his": false,
+   "report": false,
+   "check": "check"
+  },
+  {
+   "n": 24,
+   "section": "DEVELOP",
+   "name": "THE BUILD LIST",
+   "at": "23:50",
+   "runner": null,
+   "his": false,
+   "report": false,
+   "check": "check"
+  },
+  {
+   "n": 25,
+   "section": "NOTHING HIDDEN",
+   "name": "PENDING ITEMS",
+   "at": "08:30",
+   "runner": null,
+   "his": false,
+   "report": false,
+   "check": "pending_items"
+  },
+  {
+   "n": 26,
+   "section": "NOTHING HIDDEN",
+   "name": "PENDING PLANS",
+   "at": "08:35",
+   "runner": null,
+   "his": false,
+   "report": false,
+   "check": "pending_plans"
+  },
+  {
+   "n": 27,
+   "section": "NOTHING HIDDEN",
+   "name": "KNOWN BUGS AND ISSUES",
+   "at": "08:40",
+   "runner": null,
+   "his": false,
+   "report": false,
+   "check": "known_bugs"
+  },
+  {
+   "n": 28,
+   "section": "NOTHING HIDDEN",
+   "name": "KNOWLEDGE AND SKILLS",
+   "at": "08:45",
+   "runner": "the memory, its index and its store",
+   "his": false,
+   "report": false,
+   "check": "check"
+  },
+  {
+   "n": 29,
+   "section": "NOTHING HIDDEN",
+   "name": "THE STANDUP",
+   "at": "06:45",
+   "runner": null,
+   "his": false,
+   "report": false,
+   "check": "the_standup"
+  },
+  {
+   "n": 30,
+   "section": "CLOSE OUT",
+   "name": "SYNC LOCALHOST",
+   "at": "00:00",
+   "runner": null,
+   "his": false,
+   "report": false,
+   "check": "check"
+  },
+  {
+   "n": 31,
+   "section": "CLOSE OUT",
+   "name": "TAKE IN THE DAY'S WORK",
+   "at": "00:28",
+   "runner": "the daily schedule, 00:10, after a hired read",
+   "his": false,
+   "report": false,
+   "check": "check"
+  },
+  {
+   "n": 32,
+   "section": "CLOSE OUT",
+   "name": "COOL DOWN",
+   "at": "00:50",
+   "runner": "the daily schedule, from 00:30",
+   "his": false,
+   "report": false,
+   "check": "check"
+  },
+  {
+   "n": 33,
+   "section": "BUILD",
+   "name": "WRITE THE APPS",
+   "at": "01:00",
+   "runner": "the nightly (launchd, 01:00)",
+   "his": false,
+   "report": false,
+   "check": "check"
+  },
+  {
+   "n": 34,
+   "section": "BUILD",
+   "name": "ECHO",
+   "at": "01:00",
+   "runner": "the nightly (launchd, 01:00)",
+   "his": false,
+   "report": false,
+   "check": "check"
+  },
+  {
+   "n": 35,
+   "section": "BUILD",
+   "name": "THE JUDGE",
+   "at": "01:00",
+   "runner": "the nightly (launchd, 01:00)",
+   "his": false,
+   "report": false,
+   "check": "check"
+  },
+  {
+   "n": 36,
+   "section": "BUILD",
+   "name": "PUBLISH LOCALHOST PF",
+   "at": "01:00",
+   "runner": "ECHO, in the nightly",
+   "his": false,
+   "report": false,
+   "check": "check"
+  },
+  {
+   "n": 37,
+   "section": "BUILD",
+   "name": "PUBLISH B RND",
+   "at": "01:00",
+   "runner": "ECHO, in the nightly",
+   "his": false,
+   "report": false,
+   "check": "check"
+  },
+  {
+   "n": 38,
+   "section": "BUILD",
+   "name": "SYNC B RND",
+   "at": "01:00",
+   "runner": null,
+   "his": false,
+   "report": false,
+   "check": "check"
+  },
+  {
+   "n": 39,
+   "section": "BUILD",
+   "name": "THE LOOK",
+   "at": "01:00",
+   "runner": "the nightly (launchd, 01:00)",
+   "his": false,
+   "report": false,
+   "check": "check"
+  },
+  {
+   "n": 40,
+   "section": "BUILD",
+   "name": "BUILD THE IPHONE APP",
+   "at": "01:00",
+   "runner": "the hot fix utility, in the nightly",
+   "his": false,
+   "report": false,
+   "check": "check"
+  },
+  {
+   "n": 41,
+   "section": "BUILD",
+   "name": "WALK THE IPHONE APP",
+   "at": "01:00",
+   "runner": "the hot fix utility, in the nightly",
+   "his": false,
+   "report": false,
+   "check": "check"
+  },
+  {
+   "n": 42,
+   "section": "BUILD",
+   "name": "BUILD THE MAC APP",
+   "at": "01:00",
+   "runner": "the hot fix utility, in the nightly",
+   "his": false,
+   "report": false,
+   "check": "check"
+  },
+  {
+   "n": 43,
+   "section": "BUILD",
+   "name": "WALK THE MAC APP",
+   "at": "01:00",
+   "runner": "the hot fix utility, in the nightly",
+   "his": false,
+   "report": false,
+   "check": "check"
+  },
+  {
+   "n": 44,
+   "section": "BUILD",
+   "name": "PIXEL COMPARE",
+   "at": "01:00",
+   "runner": "the hot fix utility, in the nightly",
+   "his": false,
+   "report": false,
+   "check": "check"
+  },
+  {
+   "n": 45,
+   "section": "BUILD",
+   "name": "INSTALL ON THE MAC",
+   "at": "01:00",
+   "runner": "no runner yet",
+   "his": false,
+   "report": false,
+   "check": "check"
+  },
+  {
+   "n": 46,
+   "section": "BUILD",
+   "name": "IN SYNC",
+   "at": "06:30",
+   "runner": "his own comparing",
+   "his": false,
+   "report": false,
+   "check": "check"
+  },
+  {
+   "n": 47,
+   "section": "BUILD",
+   "name": "UNTIL HEALTHY",
+   "at": "06:35",
+   "runner": "the Developer, every round until no row is red",
+   "his": false,
+   "report": false,
+   "check": "check"
+  },
+  {
+   "n": 48,
+   "section": "CHRISTENSEN",
+   "name": "THE SWAP",
+   "at": "07:18",
+   "runner": "ECHO, by Christensen’s own hand",
+   "his": false,
+   "report": false,
+   "check": "check"
+  }
+ ],
+ "since": "2026-10-21T22:05:00-04:00",
+ "since_about": "THE 29 ROWS SINCE (PART D, 2026-10-21): a run before this moment was written under the 45 rows' numbers; a row's history before it is read only under its old number (history_row), never as another row's",
+ "restored_about": "ROWS 30 TO 41, PUT BACK 2026-10-22 (the owner 02:40: \"fix every single item\"; the watcher's confession, item 15: they were removed by its PART D GONE list without his word): each its own module, reading real data, red where its facts are red. A run of rows 30 to 41 before \"since\" is a run of the 45 rows (another row then), never theirs.",
+ "sections": [
+  {
+   "section": "day",
+   "title": "DAY",
+   "note": "the sprint day from 07:00: the requests, their build, the checks, the fixes and the lists",
+   "switch": "section_day"
+  },
+  {
+   "section": "night",
+   "title": "NIGHT",
+   "note": "the release train, in order: the take-in at 00:10, the build from 01:00, the install at 06:15, in sync at 06:30, the memory step at 06:40",
+   "switch": "section_night"
+  },
+  {
+   "section": "release",
+   "title": "RELEASE",
+   "note": "the end of the sprint: the freeze, then the swap",
+   "switch": "section_release"
+  }
+ ],
+ "sections_about": "THE THREE SECTIONS (the owner 2026-10-22: \"break into 3 big groups Day (toggle on off) Night (toggle on off) Release (toggle on off)\"): each container belongs to one; each section has its switch (his switches row section_<name>, ON unless he turns it off). Off: the round runs none of its rows and the page says OFF on them, never green.",
+ "renumbered_about": "RENUMBERED 2026-10-22 (the owner: the order of the day, the night in the order it runs, the swap last): every run, lesson and finding since \"since\" was moved with its row. old -> new: 4->3, 5->4, 6->5, 7->6, 8->7, 9->8, 10->9, 11->10, 12->11, 13->12, 14->13, 15->14, 16->15, 30->16, 31->17, 32->18, 33->19, 34->20, 35->21, 36->22, 37->23, 38->24, 39->25, 40->26, 41->27, 18->28, 17->29, 19->30, 20->31, 21->32, 23->33, 22->34, 24->35, 25->36, 26->37, 27->38, 28->39, 3->40, 29->41 · 2026-10-22, the knowledge store (the owner: \"each night one of the steps updates the store then updates the index\"): row 026 KNOWLEDGE became MEMORY (the proof of the 3 way switch); a new NIGHT row 040 MEMORY (the night step); FREEZE 040->041, THE SWAP 041->042, their runs since \"since\" moved with them.",
+ "x_about": "THE X BOARD (the owner 2026-10-22: \"make a military style x board ... a big black x for items done ... based on the group of the row and the list of rows per group and by day and by release for release\"; \"verify the list in the description matches the list exactly with nothing else\"): one line per group; WHAT MAKES ITS X is exactly its own rows, by name, read from this file, nothing else; its X when every one of them is green for the day shown; the release group's X only for the release: from its release day (settings scrum.release) on, its rows green.",
+ "x_rule": {
+  "about": "WHAT AN X MEANS (the owner 2026-10-22: \"do we have a summary? do we have a working standup? do we have a functional live?\"; \"yes = x\"): a row counts toward its group's X when it did its own job today: a run of today that ended and measured or delivered something, whatever the colour of what it found; a run that says one of not_done did not do its job. A step of the night and the release (passed) count only when the run passed (green): their job is to pass. Once a row counted today it stays counted until the day ends. The release's X only from its release day on.",
+  "not_done": [
+   "not run yet",
+   "not measured",
+   "not in the night",
+   "not installed",
+   "running",
+   "held",
+   "stopped",
+   "its program",
+   "off:"
+  ],
+  "passed": [
+   "nightly",
+   "release"
+  ],
+  "waiting": {
+   "about": "A GROUP WHOSE WORK COMES IN (the owner 2026-10-22: \"if i asked for 1 new item today the x should go away for the build today\"): its X also needs no request still before its end, in one of these states; a new request takes the X away until it is through.",
+   "build_work": [
+    "asked",
+    "planned",
+    "building",
+    "proven",
+    "reviewed",
+    "stuck_today"
+   ]
+  }
+ },
+ "x_says_about": "EACH GROUP'S BOLD LINE ON THE X BOARD (the owner's own words, 2026-10-22: \"they can be there all the time fixed\"; \"not dynamic to show up\"): what its X stands for, always shown under the group's rows; the X beside it says whether it is so."
+}

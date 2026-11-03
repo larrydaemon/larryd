@@ -1,0 +1,1568 @@
+{% extends 'layout.html' %}{% from 'atom.html' import board, atom with context %}
+{# REPLICA · THE ONE SHELL IN THE PLATFORM'S OWN PAGE (the owner 2026-10-26: "add the larry llm header on top like all the pages with logo and menu and icons on right and full background image and crt and footer on bottom so we have a full page and its official and legit"): wid's layout.html, read where it is, its header, ground, CRT, mood light, footer and dock; the frame in its main #}
+{% block title %}REPLICA{% endblock %}
+{% block sheets_before %}<link rel="stylesheet" href="{{ board_css }}"><link rel="stylesheet" href="{{ page_css }}">{% endblock %}{# the header's status board lines (LARRY LLM's core.css .lsb rules, read where they are), then the page's own sheet #}
+{% macro x_board_view(X, group) %}{{ group }}<div class="clarity replica-xboard" role="table" aria-label="X BOARD">{# THE X BOARD, the frame's own, right under its agent (the owner 2026-10-26: "its global and an agent only in replica so it automatically in every one using the frame"; "just show the current day ... only live data with no snapshot"): one line per slot, its count, a big black X when every shell in it did its job today #}
+     <div class="replica-xboard-head" role="row"><span class="replica-xboard-title">X BOARD</span><span class="replica-xboard-day">{{ X.day }}</span></div>{# THE GROUP WORD ABOVE THE BLOCK, OUTSIDE (the owner 2026-10-27 13:27: "should not be shape and not inside"; "x board and agent access TOP"): handed drawn by frame_replica.group_line #}
+     <div class="replica-xline replica-xcols" role="row"><span role="columnheader">GROUP STATUS</span><span role="columnheader">COMPLETE</span><span role="columnheader">WHAT MAKES THE X</span></div>
+     {% for x in X.lines %}<div class="replica-xline" role="row" data-x-group="{{ x.slot }}" data-crossed="{{ 'yes' if x.crossed else 'no' }}"><span class="replica-xgroup" role="cell"><span>{{ x.slot }}</span><span class="replica-xcount">{{ x.green }}/{{ x.total }}</span></span><span class="replica-xbox" role="cell" aria-label="{{ 'done' if x.crossed else 'not done' }}"><svg class="replica-xmark" viewBox="0 0 40 40" preserveAspectRatio="none" aria-hidden="true"><path d="M0 0 L40 40 M40 0 L0 40"/></svg></span><span class="replica-xwhat" role="cell"><span class="replica-xlist">{% for n in x.names or [] %}{{ ", " if not loop.first }}{% if n in (x.open or []) %}<span class="replica-xopen">{{ n }}</span>{% else %}{{ n }}{% endif %}{% else %}{{ x.x }}{% endfor %}</span>{% if x.says %}<span class="replica-xsays">{{ x.says }}</span>{% endif %}{% for c in x.counts or () %}<span class="replica-xsays" data-x-count>{{ c }}</span>{% endfor %}</span></div>{% endfor %}
+    </div>{% endmacro %}
+{% macro access_node(n, depth=0) %}<li data-home="{{ n.name }}">{% if n.children or n.files %}<details data-depth="{{ depth }}"><summary>{% endif %}<strong>{{ n.name }}/</strong>{% if depth <= 1 %} {% if n.lock == 'LOCKED' %}<svg viewBox="0 0 24 24" width="14" height="14" role="img" aria-label="Locked"><polygon class="hdr-status--success" points="9,16.2 4.8,12 3.4,13.4 9,19 21,7 19.6,5.6"/></svg> <span class="hdr-status--success">LOCKED</span>{% else %}<svg viewBox="0 0 24 24" width="14" height="14" role="img" aria-label="Unlocked"><rect class="hdr-status--error" x="11" y="4" width="2.5" height="16" transform="rotate(45 12 12)"/><rect class="hdr-status--error" x="11" y="4" width="2.5" height="16" transform="rotate(-45 12 12)"/></svg> <span class="hdr-status--error">UNLOCKED</span>{% endif %} <span class="replica-access-count">· {{ n.files_in }} {{ 'FILES' if n.files_in != 1 else 'FILE' }}</span>{% endif %}{% if n.children or n.files %}</summary><ul class="replica-tree">{% for c in n.children %}{{ access_node(c, depth + 1) }}{% endfor %}{% for f in n.files %}<li data-home-file="{{ f }}">{{ f }}</li>{% endfor %}</ul></details>{% endif %}</li>{% endmacro %}
+{% macro mark(w) %}<span class="replica-press-state">{% if not w %}<span class="replica-press-none">Not pressed yet</span>{% elif w.startswith('NOT') or w == 'UNLOCKED' %}<svg viewBox="0 0 24 24" width="14" height="14" role="img" aria-label="Not done"><rect class="hdr-status--error" x="11" y="4" width="2.5" height="16" transform="rotate(45 12 12)"/><rect class="hdr-status--error" x="11" y="4" width="2.5" height="16" transform="rotate(-45 12 12)"/></svg> <span class="hdr-status--error">{{ w }}</span>{% else %}<svg viewBox="0 0 24 24" width="14" height="14" role="img" aria-label="Done"><polygon class="hdr-status--success" points="9,16.2 4.8,12 3.4,13.4 9,19 21,7 19.6,5.6"/></svg> <span class="hdr-status--success">{{ w }}</span>{% endif %}</span>{% endmacro %}
+{% macro access_view(T, L, S, group) %}{{ group }}<div class="clarity replica-xboard replica-access" aria-label="AGENT ACCESS">{# AGENT ACCESS, the frame's own, under the X board (the owner 2026-10-26: "AGENT ACCESS this is the next replica agent"): the real HOME tree, its locks and counts; never the owner's hand tools #}
+ <div class="replica-xboard-head"><span class="replica-xboard-title">AGENT ACCESS</span></div>
+ <div class="replica-access-body"><div class="replica-access-caption">HOME</div><ul class="replica-tree replica-tree-top">{{ access_node(T) }}</ul>
+  <div class="replica-press">{# THE LOCK (the owner 2026-10-26: "its missing the lock and the pin and reseal sections below the tree"): its three parts as they stand; REPLICA's own press: his fingerprint, then his tool #}<form method="post" action="/press"><input type="hidden" name="back" value="{{ g.carry.agentlayer }}"><button class="btn btn--big" type="submit" name="press" value="{{ 'lock' if L.open else 'unlock' }}">{{ 'LOCK AGENT' if L.open else 'UNLOCK AGENT' }}</button></form>{% if S.busy %}<div class="annotation replica-press-busy">A PRESS IS RUNNING: YOUR FINGERPRINT OR PASSWORD, THEN YOUR TOOL</div>{% endif %}
+   <ul class="replica-press-what"><li><span>Every file in ~/virtual_sanity</span>{{ mark(L.folders) }}</li><li><span>Claude sessions' access</span>{{ mark(L.sessions) }}</li><li><span>Knowledge database writes</span>{{ mark(L.database) }}</li></ul></div>
+  <div class="replica-press">{# PIN AND RESEAL: each step as its last press left it #}<form method="post" action="/press"><input type="hidden" name="back" value="{{ g.carry.agentlayer }}"><button class="btn btn--big" type="submit" name="press" value="reseal">PIN AND RESEAL</button></form>{% if S.busy %}<div class="annotation replica-press-busy">A PRESS IS RUNNING: YOUR FINGERPRINT OR PASSWORD, THEN YOUR TOOL</div>{% endif %}
+   <ul class="replica-press-what"><li><span>Vault: every office, your key</span>{{ mark(S.vault) }}</li><li><span>Spine: wid and global_config</span>{{ mark(S.spine) }}</li><li><span>Lie detector: new baseline</span>{{ mark(S.pin) }}</li><li><span>Moiré: baseline reset</span>{{ mark(S.moire) }}</li></ul></div></div>{% if S.busy %}<script>setTimeout(() => location.reload(), 2000);   /* THE PANELS FOLLOW THE PRESS TO ITS END (the owner 2026-10-27: "button is not working"; the panel stayed as it was at the press): while a press runs the page draws itself again every 2 s */</script>{% endif %}
+</div>{% endmacro %}
+{% block main %}
+{{ A.header.html }}{# THE HEADER, first on the page, both layers, outside the shape frame and every shell (the owner 2026-10-27: "please add this to the top of the page and make it dynamic"; "just add it to the top of the replica so all have it globally"): web/page.py header_board, every word the office's own at every draw #}
+{% if g.carry.agentlayer != 'gate' %}{{ board(dict(A, shells=A.shells[:1]), answers, none) }}<div class="replica-xboard-agent">{{ x_board_view(A.x_board, A.root.group_x_board) }}{{ access_view(A.access, A.lock, A.reseal, A.root.group_access) }}{{ A.rules.html }}{{ A.skills.html }}{# RULES, then SKILLS (the owner 2026-10-27: "swap this order too please") #}</div>{# SKILLS AND RULES ON THE PUBLIC FACE, each its title, schedule and count line only (the owner 2026-10-27: "skills and rules but no drop down and no detail") #}{% if A.live %}{{ board(dict(A, shells=A.shells[1:A.live.at]), answers, none) }}{{ A.live.html }}{% if A.day %}{{ board(dict(A, shells=A.shells[A.live.at:A.day.at]), answers, none) }}{{ A.day.html }}{{ board(dict(A, shells=A.shells[A.day.at:]), answers, none) }}{% else %}{{ board(dict(A, shells=A.shells[A.live.at:]), answers, none) }}{% endif %}{% else %}{{ board(dict(A, shells=A.shells[1:]), answers, none) }}{% endif %}{# THE LIVE PANEL where the LIVE slot begins (the owner 2026-10-27: "next item is the live / we add it to the replica"): web/page.py live_view, the frame's own data, moved by the page's own stream #}{# the X BOARD on the agent layer too, under the agent (the owner 2026-10-26: "and its not showing") #}{# the agent layer: the platform's own agent view #}{% else %}{% set R = A.root %}<div class="mfb pb-top-pick replica-root"><div class="mfb-stack">
+<div class="pb-atom bd-atom">{# REPLICA · ROOT SHAPE (the owner 2026-10-26: "only build the replica root shape empty first ... with the blank keys and toggle and all make it look 1 to 1 with our current ai atom agent shell"): the outer shell, drawn with the AI atom shell's own parts (its frame, caption, name line, key badge, buttons and toggle), its slots in their fixed order, each holding the platform's one AI atom shell #}
+ <div class="pb-atom-mount">
+  <div class="dblk-block{{ ' dblk--on' if R.on }}">
+   <div class="dblk-rowtop">
+    <div class="dblk-lbl"><div class="dblk-cap"><a class="dblk-gate" href="{{ here(agentlayer=('agent' if g.carry.agentlayer == 'gate' else 'gate')) }}">{{ 'Gate'|t }}</a></div><div class="dblk-sub">{{ 'Agentic'|t }}<br>{{ 'Block'|t }}</div></div>{# THE TOP OF THE FRAME (the owner 2026-10-27: "top of frame change to GATE AGENTIC BLOCK FRAME dot ROOT SHAPE"): the link says the platform's word, as the shell says it #}
+    <div class="dblk-name">{{ R.name }}</div>{# no dot on the frame (the owner 2026-10-26: "no dot") #}
+    {# no title line on the frame (the owner 2026-10-27: "remove the text FULL HUMAN REPLACEMENT AGENTS BY ORG CHART ROLE"); the title stays the agent view's block's #}
+    {# no ADD / REMOVE AGENT and no toggle on the frame: the agent slot below holds its own, its on/off the whole replica's (the owner 2026-10-26: "remove the add or remove agent from the top the buttons"; "the agent block might do that already so we can probably remove that too") #}
+   </div>
+   <div class="dblk-bottom"><div class="dblk-divider"></div>
+    <div class="dblk-keyrow replica-keyrow">{# no key, no FRAME, no MARK IV AGENT: the owner's words alone (the owner 2026-10-26: "we can simplify to the max"; "remove ... FRAME MARK IV AGENT") #}<div class="replica-classes">{% for label, sentence in R.classes[-2:] %}<div class="replica-class"><div class="caption">{{ label }}</div><div class="body">{{ sentence }}</div></div>{% endfor %}</div>{# THE AI FRAME AND THE AI SHELL DRAWN AS THE MARKS ARE (the owner 2026-10-27: "format ... like ... MARK I ... left justified and bigger"): the same markup and classes #}</div>{# THE TWO DEFINITIONS AS THE FRAME'S NOTE (the owner 2026-10-27: "replace NOT AVAILABLE TO THE PUBLIC ... with THE AI FRAME ... THE AI SHELL ..."): the last two pairs of root_shape.classes, his words as typed, said once here #}{# WHAT A REPLICA IS, in the owner's words (settings root_shape title and note, 2026-10-26): beside its light, in FRAME's own small type, its title bold #}{# FRAME beside its key, in BLOCK SEQUENCE's own words (the owner 2026-10-26: "to the right of the key lets add some text like BLOCK SEQUENCE but say FRAME") #}
+{# EVERY SHELL OPEN, WITH ITS DATA (the owner 2026-10-27: "for sure the agent needs to be in a shell in that mode"; folded shells were tried and refused: "totally empty", "it shows only empty shells no data"): the gate is the platform's edit page as it always was, each shell with its agent, keys, card and sections; only the frame's parts left it #}
+{% if g.carry.agentlayer == 'gate' and R.classes %}<div class="dblk-divider"></div><div class="replica-classes">{# THE CLASSES SAID AT THE TOP OF THE FRAME (the owner 2026-10-27: "also on the top of the frame in the gate view rnd i want to add Mark I ... The AI Shell ... so its very clear how it works"): his lines as typed, the gate face of the rnd side alone, in the platform's caption and body; the last two pairs are the frame's note above (the owner 2026-10-27), so the block holds the Marks #}{% for label, sentence in R.classes[:-2] %}<div class="replica-class"><div class="caption">{{ label }}</div><div class="body">{{ sentence }}</div></div>{% endfor %}</div>{% endif %}
+    <div class="dblk-divider"></div><div class="mfb-stack replica-agent">{% for sh in A.shells if sh.slot == R.agent_slot %}{{ atom(dict(A, sanity=sh.sanity) if sh.sanity else A, sh, answers) }}{% endfor %}</div>
+{# NO FRAME PARTS ON THE GATE (the owner 2026-10-27: "we can not edit the frame items in the gate view so why do we need them? they can stay only in the replica"): the X BOARD, AGENT ACCESS, SKILLS and RULES are drawn on the agent layer alone (above), right under the agent; the gate is the edit page: the shape and its shells #}
+{# THE AGENT SLOT (the owner 2026-10-26: "the actual agent needs to go in this top area line agent becasue its a special slot"): a line under the key row, then the replica's own MARK IV agent, one AI atom shell #}
+    {% for slot in R.slots %}<div class="dblk-divider"></div><div class="mfb-pt" data-sec="ROOT-{{ slot }}" data-view="▸ View {{ slot|lower|capitalize }}" data-hide="▾ Hide {{ slot|lower|capitalize }}">▾ Hide {{ slot|lower|capitalize }}</div>
+    <div data-sec-body="ROOT-{{ slot }}">{# NO REPLICA BLOCK ON THE GATE (the owner 2026-10-28: "the replica agents should not show in the scrum master only in the public view from the frame ... prob same for red and anything else"): the LIVE panel, THE RED, SECURITY and the DAY block are the public face's alone; the gate holds the agents #}<div class="mfb-stack">{% for sh in A.shells if sh.slot == slot %}{{ atom(dict(A, sanity=sh.sanity) if sh.sanity else A, sh, answers) }}{% endfor %}</div></div>
+    {% endfor %}
+   </div>
+  </div>
+ </div>
+</div>
+</div></div>{% endif %}
+<script>/* THE MARK IV CARD AT ITS OWN HEIGHT: its frame and holder fit the card each card page draws (its words make it taller or shorter) */
+document.querySelectorAll('[data-agent]').forEach(function (host) {
+  var frame = host.shadowRoot && host.shadowRoot.querySelector('.replica-card'); if (!frame) return;
+  function fit() {
+    try {
+      var card = frame.contentDocument.querySelector('.one-card').shadowRoot.querySelector('.agent-card');
+      var h = card.getBoundingClientRect().height + 'px'; frame.style.height = h; frame.parentNode.style.height = h;
+    } catch (e) { /* not drawn yet: its first height stands */ }
+  }
+  frame.addEventListener('load', function () { fit(); setTimeout(fit, 400); });
+});
+</script>
+<script>/* THE TREE OPENS AS THE ORIGINAL'S (the owner 2026-10-26: "when i refresh it expands the entire tree that is annoying"): collapsed at every draw; a folder opened opens everything inside it */
+document.querySelectorAll('.replica-access details[data-depth]').forEach(function (d) { d.addEventListener('toggle', function () { if (d.dataset.depth !== '0') { d.querySelectorAll('details').forEach(function (x) { x.open = d.open; }); } }); });
+</script>
+<script>/* ▶ READ THE STANDUP IN ITS AGENT'S OWN VOICE (the original's player, copied and updated: the owner 2026-10-26 "is the voice correct?"): the lines asked of the voice ahead at load; Read plays each the moment the one before ends; said as a person says it */
+document.querySelectorAll('[data-agent]').forEach(function (host) {   /* EVERY SHELL HOLDING THE VOICE'S HOOKS, never a host by name: a host carries its agent's card key */
+  var root = host.shadowRoot; if (!root) return;
+  root.querySelectorAll('[data-read]').forEach(function (go) {   /* EVERY READ BUTTON OF THE SHELL, each reading its own words (the standup's; ABOUT's, the owner 2026-10-28) */
+  var box = go.closest('.replica-voice'), said = box && box.querySelector('[data-voice-said]'), scope = go.closest('[data-voice-root]'); if (!box) return;
+  var base = '/voice/', reading = false;
+  function say(k) { said.textContent = box.getAttribute('data-' + k); }
+  function refused(e) { reading = false; said.textContent = (box.getAttribute('data-refused') || '') + ': ' + ((e && e.name) || 'Error'); }   /* a play the browser refuses is said, never swallowed */
+  var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  function clock(h, m) { h = +h; m = +m; if (h === 12 && m === 0) return 'noon'; if (h === 0 && m === 0) return 'midnight'; var half = h < 12 ? 'am' : 'pm', hh = h % 12 || 12; return hh + (m ? ':' + (m < 10 ? '0' : '') + m : '') + ' ' + half; }
+  function day(y, mo, d) { return MONTHS[+mo - 1] + ' ' + (+d); }
+  function spoken(t) {
+    return t.replace(/\b([01]?\d|2[0-3]):([0-5]\d)\b/g, function (_, h, m) { return clock(h, m); })
+      .replace(/\b(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})\d{2}\b/g, function (_, y, mo, d, h, m) { return day(y, mo, d) + ' at ' + clock(h, m); })
+      .replace(/\b(\d{4})-(\d{2})-(\d{2})\b/g, function (_, y, mo, d) { return day(y, mo, d); })
+      .replace(/\b(\w+)\(s\)/g, '$1s').replace(/\biphone\b/gi, 'iPhone').replace(/\bmacos\b/gi, 'Mac').replace(/\bREADY\b/g, 'ready')
+      .replace(/moiré/gi, 'moiray').replace(/\bLARRYD\b/g, 'Larry Dee').replace(/\s*·\s*/g, ', ').replace(/:\s/g, ', ');
+  }
+  function lines() {
+    var out = [];
+    (scope ? scope.querySelectorAll('[data-say]') : root.querySelectorAll('#scrum-spoken [data-say], .replica-spoken [data-say]')).forEach(function (e) {
+      (spoken(e.getAttribute('data-say').replace(/\s+/g, ' ').trim()).split(/(?<=[.!?])\s+/) || []).forEach(function (one) { one = one.trim(); if (one) out.push(one); });
+    });
+    return out;
+  }
+  function ahead() { var l = lines(); if (l.length) fetch(base + 'queue', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lines: l }) }).catch(function () {}); }
+  function sound(text, tries) {
+    return fetch(base + 'wav?text=' + encodeURIComponent(text), { credentials: 'same-origin' }).then(function (r) {
+      if (r.status === 200) return r.blob();
+      if (r.status === 202 && tries < 1800) return new Promise(function (ok) { setTimeout(ok, 700); }).then(function () { return sound(text, tries + 1); });   /* the engine makes one line at a time: a later piece waits its turn */
+      if (r.status === 503) say('down');
+      throw new Error('down');
+    });
+  }
+  function read() {
+    if (reading) return; reading = true;
+    var l = lines(); say('making'); ahead();
+    var sounds = l.map(function (t) { return sound(t, 0).then(function (b) { var a = new Audio(URL.createObjectURL(b)); a.preload = 'auto'; return a; }).catch(function () { return null; }); });
+    var i = 0;
+    (function next() {
+      if (i >= sounds.length) { reading = false; say('off'); return; }
+      sounds[i++].then(function (a) { if (!a) return next(); say('reading'); a.onended = next; a.onerror = next; a.play().catch(refused); });
+    })();
+  }
+  go.addEventListener('click', read);
+  if (!scope) ahead();   /* the standup's lines asked of the voice ahead at load; ABOUT's when it is pressed */
+  });
+});
+</script>
+<script>/* ▸ VIEW / ▾ HIDE open and close a section, the shell's own hands; each section the nearest of its own name */
+document.querySelectorAll('.mfb-pt[data-sec]').forEach(function (pt) {
+  pt.addEventListener('click', function () {
+    var body = pt.parentNode.querySelector(':scope > [data-sec-body="' + pt.dataset.sec + '"]'); if (!body) return;
+    body.hidden = !body.hidden;
+    pt.firstChild.textContent = body.hidden ? pt.dataset.view : pt.dataset.hide;
+  });
+});
+</script>
+<script>/* THE PAINT BOARD (the owner 2026-10-29: "when i click it doesnt brush it moves the image"; the old boards' proven brush, wid psawp bench hbDown, hbMove, paintAt):
+   a drag paints the mask on the canvas over the picture at once, ERASE takes it back, the gaps of a fast drag filled; on each release the whole stroke list goes to the
+   agent's press in the background (no reload); strokes are fractions of the picture, r a fraction of its width. Always the whole picture, no zoom (the owner 2026-10-29).
+   THE GRILL LAYER (the owner 2026-10-29: "a custom overlay layer and move it around ... then you bake it"; "you need the squish"; the PF REFERENCE MATCH stage, baked by
+   the box as avatarskin/wrap.py bakes it): the layer's centre, width, height and turn as fractions of the picture, drawn inside the mask with the same one light factor
+   the box uses; drag it to move, a corner to size, a side to squish, the knob to turn */
+window.replicaPaintRoots = () => [document, ...Array.from(document.querySelectorAll('.pb-agent')).map((h) => h.shadowRoot).filter(Boolean)];   /* the page and every agent's own root */
+const rpMask = (box) => box.querySelector('canvas:not([data-layer])'), rpLayer = (box) => box.querySelector('canvas[data-layer]'), rpImg = (box) => box.querySelector('img[data-mask-src]');
+window.replicaPaintState = (box) => { if (!box._paint) { box._paint = Object.assign({ size: 0.012, strokes: [], tone: { match: 60, light: 0, edge: 2 } }, JSON.parse(box.dataset.paint || '{}'));
+    try { const k = +localStorage.getItem('replica-brush:' + location.pathname); if (k > 0) box._paint.size = k / 1000; } catch (e) {}   /* his last brush size, on this browser */
+    const sl = box.querySelector('[data-paint-size]'); if (sl) { sl.value = Math.round(box._paint.size * 1000); sl.nextElementSibling.textContent = sl.value; } } return box._paint; };
+const rpStrokes = (g, strokes, w, h, colour) => { g.fillStyle = colour;
+  strokes.forEach((s) => { g.globalCompositeOperation = s.m === 'e' ? 'destination-out' : 'source-over'; g.beginPath(); g.arc(s.x * w, s.y * h, Math.max(0.5, s.r * w), 0, 7); g.fill(); });
+  g.globalCompositeOperation = 'source-over'; };
+window.replicaPaintDraw = (box) => { const cv = rpMask(box), img = rpImg(box); if (!cv || !img) return; const st = replicaPaintState(box); const w = img.clientWidth, h = img.clientHeight; if (!w || !h) return;
+  [cv, rpLayer(box)].forEach((c) => { if (c && (c.width !== w || c.height !== h)) { c.width = w; c.height = h; } });
+  const g = cv.getContext('2d'); g.clearRect(0, 0, w, h);
+  if (st.matte) { if (!st._matte) { st._matte = new Image(); st._matte.onload = () => replicaPaintDraw(box); st._matte.src = st.matte; }   /* THE FINDER'S SOFT MATTE under his marks */
+    if (st._matte.complete && st._matte.naturalWidth) g.drawImage(st._matte, 0, 0, w, h); }
+  rpStrokes(g, st.strokes, w, h, '#00B140'); st._maskAt = null; replicaLayerDraw(box); replicaPaintZoomNow(box); };
+/* ONE ZOOM (the owner 2026-10-29: "a zoom just single zoom in or zoom out not move"): 1x to 6x, always centred on the teeth (the mask's box, else the picture's middle), never panned */
+window.replicaPaintZoomBy = (b, d) => { const box = b.closest('.replica-marker'), st = replicaPaintState(box); st.z = Math.max(1, Math.min(6, (st.z || 1) + d)); replicaPaintZoomNow(box); };
+window.replicaPaintZoomNow = (box) => { const st = replicaPaintState(box), zl = box.querySelector('[data-paint-zoom]'); if (!zl) return; const z = st.z || 1;
+  let cx = 0.5, cy = 0.5; const mi = st.strokes.length ? rpMaskInfo(box) : null; if (mi && mi.box) { cx = (mi.box[0] + mi.box[2]) / 2; cy = (mi.box[1] + mi.box[3]) / 2; }
+  const tx = Math.max(1 - z, Math.min(0, 0.5 - cx * z)), ty = Math.max(1 - z, Math.min(0, 0.5 - cy * z));
+  zl.style.transform = z === 1 ? '' : 'translate(' + (tx * 100) + '%, ' + (ty * 100) + '%) scale(' + z + ')';
+  const lab = box.querySelector('[data-paint-zoomlabel]'); if (lab) lab.textContent = z + '×'; };
+/* HIDE REF (the owner 2026-10-29: "it needs a hide reference button"): the reference in the corner hidden or shown, kept so on this browser for every board */
+window.replicaPaintRefNow = (box) => { let hide = false; try { hide = localStorage.getItem('replica-hide-ref') === '1'; } catch (e) {}
+  const im = box.querySelector('[data-paint-ref]'), b = box.querySelector('[data-paint-refbtn]'); if (im) im.style.display = hide ? 'none' : ''; if (b) b.textContent = hide ? 'SHOW REF' : 'HIDE REF'; };
+window.replicaPaintRef = (b) => { let hide = false; try { hide = localStorage.getItem('replica-hide-ref') === '1'; localStorage.setItem('replica-hide-ref', hide ? '' : '1'); } catch (e) {}
+  const box = b.closest('.replica-marker'); if (!box) return; const im = box.querySelector('[data-paint-ref]'); if (im) im.style.display = hide ? '' : 'none'; b.textContent = hide ? 'HIDE REF' : 'SHOW REF';
+  replicaPaintRoots().forEach((r) => r.querySelectorAll('.replica-marker[data-paint]').forEach((x) => { if (x !== box) replicaPaintRefNow(x); })); };
+window.replicaLayerBox = (b) => { const box = b.closest('.replica-marker'), st = replicaPaintState(box); st.noBox = !st.noBox; b.textContent = st.noBox ? 'SHOW BOX' : 'HIDE BOX'; replicaLayerDraw(box); };
+window.replicaPaintMode = (b, m) => { const box = b.closest('.replica-marker'); box.dataset.mode = m; replicaPaintModeNow(box); };
+window.replicaPaintModeNow = (box) => { const st = replicaPaintState(box), img = rpImg(box), m = box.dataset.mode;
+  const want = m === 'result' && img.dataset.resultSrc ? img.dataset.resultSrc + (st.resultT ? '?t=' + st.resultT : '') : img.dataset.maskSrc;
+  if (img.getAttribute('src') !== want) img.setAttribute('src', want);
+  rpMask(box).style.opacity = m === 'mask' ? '.5' : '0'; rpMask(box).style.cursor = m === 'mask' ? 'none' : m === 'grill' ? 'default' : 'auto';
+  box.querySelectorAll('[data-paint-mode]').forEach((x) => x.setAttribute('aria-pressed', x.dataset.paintMode === m ? 'true' : 'false'));
+  if (m === 'grill' && !st.layer) replicaLayerFitNow(box); replicaLayerDraw(box); };
+window.replicaPaintSize = (sl) => { const box = sl.closest('.replica-marker'); replicaPaintState(box).size = (+sl.value) / 1000; sl.nextElementSibling.textContent = sl.value;
+  try { localStorage.setItem('replica-brush:' + location.pathname, sl.value); } catch (e) {} };
+window.replicaPaintRing = (ev, cv) => { const box = cv.closest('.replica-marker'); const ring = box.querySelector('[data-paint-ring]'); if (!ring) return;
+  if (ev && box.dataset.mode === 'grill') { cv.style.cursor = { move: 'move', size: 'nwse-resize', sqx: 'ew-resize', sqy: 'ns-resize', turn: 'grab' }[rpHit(box, ev)] || 'default'; }
+  if (!ev || box.dataset.mode !== 'mask' || box.hasAttribute('data-view')) { ring.style.display = 'none'; return; }
+  const st = replicaPaintState(box); const r = cv.getBoundingClientRect(), f = box.querySelector('[data-paint-frame]').getBoundingClientRect(); const d = 2 * st.size * r.width;
+  ring.style.display = 'block'; ring.style.width = ring.style.height = d + 'px'; ring.style.left = (ev.clientX - f.left) + 'px'; ring.style.top = (ev.clientY - f.top) + 'px'; };
+const rpPost = (box, fields) => { const f = box.querySelector('form'); if (!f) return Promise.resolve(null); const fd = new FormData(f); Object.entries(fields).forEach(([k, v]) => fd.set(k, v));
+  return fetch(f.action, { method: 'POST', body: fd, credentials: 'same-origin' }); };
+const rpSay = (box, words) => { const say = box.querySelector('[data-paint-said]'); if (say) say.textContent = words; };
+window.replicaPaintSend = (box) => { const st = replicaPaintState(box); rpSay(box, 'saving...');
+  rpPost(box, { path: JSON.stringify(st.strokes), at: String(Date.now()) }).then((r) => rpSay(box, r && r.ok ? 'saved · ' + st.strokes.length + ' marks' : 'NOT SAVED · the office said ' + (r && r.status)))
+    .catch(() => rpSay(box, 'NOT SAVED · the office did not answer')); };
+window.replicaPaintDown = (ev, cv) => { ev.preventDefault(); const box = cv.closest('.replica-marker'); const st = replicaPaintState(box);
+  if (ev.button !== 0 || box.hasAttribute('data-view')) return; if (box.dataset.mode === 'grill') return replicaLayerDown(ev, cv, box); if (box.dataset.mode !== 'mask') return;   /* TUNE, the RESULT and a picture only looked at */
+  const kind = (box.querySelector('input[type=radio]:checked') || { value: box.dataset.kind || 'brush' }).value; const m = kind.indexOf('erase') === 0 ? 'e' : 'p'; const r = st.size;
+  const rect = cv.getBoundingClientRect(); const step = Math.max(1, r * rect.width / 3); let last = null;
+  const put = (x, y) => st.strokes.push({ m: m, x: +x.toFixed(5), y: +y.toFixed(5), r: r });
+  const at = (e) => { const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)), y = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
+    if (last) { const d = Math.hypot((x - last.x) * rect.width, (y - last.y) * rect.height); if (d < step) return; const k = Math.floor(d / step);
+      for (let i = 1; i < k; i++) put(last.x + (x - last.x) * i / k, last.y + (y - last.y) * i / k); }
+    put(x, y); last = { x: x, y: y }; replicaPaintDraw(box); };
+  at(ev); try { cv.setPointerCapture(ev.pointerId); } catch (e) {}
+  const move = (e) => { at(e); replicaPaintRing(e, cv); }; const up = () => { cv.removeEventListener('pointermove', move); cv.removeEventListener('pointerup', up); cv.removeEventListener('pointercancel', up); replicaPaintSend(box); };
+  cv.addEventListener('pointermove', move); cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up); };
+window.replicaPaintReset = (btn) => { const box = btn.closest('.replica-marker'); if (!confirm('Clear every mark?')) return; replicaPaintState(box).strokes = [];
+  replicaPaintDraw(box); replicaPaintSend(box); };
+/* THE GRILL LAYER */
+const rpMaskInfo = (box) => { const st = replicaPaintState(box), img = rpImg(box); const w = img.clientWidth, h = img.clientHeight;
+  if (!w || !h || !img.complete) return { canvas: null, box: null, band: null };   /* the picture not drawn yet: nothing to measure (it is measured again when it loads) */
+  if (st._maskAt === w + 'x' + st.strokes.length && st._mask) return st._mask;
+  const m = document.createElement('canvas'); m.width = w; m.height = h; const g = m.getContext('2d'); rpStrokes(g, st.strokes, w, h, '#fff');
+  const a = g.getImageData(0, 0, w, h).data; let x0 = w, y0 = h, x1 = -1, y1 = -1; for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (a[(y * w + x) * 4 + 3] > 127) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+  let band = null; if (x1 >= 0) { const s = document.createElement('canvas'); s.width = w; s.height = h; const sg = s.getContext('2d'); try { sg.drawImage(img, 0, 0, w, h); const d = sg.getImageData(0, 0, w, h).data;
+      const gr = Math.round((x1 + 1 - x0) * 0.25); let sum = 0, n = 0;   /* the box round the mask grown by a quarter of its width, outside the mask: as the box measures it */
+      for (let y = Math.max(0, y0 - gr); y < Math.min(h, y1 + 1 + gr); y++) for (let x = Math.max(0, x0 - gr); x < Math.min(w, x1 + 1 + gr); x++) { const i = (y * w + x) * 4; if (a[i + 3] > 127) continue; sum += 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]; n++; }
+      band = n ? sum / n : null; } catch (e) { band = null; } }
+  st._mask = { canvas: m, box: x1 >= 0 ? [x0 / w, y0 / h, (x1 + 1) / w, (y1 + 1) / h] : null, band: band }; st._maskAt = w + 'x' + st.strokes.length; return st._mask; };
+const rpGrill = (box) => { const st = replicaPaintState(box), src = rpImg(box).dataset.grillSrc; if (!src) return null;
+  if (!st._grill) { st._grill = new Image(); st._grill.onload = () => replicaPaintDraw(box); st._grill.src = src; }
+  return st._grill.complete && st._grill.naturalWidth ? st._grill : null; };
+window.replicaLayerFitNow = (box) => { const st = replicaPaintState(box), gi = rpGrill(box), mi = rpMaskInfo(box), img = rpImg(box); if (!gi || !mi.box) return;
+  const w = mi.box[2] - mi.box[0], h = w * img.clientWidth * gi.naturalHeight / gi.naturalWidth / img.clientHeight;   /* the slot's teeth width, the grill's own shape, hung from their top */
+  st.layer = { cx: (mi.box[0] + mi.box[2]) / 2, cy: mi.box[1] + h / 2, w: w, h: h, rot: 0 }; };
+const rpFactor = (box) => { const st = replicaPaintState(box), mi = rpMaskInfo(box), t = st.tone; const ratio = st.band && mi.band ? mi.band / st.band : 1;
+  return (1 + (ratio - 1) * t.match / 100) * (1 + t.light / 100); };
+const rpGeom = (box) => { const st = replicaPaintState(box), c = rpLayer(box); const L = st.layer; return { cx: L.cx * c.width, cy: L.cy * c.height, hw: L.w * c.width / 2, hh: L.h * c.height / 2, t: (L.rot || 0) * Math.PI / 180 }; };
+window.replicaLayerDraw = (box) => { const c = rpLayer(box); if (!c) return; const g = c.getContext('2d'); g.clearRect(0, 0, c.width, c.height);
+  c.style.display = box.dataset.mode === 'grill' || box.dataset.mode === 'tune' ? 'block' : 'none';
+  const st = replicaPaintState(box); if (box.dataset.mode === 'tune') return replicaTuneDraw(box); if (box.dataset.mode !== 'grill') return; const gi = rpGrill(box), mi = rpMaskInfo(box);
+  if (!gi) { rpSay(box, rpImg(box).dataset.grillSrc ? 'loading the grill...' : 'no grill layer yet · press SAVE MASKS'); return; }
+  if (!mi.box) { rpSay(box, 'paint this slot\'s teeth first (MASK)'); return; } if (!st.layer) replicaLayerFitNow(box);
+  const say = box.querySelector('[data-paint-said]'); if (say && /^(loading|no grill|paint this)/.test(say.textContent)) rpSay(box, 'drag the grill to move · green squares size · green dots squish · white knob turns');
+  const k = document.createElement('canvas'); k.width = c.width; k.height = c.height; const kg = k.getContext('2d'); const G = rpGeom(box);
+  kg.fillStyle = '#140c0c'; kg.fillRect(0, 0, k.width, k.height);   /* the old teeth healed away under it (the box fills them from the mouth round them) */
+  kg.save(); kg.filter = 'brightness(' + rpFactor(box).toFixed(3) + ')'; kg.translate(G.cx, G.cy); kg.rotate(G.t); kg.drawImage(gi, -G.hw, -G.hh, 2 * G.hw, 2 * G.hh); kg.restore();
+  kg.globalCompositeOperation = 'destination-in'; kg.drawImage(mi.canvas, 0, 0); g.drawImage(k, 0, 0);   /* only inside the slot's mask, as it bakes */
+  if (st.noBox) return;   /* HIDE BOX: the grill alone, still dragged to move */
+  g.save(); g.translate(G.cx, G.cy); g.rotate(G.t); g.strokeStyle = '#fff'; g.setLineDash([5, 4]); g.lineWidth = 1; g.strokeRect(-G.hw, -G.hh, 2 * G.hw, 2 * G.hh); g.setLineDash([]);
+  g.fillStyle = '#00B140'; g.strokeStyle = '#000';
+  [[-1, -1], [1, -1], [1, 1], [-1, 1]].forEach(([a, b]) => { g.fillRect(a * G.hw - 5, b * G.hh - 5, 10, 10); g.strokeRect(a * G.hw - 5, b * G.hh - 5, 10, 10); });   /* SIZE */
+  [[-1, 0], [1, 0], [0, -1], [0, 1]].forEach(([a, b]) => { g.beginPath(); g.arc(a * G.hw, b * G.hh, 5, 0, 7); g.fill(); g.stroke(); });   /* SQUISH */
+  g.strokeStyle = '#fff'; g.beginPath(); g.moveTo(0, -G.hh); g.lineTo(0, -G.hh - 26); g.stroke(); g.beginPath(); g.arc(0, -G.hh - 30, 6, 0, 7); g.fillStyle = '#fff'; g.fill(); g.restore();   /* TURN */ };
+const rpLocal = (box, ev) => { const c = rpLayer(box), r = c.getBoundingClientRect(), G = rpGeom(box); const px = (ev.clientX - r.left) * c.width / r.width, py = (ev.clientY - r.top) * c.height / r.height;
+  const dx = px - G.cx, dy = py - G.cy; return { px: px, py: py, lx: dx * Math.cos(G.t) + dy * Math.sin(G.t), ly: -dx * Math.sin(G.t) + dy * Math.cos(G.t), G: G }; };
+const rpHit = (box, ev) => { const st = replicaPaintState(box); if (!st.layer) return ''; const p = rpLocal(box, ev), G = p.G, R = 9;
+  if (Math.hypot(p.lx, p.ly + G.hh + 30) < R + 2) return 'turn';
+  if (Math.abs(Math.abs(p.lx) - G.hw) < R && Math.abs(Math.abs(p.ly) - G.hh) < R) return 'size';
+  if (Math.abs(Math.abs(p.lx) - G.hw) < R && Math.abs(p.ly) < R) return 'sqx';
+  if (Math.abs(Math.abs(p.ly) - G.hh) < R && Math.abs(p.lx) < R) return 'sqy';
+  return Math.abs(p.lx) < G.hw && Math.abs(p.ly) < G.hh ? 'move' : ''; };
+window.replicaLayerDown = (ev, cv, box) => { const st = replicaPaintState(box); if (!st.layer) return; const how = rpHit(box, ev); if (!how) return;
+  const c = rpLayer(box), s0 = rpLocal(box, ev), L0 = Object.assign({}, st.layer), d0 = Math.hypot(s0.lx, s0.ly) || 1, a0 = Math.atan2(s0.py - s0.G.cy, s0.px - s0.G.cx);
+  try { cv.setPointerCapture(ev.pointerId); } catch (e) {}
+  const move = (e) => { const p = rpLocal(box, e); const L = st.layer;
+    if (how === 'move') { L.cx = L0.cx + (p.px - s0.px) / c.width; L.cy = L0.cy + (p.py - s0.py) / c.height; }
+    else if (how === 'size') { const k = Math.max(0.05, Math.hypot(p.lx, p.ly) / d0); L.w = L0.w * k; L.h = L0.h * k; }
+    else if (how === 'sqx') { L.w = Math.max(4 / c.width, 2 * Math.abs(p.lx) / c.width); }
+    else if (how === 'sqy') { L.h = Math.max(4 / c.height, 2 * Math.abs(p.ly) / c.height); }
+    else { L.rot = Math.round((L0.rot + (Math.atan2(p.py - s0.G.cy, p.px - s0.G.cx) - a0) * 180 / Math.PI) * 10) / 10; }
+    replicaLayerDraw(box); rpSay(box, 'size ' + (L.w * 100).toFixed(1) + '% x ' + (L.h * 100).toFixed(1) + '% · turn ' + (L.rot || 0).toFixed(1) + '°'); };
+  const up = () => { cv.removeEventListener('pointermove', move); cv.removeEventListener('pointerup', up); cv.removeEventListener('pointercancel', up); replicaLayerSend(box); };
+  cv.addEventListener('pointermove', move); cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up); };
+window.replicaLayerSend = (box) => { const st = replicaPaintState(box); if (!st.layer) return Promise.resolve(false); rpSay(box, 'saving...');
+  return rpPost(box, { do: 'teethlayer', layer: JSON.stringify(st.layer), match: st.tone.match, light: st.tone.light, edge: st.tone.edge, at: String(Date.now()) })
+    .then((r) => { rpSay(box, r && r.ok ? 'saved · the grill as you see it' : 'NOT SAVED · the office said ' + (r && r.status)); return !!(r && r.ok); })
+    .catch(() => { rpSay(box, 'NOT SAVED · the office did not answer'); return false; }); };
+/* TUNE (the owner 2026-10-29: "it should show the resutl to fine tune before then when perfect bake / you can bake once before just to get the overlay"): MAKE PREVIEW
+   bakes two full layers once (a: the shot's own light, b: all his light); the page mixes them live, out = picture + (a + (b - a) x BY - picture) x AMOUNT, the same
+   straight line the box's maths walks; BAKE then makes it at full size at exactly those numbers */
+const rpPix = (src, w, h) => new Promise((ok) => { const i = new Image(); i.onload = () => { const c = document.createElement('canvas'); c.width = w; c.height = h; const g = c.getContext('2d'); g.drawImage(i, 0, 0, w, h);
+  try { ok(g.getImageData(0, 0, w, h)); } catch (e) { ok(null); } }; i.onerror = () => ok(null); i.src = src; });
+window.replicaTuneDraw = (box) => { const st = replicaPaintState(box), T = st.tune, c = rpLayer(box), img = rpImg(box); if (!T || !c || !c.width) return;
+  if (T.layers && T.layers.length) {   /* LAYERS (the owner 2026-10-29, RESTORE DETAIL): the picture at the bottom, each layer over it at its slider's %, as the bake lays them */
+    if (!st._layers) { st._layers = T.layers.map((u) => { const i = new Image(); i.onload = () => replicaTuneDraw(box); i.src = u; return i; }); }
+    const g = c.getContext('2d'), w = c.width, h = c.height; if (!st._layers.every((i) => i.complete && i.naturalWidth) || !img.complete) return;
+    g.globalAlpha = 1; g.drawImage(img, 0, 0, w, h); [T.by, T.amount].forEach((k, j) => { g.globalAlpha = (st.tone[k] || 0) / 100; g.drawImage(st._layers[j], 0, 0, w, h); }); g.globalAlpha = 1;
+    rpSay(box, 'live · ' + T.by.toUpperCase() + ' ' + Math.round(st.tone[T.by] || 0) + '% · ' + T.amount.toUpperCase() + ' ' + Math.round(st.tone[T.amount] || 0) + '% · BAKE when it is right'); return; }
+  if (!T.made) { rpSay(box, 'press MAKE PREVIEW once: then every slider shows its result live'); return; }
+  const w = c.width, h = c.height, key = w + 'x' + h + ':' + (st.tuneT || 0);
+  if (st._tuneKey !== key) { st._tuneKey = key; st._tune = null; const v = st.tuneT ? '?t=' + st.tuneT : '?t=' + Date.now();
+    Promise.all([rpPix(img.dataset.maskSrc, w, h), rpPix(T.a + v, w, h), rpPix(T.b + v, w, h)]).then(([o, a, b]) => { if (st._tuneKey !== key) return;
+      if (!o || !a || !b) { rpSay(box, 'the preview could not be read · MAKE PREVIEW again'); return; } st._tune = { o: o, a: a, b: b }; replicaTuneDraw(box); }); return; }
+  if (!st._tune) return; const { o, a, b } = st._tune, by = (st.tone[T.by] || 0) / 100, am = (st.tone[T.amount] === undefined ? 100 : st.tone[T.amount]) / 100;
+  /* THE SELECTION, FEATHERED (the owner 2026-10-29: "the edge is not working it needs to feather the edge more or less"): the board's own mask (the matte and his marks)
+     blurred as the box blurs it, sigma = EDGE / 2 at the picture's full size, so it moves live with the other two */
+  const e = T.feather ? (st.tone[T.feather] || 0) : 0, fullW = img.naturalWidth || w, wkey = e + ':' + st.strokes.length + ':' + w + ':' + (st._matte && st._matte.complete ? 1 : 0) + ':' + (T.protect ? st.tone[T.protect] : '');
+  if (st._wKey !== wkey) { const m = document.createElement('canvas'); m.width = w; m.height = h; const mg = m.getContext('2d'); mg.drawImage(rpMask(box), 0, 0);
+    const wt = mg.getImageData(0, 0, w, h).data; if (T.full && !T.protect) { for (let i = 3; i < wt.length; i += 4) wt[i] = 255; }   /* the whole picture (the colour) */
+    if (e > 0 && (!T.full || T.protect)) { const ep = Math.max(1, e * w / fullW), n = w * h, D = new Float32Array(n), r2 = Math.SQRT2;   /* the box's feather: full inside, */
+      for (let i = 0; i < n; i++) D[i] = wt[i * 4 + 3] > 127 ? 0 : 1e9;   /* outside a fade over EDGE px, (1 - distance/EDGE) squared; the distance by the two-pass chamfer */
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = y * w + x; let v = D[i]; if (x > 0) v = Math.min(v, D[i - 1] + 1); if (y > 0) { v = Math.min(v, D[i - w] + 1); if (x > 0) v = Math.min(v, D[i - w - 1] + r2); if (x < w - 1) v = Math.min(v, D[i - w + 1] + r2); } D[i] = v; }
+      for (let y = h - 1; y >= 0; y--) for (let x = w - 1; x >= 0; x--) { const i = y * w + x; let v = D[i]; if (x < w - 1) v = Math.min(v, D[i + 1] + 1); if (y < h - 1) { v = Math.min(v, D[i + w] + 1); if (x < w - 1) v = Math.min(v, D[i + w + 1] + r2); if (x > 0) v = Math.min(v, D[i + w - 1] + r2); } D[i] = v; }
+      for (let i = 0; i < n; i++) { const f = Math.max(0, 1 - D[i] / ep); wt[i * 4 + 3] = Math.max(wt[i * 4 + 3], Math.round(255 * f * f)); } }
+    if (T.protect) { const pr = (st.tone[T.protect] === undefined ? 100 : st.tone[T.protect]) / 100;   /* THE PROTECT BRUSH (the old MOVE COLOR): the mask keeps the picture */
+      for (let i = 3; i < wt.length; i += 4) wt[i] = Math.round(255 * (1 - (wt[i] / 255) * pr)); }
+    st._wt = wt; st._wKey = wkey; }
+  const out = c.getContext('2d').createImageData(w, h), d = out.data, O = o.data, A = a.data, B = b.data, M = st._wt;
+  for (let i = 0; i < d.length; i += 4) { const k_ = am * M[i + 3] / 255; for (let k = 0; k < 3; k++) { const f = A[i + k] + (B[i + k] - A[i + k]) * by; d[i + k] = O[i + k] + (f - O[i + k]) * k_; } d[i + 3] = 255; }
+  c.getContext('2d').putImageData(out, 0, 0);
+  rpSay(box, 'TUNE · live · ' + T.by.toUpperCase() + ' ' + Math.round(by * 100) + '% · ' + T.amount.toUpperCase() + ' ' + Math.round(am * 100) + '%' + (T.feather ? ' · ' + T.feather.toUpperCase() + ' ' + e + ' px' : '') + ' · BAKE when it is right'); };
+window.replicaTunePreview = (b) => { const box = b.closest('.replica-marker'), st = replicaPaintState(box), t0 = Date.now(); b.disabled = true; rpSay(box, 'making the preview (once)...');
+  rpPost(box, { do: st.tune.do, value: st.key }).then(() => fetch(st.tune.b + '?t=' + Date.now(), { method: 'HEAD', credentials: 'same-origin' }))
+    .then((r) => { const at = r && r.ok ? Date.parse(r.headers.get('Last-Modified') || '') : NaN; b.disabled = false;
+      if (!isNaN(at) && at >= t0 - 2000) { st.tune.made = true; st.tuneT = Date.now(); box.dataset.mode = 'tune'; replicaPaintModeNow(box); }
+      else rpSay(box, 'NO PREVIEW · reload the page to read why under the picture'); })
+    .catch(() => { b.disabled = false; rpSay(box, 'NO PREVIEW · the office did not answer'); }); };
+window.replicaPaintTone = (sl, name) => { const box = sl.closest('.replica-marker'); replicaPaintState(box).tone[name] = +sl.value;
+  sl.nextElementSibling.textContent = sl.value + ({ match: '%', edge: 'px' }[name] || ''); replicaLayerDraw(box); };
+window.replicaPaintToneSend = (sl) => replicaLayerSend(sl.closest('.replica-marker'));
+/* A BAKE ON THE MASK ITSELF (the hair: the mask is the whole job): BAKE sends this picture's numbers and asks the agent for it, then shows the RESULT; AUTO asks the box's
+   finder for a first mask and draws the page again with it */
+window.replicaPaintBake = (b) => { const box = b.closest('.replica-marker'), st = replicaPaintState(box), img = rpImg(box), t0 = Date.now(); b.disabled = true; rpSay(box, 'baking...');
+  rpPost(box, Object.assign({ do: st.bake, value: st.key + ':one' }, st.tone)).then(() => fetch(img.dataset.resultSrc + '?t=' + Date.now(), { method: 'HEAD', credentials: 'same-origin' }))
+    .then((r) => { const at = r && r.ok ? Date.parse(r.headers.get('Last-Modified') || '') : NaN; b.disabled = false;
+      if (!isNaN(at) && at >= t0 - 2000) { st.resultT = Date.now(); box.dataset.mode = 'result'; replicaPaintModeNow(box); rpSay(box, 'BAKED · the RESULT'); }
+      else rpSay(box, 'NOT BAKED · reload the page to read why under the picture'); })
+    .catch(() => { b.disabled = false; rpSay(box, 'NOT BAKED · the office did not answer'); }); };
+window.replicaPaintAuto = (b) => { const box = b.closest('.replica-marker'), st = replicaPaintState(box);
+  if (st.strokes.length && !confirm('Replace this picture\'s marks with the hair finder\'s first mask?')) return; b.disabled = true; rpSay(box, 'the finder is looking...');
+  rpPost(box, { do: b.dataset.paintAuto, value: st.key }).then(() => location.reload()).catch(() => { b.disabled = false; rpSay(box, 'the office did not answer'); }); };
+window.replicaLayerFit = (b) => { const box = b.closest('.replica-marker'); replicaLayerFitNow(box); replicaLayerDraw(box); replicaLayerSend(box); };
+window.replicaLayerBake = (b) => { const box = b.closest('.replica-marker'), st = replicaPaintState(box), img = rpImg(box), t0 = Date.now(); b.disabled = true;
+  replicaLayerSend(box).then((ok) => { if (!ok) { b.disabled = false; return; } rpSay(box, 'baking...');
+    return rpPost(box, { do: 'teethbake', value: st.key + ':one' }).then(() => fetch(img.dataset.resultSrc + '?t=' + Date.now(), { method: 'HEAD', credentials: 'same-origin' }))
+      .then((r) => { const at = r && r.ok ? Date.parse(r.headers.get('Last-Modified') || '') : NaN; b.disabled = false;
+        if (!isNaN(at) && at >= t0 - 2000) { st.resultT = Date.now(); box.dataset.mode = 'result'; replicaPaintModeNow(box); rpSay(box, 'BAKED · the RESULT'); }
+        else rpSay(box, 'NOT BAKED · reload the page to read why under the slot'); }); }).catch(() => { b.disabled = false; rpSay(box, 'NOT BAKED · the office did not answer'); }); };
+/* BIG: the board laid over the whole window, as large as the screen lets the picture be; CLOSE or Esc puts it back. ON THE PAGE it is as wide as its block, never past it
+   (the owner 2026-10-29: "on the main page before you make it the full screen big the image is way too big and goes off the frame") */
+window.replicaPaintFit = (box) => { const img = rpImg(box), f = box.querySelector('[data-paint-frame]'); if (!img || !f) return;
+  const ar = (img.naturalWidth || 16) / (img.naturalHeight || 9), top = f.getBoundingClientRect().top - box.getBoundingClientRect().top;
+  f.style.maxWidth = Math.floor(Math.min(window.innerWidth - 24, (window.innerHeight - top - 16) * ar)) + 'px'; requestAnimationFrame(() => replicaPaintDraw(box)); };
+window.replicaPaintBig = (b, close) => { const box = b.closest('.replica-marker'); const on = close ? false : !box._big;
+  if (on) { box._big = { css: box.style.cssText }; box.style.cssText = 'position:fixed;inset:0;z-index:2147483000;margin:0;padding:10px 12px;background:#111;color:#eee;overflow:auto';
+    b.textContent = '✕ CLOSE (Esc)'; window.replicaPaintOpen = box; replicaPaintFit(box); }
+  else if (box._big) { box.style.cssText = box._big.css; box._big = null; b.textContent = '⛶ BIG'; window.replicaPaintOpen = null; replicaPaintWide(box); } };
+window.replicaPaintWide = (box) => { if (box._big) { replicaPaintFit(box); return; } const f = box.querySelector('[data-paint-frame]'); if (!f) return; f.style.maxWidth = 'none'; f.style.width = '100%';
+  requestAnimationFrame(() => replicaPaintDraw(box)); };
+window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && window.replicaPaintOpen) replicaPaintBig(window.replicaPaintOpen.querySelector('[data-paint-big]'), true); });
+window.addEventListener('resize', () => replicaPaintRoots().forEach((r) => r.querySelectorAll('.replica-marker[data-paint]').forEach((box) => replicaPaintWide(box))));
+/* A HIDE ON THE LIVE PANEL (the owner 2026-10-29: "the live data panel for this needs a hide so its not shifting around the page"), kept so on this browser */
+window.replicaLiveHide = (b, keep) => { const live = b.closest('.replica-live'); const body = live && live.querySelector('[data-live-body]'); if (!body) return;
+  const hide = keep === undefined ? body.style.display !== 'none' : keep; body.style.display = hide ? 'none' : ''; b.textContent = hide ? '▸ VIEW' : '▾ HIDE';
+  if (keep === undefined) { try { localStorage.setItem('replica-live-hidden', hide ? '1' : ''); } catch (e) {} } };
+const replicaPaintAll = () => replicaPaintRoots().forEach((r) => r.querySelectorAll('.replica-marker[data-paint]').forEach((box) => replicaPaintDraw(box)));
+const replicaPaintStart = () => { replicaPaintRoots().forEach((r) => { r.querySelectorAll('.replica-marker[data-paint]').forEach((box) => { replicaPaintState(box); replicaPaintModeNow(box); replicaPaintWide(box); replicaPaintRefNow(box);
+    const img = rpImg(box); if (img) img.addEventListener('load', () => replicaPaintDraw(box)); });   /* drawn again the moment its picture arrives */
+  try { if (localStorage.getItem('replica-live-hidden')) r.querySelectorAll('[data-live-hide]').forEach((b) => replicaLiveHide(b, true)); } catch (e) {} }); };
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', replicaPaintStart); else replicaPaintStart();
+window.addEventListener('load', replicaPaintAll); [400, 1200, 3000, 6000].forEach((t) => setTimeout(replicaPaintAll, t));   /* pictures and the grill arrive in any order: drawn again until all are in */
+</script>
+<script>/* THE COLOR MOVE BOARD, 1 TO 1 (the owner 2026-10-29: "the controls and tool itself needs to be 1 to 1 with the original"): the old Pace Shift MOVE COLOR, buildMoveColor
+   in inc_widget_psawp_bench.html, its own markup, styles and functions, function by function; only what spoke to the old bench speaks to this page instead: "your image" is
+   the 8 pictures (click any one for the OLD colour), applyAdjustments draws all 8 here as the box bakes them (_apply_sample, LUMINOSITY, ORIGINAL ON TOP), Show Mask draws
+   the sample's mask on them, the PROTECT brush paints over them; SAVE SETTINGS and every change go to the agent; SAVE & LAND is BAKE ALL */
+window.cmBoard = function (box) {
+  if (box._cmUp) return; box._cmUp = 1;
+  var byId = function (id) { return box.querySelector('#' + id); };
+  var sel = Object.assign({ samples: [], lum: 0, overlay: 0, restore: 0, detail_src: '', protect: { strokes: [] } }, JSON.parse(box.dataset.cm || '{}'));
+  if (!sel.protect || !sel.protect.strokes) sel.protect = { strokes: [] };
+  var samples = sel.samples, activeSample = -1, applyTimer = null, addingMode = false, pendingFrom = null;
+  var statusEl = byId('cg-status'), addStatus = byId('cg-add-status'), refImg = box.querySelector('[data-cm-ref]');
+  var pics = Array.prototype.slice.call(box.querySelectorAll('canvas[data-cm-pic]')).map(function (cv) { return { cv: cv }; });
+  var grid = box.querySelector('[data-cm-grid]'), protCanvas = box.querySelector('[data-cm-protect]'), maskOn = false;
+  function lin(v) { v /= 255; return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }
+  function f(t) { return t > 0.008856 ? Math.pow(t, 1 / 3) : 7.787 * t + 16 / 116; }
+  function fi(t) { var t3 = t * t * t; return t3 > 0.008856 ? t3 : (t - 16 / 116) / 7.787; }
+  function gam(v) { return 255 * (v <= 0.0031308 ? 12.92 * v : 1.055 * Math.pow(v, 1 / 2.4) - 0.055); }
+  function toLab(r, g, b) { var rl = lin(r), gl = lin(g), bl = lin(b);
+    var x = rl * 0.4124564 + gl * 0.3575761 + bl * 0.1804375, y = rl * 0.2126729 + gl * 0.7151522 + bl * 0.0721750, z = rl * 0.0193339 + gl * 0.1191920 + bl * 0.9503041;
+    return [116 * f(y) - 16, 500 * (f(x / 0.95047) - f(y)), 200 * (f(y) - f(z / 1.08883))]; }
+  function toRgb(L, A, B) { var fy = (L + 16) / 116, x = fi(fy + A / 500) * 0.95047, y = fi(fy), z = fi(fy - B / 200) * 1.08883;
+    return [gam(Math.max(0, 3.2404542 * x - 1.5371385 * y - 0.4985314 * z)), gam(Math.max(0, -0.9692660 * x + 1.8760108 * y + 0.0415560 * z)), gam(Math.max(0, 0.0556434 * x - 0.2040259 * y + 1.0572252 * z))]; }
+  /* getPixelLab, the original's: a 5 by 5 average at the click, true CIELAB */
+  function getPixelLab(el, clickX, clickY, raw) {
+    var rect = el.getBoundingClientRect(), sx = (clickX - rect.left) / rect.width, sy = (clickY - rect.top) / rect.height, w, h, get;
+    if (el.tagName === 'IMG') { var c = document.createElement('canvas'); w = c.width = el.naturalWidth || 1024; h = c.height = el.naturalHeight || 576; var g = c.getContext('2d'); g.drawImage(el, 0, 0, w, h);
+      get = function (px, py) { return g.getImageData(px, py, 1, 1).data; }; }
+    else { var p = pics.find(function (q) { return q.cv === el; }); w = p.w; h = p.h; var src = raw ? p.rgb : p.cv.getContext('2d').getImageData(0, 0, w, h).data;
+      get = function (px, py) { var i = (py * w + px) * 4; return [src[i], src[i + 1], src[i + 2]]; }; }
+    var cx = Math.round(sx * w), cy = Math.round(sy * h), r = 0, g2 = 0, b = 0, count = 0;
+    for (var dy = -2; dy <= 2; dy++) for (var dx = -2; dx <= 2; dx++) { var d = get(Math.max(0, Math.min(w - 1, cx + dx)), Math.max(0, Math.min(h - 1, cy + dy))); r += d[0]; g2 += d[1]; b += d[2]; count++; }
+    r = Math.round(r / count); g2 = Math.round(g2 / count); b = Math.round(b / count); var l = toLab(r, g2, b);
+    return { l: Math.round(l[0] * 10) / 10, a: Math.round(l[1] * 10) / 10, b: Math.round(l[2] * 10) / 10, r: r, g: g2, b_rgb: b, px: sx, py: sy, pic: pics.findIndex(function (q) { return q.cv === el; }) };
+  }
+  /* _apply_sample, the original's (mgmt_color_grade.py), line for line in the page; contiguous from its own seed on its own picture */
+  function sampleMask(s, L, A, B) { var lf = 5, m = Math.min(1, Math.max(0, (L - s.l_min + lf) / (2 * lf))) * Math.min(1, Math.max(0, (s.l_max + lf - L) / (2 * lf))), fe = (s.feather || 0) / 100;
+    if (fe < 0.01) return m * ((A >= s.a_min && A <= s.a_max && B >= s.b_min && B <= s.b_max) ? 1 : 0);
+    var da = Math.max(1, (s.a_max - s.a_min) * fe + 1), db = Math.max(1, (s.b_max - s.b_min) * fe + 1);
+    return m * Math.min(1, Math.min(1, Math.max(0, (A - s.a_min) / da)) * Math.min(1, Math.max(0, (s.a_max - A) / da)) * Math.min(1, Math.max(0, (B - s.b_min) / db)) * Math.min(1, Math.max(0, (s.b_max - B) / db))); }
+  function contiguous(p, s, lab) { var w = p.w, h = p.h, n = w * h, bin = new Uint8Array(n);
+    for (var i = 0; i < n; i++) bin[i] = sampleMask(s, lab[i * 3], lab[i * 3 + 1], lab[i * 3 + 2]) > 0.1 ? 1 : 0;
+    var sx = Math.max(0, Math.min(w - 1, Math.round((s.seed_x || 0.5) * w))), sy = Math.max(0, Math.min(h - 1, Math.round((s.seed_y || 0.5) * h))), seed = -1;
+    for (var r = 0; r <= 10 && seed < 0; r++) for (var dy = -r; dy <= r && seed < 0; dy++) for (var dx = -r; dx <= r; dx++) { var nx = sx + dx, ny = sy + dy; if (nx >= 0 && nx < w && ny >= 0 && ny < h && bin[ny * w + nx]) { seed = ny * w + nx; break; } }
+    var keep = new Uint8Array(n); if (seed < 0) return keep; var st = [seed]; keep[seed] = 1;
+    while (st.length) { var k = st.pop(), x = k % w, y = (k - x) / w; [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(function (o) { var xx = x + o[0], yy = y + o[1]; if (xx < 0 || yy < 0 || xx >= w || yy >= h) return; var j = yy * w + xx; if (bin[j] && !keep[j]) { keep[j] = 1; st.push(j); } }); }
+    return keep; }
+  function protectAt(p) { var w = p.w, h = p.h, m = new Float32Array(w * h); if (!sel.protect.strokes.length) return null;
+    var c = document.createElement('canvas'); c.width = w; c.height = h; var g = c.getContext('2d'), k = pics.indexOf(p), col = k % 4, row = Math.floor(k / 4);
+    sel.protect.strokes.forEach(function (s2) { var gx = s2.x * 4 - col, gy = s2.y * Math.ceil(pics.length / 4) - row; g.globalCompositeOperation = s2.m === 'e' ? 'destination-out' : 'source-over'; g.fillStyle = '#fff';
+      g.beginPath(); g.arc(gx * w, gy * h, Math.max(1, s2.r * 4 * w), 0, 7); g.fill(); });
+    var d = g.getImageData(0, 0, w, h).data, bl = document.createElement('canvas'); bl.width = w; bl.height = h; var bg = bl.getContext('2d'); bg.filter = 'blur(' + Math.max(1, 0.01 * w / 2) + 'px)'; bg.drawImage(c, 0, 0);
+    var db = bg.getImageData(0, 0, w, h).data; for (var i = 0; i < w * h; i++) m[i] = db[i * 4 + 3] / 255; return m; }
+  function applyAdjustments() {
+    var act = samples[activeSample]; statusEl.textContent = 'Applying ' + samples.length + ' sample(s) to all ' + pics.length + '…';
+    pics.forEach(function (p, k) { if (!p.lab) return; var g = p.cv.getContext('2d'), out = g.createImageData(p.w, p.h), d = out.data, o = p.rgb, n = p.w * p.h, lab = new Float32Array(p.lab);
+      if (maskOn && act) { var cm = act.contiguous ? (act.seed_pic === k ? contiguous(p, act, lab) : new Uint8Array(n)) : null;
+        for (var i = 0; i < n; i++) { var mv = sampleMask(act, lab[i * 3], lab[i * 3 + 1], lab[i * 3 + 2]) * (cm ? cm[i] : 1), q = i * 4;
+          d[q] = Math.round(o[q] * 0.35 + 255 * mv * 0.65); d[q + 1] = Math.round(o[q + 1] * 0.35 + 255 * mv * 0.65); d[q + 2] = Math.round(o[q + 2] * 0.35 + 255 * mv * 0.65); d[q + 3] = 255; }
+        g.putImageData(out, 0, 0); return; }
+      samples.forEach(function (s) { if (!(s.inside_l || s.inside_a_shift || s.inside_b_shift || s.outside_l || s.outside_a_shift || s.outside_b_shift)) return;
+        var cm = s.contiguous ? (s.seed_pic === k ? contiguous(p, s, lab) : new Uint8Array(n)) : null;
+        for (var i = 0; i < n; i++) { var j = i * 3, mv = sampleMask(s, lab[j], lab[j + 1], lab[j + 2]) * (cm ? cm[i] : 1), iv = 1 - mv;
+          lab[j] = Math.min(100, Math.max(0, lab[j] + mv * (s.inside_l || 0) + iv * (s.outside_l || 0)));
+          lab[j + 1] = Math.min(127, Math.max(-128, lab[j + 1] + mv * (s.inside_a_shift || 0) + iv * (s.outside_a_shift || 0)));
+          lab[j + 2] = Math.min(127, Math.max(-128, lab[j + 2] + mv * (s.inside_b_shift || 0) + iv * (s.outside_b_shift || 0))); } });
+      var ov = Math.max(sel.overlay || 0, sel.restore || 0), pm = protectAt(p);
+      for (var i = 0; i < n; i++) { var j = i * 3, q = i * 4, L = lab[j]; if (sel.lum) L = Math.min(100, Math.max(0, L + sel.lum * 40));
+        var c = toRgb(L, lab[j + 1], lab[j + 2]), pr = pm ? pm[i] : 0;
+        for (var t = 0; t < 3; t++) { var v = c[t] * (1 - ov) + o[q + t] * ov; d[q + t] = Math.round(Math.min(255, Math.max(0, v * (1 - pr) + o[q + t] * pr))); } d[q + 3] = 255; }
+      g.putImageData(out, 0, 0); });
+    statusEl.textContent = samples.length ? 'Ready. ' + samples.length + ' color move(s) set — the preview is live on all ' + pics.length + '; SAVE & LAND when it looks right' : 'Ready. Adjust — the preview updates live. SAVE & LAND makes it the version every next step builds on.';
+    saveSettings();
+  }
+  function debouncedApply() { if (applyTimer) clearTimeout(applyTimer); applyTimer = setTimeout(applyAdjustments, 120); }
+  var saveTimer = null;
+  function saveSettings(now) { clearTimeout(saveTimer); saveTimer = setTimeout(function () { var fm = box.querySelector('form[data-cm-save]'), fd = new FormData(fm);
+    fd.set('settings', JSON.stringify(sel)); fd.set('at', String(Date.now())); fetch(fm.action, { method: 'POST', body: fd, credentials: 'same-origin' }).catch(function () { statusEl.textContent = 'NOT SAVED · the office did not answer'; }); }, now ? 0 : 500); }
+  /* + ADD SAMPLE, the original's two clicks */
+  byId('cg-btn-add').addEventListener('click', function () { addingMode = true; pendingFrom = null; addStatus.textContent = 'STEP 1 — click on YOUR IMAGE: the OLD color (the pixels you want to change)…'; });
+  pics.forEach(function (p) { p.cv.addEventListener('click', function (e) { if (protMode) return; if (!addingMode || pendingFrom) return; pendingFrom = getPixelLab(this, e.clientX, e.clientY, true);
+    addStatus.textContent = 'OLD color picked (L:' + pendingFrom.l + ' A:' + pendingFrom.a + ' B:' + pendingFrom.b + '). STEP 2 — click THE MOODBOARD: the NEW color they become…'; }); });
+  refImg.addEventListener('click', function (e) {
+    if (!addingMode || !pendingFrom) return; var to = getPixelLab(refImg, e.clientX, e.clientY);
+    var dL = Math.round(to.l - pendingFrom.l), dA = Math.round(to.a - pendingFrom.a), dB = Math.round(to.b - pendingFrom.b);
+    samples.push({ from_l: pendingFrom.l, from_a: pendingFrom.a, from_b: pendingFrom.b, from_r: pendingFrom.r, from_g: pendingFrom.g, from_b_rgb: pendingFrom.b_rgb, from_px: pendingFrom.px, from_py: pendingFrom.py,
+      to_l: to.l, to_a: to.a, to_b: to.b, to_r: to.r, to_g: to.g, to_b_rgb: to.b_rgb, to_px: to.px, to_py: to.py,
+      l_min: Math.max(0, Math.round(pendingFrom.l - 15)), l_max: Math.min(100, Math.round(pendingFrom.l + 15)), a_min: Math.max(-128, Math.round(pendingFrom.a - 15)), a_max: Math.min(127, Math.round(pendingFrom.a + 15)),
+      b_min: Math.max(-128, Math.round(pendingFrom.b - 15)), b_max: Math.min(127, Math.round(pendingFrom.b + 15)), feather: 15, contiguous: 0, seed_x: pendingFrom.px, seed_y: pendingFrom.py, seed_pic: pendingFrom.pic,
+      inside_l: Math.max(-100, Math.min(100, dL)), inside_a_shift: Math.max(-128, Math.min(127, dA)), inside_b_shift: Math.max(-128, Math.min(127, dB)), outside_l: 0, outside_a_shift: 0, outside_b_shift: 0 });
+    addingMode = false; pendingFrom = null; addStatus.textContent = ''; renderSampleTable(); editSample(samples.length - 1); applyAdjustments(); });
+  function renderSampleTable() { var tbody = byId('cg-sample-tbody'); tbody.innerHTML = '';
+    samples.forEach(function (s, i) { var tr = document.createElement('tr'); if (i === activeSample) tr.style.fontWeight = 'bold';
+      var dL = Math.round(s.to_l - s.from_l), dA = Math.round(s.to_a - s.from_a), dB = Math.round(s.to_b - s.from_b);
+      tr.innerHTML = '<td>' + (i + 1) + '</td>' + '<td><span class="cg-sample-swatch" style="background:rgb(' + s.from_r + ',' + s.from_g + ',' + s.from_b_rgb + ')"></span></td>' + '<td>L:' + s.from_l + ' A:' + s.from_a + ' B:' + s.from_b + '</td>'
+        + '<td><span class="cg-sample-swatch" style="background:rgb(' + s.to_r + ',' + s.to_g + ',' + s.to_b_rgb + ')"></span></td>' + '<td>L:' + s.to_l + ' A:' + s.to_a + ' B:' + s.to_b + '</td>'
+        + '<td>&Delta;L:' + (dL > 0 ? '+' : '') + dL + ' &Delta;A:' + (dA > 0 ? '+' : '') + dA + ' &Delta;B:' + (dB > 0 ? '+' : '') + dB + '</td>'
+        + '<td style="text-align:center"><span class="cg-btn cg-edit-sample" data-idx="' + i + '">EDIT</span> <span class="cg-btn cg-del-sample" data-idx="' + i + '">DEL</span></td>';
+      tbody.appendChild(tr); });
+    tbody.querySelectorAll('.cg-edit-sample').forEach(function (btn) { btn.addEventListener('click', function () { editSample(parseInt(this.getAttribute('data-idx'), 10)); }); });
+    tbody.querySelectorAll('.cg-del-sample').forEach(function (btn) { btn.addEventListener('click', function () { var idx = parseInt(this.getAttribute('data-idx'), 10); samples.splice(idx, 1);
+      if (activeSample === idx) { activeSample = -1; byId('cg-edit-panel').style.display = 'none'; } else if (activeSample > idx) activeSample--; renderSampleTable(); applyAdjustments(); }); }); }
+  function editSample(idx) { if (activeSample >= 0) saveSlidersToSample(activeSample); activeSample = idx; byId('cg-edit-panel').style.display = 'block'; byId('cg-edit-index').textContent = (idx + 1);
+    loadSlidersFromSample(idx); updateCompare(idx); renderSampleTable(); }
+  function updateCompare(idx) { var s = samples[idx]; if (!s) return;
+    byId('cg-compare-from-swatch').style.background = 'rgb(' + s.from_r + ',' + s.from_g + ',' + s.from_b_rgb + ')'; byId('cg-compare-to-swatch').style.background = 'rgb(' + s.to_r + ',' + s.to_g + ',' + s.to_b_rgb + ')';
+    byId('cg-compare-from-lab').innerHTML = 'L: ' + s.from_l + '<br>A: ' + s.from_a + '<br>B: ' + s.from_b; byId('cg-compare-to-lab').innerHTML = 'L: ' + s.to_l + '<br>A: ' + s.to_a + '<br>B: ' + s.to_b;
+    var dL = (s.inside_l || 0), dA = (s.inside_a_shift || 0), dB = (s.inside_b_shift || 0);
+    byId('cg-compare-delta').innerHTML = 'ΔL: ' + (dL > 0 ? '+' : '') + dL + ' &nbsp; ΔA: ' + (dA > 0 ? '+' : '') + dA + ' &nbsp; ΔB: ' + (dB > 0 ? '+' : '') + dB; }
+  var sliderMap = { 'cg-sl-lmin': { key: 'l_min', display: 'cg-v-lmin' }, 'cg-sl-lmax': { key: 'l_max', display: 'cg-v-lmax' }, 'cg-sl-amin': { key: 'a_min', display: 'cg-v-amin' }, 'cg-sl-amax': { key: 'a_max', display: 'cg-v-amax' },
+    'cg-sl-bmin': { key: 'b_min', display: 'cg-v-bmin' }, 'cg-sl-bmax': { key: 'b_max', display: 'cg-v-bmax' }, 'cg-sl-feather': { key: 'feather', display: 'cg-v-feather' },
+    'cg-sl-in-l': { key: 'inside_l', display: 'cg-v-in-l' }, 'cg-sl-in-a': { key: 'inside_a_shift', display: 'cg-v-in-a' }, 'cg-sl-in-b': { key: 'inside_b_shift', display: 'cg-v-in-b' },
+    'cg-sl-out-l': { key: 'outside_l', display: 'cg-v-out-l' }, 'cg-sl-out-a': { key: 'outside_a_shift', display: 'cg-v-out-a' }, 'cg-sl-out-b': { key: 'outside_b_shift', display: 'cg-v-out-b' } };
+  function loadSlidersFromSample(idx) { var s = samples[idx]; for (var slId in sliderMap) { var m = sliderMap[slId], el2 = byId(slId); if (el2) el2.value = s[m.key] || 0; var dEl = byId(m.display); if (dEl) dEl.textContent = s[m.key] || 0; }
+    byId('cg-contiguous').checked = !!s.contiguous; }
+  function saveSlidersToSample(idx) { var s = samples[idx]; if (!s) return; for (var slId in sliderMap) { var m = sliderMap[slId], el2 = byId(slId); if (el2) s[m.key] = parseInt(el2.value, 10); }
+    s.contiguous = byId('cg-contiguous').checked ? 1 : 0; }
+  [{ lo: 'cg-sl-lmin', hi: 'cg-sl-lmax' }, { lo: 'cg-sl-amin', hi: 'cg-sl-amax' }, { lo: 'cg-sl-bmin', hi: 'cg-sl-bmax' }].forEach(function (p) { var lo = byId(p.lo), hi = byId(p.hi);
+    lo.addEventListener('input', function () { if (parseInt(lo.value, 10) > parseInt(hi.value, 10)) lo.value = hi.value; }); hi.addEventListener('input', function () { if (parseInt(hi.value, 10) < parseInt(lo.value, 10)) hi.value = lo.value; }); });
+  Object.keys(sliderMap).forEach(function (slId) { byId(slId).addEventListener('input', function () { byId(sliderMap[slId].display).textContent = this.value; if (activeSample >= 0) { saveSlidersToSample(activeSample); updateCompare(activeSample); renderSampleTable(); } debouncedApply(); }); });
+  /* AUTO MATCH, the original's: the colour now at the OLD click (on the moved picture) brought onto the NEW colour */
+  byId('cg-btn-automatch').addEventListener('click', function () { if (activeSample < 0) return; var s = samples[activeSample], p = pics[s.seed_pic || 0]; if (!p || !p.w) return;
+    var r = p.cv.getBoundingClientRect(), cur = getPixelLab(p.cv, r.left + s.from_px * r.width, r.top + s.from_py * r.height);
+    s.inside_l = Math.round(Math.max(-100, Math.min(100, (s.inside_l || 0) + (s.to_l - cur.l)))); s.inside_a_shift = Math.round(Math.max(-128, Math.min(127, (s.inside_a_shift || 0) + (s.to_a - cur.a))));
+    s.inside_b_shift = Math.round(Math.max(-128, Math.min(127, (s.inside_b_shift || 0) + (s.to_b - cur.b)))); loadSlidersFromSample(activeSample); updateCompare(activeSample); applyAdjustments(); });
+  byId('cg-btn-reset').addEventListener('click', function () { if (activeSample < 0) return; var s = samples[activeSample];
+    var dL = Math.round(s.to_l - s.from_l), dA = Math.round(s.to_a - s.from_a), dB = Math.round(s.to_b - s.from_b);
+    s.l_min = Math.max(0, Math.round(s.from_l - 15)); s.l_max = Math.min(100, Math.round(s.from_l + 15)); s.a_min = Math.max(-128, Math.round(s.from_a - 15)); s.a_max = Math.min(127, Math.round(s.from_a + 15));
+    s.b_min = Math.max(-128, Math.round(s.from_b - 15)); s.b_max = Math.min(127, Math.round(s.from_b + 15)); s.feather = 15;
+    s.inside_l = Math.max(-100, Math.min(100, dL)); s.inside_a_shift = Math.max(-128, Math.min(127, dA)); s.inside_b_shift = Math.max(-128, Math.min(127, dB)); s.outside_l = 0; s.outside_a_shift = 0; s.outside_b_shift = 0;
+    loadSlidersFromSample(activeSample); updateCompare(activeSample); applyAdjustments(); });
+  byId('cg-show-mask').addEventListener('change', function () { maskOn = this.checked; applyAdjustments(); });
+  byId('cg-contiguous').addEventListener('change', function () { if (activeSample >= 0) { saveSlidersToSample(activeSample); } applyAdjustments(); });
+  /* 🛡 PROTECT THE PERSON, the original's brush, over the block of pictures */
+  var protMode = false, protErase = false, protPainting = false, protBrush = 24;
+  function protRepaint() { var c = protCanvas, r = grid.getBoundingClientRect(); c.width = r.width; c.height = r.height; var g = c.getContext('2d'); g.clearRect(0, 0, c.width, c.height);
+    sel.protect.strokes.forEach(function (s2) { g.globalCompositeOperation = s2.m === 'e' ? 'destination-out' : 'source-over'; g.fillStyle = 'rgba(0,177,64,.45)'; g.beginPath(); g.arc(s2.x * c.width, s2.y * c.height, s2.r * c.width, 0, 7); g.fill(); });
+    g.globalCompositeOperation = 'source-over'; c.style.display = (protMode || sel.protect.strokes.length) ? 'block' : 'none'; }
+  function protDot(e) { var r = protCanvas.getBoundingClientRect(), fx = (e.clientX - r.left) / r.width, fy = (e.clientY - r.top) / r.height;
+    sel.protect.strokes.push({ m: protErase ? 'e' : 'p', x: Math.max(0, Math.min(1, fx)), y: Math.max(0, Math.min(1, fy)), r: protBrush / r.width }); protRepaint(); }
+  protCanvas.addEventListener('mousedown', function (e) { if (!protMode) return; protPainting = true; protDot(e); });
+  protCanvas.addEventListener('mousemove', function (e) { if (protMode && protPainting) protDot(e); });
+  document.addEventListener('mouseup', function () { if (protPainting) { protPainting = false; debouncedApply(); } });
+  byId('cg-btn-protect').addEventListener('click', function () { protMode = !protMode; this.style.background = protMode ? 'rgba(0,177,64,.35)' : ''; protCanvas.style.pointerEvents = protMode ? 'auto' : 'none';
+    protCanvas.style.cursor = protMode ? 'crosshair' : ''; protRepaint(); statusEl.textContent = protMode ? 'PROTECT ON — paint over the person; the color move only lands OUTSIDE the painted area' : 'PROTECT OFF'; });
+  byId('cg-btn-protect-erase').addEventListener('click', function () { protErase = !protErase; this.style.background = protErase ? 'rgba(177,0,64,.35)' : ''; });
+  byId('cg-btn-protect-clear').addEventListener('click', function () { sel.protect.strokes = []; protRepaint(); debouncedApply(); });
+  byId('cg-protect-size').addEventListener('input', function () { protBrush = parseInt(this.value, 10); byId('cg-protect-size-val').textContent = protBrush + 'px'; });
+  /* RESTORE DETAIL + LUMINOSITY, the original control bar */
+  var lumSl = byId('cg-lum'), lumVal = byId('cg-lum-val'); lumSl.value = String(Math.round((sel.lum || 0) * 100)); lumVal.textContent = lumSl.value;
+  lumSl.addEventListener('input', function () { sel.lum = parseInt(lumSl.value, 10) / 100; lumVal.textContent = lumSl.value; debouncedApply(); });
+  byId('cg-lum-reset').addEventListener('click', function () { lumSl.value = '0'; sel.lum = 0; lumVal.textContent = '0'; debouncedApply(); });
+  var ovSl = byId('cg-overlay'), ovVal = byId('cg-overlay-val'); ovSl.value = String(Math.round((sel.overlay || 0) * 100)); ovVal.textContent = ovSl.value + '%';
+  ovSl.addEventListener('input', function () { sel.overlay = parseInt(ovSl.value, 10) / 100; ovVal.textContent = ovSl.value + '%'; debouncedApply(); });
+  byId('cg-detail-src').addEventListener('change', function () { sel.detail_src = this.value; debouncedApply(); });
+  /* the ACTION BAR: SAVE SETTINGS · SAVE & LAND · RESET */
+  byId('cg-btn-save').addEventListener('click', function () { if (activeSample >= 0) saveSlidersToSample(activeSample); saveSettings(true); statusEl.textContent = 'Settings saved on the record (samples included).'; });
+  byId('cg-btn-generate').addEventListener('click', function () { if (activeSample >= 0) saveSlidersToSample(activeSample); saveSettings(true);
+    statusEl.textContent = 'SAVE & LAND — making all ' + pics.length + ' at full size…'; setTimeout(function () { var b = box.querySelector('form[data-cm-land]'); if (b) b.submit(); }, 400); });
+  byId('cg-btn-reset-all').addEventListener('click', function () { samples.length = 0; activeSample = -1; byId('cg-edit-panel').style.display = 'none'; sel.lum = 0; sel.overlay = 0; lumSl.value = '0'; lumVal.textContent = '0';
+    ovSl.value = '0'; ovVal.textContent = '0%'; renderSampleTable(); applyAdjustments(); statusEl.textContent = 'Reset — the board is back on the current landed version.'; });
+  /* the pictures, read once: their pixels and their CIELAB */
+  var left = pics.length;
+  pics.forEach(function (p) { var im = new Image(); im.crossOrigin = 'anonymous'; im.onload = function () { var w = 480, h = Math.round(w * im.naturalHeight / im.naturalWidth); p.cv.width = w; p.cv.height = h; p.w = w; p.h = h;
+      var g = p.cv.getContext('2d', { willReadFrequently: true }); g.drawImage(im, 0, 0, w, h); p.rgb = g.getImageData(0, 0, w, h).data; p.lab = new Float32Array(w * h * 3);
+      for (var i = 0, j = 0; i < p.rgb.length; i += 4, j += 3) { var l = toLab(p.rgb[i], p.rgb[i + 1], p.rgb[i + 2]); p.lab[j] = l[0]; p.lab[j + 1] = l[1]; p.lab[j + 2] = l[2]; }
+      if (--left === 0) { renderSampleTable(); protRepaint(); applyAdjustments(); } }; im.src = p.cv.dataset.cmPic; });
+  /* SHOW ORIGINAL (the owner 2026-10-29: "a new button to show original then you can toggle back and forth to see before and after"): the 8 as they were, or as moved */
+  var showOrig = false;
+  byId('cg-btn-original').addEventListener('click', function () { showOrig = !showOrig; this.textContent = showOrig ? 'SHOW MOVED' : 'SHOW ORIGINAL';
+    this.style.background = showOrig ? 'rgba(0,177,64,.35)' : '';
+    if (showOrig) { pics.forEach(function (p) { if (p.rgb) p.cv.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(p.rgb), p.w, p.h), 0, 0); }); statusEl.textContent = 'ORIGINAL — the 8 as they were; press SHOW MOVED to see the move'; }
+    else applyAdjustments(); });
+  var applyOrig = applyAdjustments; applyAdjustments = function () { if (showOrig) { showOrig = false; var b = byId('cg-btn-original'); b.textContent = 'SHOW ORIGINAL'; b.style.background = ''; } applyOrig(); };
+  byId('cg-btn-generate').style.display = ''; renderSampleTable();
+};
+const cmStart = () => replicaPaintRoots().forEach((r) => r.querySelectorAll('.replica-colormove').forEach((box) => cmBoard(box)));
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', cmStart); else cmStart();
+</script>
+<script>{% raw %}/* THE COMPOSITION STAGE, 1 TO 1 (the owner 2026-10-30: "a new section for Composition and we have that tool already in larry 5"; "its a reference match tool";
+   "has the compostion built into it"; "basically same setup with all the adjustments the same"): LARRY 5's PFCompositionStage, copied byte for byte from production's
+   so/app/templates/hub/pick_block_widget.js (lines 2348-2971, the 2026-10-01 PF REFERENCE MATCH placement); below it the host glue, PFReferenceMatch's own way of
+   mounting it, speaking to this page instead: one stage a slot, its picture a frame of the slot's clip, SAVE posting the eleven values and the training area to the agent */
+/* THE COMPOSITION STAGE (profile 0.3, 2026-09-25 — owner: "start with exactly the composition grid"): the bench's
+   COMPOSITION CONTROLLER, MOVED here from inc_widget_psawp_bench.html so ONE copy serves every host — the bench panel,
+   COMPOSITION (75)'s block and an agent's pf.stage (the A2UI host glue in inc_a2ui_living.html). Verbatim: the artboard
+   (16:9, 6K protection, the golden-ratio grid), the standard avatar (8 views × M/F), THE SHOT · ON THE GRID · MOVE +
+   RESIZE. The host hands it a context:
+     getC()      → the composition object it edits in place {shot, orient, pos, style, bio, hide, half, quarter, view, grid,
+                   img: {s, dx, dy, rot, snap}}
+     assets      → {grid, avatar, avatars: {<view>_<m|f>: url}, preload: [urls]}
+     src         → the picture on the artboard (a still, or a video's frame)
+     onChange(w) · onMove(c) · onSave(statusEl) · reset() · onReset() · term(msg)   — every one optional
+   Nothing here saves anything: the host decides what a change means. */
+window.PFCompositionStage = (function () {
+  function el(tag, cls, txt) { var e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; }
+  var CG_FS_BASE = 51.56;
+  var CG_EYE_RATIO = (1782 - 129) / 1782;
+  var CG_SCALES = { WS: 0.43, FS: 1.0, MWS: 1.63, MS: 2.9, MCU: 3.81, CU: 10.0, ECU: 28.9 };
+  var CG_PRO_EXT = [['mirror_extended', 'Mirror Extended', 35.27, 72.2], ['mirror', 'Mirror', 42.63, 72.2], ['center', 'Center', 50.00, 72.2], ['axis', 'Axis', 57.36, 72.2], ['axis_extended', 'Axis Extended', 64.75, 72.2]];
+  var CG_PRO_EL = CG_PRO_EXT.map(function (r9) { return [r9[0], r9[1], r9[2], 64.73]; });
+  var CG_RETRO_EXT = [['mirror_extended', 'Mirror Extended', 34.95, 60.58], ['mirror', 'Mirror', 42.27, 61.95], ['center', 'Center', 49.60, 63.32], ['axis', 'Axis', 56.92, 64.69], ['axis_extended', 'Axis Extended', 64.26, 66.06]];
+  var CG_RETRO_EL = [['mirror_extended', 'Mirror Extended', 35.39, 53.13], ['mirror', 'Mirror', 42.71, 54.50], ['center', 'Center', 50.04, 55.87], ['axis', 'Axis', 57.36, 57.23], ['axis_extended', 'Axis Extended', 64.71, 58.61]];
+  var cgStyle = 'pro';
+  function cgIsRetro() { return cgStyle === 'retro'; }
+  function cgPositions(shot) {
+    var ext = (shot === 'WS' || shot === 'FS' || shot === 'MWS');
+    if (cgIsRetro()) return ext ? CG_RETRO_EXT : CG_RETRO_EL;
+    return ext ? CG_PRO_EXT : CG_PRO_EL;
+  }
+  function cgGeom(c2) {
+    cgStyle = c2.style || 'pro';
+    var shot = c2.shot || 'FS';
+    var hp = CG_FS_BASE * (CG_SCALES[shot] || 1.0);
+    var rows2 = cgPositions(shot);
+    var po = rows2.filter(function (r8) { return r8[0] === (c2.pos || 'center'); })[0] || rows2[2];
+    return { left: po[2], h: hp, bottom: po[3] - hp * CG_EYE_RATIO, tilt: cgIsRetro() };
+  }
+
+  function build(body, ctx) {
+    ctx = ctx || {};
+    var A = ctx.assets || {};
+    var c9 = ctx.getC();
+    function say(m9) { if (ctx.term) ctx.term(m9); }
+    var handle = {}, mk = null;   // what the host may read back (the mask) · the training-area layer
+    function moved() { if (ctx.onMove) ctx.onMove(c9); }
+    c9.img = c9.img || { s: 1, dx: 0, dy: 0 };
+    // PRELOAD THE STATIC COMPOSITION ASSETS (owner catch 2026-08-21:
+    // 'composition has no grid and no avatar and thin green lines'). ROOT
+    // CAUSE: the panel rebuilds several times on load, and each rebuild
+    // recreated the grid + avatar <img>, CANCELLING the in-flight fetch
+    // before it decoded — so nothing ever cached and every attempt failed,
+    // leaving the green artboard bare. A detached Image() preload CANNOT be
+    // cancelled by a DOM rebuild; once warm, the recreated <img> decodes
+    // from cache instantly. Idempotent per URL. This is the correct fix for
+    // the cancellation race — not a cosmetic hide.
+    (function () {
+      window._compPreloaded = window._compPreloaded || {};
+      // RETAIN the preload Images (owner catch 2026-08-21): a detached
+      // Image with no live reference can be garbage-collected mid-fetch,
+      // so the preload never warmed the cache. Keeping them in a window
+      // array holds the reference until they finish.
+      window._compPreloadImgs = window._compPreloadImgs || [];
+      var urls9 = [A.grid, A.avatar].concat(A.preload || []);
+      var av9 = A.avatars || {};
+      Object.keys(av9).forEach(function (k9) { urls9.push(av9[k9]); });
+      urls9.forEach(function (u9) {
+        if (u9 && !window._compPreloaded[u9]) {
+          window._compPreloaded[u9] = 1;
+          var pi9 = new Image();
+          window._compPreloadImgs.push(pi9);
+          pi9.decoding = 'sync';
+          pi9.src = u9;
+        }
+      });
+    })();
+    // ═══ THE CONTROLLER (owner order 2026-08-17: the media-list
+    // controller style is THE STANDARD for pipeline control panels —
+    // all controls on top, the artboard maximized below) ═══
+    var scOut = el('div', '');
+    scOut.style.cssText = 'border-radius:6px;padding:0;margin:0';
+    var sc = el('div', 'sub-controller');
+    sc.style.cssText = 'border:1px solid color-mix(in srgb, var(--active-color-03) 30%, transparent);border-radius:4px;padding:12px';
+    scOut.appendChild(sc);
+    function scRule(host, mt, mb) { var r0 = el('div', ''); r0.style.cssText = 'height:1px;background:var(--active-color-01);margin:' + (mt || 0) + 'px 0 ' + (mb == null ? 10 : mb) + 'px'; host.appendChild(r0); }
+    scRule(sc, 0, 6);
+    var scTitle = el('div', 'emphasis', 'COMPOSITION CONTROLLER');
+    scTitle.style.marginBottom = '0';
+    sc.appendChild(scTitle);
+    scRule(sc, 6, 6);
+    var scRow = el('div', '');
+    sc.appendChild(scRow);
+    function scCol(sub, big, first) {
+      // THE DOCK FLOW (Option 1): sections stack in ONE column —
+      // a horizontal rule stands where the column dividers stood
+      if (!first) { scRule(scRow, 8, 6); }
+      var c0 = el('div', '');
+      // the subtitle word is DELETED (owner collapse order 2026-08-17) —
+      // only the big title stands
+      var s2 = el('div', 'emphasis', big); s2.style.marginBottom = '0'; c0.appendChild(s2);
+      scRule(c0, 5, 6);
+      scRow.appendChild(c0);
+      return c0;
+    }
+    function scLabel(col, txt, mt) { var l0 = el('div', 'label', txt); l0.style.cssText = 'margin:' + (mt == null ? 7 : mt) + 'px 0 4px'; col.appendChild(l0); }
+    function scWrap(col) { var w0 = el('div', ''); w0.style.cssText = 'display:flex;flex-wrap:wrap;gap:0'; col.appendChild(w0); return w0; }
+    function scBtn(host, label, on, fn) {
+      var b0 = el('span', 'skagen-btn' + (on ? ' skagen-active' : ''), label);
+      b0.onclick = fn; host.appendChild(b0); return b0;
+    }
+    function scPick(host, items, key, after) {
+      items.forEach(function (it) {
+        var b0 = scBtn(host, it[1], c9[key] === it[0], function () {
+          c9[key] = it[0];
+          host.querySelectorAll('.skagen-btn').forEach(function (x0) { x0.classList.remove('skagen-active'); });
+          b0.classList.add('skagen-active');
+          applyAvatar(key.toUpperCase() + ' SET');
+          if (after) after();
+        });
+      });
+    }
+    // ═══ THE STAGE (Option 1) — canvas left, dock right, one viewport ═══
+    var stage = el('div', 'pb-cg-stage');
+    body.appendChild(stage);
+    var canvasHost = el('div', 'pb-cg-canvas');
+    stage.appendChild(canvasHost);
+    var artHost = el('div', 'pb-cg-canvhost');
+    canvasHost.appendChild(artHost);
+    // THE STATUS BOX — the nav dock's glass 1:1 with its back lights
+    // (wash + ear-tip lamp) BEHIND it; always shows the live status
+    // (STATUS: READY / SAVING… / SAVED / ERROR) (owner orders)
+    var sbox = el('div', 'pb-statusbox');
+    var swash = el('div', 'pb-statuswash');
+    var sears = el('div', 'pb-statusears');
+    var sglass = el('div', 'pb-statusglass');
+    var gbStatus = el('div', 'pb-statustext', 'READY');
+    sbox.appendChild(swash); sbox.appendChild(sears); sbox.appendChild(sglass); sbox.appendChild(gbStatus);
+    canvasHost.appendChild(sbox);
+    // THE REAL SAVE — a .main-button, the same class as ADD CONTACT
+    var gbSave = document.createElement('button');
+    gbSave.className = 'main-button pb-savebig';
+    gbSave.textContent = 'SAVE';
+    gbSave.onclick = function () { if (ctx.onSave) ctx.onSave(gbStatus); };
+    // a host with its own SAVE (the pf.stage block) draws no controller SAVE and no status box
+    if (!ctx.onSave) { gbSave.style.display = 'none'; sbox.style.display = 'none'; }
+    canvasHost.appendChild(gbSave);
+    var dock = el('div', 'pb-cg-dock');
+    stage.appendChild(dock);
+    dock.appendChild(scOut);
+
+    // ═══ THE ARTBOARD — maximum size inside the canvas region ═══
+    var wrap = el('div', 'pb-cg-wrap');
+    var art = el('div', 'pb-cg-art');
+    var artI = el('img', ''); artI.id = 'cgArt'; artI.src = ctx.src || '';
+    art.appendChild(artI);
+    // THE PAN IS REAL (the deck's law, verbatim math): the img carries the
+    // WHOLE photo px-sized by cover-fit; the frame's overflow crops — the
+    // arrows genuinely reveal the photo's hidden flanks
+    function artApply() {
+      var a2 = c9.img || { s: 1, dx: 0, dy: 0 };
+      var fw = wrap.clientWidth, fh = wrap.clientHeight;
+      /* THE PROXY (plans/PROXY_PLAN_20260926.md): the host may draw a small working copy — the layout is ALWAYS done
+         on the ORIGINAL's size (ctx.dims), the proxy only paints inside that box, so no value can drift */
+      var iw = artI.naturalWidth && ctx.dims && ctx.dims[0] || artI.naturalWidth, ih = artI.naturalHeight && ctx.dims && ctx.dims[1] || artI.naturalHeight;
+      if (!fw || !fh || !iw || !ih) return;
+      var k;
+      if (a2.snap === 'v') k = fh / ih;
+      else if (a2.snap === 'h') k = fw / iw;
+      else k = Math.max(fw / iw, fh / ih);
+      k *= (a2.s || 1);
+      // SQUISH (2026-09-25): the width and the height stretched on their own, on top of the scale (1 = as shot)
+      var dw = iw * k * (a2.sx || 1), dh = ih * k * (a2.sy || 1);
+      artI.style.inset = 'auto';
+      artI.style.maxWidth = 'none'; artI.style.maxHeight = 'none';
+      artI.style.objectFit = 'fill';
+      artI.style.width = dw + 'px'; artI.style.height = dh + 'px';
+      artI.style.left = ((fw - dw) / 2 + (a2.dx || 0) * fw) + 'px';
+      artI.style.top = ((fh - dh) / 2 + (a2.dy || 0) * fh) + 'px';
+      artI.style.transformOrigin = '50% 50%';
+      artI.style.transform = (a2.rot ? 'rotate(' + a2.rot + 'deg)' : '');
+      if (mk) mk.sync();   // THE TRAINING AREA rides the picture exactly
+    }
+    artI.onload = artApply;
+    if (artI.complete && artI.naturalWidth) artApply();
+    // THE FRAME MAY BE CLOSED WHEN THE STAGE IS BUILT (2026-09-25: a pipeline block's control panel opens later — the
+    // picture was measured at 0×0 and never laid out again, so the TRAINING AREA's paint layer had no size and no mask
+    // could ever be painted): lay the picture out again whenever the frame changes size
+    if (window.ResizeObserver) new ResizeObserver(function () { artApply(); }).observe(wrap);
+    window.addEventListener('resize', artApply);
+    wrap.appendChild(art);
+    var av = el('img', 'pb-cg-avatar');
+    av.style.pointerEvents = 'none';
+    wrap.appendChild(av);
+    var grid = el('img', 'pb-cg-img');
+    grid.src = A.grid || '';
+    wrap.appendChild(grid);
+    artHost.appendChild(wrap);
+    // FIT THE STAGE: the artboard takes the largest size that fits the
+    // canvas region in BOTH axes (the grid image sets the aspect);
+    // artApply reads the wrap's real box, so the cover-fit math holds
+    function fitStage() {
+      artHost.style.height = '';   // measure the full CSS height budget each pass
+      var aw = artHost.clientWidth, ah = artHost.clientHeight;
+      var gw = grid.naturalWidth || 1600, gh = grid.naturalHeight || 900;
+      if (!aw || !ah) return;
+      var w = Math.max(220, Math.floor(Math.min(aw, ah * (gw / gh))));
+      var h = Math.round(w * gh / gw);
+      // The artboard is sized EXPLICITLY from the grid aspect (a missing
+      // grid asset no longer collapses the artboard to zero height)
+      wrap.style.width = w + 'px';
+      wrap.style.height = h + 'px';
+      // LINE UP (owner order 2026-08-17): the canvas hugs the artboard so
+      // the STATUS box sits right under the grid, at the grid's exact width
+      artHost.style.minHeight = '0';
+      artHost.style.height = h + 'px';
+      var ww = Math.ceil(wrap.getBoundingClientRect().width) || w;
+      sbox.style.width = ww + 'px';
+      sbox.style.marginLeft = 'auto'; sbox.style.marginRight = 'auto';
+      // THE SAVE sits lower, LEFT-aligned to the grid's left edge
+      gbSave.style.marginLeft = Math.max(0, Math.round((canvasHost.clientWidth - ww) / 2)) + 'px';
+      artApply();
+    }
+    grid.onload = fitStage;
+    window.addEventListener('resize', fitStage);
+    requestAnimationFrame(fitStage);
+    function applyAvatar(what) {
+      // ECU draws too (owner 2026-09-23: "the scale is written right on the button"): 28.9× the FS avatar, the eyes held on
+      // the eye line — the frame's own overflow crops it to the extreme close-up of the face
+      if (c9.hide) { av.style.opacity = '0'; }
+      else {
+        // BY TAG, NEVER FILENAME (owner catch 2026-08-17): the server
+        // serves the orientation × bio set as comp_avatars; the old
+        // semantic-name rewrite survives only as the fallback
+        var avKey9 = (c9.orient || 'front') + '_' + (c9.bio || 'm');
+        av.src = (A.avatars && A.avatars[avKey9])
+          || (A.avatar || '')
+            .replace(/avatars_avatar_[a-z0-9_]+\.png/i,
+                     'avatars_avatar_' + avKey9 + '.png');
+        var g2 = cgGeom(c9);
+        av.style.height = g2.h + '%';
+        av.style.bottom = g2.bottom + '%';
+        av.style.left = g2.left + '%';
+        av.style.transformOrigin = g2.tilt ? '50% 7.24%' : '';
+        av.style.transform = g2.tilt ? 'translateX(-50%) rotate(-6deg)' : 'translateX(-50%)';
+        av.style.opacity = c9.half ? '0.5' : (c9.quarter ? '0.25' : '1');
+      }
+      if (what && ctx.onChange) ctx.onChange(what);
+    }
+
+    // ── COL 1 · THE SHOT ──
+    var col1 = scCol('COMPOSITION', 'THE SHOT', true);
+    scLabel(col1, 'FOCAL LENGTH MULTIPLIER', 0);
+    scPick(scWrap(col1), [['FS', 'FS (1X)'], ['MWS', 'MWS (1.63X)'], ['MS', 'MS (2.9X)'], ['MCU', 'MCU (3.81X)'], ['CU', 'CU (10X)'], ['ECU', 'ECU (28.9X)'], ['WS', 'WS (-1.4X)']], 'shot', drawPos);
+    scLabel(col1, 'ORIENTATION');
+    scPick(scWrap(col1), [['front', 'FRONT'], ['3_4_right', '3/4 RIGHT'], ['side_right', 'SIDE RIGHT'], ['3_4_back_right', '3/4 BACK RIGHT'], ['back', 'BACK'], ['3_4_back_left', '3/4 BACK LEFT'], ['side_left', 'SIDE LEFT'], ['3_4_left', '3/4 LEFT']], 'orient', drawPos);
+
+    // ── COL 2 · PLACEMENT ──
+    var col2 = scCol('PLACEMENT', 'ON THE GRID');
+    scLabel(col2, 'POSITION', 0);
+    var posWrap = scWrap(col2);
+    function drawPos() {
+      cgStyle = c9.style || 'pro';
+      posWrap.innerHTML = '';
+      cgPositions(c9.shot).forEach(function (r7) {
+        scBtn(posWrap, r7[1].toUpperCase(), c9.pos === r7[0], function () {
+          c9.pos = r7[0];
+          posWrap.querySelectorAll('.skagen-btn').forEach(function (x4) { x4.classList.remove('skagen-active'); });
+          this.classList.add('skagen-active');
+          applyAvatar('POSITION SET');
+        });
+      });
+    }
+    // STYLE + GRID share one row (owner 2026-09-23: "to the right of STYLE") — the BIO + AVATAR idiom
+    var sgRow = el('div', 'pb-cg-two');
+    col2.appendChild(sgRow);
+    var styCol = el('div', '');
+    sgRow.appendChild(styCol);
+    scLabel(styCol, 'STYLE');
+    var styWrap = scWrap(styCol);
+    var grCol = el('div', '');
+    sgRow.appendChild(grCol);
+    function drawStyle() {
+      styWrap.innerHTML = '';
+      [['pro', 'PROFESSIONAL'], ['retro', 'RETRO']].forEach(function (s9) {
+        scBtn(styWrap, s9[1], (c9.style || 'pro') === s9[0], function () {
+          c9.style = s9[0]; drawStyle(); drawPos(); applyAvatar('STYLE SET');
+        });
+      });
+    }
+    // BIO + AVATAR share one row (owner collapse order 2026-08-17)
+    var baRow = el('div', 'pb-cg-two');
+    col2.appendChild(baRow);
+    var bioCol = el('div', '');
+    baRow.appendChild(bioCol);
+    scLabel(bioCol, 'BIO');
+    scPick(scWrap(bioCol), [['m', 'M'], ['f', 'F']], 'bio');
+    var avCol = el('div', '');
+    baRow.appendChild(avCol);
+    scLabel(avCol, 'AVATAR');
+    var avWrap = scWrap(avCol);
+    var shBtn = scBtn(avWrap, 'SHOW', !c9.hide && !c9.half && !c9.quarter, function () { c9.hide = false; c9.half = false; c9.quarter = false; avPaint(); applyAvatar('AVATAR SHOWN'); });
+    var hfBtn = scBtn(avWrap, '50%', !c9.hide && !!c9.half, function () { c9.hide = false; c9.half = true; c9.quarter = false; avPaint(); applyAvatar('AVATAR AT 50%'); });
+    // 25% (owner 2026-09-23: "can you add a 25% also please")
+    var qtBtn = scBtn(avWrap, '25%', !c9.hide && !c9.half && !!c9.quarter, function () { c9.hide = false; c9.half = false; c9.quarter = true; avPaint(); applyAvatar('AVATAR AT 25%'); });
+    var hiBtn = scBtn(avWrap, 'HIDE', !!c9.hide, function () { c9.hide = true; c9.half = false; c9.quarter = false; avPaint(); applyAvatar('AVATAR HIDDEN'); });
+    function avPaint() {
+      shBtn.classList.toggle('skagen-active', !c9.hide && !c9.half && !c9.quarter);
+      hfBtn.classList.toggle('skagen-active', !c9.hide && !!c9.half);
+      qtBtn.classList.toggle('skagen-active', !c9.hide && !c9.half && !!c9.quarter);
+      hiBtn.classList.toggle('skagen-active', !!c9.hide);
+    }
+    // THE VIEW (owner 2026-09-23: "6K 4K — it will show the image or video cropped to either 6k or 4k … its not really
+    // cropping it just showing what it would look like"): the artboard IS the 6K frame; the pink frame is the 4K window —
+    // 3840/6144 = 62.5% of it, centred — 4K shows only that window, same size, same place. A view only: nothing is
+    // cropped, nothing saved into the file.
+    var vwCol = el('div', '');
+    baRow.appendChild(vwCol);
+    scLabel(vwCol, 'VIEW');
+    var vwWrap = scWrap(vwCol);
+    // NO ZOOM (owner 2026-09-23: "when we switch from 6k to 4k the size should not change it should just show the 4k
+    // area in the same size … the output will be 6k"): 4K keeps the artboard's size and place and hides the protection
+    // band around the window, so the 6K file in the manifest (green strip and all) reads as designed, never a surprise
+    function vwApply() {
+      var k4 = c9.view === '4k';
+      wrap.style.transform = '';
+      wrap.style.clipPath = k4 ? 'inset(18.75%)' : '';
+    }
+    var vwBtns = [['6k', '6K'], ['4k', '4K']].map(function (v7) {
+      return scBtn(vwWrap, v7[1], (c9.view || '6k') === v7[0], function () {
+        c9.view = v7[0]; vwBtns.forEach(function (b7) { b7.classList.remove('skagen-active'); }); this.classList.add('skagen-active');
+        vwApply(); say('COMPOSITION — VIEW ' + v7[1]);
+      });
+    });
+    vwApply();
+    // THE GRID (owner 2026-09-23: "a button to show · 50% · hide the grid with the pink frame … it belongs on the right on ON THE GRID"):
+    // the golden-ratio plate's own SHOW / 50% / HIDE, the AVATAR idiom — an aid on the artboard, never in the file
+    scLabel(grCol, 'GRID');
+    var grWrap = scWrap(grCol);
+    function grApply() { grid.style.opacity = c9.grid === 'hide' ? '0' : (c9.grid === 'half' ? '0.5' : '1'); }
+    var grBtns = [['show', 'SHOW'], ['half', '50%'], ['hide', 'HIDE']].map(function (g7) {
+      return scBtn(grWrap, g7[1], (c9.grid || 'show') === g7[0], function () {
+        c9.grid = g7[0]; grBtns.forEach(function (b7) { b7.classList.remove('skagen-active'); }); this.classList.add('skagen-active');
+        grApply(); say('COMPOSITION — GRID ' + g7[1]);
+      });
+    });
+    grApply();
+
+    // ── COL 3 · THE IMAGE ──
+    var col3 = scCol('IMAGE', 'MOVE + RESIZE');
+    // ONE ROW, SPREAD (owner 2026-09-23: "span these across just so it looks more balanced"): RESIZE + MOVE · SNAP ·
+    // ROTATE + PLUGIN share the width, wrapping back to a stack where the dock is narrow
+    var mrRow = el('div', 'pb-cg-spread');
+    col3.appendChild(mrRow);
+    // RESIZE + MOVE share one row (owner collapse order 2026-08-17)
+    var rmRow = el('div', 'pb-cg-two');
+    mrRow.appendChild(rmRow);
+    var rzCol = el('div', '');
+    rmRow.appendChild(rzCol);
+    scLabel(rzCol, 'RESIZE', 0);
+    var rzWrap = scWrap(rzCol);
+    var scLab = el('span', 'label', 'X' + c9.img.s.toFixed(2));
+    scLab.style.cssText = 'align-self:center;margin:0 8px 4px';
+    scBtn(rzWrap, '−', false, function () { c9.img.s = Math.max(0.2, Math.round((c9.img.s - 0.05) * 100) / 100);   /* down to 0.20 — the run's own floor (_comp_params) — so a photo can be made SMALLER to match the avatar (owner 2026-09-25) */ artApply(); scLab.textContent = 'X' + c9.img.s.toFixed(2); moved(); });
+    rzWrap.appendChild(scLab);
+    scBtn(rzWrap, '+', false, function () { c9.img.s = Math.min(3, Math.round((c9.img.s + 0.05) * 100) / 100); artApply(); scLab.textContent = 'X' + c9.img.s.toFixed(2); moved(); });
+    // TILT (owner 2026-09-25: "we need a tilt or rotate to fine tune it — the professional retro thing is something else"):
+    // the picture turns about its centre in 0.5° steps, the RESIZE idiom (− · readout · +); + = clockwise, what the run applies
+    var tlCol = el('div', '');
+    rmRow.appendChild(tlCol);
+    scLabel(tlCol, 'TILT', 0);
+    var tlWrap = scWrap(tlCol);
+    function tlText() { var r9 = Math.round((c9.img.rot || 0) * 10) / 10; return (r9 > 0 ? '+' : '') + r9.toFixed(1) + '°'; }
+    var tlLab = el('span', 'label', tlText());
+    tlLab.style.cssText = 'align-self:center;margin:0 8px 4px;min-width:44px;text-align:center';
+    function tlStep(d9) {
+      c9.img.rot = Math.max(-180, Math.min(180, Math.round(((c9.img.rot || 0) + d9) * 10) / 10));
+      tlLab.textContent = tlText(); artApply(); if (typeof rotPaint === 'function') rotPaint(); moved();
+    }
+    scBtn(tlWrap, '−', false, function () { tlStep(-0.5); });
+    tlWrap.appendChild(tlLab);
+    scBtn(tlWrap, '+', false, function () { tlStep(0.5); });
+    // SQUISH (owner 2026-09-25: "a squish in out up down control — different images will be wider or taller and still need to
+    // map to the avatar"): IN / OUT narrows or widens, UP / DOWN stretches or squashes the height, 0.01 at a time. Drawn only
+    // for a host that saves it (ctx.squish) — a host whose run would not apply it never shows it.
+    if (ctx.squish) {
+      var sqCol = el('div', '');
+      rmRow.appendChild(sqCol);
+      scLabel(sqCol, 'SQUISH', 0);
+      var sqWrap = scWrap(sqCol);
+      var sqLab = el('span', 'label', '');
+      sqLab.style.cssText = 'align-self:center;margin:0 8px 4px;min-width:92px;text-align:center';
+      function sqText() { sqLab.textContent = 'W ' + (c9.img.sx || 1).toFixed(2) + ' · H ' + (c9.img.sy || 1).toFixed(2); }
+      function sqStep(ax, d9) {
+        var v9 = Math.max(0.2, Math.min(5, Math.round(((c9.img[ax] || 1) + d9) * 100) / 100));
+        c9.img[ax] = v9; sqText(); artApply(); moved();
+      }
+      scBtn(sqWrap, 'IN', false, function () { sqStep('sx', -0.01); });
+      scBtn(sqWrap, 'OUT', false, function () { sqStep('sx', 0.01); });
+      sqWrap.appendChild(sqLab);
+      scBtn(sqWrap, 'UP', false, function () { sqStep('sy', 0.01); });
+      scBtn(sqWrap, 'DOWN', false, function () { sqStep('sy', -0.01); });
+      sqText();
+    }
+    var mvCol = el('div', '');
+    rmRow.appendChild(mvCol);
+    scLabel(mvCol, 'MOVE', 0);
+    var mvWrap = scWrap(mvCol);
+    scBtn(mvWrap, '←', false, function () { c9.img.dx = Math.round(((c9.img.dx || 0) - 0.02) * 100) / 100; artApply(); moved(); });
+    scBtn(mvWrap, '→', false, function () { c9.img.dx = Math.round(((c9.img.dx || 0) + 0.02) * 100) / 100; artApply(); moved(); });
+    scBtn(mvWrap, '↑', false, function () { c9.img.dy = Math.round(((c9.img.dy || 0) - 0.02) * 100) / 100; artApply(); moved(); });
+    scBtn(mvWrap, '↓', false, function () { c9.img.dy = Math.round(((c9.img.dy || 0) + 0.02) * 100) / 100; artApply(); moved(); });
+    var snCol = el('div', '');
+    mrRow.appendChild(snCol);
+    scLabel(snCol, 'SNAP', 0);
+    var snWrap = scWrap(snCol);
+    var snH = scBtn(snWrap, 'SIDES', c9.img.snap === 'h', function () {
+      c9.img.snap = (c9.img.snap === 'h') ? '' : 'h';
+      snPaint(); artApply();
+      say('COMPOSITION — SNAP ' + (c9.img.snap ? 'SIDES (fit the width)' : 'OFF — fill the artboard'));
+      moved();
+    });
+    var snV = scBtn(snWrap, 'TOP + BOTTOM', c9.img.snap === 'v', function () {
+      c9.img.snap = (c9.img.snap === 'v') ? '' : 'v';
+      snPaint(); artApply();
+      say('COMPOSITION — SNAP ' + (c9.img.snap ? 'TOP + BOTTOM (fit the height, sides fill green)' : 'OFF — fill the artboard'));
+      moved();
+    });
+    function snPaint() {
+      snH.classList.toggle('skagen-active', c9.img.snap === 'h');
+      snV.classList.toggle('skagen-active', c9.img.snap === 'v');
+    }
+    // ROTATE + PLUGIN share one row (owner collapse order 2026-08-17)
+    var rpRow = el('div', 'pb-cg-two');
+    mrRow.appendChild(rpRow);
+    var rotCol = el('div', '');
+    rpRow.appendChild(rotCol);
+    scLabel(rotCol, 'ROTATE');
+    var rotWrap = scWrap(rotCol);
+    var rotP = scBtn(rotWrap, 'PRO 0°', !(c9.img.rot), function () { c9.img.rot = 0; rotPaint(); artApply(); say('COMPOSITION — IMAGE ROTATE 0° (PRO)'); moved(); });
+    var rotR = scBtn(rotWrap, 'RETRO −6°', c9.img.rot === -6, function () { c9.img.rot = -6; rotPaint(); artApply(); say('COMPOSITION — IMAGE ROTATE −6° (RETRO — the natural horizon tilt)'); moved(); });
+    function rotPaint() {
+      tlLab.textContent = tlText();
+      rotP.classList.toggle('skagen-active', !(c9.img.rot));
+      rotR.classList.toggle('skagen-active', c9.img.rot === -6);
+    }
+    var stCol = el('div', '');
+    rpRow.appendChild(stCol);
+    scLabel(stCol, 'PLUGIN');
+    var stWrap = scWrap(stCol);
+    scBtn(stWrap, 'RESET', false, function () {
+      if (ctx.reset) ctx.reset();
+      body.innerHTML = ''; build(body, ctx);
+      say('COMPOSITION — PLUGIN RESET TO NEUTRAL');
+      if (ctx.onReset) ctx.onReset();
+    });
+
+    // ── THE TRAINING AREA (owner 2026-09-25: "a paint brush to select the area that would be included for training data …
+    // the avatar has no shirt and the reference image has a shirt … only the face needs to be selected"): the platform's
+    // standard brush (BRUSH · ERASE · UNDO · CLEAR, size, feather — the Beautify feature mask's tools, the controller's
+    // buttons) painting the PHOTO'S OWN MASK — Photoshop's layer-mask form: a grayscale bitmap at the photo's pixel size,
+    // white = trained on, black = left out, grey = the soft edge. It paints at full resolution under every move, scale,
+    // tilt and squish; the host saves it (ctx.mask). Drawn only for a host that saves a mask.
+    if (ctx.mask) {
+      var colM = scCol('MASK', 'TRAINING AREA');
+      var mRow = el('div', 'pb-cg-spread');
+      colM.appendChild(mRow);
+      var M = ctx._maskState = ctx._maskState || { strokes: [], base: null, dirty: false, mode: '', size: 60, feather: 0.5, show: true };
+      mk = {
+        full: null, disp: null,
+        ready: function () { return !!(mk.full && artI.naturalWidth); },
+        sync: function () {
+          if (!mk.disp) return;
+          ['left', 'top', 'width', 'height', 'transform', 'transformOrigin'].forEach(function (k9) { mk.disp.style[k9] = artI.style[k9]; });
+        }
+      };
+      function mkInit() {
+        var iw = artI.naturalWidth, ih = artI.naturalHeight;
+        if (!iw || !ih || (mk.full && mk.full.width === iw && mk.full.height === ih)) return;
+        mk.full = document.createElement('canvas'); mk.full.width = iw; mk.full.height = ih;
+        var dsc = Math.min(1, 1400 / iw);
+        if (!mk.disp) {
+          mk.disp = el('canvas', 'pb-cg-mask');
+          // above the avatar, under the grid: the paint is what you are working with (the grid never takes the pointer)
+          mk.disp.style.cssText = 'position:absolute;z-index:1;pointer-events:none;opacity:.55;max-width:none;max-height:none';
+          wrap.insertBefore(mk.disp, grid);
+          mk.disp.addEventListener('pointerdown', penDown);
+          mk.disp.addEventListener('pointermove', penMove);
+          window.addEventListener('pointerup', penUp);
+        }
+        mk.disp.width = Math.max(1, Math.round(iw * dsc)); mk.disp.height = Math.max(1, Math.round(ih * dsc));
+        mk.sync(); mkRender();
+      }
+      function dab(ctx9, x, y, r, f, erase, color) {
+        var g9 = ctx9.createRadialGradient(x, y, Math.max(0, r * (1 - f)), x, y, Math.max(0.5, r));
+        g9.addColorStop(0, color); g9.addColorStop(1, color.replace(/,\s*[\d.]+\)$/, ', 0)'));
+        ctx9.globalCompositeOperation = erase ? 'destination-out' : 'source-over';
+        ctx9.fillStyle = g9; ctx9.beginPath(); ctx9.arc(x, y, Math.max(0.5, r), 0, 6.2832); ctx9.fill();
+        ctx9.globalCompositeOperation = 'source-over';
+      }
+      function strokeOn(ctx9, st9, k9, color) {
+        var pts = st9.pts, step = Math.max(1, st9.r / 3);
+        for (var i9 = 0; i9 < pts.length; i9++) {
+          var a9 = pts[i9 - 1] || pts[i9], b9 = pts[i9];
+          var n9 = Math.max(1, Math.ceil(Math.hypot(b9[0] - a9[0], b9[1] - a9[1]) / step));
+          for (var j9 = (i9 ? 1 : 0); j9 <= n9; j9++) {
+            var t9 = j9 / n9;
+            dab(ctx9, (a9[0] + (b9[0] - a9[0]) * t9) * k9, (a9[1] + (b9[1] - a9[1]) * t9) * k9, st9.r * k9, st9.f, st9.m === 'e', color);
+          }
+        }
+      }
+      function mkRender() {
+        if (!mk.full) return;
+        var fc = mk.full.getContext('2d');
+        fc.clearRect(0, 0, mk.full.width, mk.full.height);
+        if (M.base) fc.drawImage(M.base, 0, 0, mk.full.width, mk.full.height);
+        M.strokes.forEach(function (st9) { strokeOn(fc, st9, 1, 'rgba(255, 255, 255, 1)'); });
+        dispRender();
+      }
+      function dispRender() {
+        if (!mk.disp) return;
+        var dc = mk.disp.getContext('2d');
+        dc.globalCompositeOperation = 'source-over';
+        dc.clearRect(0, 0, mk.disp.width, mk.disp.height);
+        dc.drawImage(mk.full, 0, 0, mk.disp.width, mk.disp.height);
+        dc.globalCompositeOperation = 'source-in';
+        dc.fillStyle = 'rgba(0, 177, 64, 1)'; dc.fillRect(0, 0, mk.disp.width, mk.disp.height);
+        dc.globalCompositeOperation = 'source-over';
+        mk.disp.style.visibility = M.show ? 'visible' : 'hidden';
+      }
+      // THE SAVED MASK COMES BACK: a grayscale PNG → the paint layer (its luminance becomes the coverage), then painted on
+      function loadBase(url9) {
+        if (!url9) return;
+        var im9 = new Image();
+        im9.onload = function () {
+          var c9b = document.createElement('canvas'); c9b.width = im9.naturalWidth; c9b.height = im9.naturalHeight;
+          var x9 = c9b.getContext('2d'); x9.drawImage(im9, 0, 0);
+          var d9 = x9.getImageData(0, 0, c9b.width, c9b.height), px = d9.data;
+          for (var q9 = 0; q9 < px.length; q9 += 4) { var l9 = px[q9]; px[q9] = px[q9 + 1] = px[q9 + 2] = 255; px[q9 + 3] = l9; }
+          x9.putImageData(d9, 0, 0);
+          M.base = c9b; mkRender();
+        };
+        im9.src = url9;
+      }
+      function toImage(ev9) {
+        var r9 = mk.disp.getBoundingClientRect(), W9 = parseFloat(mk.disp.style.width), H9 = parseFloat(mk.disp.style.height);
+        var cx = r9.left + r9.width / 2, cy = r9.top + r9.height / 2, dx9 = ev9.clientX - cx, dy9 = ev9.clientY - cy;
+        var a9 = -(c9.img.rot || 0) * Math.PI / 180, ca = Math.cos(a9), sa = Math.sin(a9);
+        var lx = dx9 * ca - dy9 * sa + W9 / 2, ly = dx9 * sa + dy9 * ca + H9 / 2;
+        return [lx * mk.full.width / W9, ly * mk.full.height / H9];
+      }
+      var cur = null;
+      function penDown(ev9) {
+        if (!M.mode || !mk.ready()) return;
+        ev9.preventDefault(); mk.disp.setPointerCapture && mk.disp.setPointerCapture(ev9.pointerId);
+        var W9 = parseFloat(mk.disp.style.width) || 1;
+        cur = { m: M.mode, r: (M.size / 2) * mk.full.width / W9, f: M.feather, pts: [toImage(ev9)] };
+        M.strokes.push(cur); M.dirty = true;
+        strokeOn(mk.full.getContext('2d'), { m: cur.m, r: cur.r, f: cur.f, pts: [cur.pts[0]] }, 1, 'rgba(255, 255, 255, 1)');
+        dispRender();
+      }
+      function penMove(ev9) {
+        if (!cur) return;
+        var p9 = toImage(ev9), last = cur.pts[cur.pts.length - 1];
+        if (Math.hypot(p9[0] - last[0], p9[1] - last[1]) < cur.r / 4) return;
+        cur.pts.push(p9);
+        strokeOn(mk.full.getContext('2d'), { m: cur.m, r: cur.r, f: cur.f, pts: [last, p9] }, 1, 'rgba(255, 255, 255, 1)');
+        dispRender();
+      }
+      function penUp() { if (cur) { cur = null; if (ctx.onChange) ctx.onChange('TRAINING AREA PAINTED'); } }
+      // the controls — the standard brush's words, the controller's buttons
+      var tCol = el('div', ''); mRow.appendChild(tCol);
+      scLabel(tCol, 'BRUSH', 0);
+      var tWrap = scWrap(tCol);
+      var bB = scBtn(tWrap, 'BRUSH', false, function () { setMode('p'); });
+      var bE = scBtn(tWrap, 'ERASE', false, function () { setMode('e'); });
+      scBtn(tWrap, 'UNDO', false, function () { M.strokes.pop(); M.dirty = true; mkRender(); });
+      scBtn(tWrap, 'CLEAR', false, function () { M.strokes = []; M.base = null; M.dirty = true; mkRender(); });
+      var bV = scBtn(tWrap, 'VIEW', M.show, function () { M.show = !M.show; bV.classList.toggle('skagen-active', M.show); dispRender(); });
+      function setMode(m9) {
+        M.mode = (M.mode === m9) ? '' : m9;
+        bB.classList.toggle('skagen-active', M.mode === 'p'); bE.classList.toggle('skagen-active', M.mode === 'e');
+        if (mk.disp) { mk.disp.style.pointerEvents = M.mode ? 'auto' : 'none'; mk.disp.style.cursor = M.mode ? 'crosshair' : ''; }
+        say(!M.mode ? 'TRAINING AREA — EDIT OFF' : (M.mode === 'p' ? 'TRAINING AREA — BRUSH ON: paint what the replica is trained on (green)'
+                                                        : 'TRAINING AREA — ERASE ON: pull the mask back where it spilled'));
+      }
+      var zCol = el('div', ''); mRow.appendChild(zCol);
+      scLabel(zCol, 'SIZE', 0);
+      var zWrap = scWrap(zCol);
+      var zLab = el('span', 'label', M.size + 'PX'); zLab.style.cssText = 'align-self:center;margin:0 8px 4px;min-width:48px;text-align:center';
+      scBtn(zWrap, '−', false, function () { M.size = Math.max(4, M.size - (M.size > 40 ? 10 : 2)); zLab.textContent = M.size + 'PX'; });
+      zWrap.appendChild(zLab);
+      scBtn(zWrap, '+', false, function () { M.size = Math.min(400, M.size + (M.size >= 40 ? 10 : 2)); zLab.textContent = M.size + 'PX'; });
+      var fCol = el('div', ''); mRow.appendChild(fCol);
+      scLabel(fCol, 'FEATHER', 0);
+      var fWrap = scWrap(fCol);
+      var fLab = el('span', 'label', Math.round(M.feather * 100) + '%'); fLab.style.cssText = 'align-self:center;margin:0 8px 4px;min-width:40px;text-align:center';
+      scBtn(fWrap, '−', false, function () { M.feather = Math.max(0, Math.round((M.feather - 0.1) * 10) / 10); fLab.textContent = Math.round(M.feather * 100) + '%'; });
+      fWrap.appendChild(fLab);
+      scBtn(fWrap, '+', false, function () { M.feather = Math.min(1, Math.round((M.feather + 0.1) * 10) / 10); fLab.textContent = Math.round(M.feather * 100) + '%'; });
+      // the picture decides the mask's pixel size: build it once the photo has loaded (and again if the photo changes)
+      var prevOnload = artI.onload;
+      artI.onload = function () { if (prevOnload) prevOnload(); mkInit(); };
+      if (artI.complete && artI.naturalWidth) mkInit();
+      if (!M.base && ctx.mask.url && !M.loaded) { M.loaded = true; loadBase(ctx.mask.url); }
+      // what the host reads to save it — one PNG, the photo's own size, only when it changed
+      handle.mask = {
+        dirty: function () { return !!M.dirty; },
+        empty: function () { return !M.base && !M.strokes.some(function (x9) { return x9.m === 'p'; }); },
+        reset: function () { M.strokes = []; M.base = null; M.dirty = false; M.loaded = true; mkRender(); },
+        saved: function () { M.dirty = false; },
+        png: function (cb9) {
+          if (!mk.ready()) { cb9(null); return; }
+          var o9 = document.createElement('canvas'); o9.width = mk.full.width; o9.height = mk.full.height;
+          var x9 = o9.getContext('2d'); x9.fillStyle = '#000'; x9.fillRect(0, 0, o9.width, o9.height); x9.drawImage(mk.full, 0, 0);
+          o9.toBlob(cb9, 'image/png');
+        }
+      };
+    }
+
+    drawPos();
+    drawStyle();
+    applyAvatar();
+    return handle;
+  }
+
+  return { build: build, geom: cgGeom, positions: cgPositions, scales: CG_SCALES };
+})();
+
+
+/* THE HOST (PFReferenceMatch, production's glue, for a slot): a [data-comp] block carries the slot's saved values, the avatar art and the frame; SAVE posts VIEW, BIO,
+   SIZE, SCALE, DX, DY, ROT, SNAP, SQX, SQY and the training area (a PNG, only when painted) to the agent's press and says SAVED */
+window.CmoComposition = (function () {
+  function num(v, d) { var n = parseFloat(v); return isFinite(n) ? n : d; }
+  function r6(n) { return String(Math.round(n * 1e6) / 1e6); }
+  function neutral() { return { shot: 'FS', orient: 'front', pos: 'center', style: 'pro', bio: 'm', hide: false, half: false, img: { s: 1, dx: 0, dy: 0, rot: 0, snap: '', sx: 1, sy: 1 } }; }
+  function mount(blk) {
+    if (!blk || blk.dataset.compMounted) return;
+    var S = window.PFCompositionStage; if (!S) return;
+    blk.dataset.compMounted = '1';
+    var d = {}; try { d = JSON.parse(blk.getAttribute('data-comp') || '{}'); } catch (x) {}
+    var v = d.vals || {}, box = blk.querySelector('[data-comp-stage]'), sv = blk.querySelector('[data-comp-save]'), st = blk.querySelector('[data-comp-state]');
+    var frame = v.frame || '6k';   /* OFF (the clip as it came), 6K or 4K: what the slot is composed as (the owner 2026-10-30: "should have an OFF first") */
+    var c = { shot: v.size || 'FS', orient: v.view || 'front', pos: 'center', style: 'pro', bio: v.bio || 'm', hide: false, half: false, view: frame === '4k' ? '4k' : '6k',
+              img: { s: num(v.scale, 1), dx: num(v.dx, 0), dy: num(v.dy, 0), rot: num(v.rot, 0), snap: v.snap || '', sx: num(v.sx, 1), sy: num(v.sy, 1) } };
+    function say(m) { if (st) st.textContent = m; }
+    function refit() { try { window.dispatchEvent(new Event('resize')); } catch (x) {} }
+    var ctx = { getC: function () { return c; }, assets: d.assets || {}, src: d.src || '', squish: true, mask: { url: d.mask || '' },
+                onChange: function () { later(); }, onMove: function () { later(); }, onReset: function () { later(); },
+                reset: function () { c = neutral(); } };
+    var handle = S.build(box, ctx);
+    var lb = blk.querySelector('[data-comp-last]');   /* ↺ LAST BAKE: the stage back on what made its composed clip (the owner 2026-10-30), then SAVE as always */
+    if (lb && d.last) lb.addEventListener('click', function () { var L = d.last;
+      frame = L.frame || '6k'; blk.querySelectorAll('[data-comp-frame]').forEach(function (x) { x.classList.toggle('ac-rm-on', frame === x.dataset.compFrame); });
+      c = { shot: L.size || 'FS', orient: L.view || 'front', pos: 'center', style: 'pro', bio: L.bio || 'm', hide: false, half: false, view: frame === '4k' ? '4k' : '6k',
+            img: { s: num(L.scale, 1), dx: num(L.dx, 0), dy: num(L.dy, 0), rot: num(L.rot, 0), snap: L.snap || '', sx: num(L.sx, 1), sy: num(L.sy, 1) } };
+      box.innerHTML = ''; handle = S.build(box, ctx); refit(); say('BACK TO THE LAST BAKE'); later(); });
+    [80, 500, 1500].forEach(function (ms) { setTimeout(refit, ms); });
+    Array.prototype.forEach.call(box.querySelectorAll('img'), function (im) { if (!im.complete) im.addEventListener('load', refit); });
+    function post(mask) {
+      var f = blk.querySelector('form[data-comp-form]'), fd = new FormData(f);
+      var vals = { VIEW: c.orient || 'front', BIO: c.bio || 'm', SIZE: c.shot || 'FS', SCALE: r6(c.img.s == null ? 1 : c.img.s), DX: r6(c.img.dx || 0), DY: r6(c.img.dy || 0),
+                   ROT: r6(c.img.rot || 0), SNAP: c.img.snap || '', SQX: r6(c.img.sx || 1), SQY: r6(c.img.sy || 1), MASK: mask, FRAME: frame };
+      Object.keys(vals).forEach(function (k) { fd.set(k, vals[k]); }); fd.set('SEQ', seq);
+      return fetch(f.action, { method: 'POST', body: fd, credentials: 'same-origin' }).then(function (r) { if (!r.ok) throw r.status; });
+    }
+    /* THE SLOT COMPOSED AT ONCE (the owner 2026-10-30: "i pressed save and i dont see the video"): SAVE composes its slot in the background; its state is read every
+       2 s and, made, the composition player above takes the new clip for this slot in place (nothing reloads) */
+    function follow(mine, tries) {
+      tries = tries || 0; if (!d.status || tries > 120 || mine !== seq) return;   /* a newer save took over: it follows its own */
+      fetch(d.status + '?t=' + Date.now(), { credentials: 'same-origin', cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
+        if (mine !== seq) return;
+        if (!j || j.seq !== mine || j.state === 'composing') { setTimeout(function () { follow(mine, tries + 1); }, 2000); return; }
+        if (j.state === 'failed') { say('SAVED · NOT COMPOSED · ' + (j.why || '')); return; }
+        var root = blk.getRootNode();
+        Array.prototype.forEach.call(root.querySelectorAll('.replica-cliptime[data-player="composition"] video[data-slot="' + d.n + '"]'), function (v) { v.src = d.made + '?v=' + Date.now(); v.load(); });
+        say('SAVED · ON THE PLAYER');
+      }).catch(function () { setTimeout(function () { follow(mine, tries + 1); }, 4000); });
+    }
+    /* SAVED BY ITSELF (the owner 2026-10-30: "the composition should auto save"; "you can always turn it off if you dont want it"): every change waits a moment for
+       the next one, then the slot is saved and composed; each save has its number, so an older compose never lands over a newer one */
+    var seq = '', timer = 0;
+    function later() { say('…'); clearTimeout(timer); timer = setTimeout(save, 900); }
+    function save() {
+      var mh = handle && handle.mask; seq = String(Date.now()); var mine = seq; say('SAVING…');
+      var step = Promise.resolve('keep');
+      if (mh && mh.dirty()) step = mh.empty() ? Promise.resolve('') : new Promise(function (ok) {
+        mh.png(function (b) { if (!b) { ok('keep'); return; } var rd = new FileReader(); rd.onload = function () { ok(rd.result); }; rd.readAsDataURL(b); }); });
+      step.then(post).then(function () { if (mh) mh.saved(); if (mine === seq) { say('SAVED · COMPOSING…'); follow(mine); } }).catch(function (x) { say('NOT SAVED · ' + x); });
+    }
+    /* 6K | 4K BESIDE SAVE (the owner 2026-10-30: "we should have a 4k button in each row to switch to from the 4k to resize to the 4k canvas"): it presses the stage's
+       own VIEW button, so the stage shows the 4K window; SAVE keeps it and the slot is composed as that window, zoomed to the frame */
+    Array.prototype.forEach.call(blk.querySelectorAll('[data-comp-frame]'), function (b) {
+      function paint() { blk.querySelectorAll('[data-comp-frame]').forEach(function (x) { x.classList.toggle('ac-rm-on', frame === x.dataset.compFrame); }); }
+      b.addEventListener('click', function () {
+        frame = b.dataset.compFrame;
+        if (frame !== 'off') { var want = frame.toUpperCase(); Array.prototype.forEach.call(box.querySelectorAll('.skagen-btn'), function (x) { if (x.textContent === want) x.click(); }); c.view = frame; }
+        paint(); later();
+      });
+      paint();
+    });
+    /* COMPOSED AGAIN BY ITSELF (the owner 2026-10-30: "changes in 12 dont move to 13"): a slot whose clip changed in step 12 is composed again from it on the server;
+       the block follows that compose as it follows its own save, and the player above takes the clip in place */
+    if (d.composing) { seq = String(d.composing); say('STEP 12 CHANGED · COMPOSING…'); follow(seq); }
+  }
+  function start() { replicaPaintRoots().forEach(function (r) { r.querySelectorAll('[data-comp]').forEach(mount); }); }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
+  return { mount: mount };
+})();
+{% endraw %}</script>
+
+<script>{% raw %}/* EXPORT, LARRY 5's RESIZE AND UPSCALE on our minute (the owner 2026-10-30: "we have tools in larry 5 for this"; "you pick the ouput format"; "then it asks if you
+   want a logo or not"; "then you can shift it left or right only"; "it will bake it and make the export file and save it in the downloads"): LARRY 5's own script
+   (inc_widget_resize_upscale.html) on a video: SELECT loads the size's own French grid, the stage is the 6K master at 1/6 (cover, never gaps), LEFT / RIGHT move the
+   picture 0.5% at a time clamped to 18.75% either way, LOGO NO / YES with PRO / RETRO and the variants; every change saves by itself, EXPORT bakes the file */
+window.CmoExport = (function () {
+  function mount(box) {
+    if (box.dataset.exportMounted) return;
+    box.dataset.exportMounted = '1';
+    var d = {}; try { d = JSON.parse(box.getAttribute('data-export') || '{}'); } catch (x) {}
+    var v = d.vals || {}, MAX = d.max || 18.75, PAN = 0.5, LEN = d.length || 60;
+    var q = function (s) { return box.querySelector(s); };
+    var frame = v.frame === '6k' ? '6k' : '4k';   /* THE FRAME (the owner 2026-10-30: "if it is 4k it uses the inner frame and 6k the outer frame"): 6K is the 4K box grown 6144/3840 about the middle */
+    var vid = q('[data-x-vid]'), lay = null, offsetX = +v.offset || 0, logoOn = !!(+v.logo), logoStyle = v.style || 'pro', logoVariant = v.variant || '';
+    var state = q('[data-x-state]'), audio = v.audio === undefined || v.audio === null ? true : !!(+v.audio);
+    var start = { value: +v.start || 0 }, secs = { value: +v.seconds || 30 };   /* the range, kept as the timeline sets it */
+    var tl = q('[data-x-tl]'), win = q('[data-x-tl-win]'), head = q('[data-x-tl-head]');
+    q('[data-x-tl-slots]').innerHTML = (d.slots || []).map(function (s_) {
+      return '<span class="rzx-tl-slot" style="left:' + (s_[1] / LEN * 100) + '%;width:' + (s_[2] / LEN * 100) + '%">' + s_[0] + '</span>'; }).join('');
+    function fit() {   /* the range kept inside the minute, half a second at a time */
+      var a = Math.round(Math.max(0, Math.min(+start.value, LEN - 1)) * 2) / 2, n = Math.round(Math.max(1, Math.min(+secs.value, LEN - a)) * 2) / 2;
+      start.value = a; secs.value = n;
+      win.style.left = (a / LEN * 100) + '%'; win.style.width = (n / LEN * 100) + '%';
+      q('[data-x-tl-read]').textContent = 'FROM ' + a.toFixed(1) + ' S TO ' + (a + n).toFixed(1) + ' S · ' + n.toFixed(1) + ' S';
+    }
+    (function () {   /* drag the window's middle to move it, an edge to size it; a press on the bar puts the window's start there */
+      var drag = null;
+      function at(e) { var r = tl.getBoundingClientRect(); return Math.max(0, Math.min(LEN, (e.clientX - r.left) / r.width * LEN)); }
+      tl.addEventListener('pointerdown', function (e) {
+        var h = e.target.closest('[data-x-tl-h]'), t = at(e);
+        drag = { kind: h ? h.dataset.xTlH : (e.target.closest('[data-x-tl-win]') ? 'move' : 'jump'), t0: t, a: +start.value, n: +secs.value };
+        if (drag.kind === 'jump') { start.value = Math.min(t, LEN - +secs.value); fit(); drag.kind = 'move'; drag.t0 = t; drag.a = +start.value; }
+        tl.setPointerCapture(e.pointerId); e.preventDefault();
+      });
+      tl.addEventListener('pointermove', function (e) {
+        if (!drag) return;
+        var t = at(e), dt = t - drag.t0;
+        if (drag.kind === 'move') { start.value = Math.max(0, Math.min(LEN - drag.n, drag.a + dt)); }
+        else if (drag.kind === 'a') { var b = drag.a + drag.n, a2 = Math.max(0, Math.min(b - 1, drag.a + dt)); start.value = a2; secs.value = b - a2; }
+        else { secs.value = Math.max(1, Math.min(LEN - drag.a, drag.n + dt)); }
+        fit(); slate();
+      });
+      tl.addEventListener('pointerup', function () { if (drag) { drag = null; fit(); later(); } });
+    })();
+    /* FILL GAPS (the owner 2026-10-30: "it will put a black color but not pure black over the green layer so you dont see the green screen flaws"): the stage plays through a
+       small canvas with the export's own key (ffmpeg colorkey: the distance to the composition's green, its similarity and soft edge) over the same near-black */
+    var fill = !!(+v.fill), FK = d.fill || {}, cvs = q('[data-x-fill]'), cx2 = cvs.getContext('2d', { willReadFrequently: true });
+    var KR = parseInt((FK.key || '0x00B140').slice(2, 4), 16), KG = parseInt((FK.key || '0x00B140').slice(4, 6), 16), KB = parseInt((FK.key || '0x00B140').slice(6, 8), 16);
+    var FR = parseInt((FK.color || '0x101010').slice(2, 4), 16), FG = parseInt((FK.color || '0x101010').slice(4, 6), 16), FB = parseInt((FK.color || '0x101010').slice(6, 8), 16);
+    var SIM = FK.similarity || 0.18, BL = FK.blend || 0.08;
+    function paintFill() {
+      if (!fill || !vid.videoWidth) return;
+      cx2.drawImage(vid, 0, 0, cvs.width, cvs.height);
+      var im = cx2.getImageData(0, 0, cvs.width, cvs.height), p_ = im.data;
+      for (var i = 0; i < p_.length; i += 4) {
+        var dr = p_[i] - KR, dg = p_[i + 1] - KG, db = p_[i + 2] - KB, dd = Math.sqrt((dr * dr + dg * dg + db * db) / 195075);
+        var a = dd < SIM ? 0 : (BL > 0 ? Math.min(1, (dd - SIM) / BL) : 1);
+        if (a < 1) { p_[i] = FR + (p_[i] - FR) * a; p_[i + 1] = FG + (p_[i + 1] - FG) * a; p_[i + 2] = FB + (p_[i + 2] - FB) * a; }
+      }
+      cx2.putImageData(im, 0, 0);
+    }
+    (function loop() { if (fill && !vid.paused) paintFill(); requestAnimationFrame(loop); })();
+    vid.addEventListener('seeked', paintFill); vid.addEventListener('loadeddata', paintFill);
+    function fillBtns() {
+      box.querySelectorAll('[data-x-fillon]').forEach(function (x) { x.classList.toggle('rzx-on', (x.dataset.xFillon === '1') === fill); });
+      cvs.style.display = fill ? 'block' : 'none'; cvs.style.left = vid.style.left; paintFill();
+    }
+    box.querySelectorAll('[data-x-fillon]').forEach(function (b) { b.addEventListener('click', function () { fill = b.dataset.xFillon === '1'; fillBtns(); later(); }); });
+    function audioBtns() { box.querySelectorAll('[data-x-audio]').forEach(function (x) { x.classList.toggle('rzx-on', (x.dataset.xAudio === '1') === audio); }); vid.muted = !audio; }
+    box.querySelectorAll('[data-x-grid]').forEach(function (b) { b.addEventListener('click', function () { grid = b.dataset.xGrid === '1'; masks(); }); });
+    box.querySelectorAll('[data-x-audio]').forEach(function (b) { b.addEventListener('click', function () { audio = b.dataset.xAudio === '1'; audioBtns(); later(); }); });
+    function say(m) { state.textContent = m; }
+    function layoutOf(k) { return (d.layouts || []).find(function (l) { return l[0] === k; }); }
+    var grid = true;   /* GRID ON or OFF (the owner 2026-10-30: "an option to hide grid but keeps the grey blocks becasue that will not be in the output"): OFF hides both
+       French grids and greys all the stage that is not in the file, the size's box worked out by the export's own crop maths (the frame's zone, no shift: the picture moves under it) */
+    function masks() {
+      var on = !grid && lay;
+      q('[data-x-hgrid]').style.display = grid ? '' : 'none'; q('[data-x-layout]').style.display = grid && lay ? 'block' : 'none';
+      box.querySelectorAll('[data-x-grid]').forEach(function (x) { x.classList.toggle('rzx-on', (x.dataset.xGrid === '1') === grid); });
+      box.querySelectorAll('[data-x-mask]').forEach(function (m) { m.style.display = on ? 'block' : 'none'; });
+      if (!on) return;
+      var zw = frame === '6k' ? 6144 : 3840, zh = frame === '6k' ? 3456 : 2160, a = lay[3] / lay[4], cw, ch;
+      if (a <= zw / zh) { ch = zh; cw = Math.round(zh * a); } else { cw = zw; ch = Math.round(zw / a); }
+      var L = (6144 - cw) / 2 / 6144 * 100, T = (3456 - ch) / 2 / 3456 * 100, Wp = cw / 6144 * 100, Hp = ch / 3456 * 100;
+      var set = function (k, css) { Object.assign(q('[data-x-mask="' + k + '"]').style, css); };
+      set('t', { left: '0', top: '0', width: '100%', height: T + '%' }); set('b', { left: '0', top: (T + Hp) + '%', width: '100%', height: (100 - T - Hp) + '%' });
+      set('l', { left: '0', top: T + '%', width: L + '%', height: Hp + '%' }); set('r', { left: (L + Wp) + '%', top: T + '%', width: (100 - L - Wp) + '%', height: Hp + '%' });
+    }
+    function framed() {
+      masks();
+      var k = frame === '6k' ? 'scale(1.6)' : 'none';
+      q('[data-x-hgrid]').style.transform = k; q('[data-x-layout]').style.transform = k; q('[data-x-logo]').style.transform = k;   /* the horizontal French grid is drawn for the 4K zone too: it grows with it */
+      box.querySelectorAll('[data-x-frame]').forEach(function (x) { x.classList.toggle('rzx-on', x.dataset.xFrame === frame); });
+    }
+    function room() {   /* how far this size can shift in this frame before its box meets the canvas edge (the agent's _export_room, LARRY 5's crop maths) */
+      if (!lay) return MAX;
+      var zw = frame === '6k' ? 6144 : 3840, zh = frame === '6k' ? 3456 : 2160, a = lay[3] / lay[4];
+      var cw = a <= zw / zh ? Math.round(zh * a) : zw;
+      return Math.min(MAX, Math.round((6144 - cw) / 2 / 6144 * 10000) / 100);
+    }
+    function clampX() { var r = room(); offsetX = Math.max(-r, Math.min(r, offsetX)); place(); }
+    function place() {   /* the picture under the size: its shift a share of the stage, as LARRY 5's place() */
+      vid.style.left = offsetX + '%'; if (typeof cvs !== 'undefined' && cvs) cvs.style.left = offsetX + '%';
+      q('[data-x-pos]').textContent = 'X: ' + offsetX.toFixed(1) + '%' + (room() === 0 ? ' · this size fills the canvas: no shift' : ' · room ±' + room().toFixed(2) + '%');
+    }
+    function pick(k) {
+      var l = layoutOf(k); if (!l || !l[7]) return;
+      lay = l;
+      box.querySelectorAll('.rzx-sel').forEach(function (x) { var on = x.dataset.k === k; x.classList.toggle('rzx-active', on); x.firstChild.textContent = on ? 'ACTIVE' : 'SELECT'; });
+      var lo = q('[data-x-layout]'); lo.src = d.layouts_url + '/' + l[6]; lo.style.display = grid ? 'block' : 'none'; masks();
+      if (!((d.logos[k] || {})[logoStyle] || []).length) logoVariant = '';
+      clampX(); logoCtl(); slate();
+    }
+    function logoCtl() {
+      box.querySelectorAll('[data-x-logo-on]').forEach(function (x) { x.classList.toggle('rzx-on', (x.dataset.xLogoOn === '1') === logoOn); });
+      box.querySelectorAll('[data-x-style]').forEach(function (x) { x.classList.toggle('rzx-on', x.dataset.xStyle === logoStyle); });
+      var has = lay && d.logos[lay[0]];
+      q('[data-x-logo-ctl]').style.display = logoOn && has ? 'inline' : 'none';
+      var files = has ? (d.logos[lay[0]][logoStyle] || []) : [], vb = q('[data-x-variants]');
+      vb.innerHTML = '';
+      if (files.length > 1) {
+        if (!logoVariant) logoVariant = 'a';
+        files.forEach(function (f, i) {
+          var s = document.createElement('span'), letter = 'ABCDE'[i];
+          s.className = 'rzx-adj' + (logoVariant === letter.toLowerCase() ? ' rzx-on' : ''); s.textContent = letter;
+          s.addEventListener('click', function () { logoVariant = letter.toLowerCase(); logoCtl(); later(); });
+          vb.appendChild(s);
+        });
+      } else logoVariant = '';
+      var el = q('[data-x-logo]'), f = files[0] || '';
+      if (files.length > 1 && logoVariant) { var i = 'abcde'.indexOf(logoVariant); if (i >= 0 && i < files.length) f = files[i]; }
+      if (!logoOn || !f) { el.style.display = 'none'; } else { el.src = d.layouts_url + '/logos/' + f; el.style.display = 'block'; }
+    }
+    function slate() {
+      var a = Math.max(0, Math.min(+start.value || 0, LEN - 1)), n = Math.max(1, Math.min(+secs.value || 30, LEN - a));
+      q('[data-x-slate]').textContent = lay ? (lay[2].toUpperCase() + ' · ' + lay[3] + 'x' + lay[4] + ' · ' + frame.toUpperCase() + ' FRAME · ' + lay[5] + ' · ' + n.toFixed(1) + ' S FROM ' + a.toFixed(1) + ' S'
+        + (audio ? ' · AUDIO' : ' · NO AUDIO') + (fill ? ' · GAPS FILLED' : '') + (logoOn ? ' · LOGO ' + logoStyle.toUpperCase() + (logoVariant ? ' ' + logoVariant.toUpperCase() : '') : ' · NO LOGO')) : '— PICK A SIZE —';
+    }
+    function fields(doWhat) {
+      var f = q('form[data-export-form]'), fd = new FormData(f);
+      fd.set('do', doWhat); fd.set('value', d.value);
+      fd.set('LAYOUT', lay ? lay[0] : ''); fd.set('FRAME', frame); fd.set('OFFSET', offsetX.toFixed(2)); fd.set('LOGO', logoOn ? '1' : '0'); fd.set('STYLE', logoStyle); fd.set('VARIANT', logoVariant);
+      fd.set('START', start.value); fd.set('SECONDS', secs.value); fd.set('AUDIO', audio ? '1' : '0'); fd.set('FILL', fill ? '1' : '0');
+      return fetch(f.action, { method: 'POST', body: fd, credentials: 'same-origin' }).then(function (r) { if (!r.ok) throw r.status; });
+    }
+    var timer = 0;   /* saved by itself, a moment after the last change */
+    function later() { slate(); clearTimeout(timer); timer = setTimeout(function () { if (lay) fields(d.do).then(function () { say('SAVED'); }).catch(function (x) { say('NOT SAVED · ' + x); }); }, 900); }
+    box.querySelectorAll('.rzx-sel').forEach(function (b) { b.addEventListener('click', function () { pick(b.dataset.k); later(); }); });
+    box.querySelectorAll('[data-x-move]').forEach(function (b) { b.addEventListener('click', function () {
+      var m = +b.dataset.xMove; offsetX = m === 0 ? 0 : offsetX + m * PAN; clampX(); later(); }); });
+    box.querySelectorAll('[data-x-frame]').forEach(function (b) { b.addEventListener('click', function () { frame = b.dataset.xFrame; framed(); clampX(); later(); }); });
+    box.querySelectorAll('[data-x-logo-on]').forEach(function (b) { b.addEventListener('click', function () { logoOn = b.dataset.xLogoOn === '1'; logoCtl(); later(); }); });
+    box.querySelectorAll('[data-x-style]').forEach(function (b) { b.addEventListener('click', function () { logoStyle = b.dataset.xStyle; logoVariant = ''; logoCtl(); later(); }); });
+    box.querySelectorAll('[data-x-preset]').forEach(function (b) { b.addEventListener('click', function () {
+      if (b.dataset.xPreset === 'all') { start.value = 0; secs.value = LEN; } else { secs.value = +b.dataset.xPreset; if (+start.value + +secs.value > LEN) start.value = LEN - +secs.value; } fit(); later(); }); });
+    var stopAt = 0;
+    q('[data-x-play]').addEventListener('click', function () {   /* the seconds that will be exported, on the stage, with our song */
+      if (!vid.paused) { vid.pause(); return; }
+      vid.currentTime = +start.value || 0; stopAt = (+start.value || 0) + (+secs.value || 30); vid.play();
+    });
+    vid.addEventListener('timeupdate', function () {
+      head.style.display = 'block'; head.style.left = (vid.currentTime / LEN * 100) + '%';   /* where the stage is, on the timeline */
+    });
+    (function edge() {   /* THE PREVIEW ENDS WHERE THE FILE ENDS (the owner 2026-10-30: "its important our preview and final output match"): checked every frame, not four times a
+       second, and held on the range's last frame (the file's last frame), never a frame of the next slot */
+      if (stopAt && vid.currentTime >= stopAt - 1 / 30) { vid.pause(); vid.currentTime = stopAt - 1 / 30; stopAt = 0; }
+      requestAnimationFrame(edge);
+    })();
+    vid.addEventListener('ended', function () { stopAt = 0; });
+    vid.addEventListener('loadedmetadata', function () { if (vid.paused) vid.currentTime = +start.value || 0; });
+    function follow(tries) {   /* the export baked in the background, its words here; done, the page draws itself again (the files table) */
+      fetch(d.status + '?t=' + Date.now(), { credentials: 'same-origin', cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
+        if (j && j.state === 'exported') { say('IN YOUR DOWNLOADS · ' + j.file); setTimeout(function () { location.reload(); }, 2500); return; }
+        if (j && j.state === 'failed') { say('NOT EXPORTED · ' + (j.why || '')); return; }
+        say('EXPORTING… ' + (j && j.file ? j.file : '')); if ((tries || 0) < 900) setTimeout(function () { follow((tries || 0) + 1); }, 2000);
+      }).catch(function () { setTimeout(function () { follow((tries || 0) + 1); }, 4000); });
+    }
+    q('[data-x-export]').addEventListener('click', function () {
+      if (!lay) { say('PICK A SIZE.'); return; }
+      clearTimeout(timer); say('EXPORTING…');
+      fields(d.make).then(function () { follow(0); }).catch(function (x) { say('NOT EXPORTED · ' + x); });
+    });
+    place(); pick(v.layout || '1080x1920'); framed(); logoCtl(); fit(); audioBtns(); fillBtns(); slate();
+  }
+  function start() { replicaPaintRoots().forEach(function (r) { r.querySelectorAll('[data-export]').forEach(mount); }); }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
+  return { mount: mount };
+})();
+{% endraw %}</script>
+
+{% if A.live %}<script>/* THE LIVE (the owner 2026-10-27: "next item is the live / we add it to the replica"): the original's script (scrum.html, ACTIVE MONITORING), reading this page's own stream, pushed as the records change; nothing here asks again on a clock (the one-second tick moves the clocks already on the page) */
+(() => {
+  const live = document.getElementById('replica-live'), STREAM = live.dataset.stream;
+  let es = new EventSource(STREAM), sseUp = false, lastEv = null, lastSaid = [];
+  const monT = document.getElementById('scrum-monitor'), rgCell = document.getElementById('scrum-rg'), sseCell = document.getElementById('scrum-sse');
+  let mon = monT ? { rg: { state: monT.dataset.rgSince ? 'SEARCHING' : 'READY', since: monT.dataset.rgSince, last_at: monT.dataset.rgLast, tool: monT.dataset.rgTool, what: (() => { try { return JSON.parse(monT.dataset.rgWhat || '[]'); } catch (x) { return []; } })() }, sse: { open: 0 } } : null;
+  const ago = (ms) => { const s = Math.max(0, Math.round(ms / 1000)), h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60); return (h ? h + ' H ' : '') + (h || m ? m + ' MIN ' : '') + (s % 60) + ' S'; };   /* always to the second (the owner 2026-10-21: "add seconds to the timers so they move") */
+  const paint = (cell, cls, text, key, after) => { if (!cell) { return; } cell.textContent = ''; const s = cell.appendChild(document.createElement('span')); s.className = cls; s.textContent = text;
+    if (key) { const k = cell.appendChild(document.createElement('span')); k.className = 'scrum-key'; k.textContent = ' "' + key + '"'; }
+    if (after) { const a = cell.appendChild(document.createElement('span')); a.className = cls; a.textContent = ' ' + after; } };
+  const switchSince = () => live.querySelectorAll('[data-switch-since]').forEach((c) => { const at = Date.parse(c.dataset.switchSince); c.textContent = isNaN(at) ? '' : ago(Date.now() - at); });
+  const nowSince = () => roots().forEach((r) => r.querySelectorAll('.scrum-since[data-since]').forEach((c) => { const at = Date.parse(c.dataset.since); c.textContent = isNaN(at) ? '' : ' ' + ago(Date.now() - at); }));   /* every line's cycle time, the original's way: the LIVE panel's, THE RED's and each live agent's live line (inside its canvas) */
+  let sysWas = null, sysAt = null; const sysGreen = {};
+  function monDraw() {
+    nowSince(); switchSince();
+    if (!mon) { return; }
+    const r = mon.rg;
+    if (r.state === 'SEARCHING') { paint(rgCell, 'hdr-status--success', 'SEARCHING FOR', Array.isArray(r.what) && r.what.length ? r.what.join('" "') : 'THE FACTS', ago(Date.now() - new Date(r.since))); }
+    else { paint(rgCell, 'scrum-idle', r.last_at ? 'IDLE' : 'READY', '', r.last_at ? ago(Date.now() - new Date(r.last_at)) : ''); }
+    const mf = mon.manifest, mfCell = document.getElementById('scrum-manifest');
+    if (mf && mfCell) { mfCell.textContent = ''; const put = (cls, txt) => { const x = mfCell.appendChild(document.createElement('span')); x.className = cls; x.textContent = txt; return x; };
+      put('scrum-idle', mf.listed + ' GROUPS'); (mf.names || []).forEach((n) => { mfCell.appendChild(document.createTextNode(' ')); put('scrum-idle', '"' + String(n).toUpperCase() + '"').dataset.report = n; }); }
+    const mm = mon.memory, mmCell = document.getElementById('scrum-memory-switch');
+    if (mm && mmCell) { mmCell.textContent = ''; const put = (cls, txt, tag) => { const x = mmCell.appendChild(document.createElement(tag || 'span')); x.className = cls; x.textContent = txt; if (!tag) { mmCell.appendChild(document.createTextNode(' ')); } return x; };
+      if (!mm.wired) { put('hdr-status--error', String(mm.said || '').toUpperCase()); }
+      else if (mm.state === 'IDLE') { put('scrum-idle', 'IDLE'); if (mm.since) { const t = put('scrum-idle scrum-switch-since', ''); t.dataset.switchSince = mm.since; } }
+      else { put('hdr-status--success', mm.state + (mm.state === 'KNOWLEDGE STORE' ? ' (SHARED)' : '')); put('scrum-idle', '· ROW ' + mm.row + (mm.agent ? ' · ' + String(mm.agent).toUpperCase() : ''));
+        if ((mm.words || []).length) { put('scrum-idle', '· SEARCH'); mm.words.forEach((w) => put('scrum-key', '"' + w + '"')); }
+        (mm.bullets || []).forEach((b) => put('scrum-idle', '- ' + b, 'div')); }
+      switchSince(); }
+    const sy = mon.system, syCell = document.getElementById('scrum-system');
+    if (sy && syCell) { syCell.textContent = '';
+      if (sy.state !== 'MEASURED') { const x = syCell.appendChild(document.createElement('span')); x.className = 'scrum-idle'; x.textContent = 'MEASURING'; }
+      else { const fresh = sy.at !== sysAt, was = sysWas, now = {}, put = (key, txt) => { now[key] = txt; if (fresh) { sysGreen[key] = !!(was && was[key] !== undefined && was[key] !== txt); } const x = syCell.appendChild(document.createElement('span')); x.className = sysGreen[key] ? 'hdr-status--success' : 'scrum-idle'; x.dataset.sysPart = key; x.textContent = txt; syCell.appendChild(document.createTextNode(' ')); };
+        const c = sy.cpu, m = sy.memory, d = sy.disk, n = sy.network, pc = (v) => (v == null ? '?' : v + '%');
+        put('cpu', 'CPU ' + pc(c && c.percent)); put('load', '· LOAD ' + pc(c && c.load_percent));
+        put('memory', '· MEMORY ' + pc(m && m.percent) + (m && m.pressure ? ' · ' + m.pressure : '')); put('disk', '· DISK ' + pc(d && d.percent));
+        put('net', '· NETWORK ' + (n && n.in_percent != null ? 'IN ' + n.in_percent + '% · OUT ' + n.out_percent + '%' : 'not measured yet'));
+        if (fresh) { sysWas = now; sysAt = sy.at; } }
+      const of = sy.offices, ofCell = syCell.appendChild(Object.assign(document.createElement('div'), { className: 'scrum-offices' })), put = (parent, cls, txt) => { const x = parent.appendChild(document.createElement('span')); x.className = cls; x.textContent = txt; return x; };
+      ofCell.dataset.offices = (of && of.state) || 'MEASURING';
+      if (!of || !of.cards || of.state === 'MEASURING') { put(ofCell, 'scrum-idle', 'OFFICES · MEASURING'); }
+      else { const w = put(ofCell, (of.cards.length && !of.down) ? 'hdr-status--success' : 'hdr-status--error', 'OFFICES · ' + of.up + ' UP' + (of.down ? ' · ' + of.down + ' DOWN' : '') + ((String(of.state).startsWith('NOT MEASURED') || of.state === 'NO OFFICE') ? ' · ' + of.state : '')); w.dataset.officesWord = '';
+        of.cards.forEach((c) => { ofCell.appendChild(document.createTextNode(' ')); const s = put(ofCell, 'scrum-office', c.name + ' ' + c.port + ' '); s.dataset.office = c.name; s.dataset.up = c.up ? 'yes' : 'no'; put(s, c.up ? 'hdr-status--success' : 'hdr-status--error', c.up ? 'UP' : 'DOWN'); s.appendChild(document.createTextNode((c.answer ? ' ' + c.answer : '') + ' · API ')); put(s, c.api_up ? 'hdr-status--success' : 'hdr-status--error', c.api_up ? 'UP' : 'DOWN'); s.appendChild(document.createTextNode((c.api_answer ? ' ' + c.api_answer : '') + (c.pid ? ' · PID ' + c.pid : ''))); }); } }
+    if (!sseUp) { paint(sseCell, 'hdr-status--error', 'NOT CONNECTED · RECONNECTING'); }
+    else { paint(sseCell, 'hdr-status--success', 'BROADCASTING', lastSaid.length ? lastSaid.join('" "') : '', lastEv ? ago(Date.now() - lastEv) : ''); }
+  }
+  function monSet(m) { mon = m; monDraw(); }
+  function sseSaw(e) {   /* WHAT IT BROADCAST (the owner 2026-10-21: "what is it broadcasting"): the values the event carries, as sent */
+    sseUp = true; lastEv = Date.now();
+    const vals = e.line ? [e.line] : e.now ? [e.now.word, e.now.n, e.now.name].filter((v) => v !== undefined && v !== null && v !== '') : e.board ? e.board.lines.map((l) => l.slot + ' ' + l.green + '/' + l.total) : e.rows ? Object.values(e.rows).map((r) => r.name + ' ' + (r.light || 'not seen yet')) : e.monitor ? [e.monitor.sse.state] : e.start ? ['start'] : [];
+    if (vals.length) { lastSaid = vals.map(String); }
+    monDraw(); }
+  function nowSet(w) {   /* what runs now, as it changes (the line under the title) */
+    const t = live.querySelector('#scrum-now span'); if (!t) { return; }
+    const on = (w.word === 'WORKING' || w.word === 'STUCK') ? (w.n ? w.n + ' · ' : '') + w.name : '';
+    t.textContent = on ? w.word + ' ON' : w.word; t.className = (w.word === 'STUCK' || w.word === 'OFFLINE') ? 'hdr-status--error' : w.word === 'WORKING' ? 'hdr-status--success' : 'scrum-idle';
+    let k = t.parentNode.querySelector('.scrum-key'); if (on) { if (!k) { k = t.parentNode.appendChild(document.createElement('span')); k.className = 'scrum-key'; } k.textContent = ' "' + on + '"'; } else if (k) { k.remove(); }
+    let c = t.parentNode.querySelector('.scrum-since'); if ((on || w.word === 'IDLE') && w.since) { if (!c) { c = document.createElement('span'); } c.className = 'scrum-since ' + t.className; c.dataset.since = w.since; t.parentNode.appendChild(c); } else if (c) { c.remove(); }
+    const lx = document.getElementById('scrum-last'), lt = lx && lx.querySelector('span'), l = w.last ? 'LAST ' + (w.last.n ? w.last.n + ' · ' : '') + w.last.name + ' · ' + w.last.at + ' · ' + w.last.ended : '';
+    if (lx) { lt.textContent = l; lx.hidden = !l; }
+    nowSince(); }
+  function headerSet(x) {   /* THE HEADER, LIVE (the owner 2026-10-28: "this never updates can we change it to see live streaming to be live like the rest"; "the critical or healthy should be tied to it with live data"): its counts and its word from the same X board the stream sends, the server's own sums (page.header_board); GREEN WHILE LIVE ("in general something is green if live so we know its pulling live data") */
+    const lines = x.lines || []; if (!lines.length) { return; }
+    const g = lines.reduce((s, l) => s + (l.green || 0), 0), r = lines.reduce((s, l) => s + (l.red || 0), 0), t = lines.reduce((s, l) => s + (l.total || 0), 0);
+    const top = document.querySelector('.lsb[aria-label="HEADER"]'); if (!top) { return; }   /* the header found by its own label: the page names its class once, in the header itself */
+    const tr = top.querySelector('.lsb-tag--tr'), big = top.querySelector('.lsb-big'), hero = top.querySelector('.lsb-hero');
+    if (tr) { const gs = tr.querySelector('.replica-count-green'); if (gs) { gs.textContent = g + ' green'; } tr.classList.add('replica-live-now'); }   /* the green count from the X board; the red count and the word are THE RED's own (headerRed) */
+    boardReds = r; headerRed();
+  }
+  let redRows = 0, boardReds = 0;   /* THE RED's rows and the X board's reds, both live: the header says the larger, never hiding a red */
+  function headerRed(n) {   /* THE RED'S COUNT (the owner 2026-10-28: "it should be live data from the same source"): THE RED's own row count, the number its block says, never fewer than the X board's reds */
+    const top = document.querySelector('.lsb[aria-label="HEADER"]'); if (!top) { return; }
+    if (typeof n === 'number') { redRows = n; } n = Math.max(redRows, boardReds);
+    const rs = top.querySelector('.replica-count-red'), big = top.querySelector('.lsb-big'), hero = top.querySelector('.lsb-hero');
+    if (rs) { rs.textContent = n + ' red'; }
+    if (big) { big.textContent = n ? 'Critical' : 'Healthy'; big.classList.add('replica-live-now'); }
+    if (hero) { hero.classList.remove('lsb-hero--critical', 'lsb-hero--healthy'); hero.classList.add('lsb-hero--' + (n ? 'critical' : 'healthy')); }
+  }
+  function boardSet(x, work) {   /* THE X BOARD'S LINES AND TODAY'S WORK, live: the same lines the page drew, their counts and crosses moved in place */
+    headerSet(x);
+    (x.lines || []).forEach((l) => { const row = document.querySelector('.replica-xline[data-x-group="' + l.slot + '"]'); if (!row) { return; }
+      row.dataset.crossed = l.crossed ? 'yes' : 'no'; const n = row.querySelector('.replica-xcount'); if (n) { n.textContent = l.green + '/' + l.total; } const w = row.querySelector('.replica-xlist'); if (w) { if (Array.isArray(l.names)) { w.textContent = ''; l.names.forEach((nm, i) => { if (i) { w.appendChild(document.createTextNode(', ')); } if ((l.open || []).includes(nm)) { const u = document.createElement('span'); u.className = 'replica-xopen'; u.textContent = nm; w.appendChild(u); } else { w.appendChild(document.createTextNode(nm)); } }); } else { w.textContent = l.x; } }
+       });
+    const td = document.getElementById('scrum-today'); if (td && work) { td.dataset.steps = work.green + '/' + work.total; td.querySelector('span').textContent = "TODAY'S WORK " + work.percent + '% DONE'; } }
+  /* THE RED (frame/frame_red.py): RED SINCE ticks each second from its moment; the stream's reds move each row's moment and who works on it */
+  const roots = () => [document, ...Array.from(document.querySelectorAll('.pb-agent')).map((h) => h.shadowRoot).filter(Boolean)];
+  const tick = () => roots().forEach((r) => r.querySelectorAll('[data-ticking]').forEach((c) => { const at = Date.parse(c.dataset.ticking); if (isNaN(at)) { return; } const s = Math.max(0, Math.floor((Date.now() - at) / 1000)), p = (v) => String(v).padStart(2, '0');
+    c.textContent = c.dataset.lead + ' · ' + Math.floor(s / 86400) + ' DAYS : ' + p(Math.floor(s % 86400 / 3600)) + ' : ' + p(Math.floor(s % 3600 / 60)) + ' : ' + p(s % 60); }));
+  function redFor(el) { const t = Date.parse(el.dataset.redSince); if (isNaN(t)) { el.textContent = ''; return; } const s = Math.max(0, Math.floor((Date.now() - t) / 1000)), h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60);
+    el.textContent = (el.dataset.redPlain ? 'FOR ' : 'RED ') + (h ? h + ' H ' : '') + (h || m ? m + ' MIN ' : '') + (s % 60) + ' S'; }   /* the original's ticking red time, to the second (scrum.html redFor) */
+  setInterval(() => document.querySelectorAll('[data-red-since]').forEach(redFor), 1000); document.querySelectorAll('[data-red-since]').forEach(redFor);
+  function redsSet(reds) { if (reds && typeof reds.n === 'number') { headerRed(reds.n); } const tb = document.querySelector('#scrum-why tbody'), wrap = document.getElementById('scrum-why-wrap'), title = document.getElementById('scrum-why-title'); if (!tb || !reds) { return; }   /* WHY IT'S RED, LIVE: its rows drawn again in place from the stream, as the original's; an opened dropdown kept open */
+    const open = Array.from(tb.querySelectorAll('details[data-why-rules][open]')).map((d) => d.dataset.whyRules); tb.innerHTML = reds.html; open.forEach((k) => { const d = tb.querySelector('details[data-why-rules="' + k + '"]'); if (d) { d.open = true; } });
+    const head = document.getElementById('scrum-red-head'); if (head && reds.head) { head.outerHTML = reds.head; document.querySelectorAll('#scrum-red-head [data-red-since]').forEach(redFor); nowSince(); }   /* the count and the line under it, moved by the stream */
+    tb.querySelectorAll('[data-red-since]').forEach(redFor); }
+  es.onopen = () => { sseUp = true; monDraw(); };
+  es.onerror = () => { sseUp = false; monDraw(); };
+  function liveSet(lines) {   /* EACH LIVE AGENT'S LIVE LINE, from the one status place: drawn again in its canvas head the moment its row moves (no reload) */
+    Object.entries(lines || {}).forEach(([key, html]) => roots().forEach((r) => r.querySelectorAll('.replica-live-line[data-live-key="' + key + '"]').forEach((el) => { el.outerHTML = html; })));
+    nowSince(); }
+  function blockSet(blocks) {   /* EACH LIVE AGENT'S BASIC BLOCK ON THE PUBLIC FACE, its live line on top, drawn again in place from the one status place */
+    Object.entries(blocks || {}).forEach(([key, html]) => roots().forEach((r) => r.querySelectorAll('.replica-live-block[data-live-block="' + key + '"]').forEach((el) => { el.outerHTML = html; })));
+    nowSince(); }
+  es.onmessage = (m) => { const e = JSON.parse(m.data); sseSaw(e); if (e.monitor) { monSet(e.monitor); } if (e.now) { nowSet(e.now); } if (e.board) { boardSet(e.board, e.work); } if (e.reds) { redsSet(e.reds); } if (e.live_lines) { liveSet(e.live_lines); } if (e.live_blocks) { blockSet(e.live_blocks); } };
+  /* A TAB IN THE BACKGROUND HOLDS NO STREAM: closed when the tab is hidden, opened again, the same handlers, when it is seen */
+  document.addEventListener('visibilitychange', () => { if (document.hidden) { es.close(); return; } if (es.readyState !== EventSource.CLOSED) { return; } const was = es; es = new EventSource(STREAM); es.onopen = was.onopen; es.onerror = was.onerror; es.onmessage = was.onmessage; });
+  setInterval(() => { monDraw(); tick(); }, 1000);
+  /* A LIVE FILTER (the owner 2026-10-29: "can it adjust with the slider so you see the results live"): each canvas[data-live] is its picture, filtered in the page
+     by its row's sliders (LIGHTNESS, OPACITY, SATURATION, WHITES, BLACKS), CIELAB maths the same as the box's skin_tool.py fullmix: the golden tone (data-shift, a and b)
+     on every pixel, then the colour out of the highlights and the darks by lightness alone */
+  (function () {
+    const f = (t) => t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116, fi = (t) => t > 0.206893 ? t * t * t : (t - 16 / 116) / 7.787;
+    const lin = (c) => { c /= 255; return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); }, gam = (c) => 255 * (c <= 0.0031308 ? 12.92 * c : 1.055 * Math.pow(c, 1 / 2.4) - 0.055);
+    function toLab(r, g, b) { r = lin(r); g = lin(g); b = lin(b); const x = f((0.4124 * r + 0.3576 * g + 0.1805 * b) / 0.95047), y = f(0.2126 * r + 0.7152 * g + 0.0722 * b), z = f((0.0193 * r + 0.1192 * g + 0.9505 * b) / 1.08883); return [116 * y - 16, 500 * (x - y), 200 * (y - z)]; }
+    function toRgb(L, a, b) { const y = (L + 16) / 116, x = fi(a / 500 + y) * 0.95047, yy = fi(y), z = fi(y - b / 200) * 1.08883; return [gam(3.2406 * x - 1.5372 * yy - 0.4986 * z), gam(-0.9689 * x + 1.8758 * yy + 0.0415 * z), gam(0.0557 * x - 0.2040 * yy + 1.0570 * z)]; }
+    function knobs(cv) { const row = cv.closest('tr'), v = (n, d) => { const i = row && row.querySelector('input[type=range][name="' + n + '"]'); return i ? +i.value : d; };
+      return { light: v('lightness', 0), op: v('opacity', 10) / 100, sat: v('saturation', 90) / 100, wh: v('whites', 0) / 100, bl: v('blacks', 0) / 100 }; }
+    function draw(cv) { if (!cv._lab) return; const k = knobs(cv), sh = cv._shift, src = cv._lab, ctx = cv.getContext('2d'), out = ctx.createImageData(cv.width, cv.height), o = out.data;
+      for (let i = 0, j = 0; j < src.length; i += 4, j += 3) { const L = src[j], A = src[j + 1], B = src[j + 2];
+        const L2 = L * (1 - k.op) + Math.min(100, Math.max(0, L + k.light)) * k.op, A2 = A * (1 - k.op) + (A + sh[0]) * k.sat * k.op, B2 = B * (1 - k.op) + (B + sh[1]) * k.sat * k.op;
+        const hi = Math.pow(Math.min(1, Math.max(0, (L2 - 50) / 25)), 1.5), lo = Math.pow(Math.min(1, Math.max(0, (40 - L2) / 25)), 1.2), keep = Math.min(1, Math.max(0, 1 - 0.9 * hi - 0.9 * lo));   /* the yellow cut always on, as the box */
+        const c = toRgb(Math.min(100, Math.max(0, L2 + 22 * k.wh * hi - 12 * k.bl * lo)), A2 * keep, B2 * keep);   /* the highlights lifted, the shadows deepened, as the box does */ o[i] = c[0]; o[i + 1] = c[1]; o[i + 2] = c[2]; o[i + 3] = 255; }
+      ctx.putImageData(out, 0, 0); }
+    function load(cv) { if (cv._on) return; cv._on = 1; cv._shift = JSON.parse(cv.dataset.shift || '[0,0]'); const im = new Image(); im.onload = () => {
+        const w = 640, h = Math.round(w * im.naturalHeight / im.naturalWidth); cv.width = w; cv.height = h; const ctx = cv.getContext('2d'); ctx.drawImage(im, 0, 0, w, h);
+        const d = ctx.getImageData(0, 0, w, h).data, lab = new Float32Array(w * h * 3); for (let i = 0, j = 0; i < d.length; i += 4, j += 3) { const q = toLab(d[i], d[i + 1], d[i + 2]); lab[j] = q[0]; lab[j + 1] = q[1]; lab[j + 2] = q[2]; }
+        cv._lab = lab; draw(cv); }; im.src = cv.dataset.live; }
+    function wire(root) { root.querySelectorAll('canvas[data-live]').forEach(load);
+      if (!root._liveWired) { root._liveWired = 1; root.addEventListener('input', (e) => { const row = e.target.closest && e.target.closest('tr'); if (!row) return; row.querySelectorAll('canvas[data-live]').forEach((cv) => { clearTimeout(cv._raf); cv._raf = setTimeout(() => draw(cv), 16); }); }); } }
+    const all = () => roots().forEach(wire); all(); setTimeout(all, 800); setTimeout(all, 2500);
+  })();
+  /* A PRESS THAT SENDS THE WHOLE TABLE (the owner 2026-10-29: "if you click any bake it bakes them all the risk is you change settings on multiple then click bake and
+     only one bakes"): a form[data-gather] carries every row's sliders of its table on submit, each as <name>@<row key> */
+  roots().forEach((root) => root.addEventListener('submit', (e) => { const fm = e.target; if (!fm.matches || !fm.matches('form[data-gather]')) return; const table = fm.closest('table'); if (!table) return;
+    table.querySelectorAll('tr[data-row]').forEach((tr) => tr.querySelectorAll('input[type=range][name]').forEach((i) => { const h = document.createElement('input'); h.type = 'hidden'; h.name = i.name + '@' + tr.dataset.row; h.value = i.value; fm.appendChild(h); })); }, true));
+  /* THE PAGE STAYS WHERE HE WAS (the owner 2026-10-29: "when it relaods oit starts at the top"): the spot kept when the page goes (a press, a reload, its own look again) and taken back when it comes */
+  try { const back = +sessionStorage.getItem('replica-y:' + location.pathname); if (back > 0) { const go = () => window.scrollTo(0, back); go(); window.addEventListener('load', go); setTimeout(go, 600); } } catch (e) {}
+  window.addEventListener('pagehide', () => { try { sessionStorage.setItem('replica-y:' + location.pathname, String(window.scrollY)); } catch (e) {} });
+  /* A RUN FOLLOWED IN PLACE (the owner 2026-10-29: "the page keeps relaoding and not text status its a little annoying and not too professional"): a [data-poll] part names a run's
+     status file; while the run goes it is read again every 4 s and its words put in the cells that name them (data-poll-key: 'state' or a slot); at its end the players of what it
+     made (data-poll-media, a piece of their address) take the new file. Nothing reloads. */
+  roots().forEach((root) => root.querySelectorAll('[data-poll]').forEach((el) => { if (el.dataset.pollLive !== '1' || !el.dataset.poll) return; const url = el.dataset.poll.split('?')[0];
+    const said = (j) => (el.dataset.pollReload === '1' ? 'THE BAKE · ' + ({ baking: 'BAKING', baked: 'BAKED', failed: 'NOT BAKED' }[j.state] || String(j.state || '').toUpperCase()) + (j.said ? ' · ' + j.said : '')
+                                                     : 'THE RUN · ' + String(j.state || '').toUpperCase() + (j.why && j.state === 'failed' ? ' · ' + j.why : ''));
+    const put = (j) => el.parentNode.querySelectorAll('[data-poll-key]').forEach((c) => { if (c.closest('[data-poll]') && c.closest('[data-poll]') !== el) return; const k = c.dataset.pollKey; const v = k === 'state' ? (c.closest('[data-poll]') === el ? said(j) : null) : (el.dataset.pollReload === '1' ? null : (j.slots || {})[k]);
+      if (v != null) { const t = c.querySelector('[data-poll-text]'); if (t && t.textContent !== v) t.textContent = v; } });
+    const swap = (j) => root.querySelectorAll('video[data-poll-swap]').forEach((v) => { const w = (j.slots || {})[v.dataset.pollSwap] || ''; if (/^made/.test(w) && !v.dataset.swapped) { v.dataset.swapped = '1'; v.src = v.dataset.swapSrc + '?v=' + Date.now(); v.load(); } });   /* a slot made: its player takes the new clip in place */
+    const tick = () => fetch(url + '?t=' + Date.now(), { credentials: 'same-origin', cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)).then((j) => { if (!j) { setTimeout(tick, 8000); return; } put(j); swap(j);
+      if (['sending', 'running', 'bringing home', 'baking'].includes(j.state)) { setTimeout(tick, 4000); return; }
+      if (j.state === 'baked' && el.dataset.pollReload === '1' && !(document.activeElement && /INPUT|TEXTAREA/.test(document.activeElement.tagName))) { location.reload(); return; }   /* baked: drawn once more, where he was, the players on what was made */
+      if (j.state === 'done' && el.dataset.pollMedia) roots().forEach((r) => r.querySelectorAll('video').forEach((v) => { if (v.src.indexOf(el.dataset.pollMedia) >= 0) { v.src = v.src.split('?')[0] + '?v=' + Date.now(); v.load(); } })); }).catch(() => setTimeout(tick, 8000));
+    tick(); }));
+  if (roots().some((r) => r.querySelector('[data-working]'))) setTimeout(() => { if (!document.activeElement || !/INPUT|TEXTAREA/.test(document.activeElement.tagName)) location.reload(); }, 10000);   /* a cell at work: look again in 10 seconds (never while he types) */
+  monDraw();
+})();
+</script>{% endif %}
+{% endblock %}

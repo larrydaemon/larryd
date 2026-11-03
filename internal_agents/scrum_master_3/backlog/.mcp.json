@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "larryd": {
+      "command": "/Users/frost/larryd/.venv/bin/larryd",
+      "args": [
+        "mcp"
+      ]
+    }
+  }
+}

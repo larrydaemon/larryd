@@ -1,0 +1,45 @@
+{
+  "name": "Rules",
+  "entry": "agent.py",
+  "about": "The Operations Manager's RULES block: how many of the office's agents hold a rule read into their job; its RUN counts the reviews LEGIT, STUPID and not reviewed.",
+  "does": [
+    "canvas",
+    "run"
+  ],
+  "calls": [
+    "canvas"
+  ],
+  "reads": [
+    "the Operations Manager office's own store (~/larryd/server/runtime/internal/instance/data/operations_manager)",
+    "the office's cards, jobs and logs in LARRYD under SYSTEM, through the platform's pipeline (wid core_engine)",
+    "the platform files the office reads (settings reads: themes, templates, engine.json, manifest.json, global_config)"
+  ],
+  "records": {},
+  "run": {
+    "do": "run",
+    "hands": []
+  },
+  "gives": [
+    "view",
+    "delivery"
+  ],
+  "skills": [],
+  "knowledge": [],
+  "card": {
+    "class": "MARK I AGENT (NORMAL)",
+    "pitch": "Every agent's rules, read and reviewed blind. Red while a review says STUPID.",
+    "price": "0",
+    "type": "DEVELOPER",
+    "residency": "INTERNAL",
+    "authorization": "PRIVATE",
+    "screen": "opns/home",
+    "product": "INVOICE MAPS",
+    "module": "Operations",
+    "developer": "LARRYD",
+    "sends_to": "",
+    "data_sent": ""
+  },
+  "internal": {
+    "seconds": 300
+  }
+}

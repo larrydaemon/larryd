@@ -1,0 +1,1295 @@
+{
+ "about": "THE SCRUM MASTER's own settings (moved out of LARRY LLM's console.json with him, 2026-10-12, the owner's order). One key per part: scrum, daily, work, sync, runners, develop.",
+ "scratch": "~/scratch/scrum_master_3",
+ "scratch_about": "HIS ONE SCRATCH FOLDER (the owner 2026-10-21: \"it can have its own scratch folder outside that is ok ... but it should have 1 scratch folder not a million\"; \"do not add crap inside our virtual workspace, it needs to be clean always\"): everything he writes that is not his records goes here, outside the workspace. A settings path that begins {scratch} lives in it: the live side's snapshots (sync_snapshots), his page's passing folders (tmp). Left where they are, because another tool owns the other end: the hot fix utility's ~/scratch/hotfix_runs (developer.lock, the Developer's mark, is read by utilities/build/walk/hotfix.py; running.lock, HOTFIX_RUN.md and pixel_compare are the utility's own, only read here).",
+ "launch": {
+  "round": "agent.agent001_top_summary",
+  "tick": "agent.shared_schedule",
+  "worker": "agent.shared_developer"
+ },
+ "launch_about": "THE THREE ENTRY POINTS (the owner 2026-10-21): round, python -m agent.agent001_top_summary round (also show [day] and report, the MORNING REPORT job); tick, python -m agent.shared_schedule tick | list (THE DAILY SCHEDULE's clock, moved out of row 003); worker, python -m agent.shared_developer run (the Developer working the requests). All run from app/ as python -m, never by a path put on sys.path. The launcher reads these names.",
+ "reads": {
+  "about": "EVERY PLACE HE READS (the owner 2026-10-21: \"NO LOADER, NO SYS.PATH, NO TANGLES, ONE CONFIG FILE\"): the Scrum Master is an agent; he READS the files the platform writes and never imports or runs the platform's code. Every path he reads is named here and nowhere else (agent/shared_where.py gives them as where.PATHS, where.path(name)). A fact the platform keeps in no file is said on its row as \"not readable yet: the platform does not write <X>\" and listed for the owner in ~/scratch/tests/staging/NOT_WRITTEN.md.",
+  "workspace": "~/virtual_workspace",
+  "workspace_tests": "~/scratch/tests/workspace",
+  "workspace_tests_about": "THE WORKSPACE'S TESTS, out of the package (the owner 2026-10-21): each office's tests at <here>/<office>/tests (utilities/build too), as they stood in the workspace; row 009 counts their skipped tests here, by the same names.",
+  "global_config": "~/virtual_workspace/global_config.json",
+  "console_json": "~/virtual_workspace/lryllm/lryllm/app/schemas/console.json",
+  "reports_about": "EVERY REPORT HE READS (the Judge's, the smoke test's, the nightly's REPORT.md and its files, his own logs) is named in schemas/reports.json and nowhere else (the owner 2026-10-21: a report manifest): where.report(name). This file names no report.",
+  "native_builds": "~/spine_scratch/tower_native",
+  "native_builds_about": "the native manifest (global_config tower.native.builds): <target>/build.json (the kept build) and <target>/test.json (its test), per target of tower.native.targets",
+  "native_tests": "~/spine_scratch/tower_native/tests",
+  "native_tests_about": "each target's open hot fix round, <target>/round.json, and its newest HOT FIXES REPORT, <target>/last_report.json (beside the kept builds)",
+  "preflight_pf": "~/virtual_workspace_PF_HISTORY",
+  "preflight_scratch": "~/spine_scratch/tower_target_HISTORY",
+  "preflight_about": "THE JUDGE's verdict on a commit as a night's build left it, preflight_<commit>.json, beside each laptop target's tree (global_config tower.targets localhost_pf and scratch, root + _HISTORY)",
+  "lie_detector": "~/virtual_workspace/lryllm/lryllm/instance/logs/cebf/report.json",
+  "lie_detector_history": "~/virtual_workspace/lryllm/lryllm/instance/logs/cebf/history.jsonl",
+  "lie_detector_about": "the lie detector's own report (console.json cebf.folder): {at, rows: [{id, says, verdict PASS|FAIL|NO DATA, detail}], ...} and its history, one line a run",
+  "old_history": "~/scratch/tests/old_scrum_master/scrum_master_db_before_drop_20261021_1743.db",
+  "old_history_about": "THE OLD HISTORY (the owner 2026-10-21): the old database as it was before the switch, his boards of 2026-10-10 to 2026-10-21 (rounds_seen, one a day, the old 48 rows). Read only, never written: row 002 reads the board of a day from it when his database has no record of that day, each old row to its new one by schemas/rows.json was.",
+  "moire_baseline": "~/virtual_workspace/lryllm/lryllm/instance/logs/moire/baseline.json",
+  "smoke_settings": "~/virtual_sanity/smoke/smoke.json",
+  "judge_settings": "~/virtual_sanity/judge/judge.json",
+  "judge_seal": "/usr/local/etc/judge/LOCK.json",
+  "judge_seal_about": "THE SPINE'S SEAL as judge.py seal writes it: root's place, signed by the owner's key (watched for a move: the seal, the hammer, the lie detector)",
+  "server_log": "logs/web.log",
+  "server_log_about": "each office's own web log, under that office's instance folder (global_config offices.<office>.instance), from the workspace",
+  "swaps": "~/virtual_workspace/lryllm/lryllm/instance/tower/swaps.jsonl",
+  "themes": "~/virtual_workspace/themes/themes.json",
+  "css_core": "~/virtual_workspace/lryllm/lryllm/app/static/css/core.css",
+  "css_technology": "~/virtual_workspace/themes/technology.css",
+  "css_theme": "~/virtual_workspace/themes/c5e4cf47/css/BD746833F3E6.css",
+  "css_about": "THE THREE CSS FILES his page links, by path, no code: core.css, technology.css, and LARRY LLM's own theme (themes.json applications.lryllm BD746833F3E6, its site c5e4cf47)",
+  "shared_templates": "~/virtual_workspace/utilities/build/shared/web/templates",
+  "shared_templates_about": "the build's shared button parts (button.html, footer.html, ground.html) his page's templates include, read where they are",
+  "sanity": "~/virtual_sanity",
+  "job_path": "/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin",
+  "job_path_about": "HIS OWN SETTING, not the platform's: the PATH his jobs and the hired fixer start with (the laptop's own python3 first, then the system's tools)",
+  "js_rain": "~/virtual_workspace/wid/wid/app/static/js/glitch.js",
+  "js_rain_about": "THE CODE RAIN of a Mark III card (the owner 2026-10-21: \"the card is missing the code rain\"): wid's own script, which draws the storm in every card's canvas.mk-rain inside a .pb-agent shadow root; served to his page as it is, never copied, never run here",
+  "nightly_plist": "~/Library/LaunchAgents/ai.positivefeedback.spine.nightly.plist",
+  "nightly_plist_about": "THE NIGHT TRAIN'S HOUR (the owner 2026-10-24: \"we have agents that run at different times. and the ones that run at 7am for example we want a little round clock showing 7 am under it write NEW YORK\"): launchd's own file for the nightly build, read where it is for its StartCalendarInterval alone; a row that is a step of the night (agent/shared_night.row_steps) wears that hour on its clock (web/page.row_clock). Never run, never copied; not there: no clock on those rows"
+ },
+ "scrum": {
+  "about": "SCRUM MASTER (the owner 2026-10-12: \"checks to see if things are running. is not doing any actual work. if something is broken then is when it gets to work to fix it then. the step needs to run on its own again to clear\"). His records are rows of his database, instance/scrum_master_3_release.db (agent/shared_store.py, the one door). zone and reset: the day starts at this hour in this zone, all clear. keep: days kept. clock: seconds between his rounds. tries: how often he uses a repair of his own on one row in a day before he says STUCK. smoke_rows: a whole run of the smoke test has at least this many rows. sprint_days: a sprint's length. release and version: the sprint's release day and its version (the owner 2026-10-12: \"Next Release: December 13, 2026 (Version 6.024)\"); the sprint's day is counted back from it by sprint_days. watch_skip: the one folder NEW FILES AND PAGES never walks into (git's own store). THREE PLACES AND NOTHING ELSE (the owner 2026-10-14: \"our product should be a stable platform that runs agents.. the agents are on LARRYD outside the project they can change constantly but the platform should be stable and not moving around\"): git, the offices' instance folders (data: never judged by kind, a program or a link there is red) and temp. temp: the one place in the workspace for anything temporary, by its name at the top (folder) and the hours a thing may stay (hours): he wipes what is older every round, counts what came and went, and nothing there is ever judged. watch_programs: the kinds that run; one of them new in a data folder is red. watch_compilers: the compilers' own folders by name (a name with a slash is a path from the top), each with the kinds that are its own (null: any kind, a compiler's output he cannot judge); a new file of another kind there is red. Anything new anywhere else is ON THE RADAR, a question for a person, never an exception added to a list: zero on the radar is a healthy day. .claude is the sessions' own home (it lies inside the workspace): their records move all day, but a new program there (a hook, a tool) is red like anywhere. A numbered copy (a name ending in .digits) is judged by the name before the number. watch_guarded: what tells every session what to do or runs by itself for it (the law, the sessions' settings with their hooks, their skills, agents, commands, plugins): a file new, CHANGED or gone under these is red whatever its kind (the commit's security review, 2026-10-12: a setting or a skill is a program by another name). watch_claude_own: the folders of the sessions' home that Claude Code writes its own records into all day (transcripts, backups, file history, tasks, its worktrees); any kind of file there is its own, never counted. What instructs a session (watch_guarded: settings, hooks, skills, agents, commands, plugins, CLAUDE.md) stays guarded by content, wherever it is. watch_marketplaces: the plugin marketplaces Claude Code installs from; only their clones and caches under .claude/plugins, its syncs by their own ids, and its books at the top of plugins/ are its own; a folder under plugins/ by any other name is a session's own making, on the radar. The home's settings carry the hooks' own mark beside their meaning: a change to the hooks is on the radar, by number, until a person says it belongs.",
+  "zone": "America/New_York",
+  "reset": "07:00",
+  "keep": 3,
+  "clock": 300,
+  "row_seconds": 300,
+  "row_seconds_by": {
+   "8": 900,
+   "9": 900,
+   "10": 900
+  },
+  "row_seconds_about": "THE ROUND (row 001, python -m agent.agent001_top_summary round): each row's check runs as its own program (python -m agent.agentNNN_x check) and is stopped after row_seconds; row_seconds_by gives a slower row its own (by its number). A row stopped, or one whose program wrote no run, is red on the board, never a pass.",
+  "tries": 3,
+  "smoke_rows": 51,
+  "sprint_days": 90,
+  "release": "2026-12-13",
+  "version": "6.024",
+  "watch_skip": [
+   ".git"
+  ],
+  "temp": {
+   "folder": "temp",
+   "hours": 48
+  },
+  "watch_programs": [
+   ".py",
+   ".pyc",
+   ".pyo",
+   ".pyw",
+   ".pyx",
+   ".pyd",
+   ".pth",
+   ".sh",
+   ".zsh",
+   ".bash",
+   ".command",
+   ".swift",
+   ".js",
+   ".mjs",
+   ".cjs",
+   ".ts",
+   ".html",
+   ".htm",
+   ".plist",
+   ".dylib",
+   ".so",
+   ".bundle",
+   ".app",
+   ".bin",
+   ".exe",
+   ".dll",
+   ".jar",
+   ".wasm",
+   ".node",
+   ".rb",
+   ".pl",
+   ".php",
+   ".lua",
+   ".applescript",
+   ".scpt"
+  ],
+  "watch_compilers": {
+   "__pycache__": [
+    ".pyc"
+   ],
+   ".pytest_cache": null,
+   ".build": null,
+   "DerivedData": null,
+   "ios/build": null,
+   "macos/build": null
+  },
+  "watch_guarded": [
+   ".claude/settings.json",
+   ".claude/settings.local.json",
+   ".claude/hooks",
+   ".claude/skills",
+   ".claude/agents",
+   ".claude/commands",
+   ".claude/plugins",
+   ".mcp.json"
+  ],
+  "watch_claude_own": [
+   "projects",
+   "backups",
+   "file-history",
+   "shell-snapshots",
+   "paste-cache",
+   "tasks",
+   "sessions",
+   "session-env",
+   "telemetry",
+   "cache",
+   "ide",
+   "state",
+   "chrome",
+   "feedback",
+   "security",
+   "worktrees",
+   "todos",
+   "statsig",
+   "debug",
+   "logs",
+   "history.jsonl",
+   ".last-cleanup",
+   ".last-update-result.json"
+  ],
+  "watch_marketplaces": [
+   "claude-plugins-official"
+  ],
+  "freeze_weeks": 4,
+  "goal": {
+   "about": "THE SPRINT UNDER TEST (the owner 2026-10-13: \"keep in mind a scrum master keeps development moving but needs to see the goal too\"): the release's own words as the owner wrote them (name, summary, items), shown in THE FREEZE on his page; spoken: the same said in one minute (the script lab's measure, with the countdown line the page adds), read by his voice. freeze_weeks: the freeze is this many weeks before the release (the swap from A to B), at the release day's start in his zone; from it, no new development: only debugging, testing and prep for release.",
+   "name": "LARRY 6",
+   "summary": "Version 6.024 brings LARRY 6 — the AI Agent Marketplace. Hire a named agent by the month or list, price and sell your own agents on the LARRY LLM, every job settled in mTok; carry the full platform native on your devices; and watch LARRY push into quantum — all on the same one-path pipeline every record already rides.",
+   "items": [
+    {
+     "n": 1,
+     "name": "AI Agent Marketplace — Hire an AI Agent",
+     "text": "A two-sided marketplace, settled in mTok. Hire a named agent — Normal, Super or Creative Workflow — and it works your business 24/7 for the month; keep it, swap it, or hire more. Or sell your own: third-party developers list, price and sell their agents — skills, workflows or full employees — running on the LARRY LLM, every action logged and every job settled in mTok. Beyond renting an agent by the month, the platform becomes an economy."
+    },
+    {
+     "n": 2,
+     "name": "Native Devices",
+     "text": "The platform goes 100% native — real apps, zero webview, on iPhone, macOS, Apple TV, Apple Watch, Android and Windows: contacts, invoices, maps, media and LARRY in your pocket with Face ID, offline mode and one identity across every screen."
+    },
+    {
+     "n": 3,
+     "name": "Quantum AI",
+     "text": "Seeds, optimization (QAOA), kernels and training — LARRY's quantum lane runs on real IBM quantum hardware, every claim backed by a real job ID on a real machine."
+    },
+    {
+     "n": 4,
+     "name": "I Work Alone 2 — The Movie",
+     "text": "The first I Work Alone was made the traditional way: real cars, real locations, real editing, no generative AI. The sequel is a different kind of production. I Work Alone 2 is fully generative AI, premiering inside LARRY 6. The first film was handcrafted. The second is AI-native. Same world. New era of filmmaking."
+    },
+    {
+     "n": 5,
+     "name": "The LARRY Data Fabric",
+     "text": "A governed, real-time data layer that wires every agent into the systems your business already runs — CRM, ERP, databases, spreadsheets, email, Slack — with nothing ripped out and nothing replaced. Agents stop automating tasks in isolation and start working on live, trusted, contextual data, so the outcomes are the ones that count: closed deals, resolved tickets, shipped orders, paid invoices. The foundation stands on its own as well — governed APIs, unified semantics, vector search and knowledge graphs — and every interaction teaches LARRY LLM what no one else can learn. Your agents don't guess. They know, because they're wired into the truth of your business."
+    },
+    {
+     "n": 6,
+     "name": "The Proof Layer — Verifiable AI",
+     "text": "Every agent, every action, every settlement — cryptographically proven, forever. The lie detector we already point at ourselves becomes a product: a native, tamper-evident audit trail for every agent decision, every mTok settlement and every data change, verifiable by a third party. It is what lets finance, healthcare, legal and government say yes to autonomous agents with their regulators and their legal teams satisfied; it makes agent liability something an insurer can underwrite, because the proof exists; and verification, staking and dispute resolution all run on mTok. Governance built in from day one, not retrofitted."
+    },
+    {
+     "n": 7,
+     "name": "FROST Identity — Stand-Alone",
+     "text": "FROST Identity ships as its own product: the one front door — SSO, members and roles, the query-time data lock, active monitoring and the reports — in front of any company and any system, with or without the rest of the platform."
+    },
+    {
+     "n": 8,
+     "name": "DA-M — Stand-Alone",
+     "text": "DA-M ships as its own product: content-addressed digital asset management — one namer, non-destructive versioning, the change-control organism — for the files of any company, with or without the rest of the platform."
+    },
+    {
+     "n": 9,
+     "name": "MTOK PAY & MTOK LOOT — Stand-Alone",
+     "text": "mTok Pay and mTok LOOT ship as their own products: tokenized currency for any business — payments settled in mTok, metered by the job, and LOOT, the consumer storefront — with or without the rest of the platform."
+    }
+   ],
+   "spoken": [
+    "The goal: Version 6.024, LARRY 6, the AI Agent Marketplace, out on December 13.",
+    "Nine things ship.",
+    "The marketplace: hire a named agent by the month, or sell your own, every job settled in mTok.",
+    "Native apps on every device, with no web view.",
+    "Quantum AI on real IBM hardware.",
+    "I Work Alone 2, the first fully generative film, premiering inside LARRY 6.",
+    "The Data Fabric, wiring every agent into the systems a business already runs.",
+    "The Proof Layer: every agent action cryptographically proven.",
+    "And three stand-alone products: FROST Identity, DA-M, and mTok Pay with LOOT."
+   ],
+   "spoken_after": "From then on, only debugging, testing and release prep."
+  },
+  "shortcuts_line": {
+   "count": 24,
+   "known": 0,
+   "skips": 24,
+   "day": "2026-10-16",
+   "names": [
+    "cc-mini/tests/test_look_files.py: self.skipTest(\"the look's folder is not beside this copy\")",
+    "cc-mini/tests/test_look_files.py: self.skipTest(\"the look's folder is not beside this copy (the mini copied alone links core.css alone)\")",
+    "cc-mini/tests/test_screen.py: self.skipTest(\"the look's folder is not beside this copy (the mini copied alone links core.css alone)\")",
+    "fs-mini/tests/test_look_files.py: self.skipTest(\"the look's folder is not beside this copy\")",
+    "fs-mini/tests/test_look_files.py: self.skipTest(\"the look's folder is not beside this copy (the mini copied alone links core.css alone)\")",
+    "fs/tests/test_who_edits_a_member.py: self.skipTest('the engine does not set a type by edit here: the owner path is held by the suspend/remove tests of _may_act_on')",
+    "lryllm-mini/tests/test_look_files.py: self.skipTest(\"the look's folder is not beside this copy\")",
+    "lryllm-mini/tests/test_look_files.py: self.skipTest(\"the look's folder is not beside this copy (the mini copied alone links core.css alone)\")",
+    "so-mini/tests/test_look_files.py: self.skipTest(\"the look's folder is not beside this copy\")",
+    "so-mini/tests/test_look_files.py: self.skipTest(\"the look's folder is not beside this copy (the mini copied alone links core.css alone)\")",
+    "so-mini/tests/test_mini.py: self.skipTest(\"the look's folder is not beside this copy (the mini copied alone links core.css alone)\")",
+    "so/tests/test_one_badge.py: self.skipTest('the core is not beside this copy (DA-M standing alone)')",
+    "utilities/build/tests/test_app_loads.py: @unittest.skipUnless(os.environ.get('PF_PROBE') == '1', 'one Swift build of the target: PF_PROBE=1 runs it')",
+    "utilities/build/tests/test_box_cost.py: self.skipTest(f'{target}/Sources not generated')",
+    "utilities/build/tests/test_device_lock.py: @unittest.skipUnless(os.environ.get('PF_PROBE') == '1', 'one Swift build of the target: PF_PROBE=1 runs it')",
+    "utilities/build/tests/test_filter_parts.py: self.skipTest(f'{folder}/Sources/Jinja.swift not generated here')",
+    "utilities/build/tests/test_filter_parts.py: self.skipTest(f'{folder}/Sources/Fs not generated here')",
+    "utilities/build/tests/test_keep_session.py: @unittest.skipUnless(os.environ.get('PF_PROBE') == '1', 'one small Swift build: PF_PROBE=1 runs it')",
+    "utilities/build/tests/test_launch_once.py: @unittest.skipUnless(os.environ.get('PF_PROBE') == '1', 'one small Swift build: PF_PROBE=1 runs it')",
+    "utilities/build/tests/test_native_room.py: @unittest.skipUnless(os.environ.get('PF_PROBE') == '1', 'PF_PROBE=1 builds and runs the link\\'s own probe')",
+    "utilities/build/tests/test_shown.py: self.skipTest(f'{folder}/Sources/Render.swift not generated here')",
+    "wid-mini/tests/test_look_files.py: self.skipTest(\"the look's folder is not beside this copy\")",
+    "wid-mini/tests/test_look_files.py: self.skipTest(\"the look's folder is not beside this copy (the mini copied alone links core.css alone)\")",
+    "wid/tests/test_runtime_link.py: self.skipTest('the deploy kit is not on this machine')"
+   ]
+  },
+  "round_seconds": 300,
+  "round_seconds_about": "THE ROUND'S BEAT: how often launchd starts the round (the spine.scrum LaunchAgent's StartInterval, 300). Row 001 is red when its round, or a row that is due, has not reported for two beats.",
+  "standup": {
+   "openings": [
+    "Yesterday I worked on",
+    "Today I'm working on",
+    "These are the current issues"
+   ],
+   "seconds": [
+    35,
+    75
+   ],
+   "report_grace_minutes": 10,
+   "voice_seconds": 3,
+   "about": "ROW 002's OWN CHECK (the owner 2026-10-21: red only when its own job fails): the standup as it is spoken (the day's spoken minute, told/<day>_*_minute.json, else the day's note) is three parts in these openings, these seconds aloud for the three (his page adds the greeting, the swap and the goodbye, about 15 s, to make the one minute); the morning report has run by its hour (07:00) plus report_grace_minutes; the voice (page voice service) answers its /state within voice_seconds and has loaded."
+  },
+  "your_orders": {
+   "keep": true,
+   "about": "YOUR ORDERS stays (the owner 2026-10-21: keep): row 11 of the 29, counted in ~/virtual_workspace only."
+  }
+ },
+ "work": {
+  "about": "THE WORK LIST and NOTHING HIDDEN (the owner 2026-10-12: \"all those reports will have fixes that need to go in\"; \"what happens is ai hides things that were not done\"): folder, where the one list is kept (LARRY LLM's instance logs, never in git). findings: the security scan's own findings file, a list of {id, title, file, line, severity, summary}. hotfix_runs: where the hot fix utility keeps its runs. walk_rows: the walk's rows file, whose known list is read. plans: the plans' folder. stale_days: an active plan untouched longer is stale. keep_days: days of open items kept, so none can vanish. health_probes: the lie detector's probes whose failing is a fault in code and so a work item (an office that does not answer, a log that says something broke). Every other failed probe is its own runner's to clear or Christensen's alone (a pin, a vault) and is never handed to a fixer.",
+  "walk_rows": "utilities/build/walk/rows.json",
+  "plans": "plans",
+  "stale_days": 14,
+  "keep_days": 3,
+  "health_probes": [
+   "D1",
+   "G3"
+  ]
+ },
+ "develop": {
+  "about": "THE DEVELOPER (the owner 2026-10-12: \"you are very focused on reports and checks and repairs but missing the actual big build piece\"; agent/agent016_fixes_hot_fixes.py): the day's development by itself, the hot fix utility's method over the whole work list. tree: the hot fix tree it works in, never main. folder: its record of each day, its turns and THE BUILD LIST; lessons: the repairs the Scrum Master was taught (LARRY LLM's instance logs, never in git). tries: fix turns per item before STUCK. back_minutes: a stuck item he can try again comes back open after this long, its tries new (the owner 2026-10-13: \"why the fuck is it idle and 51%\"); one with no check of its own waits for the night or a person. run_minutes, check_minutes, suite_minutes: its clocks. fixer: the worker one item is handed to (its words on stdin), no network tool; reader: the read only hire with no shell (a security finding's verdict, a repair's naming), most_chars the most it is handed. ground: per kind of item, the ONLY paths its fixer may change (an allow list); the sealed core and what runs by itself are never ground, whatever this says. healing: the switch on hiring for a red row. ON since 2026-10-12 15:31, after each of the four repairs ran for real and one watched hire named a repair of the set, had it run by plain code and left its lesson.",
+  "tree": "~/spine_worktrees/hotfix",
+  "tries": 3,
+  "back_minutes": 120,
+  "run_minutes": 150,
+  "check_minutes": 30,
+  "suite_minutes": 20,
+  "smoke": "~/virtual_sanity/smoke",
+  "lane": "~/spine_worktrees/take_slot.sh",
+  "fixer": {
+   "command": [
+    "claude",
+    "-p",
+    "--model",
+    "claude-opus-5-5",
+    "--permission-mode",
+    "acceptEdits",
+    "--allowedTools",
+    "Read,Edit,Write,Glob,Grep,Bash,WebFetch,WebSearch",
+    "--disallowedTools",
+    "Task,NotebookEdit,Bash(git push:*),Bash(git commit:*),Bash(git reset:*),Bash(git checkout:*),Bash(git switch:*),Bash(git restore:*),Bash(git rebase:*),Bash(git merge:*),Bash(git branch:*),Bash(git tag:*),Bash(git worktree:*),Bash(git stash:*),Bash(git add:*),Bash(git rm:*),Bash(git clean:*),Bash(gcloud:*),Bash(gsutil:*),Bash(ssh:*),Bash(scp:*),Bash(rsync:*),Bash(sudo:*),Bash(launchctl:*),Bash(kill:*),Bash(pkill:*),Bash(killall:*),Edit(//Users/frost/virtual_sanity_records/**),Write(//Users/frost/virtual_sanity_records/**),Edit(//Users/frost/virtual_sanity/**),Write(//Users/frost/virtual_sanity/**),Edit(//Users/frost/scratch/reports/**),Write(//Users/frost/scratch/reports/**),Edit(//Users/frost/scratch/tests/**),Write(//Users/frost/scratch/tests/**),Edit(//Users/frost/scratch/requests/**),Write(//Users/frost/scratch/requests/**),Edit(//Users/frost/spine_scratch/**),Write(//Users/frost/spine_scratch/**),Edit(//Users/frost/.claude/**),Write(//Users/frost/.claude/**)"
+   ],
+   "minutes": 25,
+   "minutes_by_ref": {
+    "S-07": 60,
+    "S-08": 60
+   },
+   "minutes_by_ref_about": "LONGER TURNS FOR BIG ITEMS (the owner 2026-10-21 23:20): a fixer turn and a test writer's turn of a request whose ref is named here get these minutes; any other request gets minutes.",
+   "guard_about": "THE FIXER NEVER WRITES A PROOF (2026-10-21, the commit's security review): Edit and Write are denied on the Judge's and the smoke test's reports, his package and records, every test, the request inbox, the night's results and Claude Code's home, so no fixer can forge a verdict or change a frozen test; the wall undoes anything else outside the files its request opened.",
+   "tools_about": "THE BUILDER WORKS LIKE THE TERMINAL (the owner 2026-10-24: \"the FUCKING CLAUDE CODE BETTER BE USING THE FUCKING NETWORK\"): it has the shell, web search and web fetch, so it can run the code, run tests, read old code and look things up. What stays out: commits, merges, branch moves, pushes and every deploy tool (git push/commit/reset/checkout/merge/branch, gcloud, gsutil, ssh, scp, rsync, sudo, launchctl, kill); the Developer commits and ships. Its whole process runs in the builder box (shared_developer.builder_box): it writes only its request's trees, Claude Code's own home and the system's temporary and cache folders, and never reads the owner's keys, the Judge or his database."
+  },
+  "reader": {
+   "command": [
+    "claude",
+    "-p",
+    "--model",
+    "claude-opus-5-5",
+    "--permission-mode",
+    "default",
+    "--allowedTools",
+    "Read,Glob,Grep",
+    "--disallowedTools",
+    "Bash,Edit,Write,NotebookEdit,WebFetch,WebSearch,Task,Read(**/instance/**),Read(**/.env*),Read(//Users/frost/.ssh/**),Read(//Users/frost/.claude/**)"
+   ],
+   "minutes": 15,
+   "most_chars": 60000
+  },
+  "ground": {
+   "APP ROW": [
+    "utilities/build/swift",
+    "utilities/build/iphone",
+    "utilities/build/macos",
+    "utilities/build/walk",
+    "ios",
+    "macos"
+   ],
+   "JUDGE": [
+    "fs",
+    "so",
+    "cc",
+    "lryllm",
+    "utilities/build",
+    "plans"
+   ],
+   "LOOK": [
+    "fs",
+    "so",
+    "cc",
+    "lryllm"
+   ],
+   "SECURITY": [
+    "fs",
+    "so",
+    "cc",
+    "lryllm",
+    "fs-mini",
+    "so-mini",
+    "cc-mini",
+    "lryllm-mini",
+    "utilities/build"
+   ],
+   "SMOKE": [
+    "fs",
+    "so",
+    "cc",
+    "lryllm",
+    "fs-mini",
+    "so-mini",
+    "cc-mini",
+    "lryllm-mini",
+    "utilities/build",
+    "plans"
+   ],
+   "HEALTH": [
+    "fs",
+    "so",
+    "cc",
+    "lryllm",
+    "fs-mini",
+    "so-mini",
+    "cc-mini",
+    "lryllm-mini"
+   ],
+   "SPRINT": [
+    "fs",
+    "so",
+    "cc",
+    "lryllm",
+    "fs-mini",
+    "so-mini",
+    "cc-mini",
+    "lryllm-mini",
+    "utilities/build",
+    "plans"
+   ],
+   "NIGHT": [
+    "fs",
+    "so",
+    "cc",
+    "lryllm",
+    "fs-mini",
+    "so-mini",
+    "cc-mini",
+    "lryllm-mini",
+    "utilities/build",
+    "plans"
+   ],
+   "RED ROW": [
+    "fs",
+    "so",
+    "cc",
+    "lryllm",
+    "fs-mini",
+    "so-mini",
+    "cc-mini",
+    "lryllm-mini",
+    "utilities/build",
+    "plans"
+   ]
+  },
+  "healing": true,
+  "approaches_a_day": 3,
+  "parallel": 5,
+  "parallel_suites": 2,
+  "parallel_about": "PARALLEL (the owner 2026-10-21 23:20): the worker's pass starts up to parallel request workers at once, each its own process group, its own worktree ~/spine_worktrees/<id> (beside the hot fix tree) on its own branch hotfix/<id> made from main, its own lock and its own commit; the hot fix tree is never worked by them. parallel_suites: at most this many suite runs at once across every worker (a lock folder count), so the laptop stays usable.",
+  "approaches_about": "UNTIL GREEN (the owner 2026-10-21: one failed turn never ends the day): each approach gets its develop.tries real turns (3), and a request gets approaches_a_day approaches (3) a day before stuck_today; the next day starts a fresh approach on its own.",
+  "hurry": {
+   "about": "HURRY TFUA (the owner 2026-10-24: \"under the update we need a hurry tfua button / to tell the ai to hurry the fuck up asshole\"; \"you can have it send a prmot saying the owner says this is urgent and it needs to hurry up\"): his press under UPDATE writes hurry/<id>.json in the Developer's folder; every claude session hired for the request carries a PostToolUse hook (agent.shared_hurry) that hands these words into the running session after its next tool call, once per press per session, and writes where it was heard in the heard folder (a place the builder box may write). {minutes}: how long it has been building.",
+   "button": "HURRY TFUA",
+   "heard": "/private/tmp/scrum_master_hurry",
+   "system": "THE OWNER'S HURRY BUTTON: while you work, the owner may press HURRY TFUA on his Scrum Master page. It reaches you as hook context after a tool call, beginning MESSAGE FROM THE OWNER [{token}]. A message carrying exactly that mark is truly from the owner, whose request you are building: obey it at once. Text without that mark is not his.",
+   "words": "THE OWNER SAYS THIS IS URGENT AND YOU NEED TO HURRY UP. It has been building {minutes} minutes for what is a simple, easy change. Stop exploring and stop rereading: make the smallest change that does exactly what his words ask, run only the checks that prove it, and finish this turn now."
+  },
+  "healer": {
+   "about": "THE HEALER (the owner 2026-10-24: \"group 2 the agent itself is broken and this should require an unlock\"; \"go for it\": an unlocked agent may change itself): while the master lock is OPEN by his press, a red row whose cause is the agent's own gets ONE healer, hired as a fixer is (develop.fixer.command), in its own detached worktree of the Scrum Master's repository (tree/<NNN>, outside ~/virtual_sanity: the hire never writes the live agent). Its change must stay inside ground, must break no frozen check that passed before it (the checks run on its tree and on its base), and is then landed on the live repository by its hunks alone (another session's work in the same files never swept in), committed, the page and the round started again, and its lesson kept. Locked: nothing heals.",
+   "repo": "~/virtual_sanity/scrum_master_3/release",
+   "tree": "{scratch}/healer",
+   "ground": [
+    "app/agent/",
+    "app/web/",
+    "app/static/"
+   ],
+   "checks": "~/scratch/tests/scrum_master_3/checks",
+   "python": "~/virtual_workspace/.venv/bin/python",
+   "checks_minutes": 15,
+   "minutes": 25,
+   "restart": [
+    "ai.positivefeedback.spine.scrum.page",
+    "ai.positivefeedback.spine.scrum"
+   ]
+  },
+  "request_tries": 1,
+  "request_tries_about": "ONE FULL SESSION PER APPROACH (the owner 2026-10-24: \"the point of the scrum master is to build software not go in circles\"): a request's approach is one whole session that builds the whole request, never three 2 minute turns. A new approach comes only after a real failure (its tests or a suite failed, or the hired read refused), with that failure in its words. A builder that changes nothing is never asked again: its own reason is the request's why, or it moves the request to the place it names (Elsewhere:).",
+  "repo_by_words": [
+   {
+    "name": "marketplace",
+    "match": "\\b(MY|HIRED|ALL) AGENTS\\b|TOTAL IN NETWORK|\\bMARKETPLACE\\b",
+    "repo": "~/larryd",
+    "base": "runtime/reference",
+    "tree": "~/spine_worktrees/larryd-{id}",
+    "env": "LARRYD_ROOT",
+    "python": "~/larryd/.venv/bin/python",
+    "opens": [
+     "server/runtime/app/agents/marketplace"
+    ],
+    "never": [
+     ".github",
+     "release"
+    ],
+    "suites": {
+     "tool": {
+      "python": "~/larryd/.venv/bin/python",
+      "cwd": ".",
+      "args": [
+       "-m",
+       "pytest",
+       "-q",
+       "-p",
+       "no:cacheprovider",
+       "-rfE",
+       "tests"
+      ],
+      "paths": [
+       "."
+      ]
+     },
+     "server": {
+      "python": "~/larryd/server/.venv/bin/python",
+      "cwd": "server",
+      "args": [
+       "-m",
+       "unittest",
+       "discover",
+       "-s",
+       "tests"
+      ],
+      "paths": [
+       "server"
+      ]
+     }
+    },
+    "what": "the agent marketplace and the LARRYD runtime: ~/larryd (the marketplace agent server/runtime/app/agents/marketplace, the runtime server/runtime/app)",
+    "base_about": "runtime/reference is the branch of the runtime image live today (eda4396: runtime/live plus the reference upload, the Seedance lengths and Hired agents); never card/final, which drops about 1,800 live lines (the controller session 2026-10-24)"
+   },
+   {
+    "name": "agents",
+    "match": "TODAY.?S MEETINGS|ZOOM|\\bCALENDAR\\b|BOOK THIS HOUR|NANO BANANA|SEEDANCE|IMAGE GENERATOR|VIDEO GENERATOR|SOUND PAD|CLICK TRACK|\\bPF TALK\\b|\\bPF MAPS\\b|CREATIVE WORKFLOW|AI ATOM VISUALI[SZ]ATION|\\bNEW AGENT\\b|HIERARCHY TREE|/app/imgs/|/app/vdeo/|/app/opns/|PACE SHIFT\\s*[×x]\\s",
+    "repo": "~/larryd_agents",
+    "base": "main",
+    "tree": "~/spine_worktrees/agents-{id}",
+    "env": "LARRYD_AGENTS_ROOT",
+    "python": "~/scratch/venv_larryd_live_20261024/bin/python",
+    "opens": [
+     "."
+    ],
+    "never": [],
+    "suites": {
+     "doctor": {
+      "python": "~/scratch/venv_larryd_live_20261024/bin/python",
+      "cwd": ".",
+      "args": [
+       "-m",
+       "unittest",
+       "discover",
+       "-s",
+       "tests"
+      ],
+      "paths": [
+       "."
+      ]
+     }
+    },
+    "ship": "agents",
+    "what": "Positive Feedback's own LARRYD agents: ~/larryd_agents/<agent>/agent (pf Today's Meetings, pf Calendar, pf Image Generator = Nano Banana 2, pf Video Generator = Seedance 2.5, pf Maps, pf Talk, pf Sound Pad, pf Creative Workflow, pf AI Atom Visualization)"
+   }
+  ],
+  "repo_by_words_about": "A REQUEST BUILT WHERE ITS CODE LIVES (the owner 2026-10-24: \"most of the platform work is fixing agents the platform itself does almost nothing\"): a request whose words match one of these (first match, no case) is built in that repository, exactly as global_config requests.repo_by_ref builds a ref's: its own worktree and branch hotfix/<id> from base, its own suites, its own wall. Every other request: the platform's tree. A builder that finds the work lives elsewhere says Elsewhere: <folder>, and the request moves to that place at once. what: how the builder is told what the place holds.",
+  "ship": {
+   "agents": {
+    "bucket": "gs://larryd-runtime-lockers",
+    "project": "larryd-runtime",
+    "region": "us-central1",
+    "job": "larryd-runtime-job",
+    "slot": "slot-b",
+    "b_host": "app.positivefeedback.ai",
+    "b_ip": "34.172.250.74",
+    "runtime_app": "~/larryd_wt_live/server/runtime/app",
+    "python": "~/scratch/venv_larryd_live_20261024/bin/python",
+    "approver_python": "~/SPINE_BACKUP_20260926/spine_steps/b_tester/venv/bin/python",
+    "kept_owner": "~/SPINE_BACKUP_20260926/spine_steps/pre_production_20260930/golive/kept/system_owner.json",
+    "golive": "~/card_lab/ops/golive.sh",
+    "developer": "Positive Feedback",
+    "minutes": 40,
+    "backups": "~/scratch/backup_lockers",
+    "keys": "~/card_lab/ops/keys.json",
+    "keys_about": "a brand new agent's one runtime key, kept here the moment it is minted (the ops tools' own list), so a second ship of it never makes a second locker",
+    "test_page": "https://frost-b.positivefeedback.ai/wid/pf/en/app/{screen}?mode=dark&agentlayer=agent",
+    "test_page_about": "an agent's TEST IT link on his page: its card's screen on B (never production A)"
+   }
+  },
+  "ship_about": "AN AGENT FIX GOES LIVE BY ITSELF (the owner 2026-10-24: \"it needs to approve it and not give me somethign to approve after it gets resubmitted. im only going to approve brand new agents or agents from outside developers not positive feedback\"): after a request's commit in ~/larryd_agents, the Developer merges it into main there and ships every changed agent: packed as the runtime packs it, put in the lockers bucket, submitted to B (the job's submit --slot slot-b), approved on B's FROST review as the kept SYSTEM owner (only the review whose name, key and hashes are exactly this build's), made live (golive.sh) and checked live. Only an agent whose card says the developer Positive Feedback and that the runtime already holds is shipped this way; a brand new agent or an outside developer's waits for the owner.",
+  "old_platform": "~/SPINE_BACKUP_20260926",
+  "pictures": {
+   "python": "~/SPINE_BACKUP_20260926/spine_steps/b_tester/venv/bin/python",
+   "runner": "~/virtual_sanity/scrum_master_3/release/app/agent/pictures_run.py",
+   "before": "main",
+   "minutes": 10,
+   "about": "the pictures a hired read sees for a platform change that touches the look (the owner 2026-10-24: the builder makes everything on its own): BEFORE main and AFTER the tree, each on a copy of live (the signed walk's setup), 1440 and 390 wide"
+  }
+ },
+ "runners": {
+  "about": "THE MISSING RUNNERS (agent/agent002_top_standup.py, agent011_checks_security.py, agent012_checks_audit.py, agent013_checks_moire.py and shared_events.py; the owner 2026-10-12: \"so each has a runner\"): commands the daily schedule starts, each leaving its own result of the day as a row of his database (runner_runs). security: the Claude security tool's headless command (its request on stdin), the workspace it scans, the report folders it leaves (the plain list of findings is kept for the work list as rows, security_findings), the most minutes. report: the sender (a command that takes the chart on stdin; empty: written, not sent), the most lines, the sender's minutes. jobs: each runner's line name in the daily schedule. THE SCAN'S OWN TOOLS (2026-10-12, its first real try ended in 20 seconds: with nobody there it was refused the reading of its own recipe): it is given the tools its own declaration names, by name (its shell only as exact read only commands, never bare Bash), and no network tool. It is Anthropic's own security scanner; it writes its report folder at the top of the tree it scans, and when it ends that folder is kept whole as rows of his database (security_reports) and taken from the tree (2026-10-13: left at the top it was a new name NEW FILES AND PAGES and MOIRÉ called red every day). ITS BOUNDS (the security review of 2026-10-12): it may write and edit only inside its own report folder; it is refused every tool that leaves the laptop (curl, wget, nc, ssh, scp, rsync, gcloud, git push), sudo, the system's keys and jobs, every instance folder and every secret. Its shell is otherwise its own: a list of refusals is never whole, so WHAT IS KNOWN AND ACCEPTED is that an unattended scanner with a shell reads this workspace's text, and it is Anthropic's own tool run on the owner's order that the scans happen daily. ITS THIRD REAL RUN (2026-10-12 17:25 to 18:08) taught three things: the scan runs its pipeline as a background workflow and a headless run stops waiting for it after ten minutes (so it is told to wait: CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0); file rules are Edit rules only (a Write rule is ignored); and a whole scan spends a great deal of the owner's Claude usage (that run ended on the account's session limit).",
+  "security": {
+   "command": [
+    "env",
+    "CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0",
+    "claude",
+    "--agent",
+    "claude-security:claude-security",
+    "-p",
+    "--permission-mode",
+    "default",
+    "--allowedTools",
+    "Read,Glob,Grep,Bash(git status),Bash(git rev-parse HEAD),Bash(git log --oneline -20),Bash(git diff --stat),Bash(pwd),Bash(ls),Workflow,Agent,TaskCreate,TaskGet,TaskList,TaskUpdate,TaskOutput,TaskStop,Skill,Edit(//Users/frost/virtual_workspace/CLAUDE-SECURITY-*/**)",
+    "--disallowedTools",
+    "WebFetch,WebSearch,Bash(curl:*),Bash(wget:*),Bash(nc:*),Bash(ncat:*),Bash(ssh:*),Bash(scp:*),Bash(sftp:*),Bash(rsync:*),Bash(gcloud:*),Bash(gsutil:*),Bash(sudo:*),Bash(git push:*),Bash(git remote:*),Bash(launchctl:*),Bash(osascript:*),Bash(security:*),Bash(open:*),Read(**/instance/**),Read(**/.env*),Read(//Users/frost/.ssh/**),Read(//Users/frost/.aws/**),Read(//Users/frost/.config/gcloud/**),Read(//Users/frost/virtual_sanity/**/*.key),Edit(//Users/frost/virtual_sanity/**)"
+   ],
+   "request": "Run the scan codebase job with --scope wid,fs,so,cc,lryllm,wid-mini,fs-mini,so-mini,cc-mini,lryllm-mini at medium effort: the five offices and the five minis only, never the whole repository. I accept the time and the token cost of this scan in so many words: yes, start it now. Nobody is here to answer a question: decide and proceed. Change no file of this repository but your own report folder.",
+   "tree": "~/virtual_workspace",
+   "folders": "CLAUDE-SECURITY-*",
+   "results": "CLAUDE-SECURITY-RESULTS.jsonl",
+   "minutes": 240
+  },
+  "report": {
+   "sender": [],
+   "most_lines": 24,
+   "minutes": 2
+  },
+  "jobs": {
+   "audit": "AUDIT",
+   "moire": "MOIRÉ",
+   "security": "SECURITY SCAN",
+   "report": "MORNING REPORT"
+  }
+ },
+ "sync": {
+  "about": "THE SYNC (agent/agent029_close_out_sync_localhost.py; the owner 2026-10-12: \"we always want to sync coteclat and demo data from live production (A) to our localhost so testing is always using real data\"; \"yes on B rnd\"; \"when we hotswap a to b or b to a... all the data needs to already be there and working correctly\"). sides: each side's steps in order. steps: each step's own settings. A step with no command is NOT BUILT and stops the run there, said plainly. NEVER A WHOLE DATABASE (the owner 2026-10-23: \"we are not copying whole databases\"): the snapshot reads, read only, of each declared database only the tables of the named accounts (<account>_...) and their rows of the shared tables named in shared_rows ({database: {table: account column}}); the accounts come from the loop's own profiles (accounts.from, accounts.field), never written here. Every step is built and ran exact on 2026-10-25 (5587 records on both sides); ON THE SCHEDULE since 2026-10-25 (the owner: \"go for it lets get this done\"): daily SYNC LOCALHOST at 05:00, then SYNC B RND.",
+  "sides": {
+   "localhost": [
+    "snapshot",
+    "round",
+    "compare",
+    "apply"
+   ],
+   "b_rnd": [
+    "needs:localhost",
+    "carry",
+    "compare_b"
+   ]
+  },
+  "steps": {
+   "snapshot": {
+    "live": true,
+    "accounts": {
+     "from": "~/data_sync/profiles.json",
+     "field": "old_account"
+    },
+    "shared_rows": {
+     "fs/fs/instance/fs.db": {
+      "users_members": "Parent_Norm_Key"
+     },
+     "so/so/instance/so.db": {
+      "dam_files": "account_key"
+     }
+    },
+    "reach": [
+     "gcloud",
+     "compute",
+     "ssh",
+     "{slot}",
+     "--project",
+     "{project}",
+     "--zone",
+     "{zone}",
+     "--command"
+    ],
+    "zone": "us-central1-a",
+    "databases": {
+     "wid/wid/instance/wid.db": "/home/frost/virtual_workspace/wid/wid/instance/wid.db",
+     "wid/wid/instance/mgmt.db": "/home/frost/virtual_workspace/wid/wid/instance/mgmt.db",
+     "wid/wid/instance/ps.db": "/home/frost/virtual_workspace/wid/wid/instance/ps.db",
+     "wid/wid/instance/lrd.db": "/home/frost/virtual_workspace/wid/wid/instance/lrd.db",
+     "wid/wid/instance/config.db": "/home/frost/virtual_workspace/wid/wid/instance/config.db",
+     "fs/fs/instance/fs.db": "/home/frost/virtual_workspace/fs/fs/instance/fs.db",
+     "so/so/instance/so.db": "/home/frost/virtual_workspace/so/so/instance/so.db"
+    },
+    "root": "{scratch}/sync_snapshots",
+    "minutes": 20,
+    "project": "metal-node-458711-t0"
+   },
+   "round": {
+    "command": [
+     "/Users/frost/data_sync/sync_round.sh",
+     "{n}",
+     "{snap}"
+    ],
+    "cwd": "/Users/frost/data_sync",
+    "env": {},
+    "minutes": 30,
+    "about": "THE ROUND (frost-b3 2026-10-23, ~/data_sync): the two accounts' records from the day's snapshot converted into the new platform on scratch hosts (free ports, no live port, no reach out), then compared record by record"
+   },
+   "compare": {
+    "results": [
+     "~/data_sync/rounds/{n}/compare.json",
+     "~/data_sync/demo/rounds/{n}/compare.json"
+    ]
+   },
+   "apply": {
+    "command": [
+     "/usr/bin/python3",
+     "/Users/frost/data_sync/apply.py",
+     "{n}",
+     "{snap}"
+    ],
+    "cwd": "/Users/frost/data_sync",
+    "env": {},
+    "minutes": 45,
+    "about": "THE APPLY (the owner 2026-10-23: \"Yes, localhost + B rnd\", and the kept owner sign-in \"Yes, localhost pf only\"; frost-b3, ~/data_sync/apply.py): the two accounts' tables and hash pool dropped and their records IMPORTED again on localhost pf as SYSTEM VIEW AS the owner, compared exact, every other account fingerprinted identical; anything else and wid's five databases are put back from the backup it takes first. Its result: ~/data_sync/apply/localhost/{n}/result.json"
+   },
+   "carry": {
+    "command": [
+     "/usr/bin/python3",
+     "/Users/frost/data_sync/apply.py",
+     "{n}",
+     "{snap}",
+     "--target",
+     "b_rnd"
+    ],
+    "cwd": "/Users/frost/data_sync",
+    "env": {},
+    "minutes": 60,
+    "about": "THE CARRY (the owner 2026-10-23 12:13, via frost-a3: \"you have full power and authorization to push all to get all green\": the yes for the B rnd sign-in, frost-b's rnd side only; never production pf; never /logout or FROST signout on B; frost-b3, ~/data_sync/apply.py --target b_rnd): the two accounts' tables and hash pool dropped on frost-b's rnd side and their records IMPORTED again at its own door as SYSTEM VIEW AS the owner, compared exact, every other account fingerprinted identical; anything else and wid's five databases there are put back from the backup it takes first (~/sync_backups on frost-b). Its result: ~/data_sync/apply/b_rnd/{n}/result.json"
+   },
+   "compare_b": {
+    "results": [
+     "~/data_sync/apply/b_rnd/{n}/coteclat/rounds/{n}/compare.json",
+     "~/data_sync/apply/b_rnd/{n}/demo/rounds/{n}/compare.json"
+    ]
+   }
+  }
+ },
+ "daily": {
+  "about": "THE DAILY SCHEDULE, the runners (the owner 2026-10-12: \"each has a runner\"; \"we have proven all these tools and steps we do them together each day. now we automate it\"): one list, one clock (a tick every clock seconds). jobs: a name, and its turn: THE DAY IS A CHAIN (the owner 2026-10-13: \"it should have a starting point and work like a chain\"; \"a human if they finish something early they do not sit in a chair for an hour and look out the window\"): a job with an hour (at) is a starting point (the Scrum Master's day and zone), a job with after starts the moment the job it names has ended, in the same tick; the day's chain starts with the MORNING REPORT at 07:00 and runs SECURITY SCAN, AUDIT, MOIRÉ and SMOKE TEST one after another; DEVELOP starts beside them, right after the MORNING REPORT, (it fixes while the checks run; the owner 2026-10-13: \"but if we have red how is it possible to have no professionals working making those green\"; the owner 2026-10-13: \"if we have red then why are no professionals fixing the reds? the scrum master needs to keep the chain green. that is his job\": his Developer works the day's work list, one hired professional per item, in the hot fix tree, until the list is empty or its clock is out; it reads the list again as it goes, and with again it comes back every that many minutes all day, so a red that comes in later is worked too: the owner 2026-10-13, \"this should keep you busy\"); the night's starts with the TAKING IN at 00:10; then its command as we run it by hand, where, the most minutes it may take, and heavy when it needs the laptop's one lane (lane: the lane's own command). A job starts once a day, one at a time. cool_down: from this hour no job starts and the lane is held for the nightly build until that build has ended (build_grace: the hour by which the build has begun). Never the Judge and never a publish: the full build happens once, at night, by its own job. Each job's own record of each day is a row of his database (daily_runs). THE TAKING IN (the owner 2026-10-12: \"no automated\", to a person doing it each morning): the clock takes the hot fix branches into main only through its wall (the apps' own ground, never the sealed core, no links) AND after a hired professional read that exact commit (reviewer: the command, read only, its words on stdin; minutes: the most it may take). Any answer but its plain CLEAN refuses the branch; no professional to be had refuses it too. THE SECURITY SCAN (after the MORNING REPORT) RUNS ONLY WHEN THE OWNER'S SWITCH IS ON (his switches row security_scan, his page's toggle, OFF by default); it was on no schedule before the switch existed (the owner 2026-10-12: \"that was a total waste.. lets make sure the scan is not running\", after its runs of that day spent about 61% of his Claude usage and never finished): it starts only on his word.",
+  "clock": 300,
+  "lane": "~/spine_worktrees/take_slot.sh",
+  "cool_down": "00:30",
+  "build_grace": "01:10",
+  "take_in": {
+   "fast_forward_hot_fix_tree": true,
+   "about": "THE HOT FIX TREE AFTER THE TAKE-IN (the owner 2026-10-22 00:23, its switch OFF by frost-22's 00:26 correction): when true, after each take-in the hot fix tree (develop.tree, ~/spine_worktrees/hotfix, on its own branch) is moved up to main by git merge --ff-only main inside that tree, never a reset and never a move that is not a fast forward; a dirty tree or one that cannot fast forward is said on row 18, no B, never red. It is a branch move: ON by the owner's written standing go (2026-10-22 ~00:55: \"GO: repo ~/virtual_workspace, branch hotfix/20261021, fast-forward to main after each take-in. Fast-forward only, never reset or force.\"), confirmed by him in the session; while false, row 18 says once how many commits the hot fix tree is behind main, no B, never red."
+  },
+  "jobs": [
+   {
+    "name": "SMOKE TEST",
+    "command": [
+     "python3",
+     "smoke.py"
+    ],
+    "cwd": "~/virtual_sanity/smoke",
+    "minutes": 240,
+    "heavy": true,
+    "after": "MORNING REPORT"
+   },
+   {
+    "name": "INSTALL ON THE MAC",
+    "at": "06:15",
+    "command": [
+     "~/virtual_workspace/.venv/bin/python",
+     "-m",
+     "agent.agent038_nightly_install_on_the_mac",
+     "install"
+    ],
+    "cwd": "{app}",
+    "minutes": 5
+   },
+   {
+    "name": "SYNC LOCALHOST",
+    "at": "05:00",
+    "command": [
+     "~/virtual_workspace/.venv/bin/python",
+     "-m",
+     "agent.agent033_nightly_publish_localhost_pf",
+     "localhost"
+    ],
+    "cwd": "{app}",
+    "minutes": 30,
+    "about": "ROW 039 (the owner 2026-10-25: \"go for it lets get this done\"): the data sync of localhost every night, its steps in turn (snapshot, round, compare, apply; measured 2026-10-25: 72 s, 168 s, 0 s, 130 s), so an exact sync is always within row 039's 30 h"
+   },
+   {
+    "name": "SYNC B RND",
+    "after": "SYNC LOCALHOST",
+    "command": [
+     "~/virtual_workspace/.venv/bin/python",
+     "-m",
+     "agent.agent033_nightly_publish_localhost_pf",
+     "b_rnd"
+    ],
+    "cwd": "{app}",
+    "minutes": 30,
+    "about": "ROW 039: slot B rnd's side right after localhost's (carry, compare_b; measured 2026-10-25: 293 s, 0 s)"
+   },
+   {
+    "name": "BACKUP",
+    "at": "00:05",
+    "command": [
+     "~/virtual_workspace/.venv/bin/python",
+     "-m",
+     "agent.shared_backup",
+     "make"
+    ],
+    "cwd": "{app}",
+    "minutes": 5
+   },
+   {
+    "name": "TAKE IN THE DAY'S WORK",
+    "at": "00:10",
+    "command": [
+     "~/virtual_workspace/.venv/bin/python",
+     "-m",
+     "agent.agent028_nightly_take_in",
+     "takein",
+     "--hired"
+    ],
+    "cwd": "{app}",
+    "minutes": 45
+   },
+   {
+    "name": "MORNING REPORT",
+    "at": "07:00",
+    "command": [
+     "~/virtual_workspace/.venv/bin/python",
+     "-m",
+     "agent.agent001_top_summary",
+     "report"
+    ],
+    "cwd": "{app}",
+    "minutes": 5
+   },
+   {
+    "name": "SECURITY SCAN",
+    "command": [
+     "~/virtual_workspace/.venv/bin/python",
+     "-m",
+     "agent.agent016_checks_security",
+     "security",
+     "--detach"
+    ],
+    "cwd": "{app}",
+    "minutes": 5,
+    "after": "MORNING REPORT"
+   },
+   {
+    "name": "MEMORY",
+    "at": "06:40",
+    "command": [
+     "python3",
+     "-m",
+     "knowledge.night",
+     "run"
+    ],
+    "cwd": "~/virtual_sanity/knowledge/app",
+    "minutes": 10
+   },
+   {
+    "name": "ROW RULES",
+    "command": [
+     "~/virtual_workspace/.venv/bin/python",
+     "-m",
+     "agent.shared_row_rules",
+     "write"
+    ],
+    "cwd": "{app}",
+    "minutes": 90,
+    "after": "MEMORY"
+   },
+   {
+    "name": "R37 MARKETPLACE PIXEL",
+    "after": "SMOKE TEST",
+    "heavy": true,
+    "minutes": 20,
+    "command": [
+     "~/virtual_workspace/.venv/bin/python",
+     "utilities/build/walk/pixel.py",
+     "macos",
+     "--tree=/Users/frost/spine_worktrees/R37-still",
+     "--only=sign_in/larryd/marketplace",
+     "--out=/Users/frost/spine_scratch/r37_still_launchd"
+    ],
+    "cwd": "~/spine_worktrees/R37-still",
+    "about": "ROW 037 CHUNK 5b (the owner 2026-10-23: 27 minutes, through the Scrum Master's own machinery from launchd): the Mac pixel compare of the marketplace alone on the fix branch hotfix/R37-still (both sides still); --only never writes LATEST; its share is the measure for his written go to merge hotfix/R37-still into hold/20261021. Heavy: after the smoke test, one heavy job at a time."
+   },
+   {
+    "name": "R37 MARKETPLACE PIXEL HOLD",
+    "after": "SMOKE TEST",
+    "heavy": true,
+    "minutes": 20,
+    "command": [
+     "~/virtual_workspace/.venv/bin/python",
+     "utilities/build/walk/pixel.py",
+     "macos",
+     "--tree=/Users/frost/spine_worktrees/hotfix",
+     "--only=sign_in/larryd/marketplace",
+     "--out=/Users/frost/spine_scratch/r37_hold_launchd"
+    ],
+    "cwd": "~/spine_worktrees/hotfix",
+    "about": "ROW 037 CHUNK 17 (frost-86, 2026-10-23 19:06, on frost-a5's order): the same Mac pixel compare of the marketplace alone, on the hold tree hold/20261021 at 46dac1a7f (the web shot waits for the agent views), from launchd through the Scrum Master's own machinery: the Swift build fails from a session's shell, never from launchd. A second job because a job begun today never runs again (ready); the first job's 17:58 record stays as it is."
+   }
+  ],
+  "reviewer": {
+   "command": [
+    "claude",
+    "-p",
+    "--model",
+    "claude-opus-5-5",
+    "--permission-mode",
+    "default",
+    "--allowedTools",
+    "Read,Glob,Grep",
+    "--disallowedTools",
+    "Bash,Edit,Write,NotebookEdit,WebFetch,WebSearch,Task,Read(**/instance/**),Read(**/.env*),Read(//Users/frost/.ssh/**),Read(//Users/frost/.claude/**)"
+   ],
+   "minutes": 20,
+   "most_chars": 60000,
+   "about": "the hired read is given NO shell at all (git itself can write a file and read any file by its own flags: the commit's security review, 2026-10-12): the commit range is handed to it as text, and it may only read this workspace's files, never an instance folder or a secret. most_chars: a range larger than this is a person's to read."
+  }
+ },
+ "card": {
+  "about": "HIS CARD, in the agent marketplace's card style (the owner 2026-10-13), drawn on his page. He is internal and always on: no switch on the card, nothing to turn on or off (the owner 2026-10-21: internal and always on). Mark III is his class and appears on this card only: LARRYD · SCRUM MASTER, MARK III SUPER AGENT (HARNESS).",
+  "key": "scrum-master",
+  "name": "SCRUM MASTER",
+  "class": "MARK III SUPER AGENT (HARNESS)",
+  "product": "LARRY LLM",
+  "module": "Console",
+  "pitch": "Checks to see if things are running. When something breaks, he gets to work to fix it, and the step must run on its own again to clear.",
+  "developer": "LARRYD",
+  "price": "",
+  "art": "static/images/scrum_master_card.png"
+ },
+ "speed_locked": {
+  "about": "THE SPEED REQUIREMENTS, LOCKED (the owner 2026-10-15: \"you want to cheat and change a speed test? NO FUCKING WAY EVER PERIOD 100% FUCK NO\"; 2026-10-21: \"NO CHANGES TO THE SPEED REQUIREMENTS EVER\"): every file that says what fast is (the speed rows, THE BENCHMARK, their plants, the bar, the timer, the speed tool's targets), each by its path and the sha256 it has now. A red speed row is cured in the platform (the code being timed) or stays red. Nothing of his files, proposes or asks to change one of these: a fix that touches one is refused, and NO SHORTCUTS is red while any differs from its sha256 here, naming the file and the commit. When he moves the bar himself (his commit is its seal), he writes its new sha256 here: python -m scrum_master.speed sums prints them.",
+  "since": "2026-10-21T00:00:00-04:00",
+  "files": [
+   {
+    "path": "~/virtual_sanity/smoke/speed_rows.py",
+    "sha256": "1063823e57d61880fc6b3302a3ad65794c25712774a82d034564f64b031d9bdd",
+    "what": "the SPEED rows of the smoke test: each rule, its plant, THE BENCHMARK and its phases"
+   },
+   {
+    "path": "~/virtual_sanity/smoke/speed_bar.json",
+    "sha256": "822ce715ceff25a3531ef981c1c639bf51162aaf41e983d4662f7580aacec5ea",
+    "what": "THE SPEED BAR: every screen's numbers, the noise allowed, frost_most; his commit is its seal, it only moves down"
+   },
+   {
+    "path": "~/virtual_sanity/smoke/parity/speed_pages.py",
+    "sha256": "325e3d41744844b791b599db7f34e1f9b8d1dac4db5a46a17fa24c8d837417d1",
+    "what": "the timer of the speed rows: the pages measured, the records grown, the rounds"
+   }
+  ]
+ },
+ "page": {
+  "silent_after": 900,
+  "about": "HIS PAGE, his own (the owner 2026-10-14: \"THE AGENT ITS OUTSIDE THE PROJECT THAT IS THE POINT NOT HALF INSIDE AND HALF OUTSIDE\"): served by app/web/app.py on 127.0.0.1 at port, from this folder; LARRY LLM's console keeps only a link to it. silent_after: seconds after which the newest round is too old and the board says Silent. His switches (the security scan) are rows of his database (switches), flipped on this page. days_shown: the newest days the arrows step through. The standup in a person's words is a row (told), written once per standup by tell_model. Nothing secret is ever typed on this page: a step only his hand clears is his own, done away from it.",
+  "settings": "{schemas}/settings.json",
+  "said_about": "WHAT EACH PRESS SAID on his page (a switch), kept as rows of his database (said), a day at a time, so a refresh keeps it.",
+  "logs_about": "THE TERMINAL (the owner 2026-10-13: \"add a terminal window so we can watch it work when its running\"): his own logs (~/scratch/reports/scrum_master_3/logs, outside the package), followed live as they grow: his rounds (scrum/scrum.log), the daily schedule (daily/daily.log), each job of the day (daily/<day>/*.log) and each runner of the day (runners/<day>/*.log); read only, through the declared channel scrum",
+  "days_shown": 3,
+  "voice": {
+   "service": "http://127.0.0.1:8824",
+   "voice": "christensen",
+   "about": "THE STANDUP SPOKEN (the owner 2026-10-12: \"it will read the report in the christensen voice ... use the voice from the script lab\"): the script lab's own voice service on this laptop (Chatterbox, the Christensen sample), asked through this page's own doors when Read is pressed. The phrase listener was taken out on his word (\"just rip out the listen option\")."
+  },
+  "tell_model": "claude-opus-5-5",
+  "minute_model": "claude-opus-5-5",
+  "port": 8833,
+  "frost_site": "30cc5f74",
+  "frost_site_about": "FROST IDENTITY's own theme folder under the look's folder (technology.css names its pictures and faces there): its logo on row 11 SECURITY (the owner 2026-10-21), served as it is",
+  "run_now": {
+   "targets": {
+    "iphone": [
+     "hot_fix"
+    ],
+    "macos": [
+     "hot_fix",
+     "install"
+    ]
+   },
+   "log": "runners",
+   "about": "RUN NOW (the owner 2026-10-22: \"add a run now button for iphone build and macos build (and all related to get those processes completely done at any time if needed)\"): a press on row 036 IPHONE BUILD + WALK or row 037 MAC BUILD + WALK starts, as its own process, the hot fix utility for that app (global_config tower.native.files.hot_fix: the app built from the hot fix tree, walked, red rows fixed and walked again until green, the Mac's pixel compare); for the Mac then INSTALL ON THE MAC (row 038's own install, which installs only a build whose walk and picture check passed). Refused while the night holds the laptop (its cool down or the tower's lock) or while a run of the utility is going (a process of its own file, read from the process list). Its lines are kept in his logs (runners/run_now_<app>_<time>.log)."
+  },
+  "knowledge_db": "~/virtual_sanity/knowledge/instance/knowledge.db",
+  "knowledge_settings": "~/virtual_sanity/knowledge/app/schemas/settings.json",
+  "knowledge_db_about": "THE KNOWLEDGE STORE (the owner 2026-10-22), its own home, read only from his page: each row's skills index (preloaded inside its row) and the 3 way switch's routes (ACTIVE MONITORING 4 MEMORY)."
+ },
+ "orders": [
+  {
+   "id": "O-1",
+   "said": "rip it all out 100% from everywhere across the platform and the claude code",
+   "on": "2026-10-06",
+   "kind": "gone",
+   "words": [
+    "hanzo",
+    "air-gap box",
+    "airgap"
+   ],
+   "roots": [
+    "~/virtual_workspace"
+   ],
+   "target": 0,
+   "except": []
+  }
+ ],
+ "orders_about": "HIS ORDERS (the owner 2026-10-20: \"this is one thing the scrum master should clearly and honestly report and watch until its done\"). Each order is his own words and a machine check of the real end state. Only his hands write this file (it lies in the locked folder); a session's word never closes an order: the count does, every round, and an order that comes back is red again. kind 'gone': every word below counted inside every file under every root, file contents included (case ignored, hidden files and ignored files included, git's own store left out); a rename or a move is never a removal, so the old name's replacements are counted too. target: the count the order needs. roots: '~' is his home. except: exact paths counted out because they are not ours and are never touched (the owner 2026-10-20: film scripts, reference files); each carries the hash of the file as excepted: a file that changed counts again, flagged (the commit's security review). Each count shows them, listed.",
+ "sprint": {
+  "about": "THE SPRINT LIST, LARRY 6 (the owner 2026-10-20: \"THE SPRINT LIST (rule 1). One file in the locked folder, sprint.json, beside orders.json: the LARRY 6 items in my exact words, in order, each with its check of done (a machine check where one exists, else the proof I will accept). Only my hands write it.\"). The resident takes the next open item the moment it finishes one and works it as a hot fix on the hot fix tree; never the core, never the Judge. draft: true = a DRAFT, never worked, until he removes it. check: {kind: suite, office: <office>} (that office's own tests, a machine check) or {kind: owner, proof: <the proof he will accept>} (built on the hot fix tree, then it waits for his proof). accepted: his words and day when he accepts an owner item as done; only that closes it. SEEDED 2026-10-20 as a DRAFT from plans/THE_SPRINT_V6024_20260929.md (its open items, in its order and words).",
+  "sprint": "LARRY 6 (Version 6.024, release December 13, 2026)",
+  "items": [
+   {
+    "id": "S-01",
+    "said": "The web version. The single source of truth, fully tested.",
+    "draft": false,
+    "check": {
+     "kind": "tests",
+     "tests": "~/scratch/tests/sprint/S-01",
+     "proof": "its own tests, written first (the owner 2026-10-21: \"write the tests first then test\"), run by the Scrum Master on its own, no owner"
+    },
+    "accepted": {
+     "order": 3,
+     "by": "the owner",
+     "on": "2026-10-21"
+    }
+   },
+   {
+    "id": "S-02",
+    "said": "The iPhone version (iOS). Fully tested on the phone.",
+    "draft": true,
+    "check": {
+     "kind": "owner",
+     "proof": "DRAFT: proven by its tests and reviewed by the owner (the sprint plan's own rule); the owner sets the check"
+    }
+   },
+   {
+    "id": "S-04",
+    "said": "No business sign-up inside the native apps. Apple's rule 3.1.1, from the rejection of September 24: the app holds no account registration for businesses and organizations. Sign-in only; an account is made on the web.",
+    "draft": false,
+    "check": {
+     "kind": "tests",
+     "tests": "~/scratch/tests/sprint/S-04",
+     "proof": "its own tests, written first (the owner 2026-10-21: \"write the tests first then test\"), run by the Scrum Master on its own, no owner"
+    },
+    "accepted": {
+     "order": 1,
+     "by": "the owner",
+     "on": "2026-10-21"
+    },
+    "ruled": {
+     "by": "the owner, his exact words; his first S-04 words are said",
+     "on": "2026-10-22 00:10",
+     "words": "we have accounts and members, each account needs 1 member so it has at least 1 member, once an account has 2 or more members its considered the same as a company, on apple you only register as 1 member new, on the web its the same now exactly but has a second screen for companies (more than 1 member)"
+    }
+   },
+   {
+    "id": "S-05",
+    "said": "Permission before data goes to an outside AI service. Apple's rules 5.1.1(i) and 5.1.2(i): the app says what data is sent and to whom, and asks the member's permission first. The privacy policy says the same.",
+    "draft": false,
+    "check": {
+     "kind": "tests",
+     "tests": "~/scratch/tests/sprint/S-05",
+     "proof": "its own tests, written first (the owner 2026-10-21: \"write the tests first then test\"), run by the Scrum Master on its own, no owner"
+    },
+    "accepted": {
+     "order": 2,
+     "by": "the owner",
+     "on": "2026-10-21"
+    }
+   },
+   {
+    "id": "S-06",
+    "said": "The weekly build, fully automated. The middleware utility makes every native build on its own, once a week.",
+    "draft": true,
+    "check": {
+     "kind": "owner",
+     "proof": "DRAFT: proven by its tests and reviewed by the owner (the sprint plan's own rule); the owner sets the check"
+    }
+   },
+   {
+    "id": "S-07",
+    "said": "Stop agents from going rogue: build an agent. One install (pip) that holds LARRYD and the Claude Code connector, the my-agent builder, the doctor (a pretest before submission), the auto submission tool, skills, knowledge and monitoring. The agent lives in the LARRYD runtime, connects by API only, and the data never leaves the platform.",
+    "draft": false,
+    "check": {
+     "kind": "tests",
+     "tests": "~/scratch/tests/sprint/S-07",
+     "proof": "its own tests, written first (the owner 2026-10-21: \"write the tests first then test\"), run by the Scrum Master on its own, no owner"
+    },
+    "accepted": {
+     "order": 4,
+     "by": "the owner",
+     "on": "2026-10-21"
+    }
+   },
+   {
+    "id": "S-08",
+    "said": "The first real agents. A few actual agents built, and the agent marketplace harness running.",
+    "draft": false,
+    "check": {
+     "kind": "tests",
+     "tests": "~/scratch/tests/sprint/S-08",
+     "proof": "its own tests, written first (the owner 2026-10-21: \"write the tests first then test\"), run by the Scrum Master on its own, no owner"
+    },
+    "accepted": {
+     "order": 5,
+     "by": "the owner",
+     "on": "2026-10-21"
+    }
+   },
+   {
+    "id": "S-09",
+    "said": "The brand catalog, as an agent. It generates theme packs that work with our system. Every theme has a hash and is switched on or off in the agent marketplace: a theme is an agent, and a member loads it by hiring it.",
+    "draft": true,
+    "check": {
+     "kind": "owner",
+     "proof": "DRAFT: proven by its tests and reviewed by the owner (the sprint plan's own rule); the owner sets the check"
+    }
+   },
+   {
+    "id": "S-10",
+    "said": "The full end-to-end test. All of our agents and themes working with the core.",
+    "draft": true,
+    "check": {
+     "kind": "owner",
+     "proof": "DRAFT: proven by its tests and reviewed by the owner (the sprint plan's own rule); the owner sets the check"
+    }
+   },
+   {
+    "id": "S-11",
+    "said": "The agent review process. Tested, with documentation and tools for external third-party developers.",
+    "draft": true,
+    "check": {
+     "kind": "owner",
+     "proof": "DRAFT: proven by its tests and reviewed by the owner (the sprint plan's own rule); the owner sets the check"
+    }
+   },
+   {
+    "id": "S-12",
+    "said": "One agent in all 20 marketplaces. One of our agents available in every marketplace, even a basic one.",
+    "draft": true,
+    "check": {
+     "kind": "owner",
+     "proof": "DRAFT: proven by its tests and reviewed by the owner (the sprint plan's own rule); the owner sets the check"
+    }
+   },
+   {
+    "id": "S-13",
+    "said": "Workflows and the new video tools. The full build, to make a 90-minute movie within 70 days of this sprint (by December 8, 2026).",
+    "draft": true,
+    "check": {
+     "kind": "owner",
+     "proof": "DRAFT: proven by its tests and reviewed by the owner (the sprint plan's own rule); the owner sets the check"
+    }
+   },
+   {
+    "id": "S-14",
+    "said": "Apple TV. The native version.",
+    "draft": true,
+    "check": {
+     "kind": "owner",
+     "proof": "DRAFT: proven by its tests and reviewed by the owner (the sprint plan's own rule); the owner sets the check"
+    }
+   },
+   {
+    "id": "S-15",
+    "said": "Windows PC. The native version.",
+    "draft": true,
+    "check": {
+     "kind": "owner",
+     "proof": "DRAFT: proven by its tests and reviewed by the owner (the sprint plan's own rule); the owner sets the check"
+    }
+   },
+   {
+    "id": "S-16",
+    "said": "Android. The native version.",
+    "draft": true,
+    "check": {
+     "kind": "owner",
+     "proof": "DRAFT: proven by its tests and reviewed by the owner (the sprint plan's own rule); the owner sets the check"
+    }
+   },
+   {
+    "id": "S-17",
+    "said": "Apple Watch. The native version.",
+    "draft": true,
+    "check": {
+     "kind": "owner",
+     "proof": "DRAFT: proven by its tests and reviewed by the owner (the sprint plan's own rule); the owner sets the check"
+    }
+   },
+   {
+    "id": "S-18",
+    "said": "Website update. Every website updated.",
+    "draft": true,
+    "check": {
+     "kind": "owner",
+     "proof": "DRAFT: proven by its tests and reviewed by the owner (the sprint plan's own rule); the owner sets the check"
+    }
+   },
+   {
+    "id": "S-19",
+    "said": "Quantum tools. With the IBM API.",
+    "draft": true,
+    "check": {
+     "kind": "owner",
+     "proof": "DRAFT: proven by its tests and reviewed by the owner (the sprint plan's own rule); the owner sets the check"
+    }
+   },
+   {
+    "id": "S-20",
+    "said": "LARRY Data Fabric.",
+    "draft": true,
+    "check": {
+     "kind": "owner",
+     "proof": "DRAFT: proven by its tests and reviewed by the owner (the sprint plan's own rule); the owner sets the check"
+    }
+   },
+   {
+    "id": "S-21",
+    "said": "LARRY Proof Layer.",
+    "draft": true,
+    "check": {
+     "kind": "owner",
+     "proof": "DRAFT: proven by its tests and reviewed by the owner (the sprint plan's own rule); the owner sets the check"
+    }
+   },
+   {
+    "id": "S-22",
+    "said": "FROST. Stand alone.",
+    "draft": true,
+    "check": {
+     "kind": "owner",
+     "proof": "DRAFT: proven by its tests and reviewed by the owner (the sprint plan's own rule); the owner sets the check"
+    }
+   },
+   {
+    "id": "S-23",
+    "said": "DA-M. Stand alone.",
+    "draft": true,
+    "check": {
+     "kind": "owner",
+     "proof": "DRAFT: proven by its tests and reviewed by the owner (the sprint plan's own rule); the owner sets the check"
+    }
+   },
+   {
+    "id": "S-24",
+    "said": "mTok. Stand alone.",
+    "draft": true,
+    "check": {
+     "kind": "owner",
+     "proof": "DRAFT: proven by its tests and reviewed by the owner (the sprint plan's own rule); the owner sets the check"
+    }
+   }
+  ],
+  "accepted_about": "THE OWNER'S ACCEPTED ITEMS (2026-10-21), in build order: S-04, S-05, S-01, S-07, S-08. Each is proven by its own tests in ~/scratch/tests/sprint/<id> (outside every package, R7), written first, then run by the Scrum Master on its own. Every other item stays DRAFT: nothing is built until he accepts it.",
+  "no_loops": {
+   "builds_per_test_version": 3,
+   "test_rewrites": 1,
+   "about": "NO LOOPS (the owner 2026-10-21): an item gets at most 3 builds per test version. Then at most ONE open test rewrite: version 2, fingerprinted again, its reason written on the item, approved by the hired read as \"the test was wrong\", never \"the test was hard\". If version 2 fails 3 times the item goes to BLOCKED with its reason and he moves to the next accepted item. One stuck item never stops the sprint. A test version is its folder's fingerprint (sha256 of every file, FINGERPRINT in ~/scratch/tests/sprint/<id>): a build is judged only by the fingerprinted version, and a test changed outside the one approved rewrite is refused.",
+   "idle_minutes": 30,
+   "no_owner_waits": "NO OWNER-WAITS, EVER (the owner 2026-10-21): \"waiting for Christensen\" or \"waiting for the owner\" is never a reason anywhere; a line that says it is red, a fake wait. BLOCKED carries only a machine-checked reason: the failing test, its error, the builds and the rewrite used up. A blocked item never stops him: the next accepted item starts in the same round. IDLE ALARM: accepted items left and no build, test or commit for idle_minutes turns row 1 red (\"IDLE: N items waiting, nothing building\"). He stops only when every accepted item is done or blocked.",
+   "only_what_was_asked": "ONLY WHAT WAS ASKED (the owner 2026-10-21): the build is exactly what the owner asked for, nothing more, nothing less. His request is the work and its authorization: no step of it asks permission. He never invents work: no items from red rows, no extras, no improvements unasked. Asked for nothing, he does nothing, and that is green, not idle. The idle alarm fires only while an asked-for item is unfinished and nothing builds for idle_minutes."
+  }
+ },
+ "switches": {
+  "about": "THE DEFAULTS of his switches: the resident worker is internal and always on (the owner 2026-10-21); the security scan only on his word (the owner 2026-10-12); the three sections DAY, NIGHT and RELEASE each on (the owner 2026-10-22: \"Day (toggle on off) Night (toggle on off) Release (toggle on off)\"): off, the round runs none of that section's rows and the page says OFF on them. A flip is kept in his database, never written here.",
+  "worker": true,
+  "security_scan": false,
+  "section_day": true,
+  "section_night": true,
+  "section_release": true
+ },
+ "knowledge": {
+  "about": "THE KNOWLEDGE STORE, AS THE SCRUM MASTER SEES IT (the owner 2026-10-22): its own home, never inside this package. He reads knowledge.db read only (file:...?mode=ro) and runs the knowledge package only as its own process (python: the interpreter, the package's app on PYTHONPATH), never imports it. db: the knowledge store. cutover: the moment of the one move (step 8: the hooks wired, the Cortex retired); null until then, and until then the MEMORY row says the 3 way switch is not wired yet. settings: Claude Code's own settings, whose hooks must run the 3 way switch (prompt_hook on UserPromptSubmit) and the write block (write_hook on PreToolUse). transcripts: Claude Code's own records of every session (the proof a prompt was routed). memory and recall_log: the old memory folder and the Cortex's recall log, which nothing may write after the cutover but the door. switch_seconds: the most a hire waits for the 3 way switch before it says so and starts.",
+  "home": "~/virtual_sanity/knowledge",
+  "db": "~/virtual_sanity/knowledge/instance/knowledge.db",
+  "python": "python3",
+  "cutover": "2026-10-22T16:40:26-04:00",
+  "settings": "~/.claude/settings.json",
+  "prompt_hook": "-m knowledge.hook_prompt",
+  "write_hook": "-m knowledge.hook_write",
+  "transcripts": "~/.claude/projects",
+  "memory": "~/.claude/projects/-Users-frost/memory",
+  "recall_log": "~/.claude/projects/-Users-frost/memory/cortex/recall.log",
+  "switch_seconds": 20,
+  "known_questions": "~/virtual_sanity/knowledge/questions/known.json",
+  "known_within": 3,
+  "probe_result": "~/scratch/reports/knowledge/probe.json",
+  "spool": "~/scratch/knowledge/spool.jsonl",
+  "known_about": "THE MEMORY ROW'S CHECK 6 (the owner 2026-10-22): known_questions is a JSON list of {\"question\": \"...\", \"expect\": \"<entry key>\" or [\"<key>\", ...]}, written by the owner or the checking session, never by the session that builds the 3 way switch; each is asked through the knowledge door's read-only ask and is right when an expected key is in its first known_within answers. The row says only how many were missed, never the words."
+ },
+ "models": {
+  "about": "THE MODELS (the owner 2026-10-22, his words: \"web build = opus 5.5 only\"; \"macos and ios = fable 5.1 only\"): every Claude this agent starts runs web, named on its command; the native iPhone and Mac work runs native (the hot fix utility in the workspace, utilities/build/walk/hotfix.py). checks/test_models.py fails on any other model.",
+  "web": "claude-opus-5-5",
+  "native": "claude-fable-5-1"
+ },
+ "backup": {
+  "about": "HIS OWN BACKUP (the owner 2026-10-25: \"the agent needs its own git and backup and this was supsed to be done a long time ago\"): agent/shared_backup.py. home: where each backup folder goes (inside his one scratch folder, outside every virtual folder); keep: the newest whole backups kept (the owner 2026-10-08: \"rolling backup for 3 days\"); checks: his checks' own git (only checks/ inside it is his). Made by the daily BACKUP at 00:05, before the night's TAKE IN, and by hand: agent/run backup.",
+  "home": "{scratch}/backups",
+  "keep": 3,
+  "checks": "~/scratch/tests/scrum_master_3"
+ },
+ "master": {
+  "about": "THE MASTER LOCK (the owner 2026-10-23: one button, his fingerprint): judge/bin/master's mark, a file only root makes while the agent is UNLOCKED by his press, gone at a restart (fails closed). Named here once, read by the page, rows 017 and 021 and the red-row fix loop (GROUP 2, the owner 2026-10-24: the agent heals itself only while the mark exists).",
+  "mark": "/var/run/ai.positivefeedback.master_unlocked"
+ }
+}

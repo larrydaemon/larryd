@@ -1,0 +1,45 @@
+{
+  "name": "Agent Access",
+  "entry": "agent.py",
+  "about": "The Operations Manager's AGENT ACCESS panel: the HOME tree of ~/virtual_sanity with each folder's lock, THE LOCK and PIN AND RESEAL; its RUN reads the lock and the reseal.",
+  "does": [
+    "canvas",
+    "run"
+  ],
+  "calls": [
+    "canvas"
+  ],
+  "reads": [
+    "the Operations Manager office's own store (~/larryd/server/runtime/internal/instance/data/operations_manager)",
+    "the office's cards, jobs and logs in LARRYD under SYSTEM, through the platform's pipeline (wid core_engine)",
+    "the platform files the office reads (settings reads: themes, templates, engine.json, manifest.json, global_config)"
+  ],
+  "records": {},
+  "run": {
+    "do": "run",
+    "hands": []
+  },
+  "gives": [
+    "view",
+    "delivery"
+  ],
+  "skills": [],
+  "knowledge": [],
+  "card": {
+    "class": "MARK I AGENT (NORMAL)",
+    "pitch": "The lock on ~/virtual_sanity and PIN AND RESEAL: vault, spine, pin and Moiré.",
+    "price": "0",
+    "type": "DEVELOPER",
+    "residency": "INTERNAL",
+    "authorization": "PRIVATE",
+    "screen": "larry/home",
+    "product": "LARRYD",
+    "module": "LARRY LLM",
+    "developer": "LARRYD",
+    "sends_to": "",
+    "data_sent": ""
+  },
+  "internal": {
+    "seconds": 300
+  }
+}

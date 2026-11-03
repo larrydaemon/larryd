@@ -1,0 +1,295 @@
+{
+ "about": "EVERY REPORT HE ALLOWS, AND WHERE (the owner 2026-10-21: a report manifest, locked with the package). One entry a report: name (how a row asks for it: where.report(name)), path (a glob part names many files of one writer; {logs} is his own logs folder below), writer (the program that writes it), every (how often it is written), max_age (hours: older than this, his row 010 is red 'the writer stopped'; null: written only when its writer is started by hand or on a switch, so its age says nothing), transient (true: a lock or a file there only while its writer runs, so its absence is never 'not written'), kind (replaced whole: written over at each run; appended: a log its writer adds lines to). THE REPORT FOLDERS are the parent folders of these paths, and nothing else. Row 010 NEW FILES scrubs them every round: a file not listed here is deleted (one line on the page: what, when); a program, a script, an executable, a link or a hidden file is deleted and the row is red; a listed report older than its max_age is kept and the row is red ('the writer stopped'); a listed report missing makes it red ('not written'). It never works above a report folder, never in ~/virtual_sanity, ~/virtual_workspace or an instance folder, never follows a link (a link is unlinked, its target never touched), skips a folder it cannot write (and says so), and never enters a subfolder that is not itself a report folder (a dated folder of logs is a report folder only through a pattern entry here, e.g. daily/*/*.log). No row names a report's path anywhere but here (settings.json names none).",
+ "logs": "~/scratch/reports/scrum_master_3/logs",
+ "logs_about": "his own logs folder (outside the locked folder): store.log_path writes under it; a check's own: $SCRUM_MASTER_LOGS",
+ "reports": [
+  {
+   "name": "judge",
+   "path": "~/virtual_sanity_records/judge/reports/latest.json",
+   "writer": "THE JUDGE: ~/virtual_sanity/judge/judge.py (REPORTS/latest.json at the end of each run)",
+   "every": "each Judge run: once a night, in the nightly build",
+   "max_age": 30,
+   "kind": "replaced whole"
+  },
+  {
+   "name": "smoke",
+   "path": "~/virtual_sanity_records/smoke/reports/latest.json",
+   "writer": "THE SMOKE TEST: ~/virtual_sanity/smoke/smoke.py (engine.py: REPORTS/latest.json at the end of each run)",
+   "every": "each smoke test run: the daily SMOKE TEST job, and any run by hand",
+   "max_age": 30,
+   "kind": "replaced whole"
+  },
+  {
+   "name": "smoke_fixer_log",
+   "path": "~/virtual_sanity_records/smoke/reports/fixer_log.jsonl",
+   "writer": "THE SMOKE TEST's fixer: ~/virtual_sanity/smoke/fixer.py (one line a fix job)",
+   "every": "each fix job of the smoke fixer (on the owner's switch inside fixer.py)",
+   "max_age": null,
+   "kind": "appended"
+  },
+  {
+   "name": "smoke_fixer_status",
+   "path": "~/virtual_sanity_records/smoke/reports/fixer_status.json",
+   "writer": "THE SMOKE TEST's fixer: ~/virtual_sanity/smoke/fixer.py",
+   "every": "each fix job of the smoke fixer (on the owner's switch inside fixer.py)",
+   "max_age": null,
+   "kind": "replaced whole"
+  },
+  {
+   "name": "nightly_report",
+   "path": "~/spine_scratch/tower_auto/*_*/REPORT.md",
+   "writer": "THE NIGHTLY: the tower's AI ECHO AUTO (lryllm core_engine/auto.py; global_config tower.auto.reports), one folder a chain run, <stamp>_<chain>",
+   "every": "each chain run: the nightly build at night, and each button pressed",
+   "max_age": 30,
+   "kind": "replaced whole"
+  },
+  {
+   "name": "nightly_result",
+   "path": "~/spine_scratch/tower_auto/*_*/result.json",
+   "writer": "THE NIGHTLY: the tower's AI ECHO AUTO (lryllm core_engine/auto.py), beside its REPORT.md",
+   "every": "each chain run: the nightly build at night, and each button pressed",
+   "max_age": 30,
+   "kind": "replaced whole"
+  },
+  {
+   "name": "nightly_latest",
+   "path": "~/spine_scratch/tower_auto/latest_*.json",
+   "writer": "THE NIGHTLY: the tower's AI ECHO AUTO (lryllm core_engine/auto.py), the newest run of each chain (local, all, live)",
+   "every": "each chain run (latest_local.json every night)",
+   "max_age": 30,
+   "kind": "replaced whole"
+  },
+  {
+   "name": "step_rerun",
+   "path": "~/spine_scratch/tower_auto/reruns/*@*.json",
+   "writer": "ONE STEP RUN AGAIN ON ITS OWN (agent/rerun_step.py, a process of its own in LARRY LLM's app/): <step>@<target>.json, the step's result as the chain writes it, with its commit, start and end",
+   "every": "each rerun of a step, the moment it ends",
+   "max_age": null,
+   "kind": "replaced whole"
+  },
+  {
+   "name": "nightly_lock",
+   "path": "~/spine_scratch/tower_auto/auto.lock",
+   "writer": "THE NIGHTLY: the tower's AI ECHO AUTO (lryllm core_engine/auto.py): 'pid N since ...' while a chain runs, empty when none does",
+   "every": "at each chain's start and end",
+   "max_age": null,
+   "kind": "replaced whole"
+  },
+  {
+   "name": "nightly_log",
+   "path": "~/spine_scratch/tower_auto/nightly.log",
+   "writer": "THE NIGHTLY's LaunchAgent ai.positivefeedback.spine.nightly (its StandardOutPath)",
+   "every": "each night",
+   "max_age": 30,
+   "kind": "appended"
+  },
+  {
+   "name": "hotfix_runs",
+   "path": "~/spine_scratch/hotfix_runs/*/HOTFIX_RUN.md",
+   "writer": "THE HOT FIX UTILITY: ~/virtual_workspace/utilities/build/walk/hotfix.py (RUNS/<stamp>/HOTFIX_RUN.md, one folder a run)",
+   "every": "each run of the hot fix utility: the night's last step, and each run of its own",
+   "max_age": null,
+   "kind": "replaced whole"
+  },
+  {
+   "name": "pixel_compare",
+   "path": "~/spine_scratch/hotfix_runs/pixel_compare/*.json",
+   "writer": "THE PIXEL COMPARE: ~/virtual_workspace/utilities/build/walk/pixel.py (LATEST/<device>.json, the newest result per device)",
+   "every": "each pixel compare: in each run of the hot fix utility",
+   "max_age": null,
+   "kind": "replaced whole"
+  },
+  {
+   "name": "hotfix_lock",
+   "path": "~/spine_scratch/hotfix_runs/running.lock",
+   "writer": "THE HOT FIX UTILITY: ~/virtual_workspace/utilities/build/walk/hotfix.py (RUNS/running.lock: its pid while it runs)",
+   "every": "at each run's start and end",
+   "max_age": null,
+   "kind": "replaced whole"
+  },
+  {
+   "name": "judge_changed_log",
+   "path": "{logs}/judge_changed.log",
+   "writer": "THE JUDGE, CHANGED RULES ONLY: LaunchAgent ai.positivefeedback.spine.judge.changed (judge.py changed every 30 s), its StandardOutPath; row 032 matches the standing report to the FAIL rows this log printed for it",
+   "every": "each judge.py changed run (every 30 s; a line when nothing moved)",
+   "max_age": 2,
+   "kind": "appended"
+  },
+  {
+   "name": "smoke_changed_log",
+   "path": "{logs}/smoke_changed.log",
+   "writer": "THE SMOKE TEST, CHANGED ROWS ONLY: LaunchAgent ai.positivefeedback.spine.smoke.changed (smoke.py changed every 60 s), its StandardOutPath",
+   "every": "each smoke.py changed run (every 60 s; a line when nothing moved)",
+   "max_age": 3,
+   "kind": "appended"
+  },
+  {
+   "name": "page_log",
+   "path": "{logs}/page.log",
+   "writer": "HIS PAGE: LaunchAgent ai.positivefeedback.spine.scrum.page (run page: python -m web.app), its StandardOutPath",
+   "every": "each request to his page",
+   "max_age": 24,
+   "kind": "appended"
+  },
+  {
+   "name": "round_log",
+   "path": "{logs}/round.log",
+   "writer": "HIS ROUND: LaunchAgent ai.positivefeedback.spine.scrum (run round: settings launch.round), its StandardOutPath",
+   "every": "each round (settings scrum.clock seconds)",
+   "max_age": 24,
+   "kind": "appended"
+  },
+  {
+   "name": "tick_log",
+   "path": "{logs}/tick.log",
+   "writer": "HIS DAILY SCHEDULE: LaunchAgent ai.positivefeedback.spine.daily (run tick: settings launch.tick), its StandardOutPath",
+   "every": "each job of the day that ends",
+   "max_age": 24,
+   "kind": "appended"
+  },
+  {
+   "name": "worker_log",
+   "path": "{logs}/worker.log",
+   "writer": "HIS RESIDENT WORKER: LaunchAgent ai.positivefeedback.spine.worker (run worker: settings launch.worker), its StandardOutPath",
+   "every": "each turn of the resident worker",
+   "max_age": 24,
+   "kind": "appended"
+  },
+  {
+   "name": "row_logs",
+   "path": "{logs}/round/row*.log",
+   "writer": "HIS ROUND: agent/agent001_top_summary.py run_row (each row's program output, round/rowNNN.log)",
+   "every": "each round (row 001 every round)",
+   "max_age": 24,
+   "kind": "replaced whole"
+  },
+  {
+   "name": "sync_steps",
+   "path": "{logs}/sync_steps.jsonl",
+   "writer": "THE SYNC, ONE STEP RUN ALONE: agent/agent033_nightly_publish_localhost_pf.py run_step (one line a step run alone by hand, <side> <step> [accounts], and the result reads it takes right after; row 039 reads the chunks that clear a stopped side)",
+   "every": "each step run alone by hand (the 3 minute rule, the owner 2026-10-23); none on a night that needs no chunk",
+   "max_age": null,
+   "kind": "appended"
+  },
+  {
+   "name": "daily_log",
+   "path": "{logs}/daily/daily.log",
+   "writer": "HIS DAILY SCHEDULE: agent/shared_schedule.py tick",
+   "every": "each tick that starts or ends a job",
+   "max_age": 30,
+   "kind": "appended"
+  },
+  {
+   "name": "job_logs",
+   "path": "{logs}/daily/*/*.log",
+   "writer": "HIS DAILY SCHEDULE: agent/shared_schedule.py run (each job's lines, daily/<day>/<JOB>.log)",
+   "every": "each job of the day",
+   "max_age": 30,
+   "kind": "replaced whole"
+  },
+  {
+   "name": "job_records",
+   "path": "{logs}/daily/*/*.json*",
+   "writer": "HIS DAILY SCHEDULE: agent/shared_schedule.py _keep and put_aside (each job's record of the day, daily/<day>/<JOB>.json, and its put aside copies <JOB>.json.<at>.<copy>)",
+   "every": "each job of the day, at its start and its end",
+   "max_age": 30,
+   "kind": "replaced whole"
+  },
+  {
+   "name": "runner_logs",
+   "path": "{logs}/runners/*/*.log",
+   "writer": "HIS RUNNERS: agent/agent011_checks_security.py (runners/<day>/<runner>.log)",
+   "every": "each runner of the day that starts (the security scan only on the owner's switch)",
+   "max_age": null,
+   "kind": "replaced whole"
+  },
+  {
+   "name": "told",
+   "path": "{logs}/told/*.json",
+   "writer": "HIS PAGE: web/page.py _keep_told (the model's telling and the one minute of each day's standup, told/<day>_<stamp>_<tag>[_minute].json)",
+   "every": "once a day, when the day's standup is first written",
+   "max_age": null,
+   "kind": "replaced whole"
+  },
+  {
+   "name": "request_states",
+   "path": "{logs}/requests/states.jsonl",
+   "writer": "HIS STORE: agent/shared_store.py request_state (every state change of a request: when, state, why, by whom; appended, never rewritten)",
+   "every": "each state change",
+   "max_age": null,
+   "kind": "appended"
+  },
+  {
+   "name": "takein_locks",
+   "path": "{logs}/daily/takein*.lock",
+   "writer": "THE TAKE IN: agent/agent028_nightly_take_in.py (LOCK_FILE and START_FILE: one take in, one starter at a time)",
+   "every": "while a take in runs or starts",
+   "max_age": null,
+   "kind": "replaced whole",
+   "transient": true
+  },
+  {
+   "name": "lie_detector_locks",
+   "path": "{logs}/rerun_lie_detector.*.lock",
+   "writer": "THE LIE DETECTOR NOW: agent/rerun_lie_detector.py (its detector and rows locks)",
+   "every": "while the lie detector or its rows run",
+   "max_age": null,
+   "kind": "replaced whole",
+   "transient": true
+  },
+  {
+   "name": "takein_logs",
+   "path": "{logs}/takein_*.log",
+   "writer": "THE TAKE IN ON CHANGE: agent/agent028_nightly_take_in.py (takein_<HHMM>.log, one a take in it starts)",
+   "every": "each take in started on a change",
+   "max_age": null,
+   "kind": "replaced whole",
+   "transient": true
+  },
+  {
+   "name": "job_log_copies",
+   "path": "{logs}/daily/*/*.log.*.before",
+   "writer": "HIS DAILY SCHEDULE: agent/shared_schedule.py put_aside (a job's log put aside before its next run, <JOB>.log.<at>.before)",
+   "every": "each job run again in a day",
+   "max_age": null,
+   "kind": "replaced whole",
+   "transient": true
+  },
+  {
+   "name": "cebf_watch_log",
+   "path": "{logs}/cebf_watch.log",
+   "writer": "THE LIE DETECTOR NOW: LaunchAgent ai.positivefeedback.spine.cebf.watch, its StandardOutPath",
+   "every": "each change of its inputs",
+   "max_age": null,
+   "kind": "appended",
+   "transient": true
+  },
+  {
+   "name": "row17_live_log",
+   "path": "{logs}/row17_live.log",
+   "writer": "ROW 017 LIVE: LaunchAgent ai.positivefeedback.spine.scrum.row17, its StandardOutPath",
+   "every": "while row 017 runs live",
+   "max_age": null,
+   "kind": "appended",
+   "transient": true
+  },
+  {
+   "name": "watch_log",
+   "path": "{logs}/watch.log",
+   "writer": "THE ROUND ON CHANGE: LaunchAgent ai.positivefeedback.spine.scrum.watch (~/scratch/scrum_watch/kick.sh), its StandardOutPath",
+   "every": "each change of a watched folder",
+   "max_age": null,
+   "kind": "appended",
+   "transient": true
+  },
+  {
+   "name": "scrub_log",
+   "path": "{logs}/round/scrub.log",
+   "writer": "HIS ROUND: the report scrub's own lines (round/scrub.log)",
+   "every": "each round",
+   "max_age": null,
+   "kind": "appended",
+   "transient": true
+  }
+ ]
+}

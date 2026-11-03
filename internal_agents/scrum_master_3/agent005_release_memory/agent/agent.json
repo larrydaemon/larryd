@@ -1,0 +1,55 @@
+{
+  "name": "Knowledge night",
+  "entry": "agent.py",
+  "about": "Scrum Master 3's RELEASE agent Knowledge night: The knowledge store night step and every skills index. Moved whole from the office into LARRYD RUNTIME INTERNAL.",
+  "does": [
+    "canvas",
+    "run"
+  ],
+  "calls": [
+    "canvas"
+  ],
+  "reads": [
+    "the office's own database (scrum_master_3.db, in LARRYD RUNTIME INTERNAL data)",
+    "the office's jobs and logs in LARRYD under SYSTEM, through the platform's one pipeline (wid core_engine)",
+    "the places its program reads on this computer, where they are (the workspace, the knowledge store, reports, the Judge's pin)"
+  ],
+  "records": {
+    "agnt": [
+      "read"
+    ],
+    "jobs": [
+      "read"
+    ],
+    "logs": [
+      "read"
+    ]
+  },
+  "run": {
+    "do": "run",
+    "hands": []
+  },
+  "gives": [
+    "view",
+    "delivery"
+  ],
+  "skills": [],
+  "knowledge": [],
+  "card": {
+    "class": "MARK I AGENT (NORMAL)",
+    "pitch": "The knowledge store night step and every skills index",
+    "price": "0",
+    "type": "DEVELOPER",
+    "residency": "INTERNAL",
+    "authorization": "PRIVATE",
+    "screen": "larry/home",
+    "product": "LARRYD",
+    "module": "Larry",
+    "developer": "LARRYD",
+    "sends_to": "",
+    "data_sent": ""
+  },
+  "internal": {
+    "seconds": 10800
+  }
+}

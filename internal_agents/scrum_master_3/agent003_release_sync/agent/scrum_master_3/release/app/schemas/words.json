@@ -1,0 +1,24 @@
+{
+ "about": "EVERYTHING HIS PAGE SAYS that is not a record (the rebuild, 2026-10-21): the page's own name, caption, title and what it measures, what each part of him is called and is, his card's price word. Read by agent.shared_where.page() together with settings.json's 'page' and routes.json; nothing here is a setting.",
+ "page": {
+  "page": "scrum",
+  "name": "SCRUM MASTER SUPER AGENT HARNESS",
+  "caption": "The daily cycle",
+  "title": "SCRUM MASTER SUPER AGENT HARNESS",
+  "measures": "Every step of the day's cycle, as the SCRUM MASTER's own record of that day holds it: checked, reported, fixed and run again where it broke, reported closed. A step not seen is counted as not seen, never as green.",
+  "card_about": "HIS CARD (the owner 2026-10-13: \"on the very top on the left of the description ... add a card just like the agent cards in the agent marketplace this will give it a personality\"): settings is his own settings file, whose card holds his card's values and his picture; his card's maker (that card's maker key: the agents' marketplace card maker), asked for that one card exactly as the marketplace asks it (web/page.card); an office names no product of ours (LRYLLM STANDS ALONE). No toggle on it: he is internal and always on (the owner 2026-10-21: \"we dont need a hire its internal and always on\"), the card a picture.",
+  "under_parts": {
+   "scrum_master": "His office: how it is set up and its lock.",
+   "scrum_master/app": "His app: the agent (agent), his page and its host (web), his picture (static) and his settings (schemas).",
+   "scrum_master/instance": "His own data: his database. The only part the lock leaves open."
+  },
+  "under_parts_about": "WHAT EACH PART OF HIM IS, one plain sentence a row of the table under the three boxes (the owner 2026-10-19: a chart \"very easy to read and see and understand\"): key = the piece, or piece/folder, as the locked folder has it; a part with no sentence shows its files alone",
+  "under_names": {
+   "scrum_master": "office",
+   "scrum_master/app": "app"
+  },
+  "under_names_about": "WHAT EACH PART IS CALLED in the table under the warning (the owner 2026-10-19: two rows both said SCRUM_MASTER, \"call it ... settings\"): key as under_parts; a part with no name here shows its folder's",
+  "card_price": "Internal",
+  "card_price_about": "THE WORD IN HIS CARD'S PRICE PLACE (the owner 2026-10-19: \"Free to internal\"): LARRYD's maker says Free for a card with no rate; he is no marketplace agent, so his page says this instead"
+ }
+}

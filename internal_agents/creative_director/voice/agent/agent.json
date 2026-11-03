@@ -1,0 +1,43 @@
+{
+  "name": "Voice",
+  "entry": "agent.py",
+  "about": "The voice that reads every standup (christensen, the script lab's voice service): its canvas, and on a RUN the voice's state read now from the voice service (loaded, lines made, lines waiting).",
+  "does": [
+    "canvas",
+    "read"
+  ],
+  "calls": [
+    "canvas"
+  ],
+  "reads": [
+    "the voice service's state at http://127.0.0.1:8824/state (loaded, kept, waiting) for the voice christensen",
+    "the Creative Director office's agent.json, which names the voice (its own copy, schemas/agent.json)"
+  ],
+  "run": {
+    "do": "read",
+    "hands": []
+  },
+  "gives": [
+    "view",
+    "delivery"
+  ],
+  "skills": [],
+  "knowledge": [],
+  "card": {
+    "class": "MARK I AGENT (NORMAL)",
+    "pitch": "The voice that reads every standup: loaded, and how many lines are made.",
+    "price": "0",
+    "type": "DEVELOPER",
+    "residency": "INTERNAL",
+    "authorization": "PRIVATE",
+    "screen": "prdn/home",
+    "product": "PACE SHIFT",
+    "module": "Production",
+    "developer": "LARRYD",
+    "sends_to": "",
+    "data_sent": ""
+  },
+  "internal": {
+    "seconds": 30
+  }
+}

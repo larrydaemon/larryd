@@ -1,0 +1,46 @@
+{
+ "about": "EVERY REPORT THE LIVE BLOCK WRITES, AND WHERE (the owner 2026-10-27 13:22: \"the rules for this are outside sanity and replaced so they can be deleted and self heal if they are gone\"; the original's schemas/reports.json, its shape): one entry a report: name, path ({root} is root below, {office} this office's own name), writer, every, max_age (hours: older than this the LIVE block is RED, the writer stopped; null: written on a draw, its age says nothing), kind (replaced whole: written over at each write; appended: a log its writer adds lines to). All live outside ~/virtual_sanity; any may be deleted at any time: its writer writes it again (the next look of the LIVE writes every one it holds), and the panel says a missing one NOT WRITTEN YET, never an error. Written only by a served page holding an agent. The platform's manifest.json stays the platform's, read where it is, never copied here.",
+ "root": "~/scratch/reports/{office}/live",
+ "reports": [
+  {
+   "name": "system",
+   "path": "{root}/system.json",
+   "writer": "frame/frame_live.py, the machine sampler (CPU, LOAD, MEMORY, DISK, NETWORK)",
+   "every": "every 5 seconds on a served page",
+   "max_age": 0.05,
+   "kind": "replaced whole"
+  },
+  {
+   "name": "offices",
+   "path": "{root}/offices.json",
+   "writer": "frame/frame_live.py, the offices look (each office, its port, its api)",
+   "every": "every 15 seconds on a served page",
+   "max_age": 0.05,
+   "kind": "replaced whole"
+  },
+  {
+   "name": "panel",
+   "path": "{root}/panel.json",
+   "writer": "frame/frame_live.py panel, the panel's data at a draw (what runs now, the five tools, today's work)",
+   "every": "each draw of the page",
+   "max_age": null,
+   "kind": "replaced whole"
+  },
+  {
+   "name": "look",
+   "path": "{root}/look.json",
+   "writer": "frame/frame_live.py look, the LIVE's own look at its stream (green or red, its words)",
+   "every": "every 300 seconds, its first 20 seconds after the start",
+   "max_age": 0.2,
+   "kind": "replaced whole"
+  },
+  {
+   "name": "look_log",
+   "path": "{root}/look.log",
+   "writer": "frame/frame_live.py look, one line a look",
+   "every": "every 300 seconds",
+   "max_age": 0.2,
+   "kind": "appended"
+  }
+ ]
+}

@@ -1,0 +1,45 @@
+{
+  "name": "Skills",
+  "entry": "agent.py",
+  "about": "The Operations Manager's SKILLS block: every agent's skills as its job holds them; its RUN counts the skills green and red.",
+  "does": [
+    "canvas",
+    "run"
+  ],
+  "calls": [
+    "canvas"
+  ],
+  "reads": [
+    "the Operations Manager office's own store (~/larryd/server/runtime/internal/instance/data/operations_manager)",
+    "the office's cards, jobs and logs in LARRYD under SYSTEM, through the platform's pipeline (wid core_engine)",
+    "the platform files the office reads (settings reads: themes, templates, engine.json, manifest.json, global_config)"
+  ],
+  "records": {},
+  "run": {
+    "do": "run",
+    "hands": []
+  },
+  "gives": [
+    "view",
+    "delivery"
+  ],
+  "skills": [],
+  "knowledge": [],
+  "card": {
+    "class": "MARK I AGENT (NORMAL)",
+    "pitch": "Every agent's skills, read today by the Scrum Master.",
+    "price": "0",
+    "type": "DEVELOPER",
+    "residency": "INTERNAL",
+    "authorization": "PRIVATE",
+    "screen": "larry/home",
+    "product": "LARRYD",
+    "module": "LARRY LLM",
+    "developer": "LARRYD",
+    "sends_to": "",
+    "data_sent": ""
+  },
+  "internal": {
+    "seconds": 300
+  }
+}
