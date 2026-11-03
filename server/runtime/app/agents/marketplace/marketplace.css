@@ -1,6 +1,6 @@
 /* THE MARKETPLACE'S OWN SHEET: its controller at the top and its grid of cards below, nothing of a card (the card is the platform's one
    embedded widget, its own sheet with it: themes/embedded/agent_cards). */
-.mk-ctl { margin: 0 0 18px }
+.mk-ctl { box-sizing: border-box; width: 920px; max-width: 100%; margin: 0 auto 16px }   /* THE CONTROLLER THE GRID'S EXACT WIDTH (the owner 2026-11-03): four cards (218 px) and three gaps (16 px) = 920 px, centred over it */
 /* THE LEFT COLUMN THE WIDEST (the owner 2026-11-03: "the left column should be the widest it has all the info"): it takes the room; the search and sort its own 180px */
 .mk-ctl .wl-col--1 { flex: 1 1 0; width: auto; min-width: 0 }
 .mk-ctl .wl-col--3 { flex: none; width: 180px }
