@@ -78,7 +78,11 @@ def call(given, agent_file):
         why = ('its card is not in the office\'s LARRYD records' if not key else
                'the office holds no shell for it with its job (the office\'s page start places its shells)')
         v = {'html': f'<div class="annotation">{_e(getattr(module, "NAME", None) or agent.get("name"))}: nothing drawn, {why}.</div>', 'css': ''}
-    return {'view': larryd_view.carried({'html': str(v.get('html') or ''), 'css': str(v.get('css') or '')}, str(page.get('path') or ''))}
+    out = larryd_view.carried({'html': str(v.get('html') or ''), 'css': str(v.get('css') or '')}, str(page.get('path') or ''))
+    if key:   # THE CARD IN THE TOP BLOCK (the owner 2026-11-03: "top block needs the header and card and text"): the platform's one agent card, injected by the host where the office drew its card box
+        import re
+        out['html'] = re.sub(r'<div class="(?:lv-div )?replica-cardbox[^"]*"[^>]*>\s*</div>', f'<div data-inject="agent_card" data-agent="{key}" data-size="full"></div>', out['html'], count=1)
+    return {'view': out}
 
 
 def run(given, agent_file):

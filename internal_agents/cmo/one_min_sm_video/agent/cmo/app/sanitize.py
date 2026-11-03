@@ -343,8 +343,8 @@ def sheet(css, drawn=None):
 
 BASE = ('.x-table{display:table;width:100%;border-collapse:collapse}.x-thead{display:table-header-group}.x-tbody{display:table-row-group}'
         '.x-tr{display:table-row}.x-td,.x-th{display:table-cell;padding:4px 8px;vertical-align:top}.x-th{font-weight:700}'
-        '.x-pre{white-space:pre-wrap;font-family:ui-monospace,Menlo,monospace}.x-code{font-family:ui-monospace,Menlo,monospace}.x-s{text-decoration:line-through}'
-        '.x-summary{font-weight:700;margin:6px 0}.x-media{display:inline-block;font-family:ui-monospace,Menlo,monospace;font-size:.8rem;opacity:.8;word-break:break-all}'
+        '.x-pre{white-space:pre-wrap;font-family:var(--font-notes)}.x-code{font-family:var(--font-notes)}.x-s{text-decoration:line-through}'
+        '.x-summary{font-weight:700;margin:6px 0}.x-media{display:inline-block;font-family:var(--font-notes);font-size:.8rem;opacity:.8;word-break:break-all}'
         '.x-box{display:inline-block;margin-right:6px}.x-box-value{opacity:.7}.x-said{margin:0 0 10px;font-weight:700}'
         'form input[type=text]{min-width:12ch;max-width:100%}')
 

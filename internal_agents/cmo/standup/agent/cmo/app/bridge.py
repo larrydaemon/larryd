@@ -13,6 +13,7 @@ job's RUN end, as wid's /jobs/internal/result did for the office)."""
 import contextlib
 import io
 import json
+import re
 import os
 import sys
 import time
@@ -138,6 +139,9 @@ def call(office, app, module, agent, given, sanitize):
                           for i, (a, _b) in enumerate(pages)) + '</div>')
     v = sanitize.view(html, css, path, key=module.KEY, said=said)
     v['html'] = nav + v['html']
+    card = frame_key(office, module, agent)   # THE CARD IN THE TOP BLOCK (the owner 2026-11-03: "top block needs the header and card and text"): the platform's one agent card, injected by the host where the office drew its card box
+    if card:
+        v['html'] = re.sub(r'<div class="replica-cardbox"[^>]*>\s*</div>', f'<div data-inject="agent_card" data-agent="{card}" data-size="full"></div>', v['html'], count=1)
     return {'view': v}
 
 
