@@ -148,7 +148,8 @@ class Harness:
         return kept
 
     def _verifier(self, approved, refetch=False):
-        again = [refetch]   # FROST asked again at most ONCE for one call, however many of its cards miss (every card is verified)
+        again = [refetch]   # FROST asked again at most ONCE for one call, and only for the agent the call is for (every card is verified: another card's miss is
+        own = getattr(self._handed, 'agent', '')   # only that card unavailable, never a reason to ask FROST again)
 
         def verify(agent_key):
             nonlocal approved
@@ -157,7 +158,7 @@ class Harness:
                 return ok, why
             row = locker.held(self.db, agent_key)   # by its card's key too: FROST approved the runtime's own key
             exact = (row['agent_key'], row['code_sha256'], row['manifest_sha256'])
-            if exact not in approved and again[0]:   # a kept list without it: FROST asked again now, once, before any refusal (a new approval is seen at once)
+            if exact not in approved and again[0] and agent_key == own:   # a kept list without it: FROST asked again now, once, before any refusal (a new approval is seen at once)
                 again[0] = False
                 approved = self._approved_now(fresh=True)
             if exact not in approved:   # THE SINK, at every call, hire and run: FROST's approval of exactly these hashes, fail closed
@@ -259,11 +260,12 @@ class Harness:
         """An agent's answer for the member's screen: only an agent that answers calls, passing the gate itself. handed: the
         platform's own answers to this call's asks (handing), so the runtime need not ask them back."""
         self.handing(handed)
-        self._handed.call = True   # a page's CALL: FROST's approved list may be the kept one (facts)
+        self._handed.call, self._handed.agent = True, agent_key   # a page's CALL: FROST's approved list may be the kept one (facts); asked again only for this agent
         try:
             return self._answer(account, scope, member, agent_key, beside, act)
         finally:
-            self._handed.answers, self._handed.call = {}, False
+            self._handed.answers, self._handed.call, self._handed.agent = {}, False, ''
+
 
     def _answer(self, account, scope, member, agent_key, beside=None, act=False):
         held = locker.held(self.db, agent_key)

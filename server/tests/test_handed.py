@@ -111,13 +111,16 @@ class TheHandedCall(unittest.TestCase):
         p = Platform([])                                    # FROST approves nothing: every check misses
         h = self.harness(p)
         h._approved = (time.monotonic(), {})                # a kept list, fresh, without the agent
-        h._handed.call = True
+        h._handed.call, h._handed.agent = True, 'MAGT_0000000000FF_0009'   # a call for ANOTHER agent: this card's miss asks nothing
         verify = h.facts(ACCOUNT, SCOPE, MEMBER)[3]
-        h._handed.call = False
-        self.assertEqual(p.asked('fs'), [])                 # the kept list: FROST not asked for the call itself
+        self.assertEqual(verify(KEY), (False, 'not approved by FROST'))
+        self.assertEqual(p.asked('fs'), [])                 # the kept list, and another card's miss: FROST not asked
+        h._handed.agent = KEY                               # the call for this very agent
+        verify = h.facts(ACCOUNT, SCOPE, MEMBER)[3]
+        h._handed.call, h._handed.agent = False, ''
         for _ in range(5):
             self.assertEqual(verify(KEY), (False, 'not approved by FROST'))
-        self.assertEqual(p.asked('fs'), ['/agents/approved'])   # five misses, FROST asked again once
+        self.assertEqual(p.asked('fs'), ['/agents/approved'])   # five misses of the called agent, FROST asked again once
 
     def test_a_hire_and_a_run_ask_frost_every_time(self):
         p = Platform(self.approved)
