@@ -50,9 +50,7 @@
 /* THE LOCK AND PIN AND RESEAL, clarity black and centred (the owner 2026-10-26: "the buttons need to be the same clarity black and centered") */
 .replica-press { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px; margin: 18px 0 0; padding: 18px 0 0; border-top: 2px solid var(--clarity-ink); }
 .replica-press form { margin: 0; }
-/* THE OFFICIAL CLARITY BIG BUTTON, one style for every big button in a clarity block (the owner 2026-10-28: "there needs to be 1 single big button for clarity ... all use that when using the clarity style"): the lock, PIN and reseal, READ THE STANDUP, Read about, CLEAR ALL BACKLOG */
-.clarity .replica-press .btn, .clarity .btn.btn--big { margin: 0; padding: 16px 34px; width: auto; border: 2px solid var(--clarity-ink); border-radius: 0; background: var(--clarity-ink); color: var(--clarity-ground); font-family: var(--clarity-face-heading); font-size: 1.1rem; font-weight: 900; letter-spacing: .18em; text-transform: uppercase; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
-.clarity .replica-press .btn:hover, .clarity .btn.btn--big:hover { background: var(--clarity-ground); color: var(--clarity-ink); }
+/* the lock, PIN and reseal, READ THE STANDUP, Read about: the embedded small button now (the owner 2026-11-04: "make sure all the agents inject the embedded buttons too"); its look is embedded.css's */
 /* each part one short word and its state, two columns (the owner 2026-10-26: "the text is too long and not readable make it simple and easy to read") */
 .replica-press-what { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: max-content max-content; gap: 4px 24px; align-items: center; color: var(--clarity-ink); }
 .replica-press-what li { display: contents; }

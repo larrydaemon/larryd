@@ -20,6 +20,22 @@ VOID = {'br', 'hr', 'img', 'input', 'source', 'track', 'wbr', 'col', 'meta', 'li
 KEEP = {'class', 'title', 'alt', 'role'}
 NAME = re.compile(r'[a-z_]{1,32}')
 DIGITS = 'abcdefghij'
+# THE EMBEDDED WIDGETS (the owner 2026-11-04: "make sure all the agents inject the embedded buttons too"): every press, toggle, tag, pill and
+# export in a view wears the platform's one set (themes/embedded, embedded.css), written in classes alone since the host takes no data- or aria-
+# attribute. This rewrite keeps every class (no class list to pass), so the pfb classes go through as written; an older class still drawn (the office's own .btn, the shell's .toggle) becomes its widget here.
+LEGACY = {'btn': 'pfb', 'btn--small': 'pfb--small', 'btn--big': 'pfb--small', 'toggle': 'pfb pfb--toggle', 'toggle__knob': 'pfb__knob'}
+
+
+def widget(cls, attrs):
+    """a class list as the embedded widgets read it: an older button or toggle class turned into its pfb class, a toggle pressed (aria-pressed true,
+    which the host drops) marked pfb--on"""
+    out = []
+    for c in ' '.join(LEGACY.get(c, c) for c in cls.split()).split():
+        if c not in out:
+            out.append(c)
+    if 'pfb--toggle' in out and attrs.get('aria-pressed') == 'true' and 'pfb--on' not in out:
+        out.append('pfb--on')
+    return ' '.join(out)
 
 
 def esc(text):
@@ -68,7 +84,7 @@ class _Rewrite(html.parser.HTMLParser):
                 self.select['opts'].append([a.get('value', ''), 'selected' in a, ''])
                 self.select['in'] = True
             return
-        cls = a.get('class', '')
+        cls = widget(a.get('class', ''), a)
         if tag == 'form':
             method = a.get('method', 'get').lower()
             fid = a.get('id', '')
@@ -91,7 +107,7 @@ class _Rewrite(html.parser.HTMLParser):
                 elif self.forms:
                     if self.form is not None:
                         self.form['submit'] = True
-                    self.out.append(f'<button type="submit" class="{esc(cls or "btn")}">{esc(a.get("value", "Go"))}</button>')
+                    self.out.append(f'<button type="submit" class="{esc(cls or "pfb pfb--small")}">{esc(a.get("value", "Go"))}</button>')
                 return
             if not self.forms:   # an input outside any form: its value as words
                 if a.get('value'):
@@ -135,7 +151,7 @@ class _Rewrite(html.parser.HTMLParser):
             kind = 'submit' if (self.forms and a.get('type', 'submit') == 'submit') else 'button'
             if kind == 'submit' and self.form is not None:
                 self.form['submit'] = True
-            self.out.append(f'<button type="{kind}"' + (f' class="{esc(cls)}"' if cls else '') + '>')
+            self.out.append(f'<button type="{kind}"' + (f' class="{esc(cls)}"' if cls else '') + (f' title="{esc(a["title"])}"' if a.get('title') else '') + '>')   # its title kept: a toggle's On or Off (the host takes title)
             self.stack.append('button')
             return
         if tag in AS:

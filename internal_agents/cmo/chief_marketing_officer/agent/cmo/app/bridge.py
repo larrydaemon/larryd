@@ -134,8 +134,8 @@ def call(office, app, module, agent, given, sanitize):
         def title(p):
             return str(p.get('title') or p.get('label') or p.get('kind') or '')[:40]
         nav = ('<div class="clarity x-pages"><div class="annotation">THIS CANVAS IN ' + str(len(pages)) + ' PARTS (the whole is over the 200 KB a view may be)</div>'
-               + ' '.join((f'<b class="btn btn--small">{i + 1} · {sanitize.esc(title(full[a]))}</b>' if i == at else
-                           f'<a class="btn btn--small" href="{sanitize.esc(path)}?{keep + "&" if keep else ""}cmo_part={i + 1}">{i + 1} · {sanitize.esc(title(full[a]))}</a>')
+               + ' '.join((f'<b class="pfb pfb--small">{i + 1} · {sanitize.esc(title(full[a]))}</b>' if i == at else
+                           f'<a class="pfb pfb--small" href="{sanitize.esc(path)}?{keep + "&" if keep else ""}cmo_part={i + 1}">{i + 1} · {sanitize.esc(title(full[a]))}</a>')
                           for i, (a, _b) in enumerate(pages)) + '</div>')
     v = sanitize.view(html, css, path, key=module.KEY, said=said)
     v['html'] = nav + v['html']

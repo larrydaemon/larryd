@@ -102,14 +102,14 @@ CANVAS_CSS = ('.replica-canvas { display: block } '
               '.replica-canvas-foot .scaf-row-alt td { background-color: var(--active-color-09) } .replica-canvas-foot .replica-rows .caption, .replica-canvas-foot .replica-rows .annotation { color: inherit } '
               '.replica-canvas-foot .replica-rows .scrum-day-head .caption { color: var(--status-ok) } '   # EVERY DAY HEAD IN THE LOOK'S GREEN, the ticks' green (the owner 2026-10-27: "make the titles of these green")
               '.replica-canvas-foot .replica-rows tr.replica-run-said td { background-color: var(--clarity-ground); color: var(--clarity-ink); font-family: var(--clarity-face); font-size: 1.25rem; font-weight: 700; line-height: 1.5 } '   # ONLY THE SUMMARY ROW ON CLARITY'S WHITE, big black type, the template for all (the owner 2026-10-27: "make this row only ... white (clarity) and big black font")   # the alternate day the same black; the lights keep their own colours
-              '.replica-canvas-foot .btn { background-color: var(--active-color-09); color: var(--active-color-01); border-color: var(--active-color-09) } '   # A BUTTON ON THE PINK BLOCK READS AS A BUTTON (the owner 2026-10-27: "if its a button its pink on pink so it doesnt look like a button"): black, pink text, the same pair
+              # the foot's own button colours are gone: every button is the platform's embedded widget, its look embedded.css's (the owner 2026-11-04: "make sure all the agents inject the embedded buttons too")
               '.replica-canvas-head { margin: 0 0 24px } .replica-canvas-foot { overflow-x: auto } .replica-canvas-title { display: flex; align-items: center; gap: 12px; margin: 0 0 6px } '   # the rows table wider than a narrow column scrolls inside the foot, never past it
               '.replica-canvas-name { font-family: var(--clarity-face-heading); font-size: 2rem; font-weight: 900; line-height: 1.15; letter-spacing: .02em; text-transform: uppercase; margin: 0 } '
               '.replica-canvas .scrum-light { display: inline-flex; flex: none } '   # ONE BULB, ONE SIZE (the owner 2026-10-27: "all bulbs have 1 single standard size no huge bulbs"): the platform's .hdr-icon is the size; this only places it
               '.replica-canvas .scrum-light .hdr-status--success { fill: var(--status-ok) } .replica-canvas .scrum-light .hdr-status--error { fill: var(--status-error) } .replica-canvas .scrum-light .hdr-status--warn { fill: var(--status-warn) } '
               '.replica-canvas-what { margin: 0 0 2px } .replica-canvas-file { margin: 0; font-family: ui-monospace, Menlo, monospace; letter-spacing: .02em } '
               '.replica-canvas-content { margin: 0 0 24px } '   # the three sections apart: the head block, a gap, the middle on the page, a gap, the foot block
-              '.replica-canvas-foot details { margin-top: 12px } .replica-canvas-foot summary.btn { display: inline-block; list-style: none; cursor: pointer } .replica-canvas-foot summary::-webkit-details-marker { display: none } '
+              '.replica-canvas-foot details { margin-top: 12px } .replica-canvas-foot summary.pfb { list-style: none } .replica-canvas-foot summary::-webkit-details-marker { display: none } '
               '.replica-canvas-panel { margin: 8px 0 0; padding: 10px 12px; border: 1px solid currentColor; border-radius: 4px; font: 15px/1.6 ui-monospace, Menlo, monospace; user-select: text; background-color: var(--active-color-09); color: var(--active-color-01) } '   # the panel under SKILLS and under RULES, the same
               '.replica-loop-logo { display: block; width: 240px; max-width: 60%; height: auto; margin: 4px auto 18px } .replica-loop .body { font-size: 1.25rem; line-height: 1.6 } '
               '.scrum-rules-panel.clarity { margin: 10px 0 0; padding: 18px 22px 16px; border: 3px solid var(--clarity-ink); border-radius: 0; text-transform: none; background-color: var(--clarity-ground); color: var(--clarity-ink) } '   # THE RULES IN CLARITY, THE ORIGINAL'S PANEL (the owner 2026-10-27: "the rules inside this black block it needs to be white with clarity big font like the original"; "reformat it like the original"): its scrum_master.css lines 184 to 196, scoped to the panel, on clarity's white ground
@@ -195,7 +195,7 @@ def live_view(L):
              '<thead><tr><th>Tool</th><th>Status now</th></tr></thead><tbody>' + ''.join(rows) + '</tbody></table></div>')
     return Markup(f'<div class="replica-live" id="replica-live" aria-label="LIVE" data-stream="{escape(L["stream"])}">'
                   f'<div class="replica-active-head"><div class="title scaf-law-title" id="scrum-active-title">{escape(str(L["name"]).upper())} - ACTIVE MONITORING</div>' + today
-                  + '<button type="button" class="btn btn--small" data-live-hide onclick="replicaLiveHide(this)">▾ HIDE</button></div>'   # A HIDE (the owner 2026-10-29: "the live data panel for this needs a hide so its not shifting around the page"): its body away, kept so on this browser
+                  + '<button type="button" class="pfb pfb--small" data-live-hide onclick="replicaLiveHide(this)">▾ HIDE</button></div>'   # A HIDE (the owner 2026-10-29: "the live data panel for this needs a hide so its not shifting around the page"): its body away, kept so on this browser
                   + '<div data-live-body>' + now   # TODAY'S WORK AFTER THE TITLE, ON ITS LINE (the owner 2026-10-28: "i said move this after not under")
                   + table + '</div></div>')   # no second title over the tools (the owner 2026-10-28: "delete ACTIVE MONITORING - FAST SEARCH AND LIVE STREAMING CURRENT STATUS")
 
@@ -335,7 +335,7 @@ def rows_view(days):
         rows.extend(run_rows(r) for r in d['runs'][:FIRST])
         if len(d['runs']) > FIRST:   # THE REST BEHIND ONE BUTTON (the owner 2026-10-27: "for lists longer than 10 we need a button to view all"): the platform's small button, the same five columns inside
             rest = ''.join(run_rows(r) for r in d['runs'][FIRST:])
-            rows.append(f'<tr class="replica-view-all"><td colspan="5"><details><summary class="btn btn--small">▶ View all {len(d["runs"])}</summary>'
+            rows.append(f'<tr class="replica-view-all"><td colspan="5"><details><summary class="pfb pfb--small">▶ View all {len(d["runs"])}</summary>'
                         f'<table class="scaf-table replica-rows"><tbody class="scrum-step-block">{rest}</tbody></table></details></td></tr>')
     return ('<table class="scaf-table replica-rows"><thead><tr><th>Start</th><th>End</th><th>Min</th><th>Check</th><th>Report</th></tr></thead>'
             f'<tbody class="scrum-step-block">{"".join(rows)}</tbody></table>')
@@ -370,7 +370,7 @@ def content_view(parts_):
         kind = part.get('kind')
         if kind == 'voice':   # THE READ BUTTON, THE PLATFORM'S BIG ONE, INSIDE THE BLOCK (the owner 2026-10-27: "the standup button should be a clarity big black button inside instead of the little pink one on top"): one row at the foot of the block drawn before it, inside its frame; alone only when no block precedes it
             row = (f'<div class="body replica-voice" data-off="" data-making="{escape(part.get("making", ""))}" data-reading="{escape(part.get("reading", ""))}" data-down="{escape(part.get("down", ""))}" data-refused="{escape(part.get("refused", "The browser refused to play the voice"))}">'
-                   f'<button type="button" class="btn btn--big" data-read>▶ {escape(part.get("label", "Read"))}</button> <span class="annotation" data-voice-said></span></div>')
+                   f'<button type="button" class="pfb pfb--clarity" data-read>▶ {escape(part.get("label", "Read"))}</button> <span class="annotation" data-voice-said></span></div>')
             if out and out[-1].endswith('</div>'):
                 out[-1] = out[-1][:-len('</div>')] + row + '</div>'
             else:
@@ -379,7 +379,7 @@ def content_view(parts_):
             row = (f'<form method="post" action="{escape(part.get("route", ""))}" class="replica-press-form"'
                    + (f' data-confirm="{escape(part["confirm"])}" onsubmit="return confirm(this.dataset.confirm)"' if part.get('confirm') else '') + '>'
                    f'<input type="hidden" name="agent" value="{escape(part.get("agent", ""))}"><input type="hidden" name="do" value="{escape(part.get("do", ""))}">'
-                   f'<input type="hidden" name="back" value="{escape(part.get("back", ""))}"><input type="hidden" name="value" value="{escape(part.get("value", ""))}"><button class="btn btn--big" type="submit">{escape(part.get("label", ""))}</button></form>')
+                   f'<input type="hidden" name="back" value="{escape(part.get("back", ""))}"><input type="hidden" name="value" value="{escape(part.get("value", ""))}"><button class="pfb pfb--clarity" type="submit">{escape(part.get("label", ""))}</button></form>')
             if out and out[-1].endswith('</div>'):
                 out[-1] = out[-1][:-len('</div>')] + row + '</div>'
             else:
@@ -400,7 +400,7 @@ def content_view(parts_):
                        f'<input type="hidden" name="agent" value="{escape(part.get("agent", ""))}"><input type="hidden" name="do" value="{escape(part.get("do", ""))}"><input type="hidden" name="back" value="{escape(part.get("back", ""))}">'
                        + (f'<input type="hidden" name="{escape(boxes.get("name", "box"))}_said" value="1">' if boxes.get('rows') else '')
                        + f'<textarea name="{escape(part.get("name", "words"))}" class="pin-box scrum-words" rows="{int(part.get("rows", 8))}" autocomplete="off" aria-label="{escape(part.get("title", ""))}" placeholder="{escape(part.get("placeholder", ""))}" data-enter="adds"></textarea> '
-                       f'<button class="btn btn--small" type="submit">{escape(part.get("label", "Add"))}</button></form>'
+                       f'<button class="pfb pfb--small" type="submit">{escape(part.get("label", "Add"))}</button></form>'
                        '<script>(() => { const f = document.currentScript.previousElementSibling; const t = f && f.querySelector(\'textarea[data-enter="adds"]\'); if (!t) { return; }'
                        ' const grow = () => { t.style.height = \'auto\'; t.style.height = Math.min(t.scrollHeight + 2, 480) + \'px\'; }; t.addEventListener(\'input\', grow); grow();'
                        ' t.addEventListener(\'keydown\', (ev) => { if (ev.key !== \'Enter\' || ev.isComposing || ev.shiftKey) { return; } ev.preventDefault(); if (t.value.trim()) { if (f.requestSubmit) { f.requestSubmit(); } else { f.submit(); } } }); })();</script></div>')
@@ -438,7 +438,7 @@ def content_view(parts_):
                             f'<input type="hidden" name="value" value="{escape(b.get("value", row.get("key", "")))}">'
                             + (f'<textarea name="words" class="pin-box scrum-update-words" rows="2" aria-label="{escape(b.get("label", ""))}" placeholder="{escape(b.get("placeholder", ""))}"></textarea>' if b.get('text') else '')
                             + sliders_html(b)
-                            + f'<button class="btn btn--small" type="submit">{escape(b.get("label", ""))}</button></form>')
+                            + f'<button class="pfb pfb--mini" type="submit">{escape(b.get("label", ""))}</button></form>')
                 presses = row.get('presses') or ()
                 for b in presses:   # A PRESS IN ITS OWN CELL, under the cell's words, where the original draws it (the owner 2026-10-28: "rebuild it so it looks like the original agent"): REMOVE under the request, UPDATE under his words, APPROVE under its status
                     if isinstance(b.get('cell'), int) and 0 <= b['cell'] < len(cells):
@@ -485,8 +485,8 @@ def loop_view(voiced=False):
     words = frame.SETTINGS['root_shape'].get('rule_skill_loop') or ''
     voice = ('<div class="body replica-voice" data-off="" data-making="Christensen is getting ready…" data-reading="Christensen is reading the rule-skill-loop" '
              'data-down="The voice is not running (start the script lab&#39;s voice)" data-refused="The browser refused to play">'
-             '<button type="button" class="btn btn--big" data-read>▶ Read about</button> <span class="annotation" data-voice-said></span></div>')   # READ IT ALOUD (the owner 2026-10-28: "add a new button to the bottom of ABOUT to read the text with the christensen voice"): the page's own voice, its agent's (Christensen)
-    return ('<details class="replica-canvas-loop"><summary class="btn btn--small">▶ About · rule-skill-loop</summary><div class="scrum-rules-panel clarity replica-loop" data-voice-root>'
+             '<button type="button" class="pfb pfb--clarity" data-read>▶ Read about</button> <span class="annotation" data-voice-said></span></div>')   # READ IT ALOUD (the owner 2026-10-28: "add a new button to the bottom of ABOUT to read the text with the christensen voice"): the page's own voice, its agent's (Christensen)
+    return ('<details class="replica-canvas-loop"><summary class="pfb pfb--small">▶ About · rule-skill-loop</summary><div class="scrum-rules-panel clarity replica-loop" data-voice-root>'
             '<img class="replica-loop-logo" src="/positive-feedback-logo.png" alt="Positive Feedback" width="240">'
             f'<div class="body" data-say="{escape(words)}">{escape(words)}</div>{voice if voiced else ""}</div></details>')   # the button only where the agent has a voice (the owner 2026-10-28: "only for the scrum master and not for the cmo")
 
@@ -587,7 +587,7 @@ def day_view(on, total, action, back, sheet, site, slot='DAY', title=None):
     low, word = slot.lower(), slot.capitalize()   # THE SAME BLOCK FOR NIGHT (the owner 2026-10-28: "the same shape"): its own ids, its own slot on the switch
     toggle = (f'<form method="post" action="{escape(action)}" class="ct-form" id="{low}-switch-form"><input type="hidden" name="to" value="{"off" if all_on else "on"}">'
               f'<input type="hidden" name="slot" value="{escape(slot)}"><input type="hidden" name="back" value="{escape(back)}"><span class="body">{word} agents</span> '
-              f'<button class="toggle" type="submit" aria-pressed="{"true" if all_on else "false"}" title="{"On" if all_on else "Off"}"><span class="toggle__knob"></span></button> '
+              f'<button class="pfb pfb--toggle{" pfb--on" if all_on else ""}" type="submit" title="{"On" if all_on else "Off"}"><span class="pfb__knob"></span></button> '
               f'<span class="annotation">{on} of {total} on</span></form>')
     theme_id = site.rstrip('/').rsplit('/', 1)[-1]   # the theme's site (7573b188): its background lives on this laptop's CDN, the page's own /cdn/themes/ door
     ground = ''.join(f'[data-theme="{m}"] #replica-{low} {{ background-image: url("/cdn/themes/{theme_id}/images/{m}/background.webp"); background-size: cover; background-position: center; }} ' for m in ('dark', 'light'))   # ITS BACKGROUND PICTURE (the owner 2026-10-28: "the agency mgmt block needs the background image")
@@ -606,7 +606,7 @@ def security_toggle(on, action, back, running=False):
             else 'Off: it never starts (it is slow and spends many tokens). On runs it once, now.')
     return Markup(f'<form method="post" action="{escape(action)}" class="ct-form" id="security-switch-form"><input type="hidden" name="to" value="{"off" if on else "on"}">'
                   f'<input type="hidden" name="back" value="{escape(back)}"><span class="body">Security scan</span> '
-                  f'<button class="toggle" type="submit" aria-pressed="{"true" if on else "false"}" title="{"On" if on else "Off"}"><span class="toggle__knob"></span></button> '
+                  f'<button class="pfb pfb--toggle{" pfb--on" if on else ""}" type="submit" title="{"On" if on else "Off"}"><span class="pfb__knob"></span></button> '
                   f'<span class="annotation">{said}</span></form>')
 
 
@@ -632,8 +632,8 @@ def canvas_html(module, agent, job, content_html='', rows=None, light='', contro
            f'<div class="annotation replica-canvas-file">{escape(os.path.basename(module.__file__))}</div>' + (str(live_line(live)) if live is not None else '') + '</div>')
     file = os.path.basename(module.__file__)
     bottom = ('<div class="replica-canvas-foot">' + (rows_view(rows) if rows is not None else '')   # THE BOTTOM CONTROL (the owner 2026-10-27: "the bottom of each has skills button rules button under it"): ROWS in the open, then two real buttons stacked
-              + f'<details class="replica-canvas-rules"><summary class="btn btn--small">▶ Rules · {escape(rules.rules_word(job or {}))}</summary><div class="scrum-rules-panel clarity">{rules.rule_block(file, job or {}, fold=False)}</div></details>'
-              + f'<details class="replica-canvas-skills"><summary class="btn btn--small">▶ Skills · {escape(said_index)}</summary>{panel}</details>'
+              + f'<details class="replica-canvas-rules"><summary class="pfb pfb--small">▶ Rules · {escape(rules.rules_word(job or {}))}</summary><div class="scrum-rules-panel clarity">{rules.rule_block(file, job or {}, fold=False)}</div></details>'
+              + f'<details class="replica-canvas-skills"><summary class="pfb pfb--small">▶ Skills · {escape(said_index)}</summary>{panel}</details>'
               + loop_view(bool((agent or {}).get('voice'))) + '</div>')   # RULES, SKILLS, then the RULE-SKILL-LOOP (the owner 2026-10-27: "Rules (button) / Skills (button) / rule-skill-loop (new button)")
     return {'html': f'<div class="replica-canvas">{middle}</div>'}   # THE ONE AI ATOM SHELL'S HEADER AND FOOTER FOR EVERY AGENT (the owner 2026-11-01: "all ai atom shells need to be updated together and synced ... exactly the same"): the agent hands its canvas alone; the shell draws its own CANVAS HEADER and CANVAS FOOTER (atom.html canvas), the same for every agent, filled by Phase III
     # was: return {'head': f'<div class="replica-canvas">{top}</div>', 'html': f'<div class="replica-canvas">{middle}</div>', 'foot': f'<div class="replica-canvas">{bottom}</div>'}   # THE THREE PARTS, the shell groups them (the owner 2026-10-28: "in the agent block we need a table with borders and 3 groups stacked / CANVAS HEADER / CANVAS / CANVAS FOOTER"; "its fixed like the rest of the shell"): the platform's AI atom shell draws CANVAS HEADER, CANVAS and CANVAS FOOTER (atom.html canvas), each part under its word
@@ -687,7 +687,7 @@ def media_html(cell):
     if _own(cell.get('image')):
         out += f'<img src="{escape(_own(cell["image"]))}" alt="" width="{int(cell.get("width", 120))}" style="display:block;background:#000;object-fit:contain">'
         if cell.get('full'):   # A CLOSE LOOK (the owner 2026-10-28: "add a full screen on the result to see a close of of each"): the picture alone, full screen; Esc closes
-            out += ('<button type="button" class="btn btn--small" style="margin-top:4px" onclick="const i=this.previousElementSibling.querySelector(&#39;img&#39;)||this.previousElementSibling; '
+            out += ('<button type="button" class="pfb pfb--small" style="margin-top:4px" onclick="const i=this.previousElementSibling.querySelector(&#39;img&#39;)||this.previousElementSibling; '
                    'if (i.requestFullscreen) { i.requestFullscreen(); } else if (i.webkitRequestFullscreen) { i.webkitRequestFullscreen(); }">⛶ FULL SCREEN</button>')
     if isinstance(cell.get('marker'), dict):   # A PICTURE TO MARK, inside a table cell
         out += marker_html(cell['marker'])
@@ -755,7 +755,7 @@ def slider_html(part):
         form = (f'<form method="post" action="{escape(part["route"])}" style="display:inline"><input type="hidden" name="agent" value="{escape(part.get("agent", ""))}">'
                 f'<input type="hidden" name="do" value="{escape(part.get("do", ""))}"><input type="hidden" name="back" value="{escape(part.get("back", ""))}">'
                 f'<input type="hidden" name="value" value="{escape(part.get("value", ""))}"><input type="hidden" data-start name="{escape(part.get("name", "start"))}" value="{start:.3f}">'
-                f'<button class="btn btn--small" type="submit">{escape(part.get("label", "SET"))}</button></form>')
+                f'<button class="pfb pfb--small" type="submit">{escape(part.get("label", "SET"))}</button></form>')
     else:
         form = f'<input type="hidden" data-start value="{start:.3f}">'
     f = lambda x: f'{int(x // 60)}:{int(x % 60):02d}'   # noqa: E731
@@ -765,7 +765,7 @@ def slider_html(part):
             + f'<div data-win style="position:absolute;top:0;bottom:0;left:{100 * start / total:.3f}%;width:{100 * win / total:.3f}%;background:rgba(80,180,120,.28);border:2px solid var(--status-ok,#2a7);box-sizing:border-box;pointer-events:none"></div></div>'
             + f'<input type="range" min="{lo:.3f}" max="{hi:.3f}" step="0.01" value="{start:.3f}" oninput="{escape(move)}" style="width:100%;max-width:960px;display:block">'
             + f'<div><span class="annotation" data-said>start {f(start)} · end {f(start + win)} (est)</span> '
-            + (f'<audio src="{escape(audio)}" preload="none"></audio><button type="button" class="btn btn--small" onclick="{escape(play)}">▶ PLAY THE MINUTE</button> ' if audio else '')
+            + (f'<audio src="{escape(audio)}" preload="none"></audio><button type="button" class="pfb pfb--small" onclick="{escape(play)}">▶ PLAY THE MINUTE</button> ' if audio else '')
             + form + '</div></div>')
 
 
@@ -792,7 +792,7 @@ def tracks_html(part):
                 for b in lane.get('blocks') or () if float(b['end']) > 0 and float(b['start']) < total) + '</div>')
         if _own(lane.get('audio')):
             player = (f'<audio src="{escape(_own(lane["audio"]))}" preload="none" ontimeupdate="const box=this.closest(\'.replica-tracks\'); box.style.setProperty(\'--t\', String(Math.min(1, this.currentTime / {total})));"></audio>'
-                      '<button type="button" class="btn btn--small" style="padding:0 6px" onclick="const box=this.closest(\'.replica-tracks\'); const a=this.previousElementSibling;'
+                      '<button type="button" class="pfb pfb--round pfb--round--run" onclick="const box=this.closest(\'.replica-tracks\'); const a=this.previousElementSibling;'
                       ' box.querySelectorAll(\'audio\').forEach(x=>{ if (x!==a) { x.pause(); } }); if (a.paused) { a.currentTime=(+getComputedStyle(box).getPropertyValue(\'--t\')||0)*' + f'{total}' + '; a.play(); } else { a.pause(); }">▶</button>')
         rows.append(f'<div class="replica-lane" style="display:grid;grid-template-columns:120px 1fr;gap:8px;align-items:center"><div class="caption">{player} {name}</div>'
                     f'<div onclick="const box=this.closest(\'.replica-tracks\'); const r=this.getBoundingClientRect(); const f=Math.max(0,Math.min(1,(event.clientX-r.left)/r.width));'
@@ -822,9 +822,9 @@ def listen_html(part):
         return f'<div class="replica-iface-note"><div class="annotation">{escape(part.get("empty", ""))}</div></div>'
     play = ("const a=this.nextElementSibling; if (a.paused) { a.currentTime=0; a.play(); this.dataset.label=this.dataset.label||this.textContent; this.textContent='■ STOP'; }"
             " else { a.pause(); this.textContent=this.dataset.label; } a.onended=()=>{ this.textContent=this.dataset.label; };")
-    return (f'<div class="replica-listen" style="margin:10px 0"><button type="button" class="btn btn--big" onclick="{escape(play)}">{escape(part.get("label", "▶ PLAY"))}</button>'
+    return (f'<div class="replica-listen" style="margin:10px 0"><button type="button" class="pfb pfb--clarity" onclick="{escape(play)}">{escape(part.get("label", "▶ PLAY"))}</button>'
             f'<audio src="{escape(audio)}" preload="none"></audio> '
-            + ' '.join(f'<a class="btn btn--{"big" if i == 0 else "small"}" href="{escape(_own(h))}" download="{escape(n)}">{escape(t)}</a>' for i, (t, h, n) in enumerate(part.get('download') or ()) if _own(h))   # its downloads (the owner 2026-10-28: "a downlaod song button"): each a link that saves the file under its own name
+            + ' '.join(f'<a class="pfb pfb--export" href="{escape(_own(h))}" download="{escape(n)}">' + _export_inner(t, 'Download ' + (n.rsplit('.', 1)[-1].upper() if '.' in n else 'file')) + '</a>' for t, h, n in (part.get('download') or ()) if _own(h))   # each the embedded EXPORT widget (the owner 2026-11-04: "make sure all the agents inject the embedded buttons too")   # its downloads (the owner 2026-10-28: "a downlaod song button"): each a link that saves the file under its own name
             + (f'<div class="annotation">{escape(part["under"])}</div>' if part.get('under') else '') + '</div>')
 
 
@@ -854,7 +854,16 @@ def slideshow_html(part):
             f'<div class="replica-film-bar">{bar}</div>' + (f'<div class="annotation">{escape(part["under"])}</div>' if part.get('under') else '') + '</div>')
 
 
-PAINT_CSS = '/* THE BOARD\'S ONE TOOL BAR (the owner 2026-10-29: "the controls are confusing and ugly. this needs to be better looking"): the mode, then only that mode\'s tools */\n.rp-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 6px 0; padding: 6px 10px; background: rgba(0, 0, 0, .55); border: 1px solid rgba(255, 255, 255, .16); border-radius: 6px; font-size: .72rem; letter-spacing: .06em; }\n.rp-seg { display: inline-flex; border: 1px solid rgba(255, 255, 255, .35); border-radius: 4px; overflow: hidden; }\n.rp-seg button, .rp-pill { background: transparent; color: inherit; border: 0; padding: 5px 11px; font: inherit; letter-spacing: inherit; cursor: pointer; }\n.rp-seg > * + * { border-left: 1px solid rgba(255, 255, 255, .35); }\n.rp-seg button[aria-pressed="true"], .rp-pill:has(input:checked) { background: #00B140; color: #000; }\n.rp-pill input { display: none; }\n.rp-btn { background: transparent; color: inherit; border: 1px solid rgba(255, 255, 255, .35); border-radius: 4px; padding: 5px 11px; font: inherit; letter-spacing: inherit; cursor: pointer; }\n.rp-btn:hover, .rp-seg button:hover, .rp-pill:hover { border-color: #00B140; }\n.rp-go { background: #00B140; color: #000; border-color: #00B140; font-weight: 700; }\n.rp-group { display: none; flex-wrap: wrap; align-items: center; gap: 10px; }\n.replica-marker[data-mode="mask"] .rp-group[data-for="mask"], .replica-marker[data-mode="grill"] .rp-group[data-for="grill"],\n.replica-marker[data-mode="mask"] .rp-group[data-for="bake"], .replica-marker[data-mode="tune"] .rp-group[data-for="bake"] { display: inline-flex; }\n.rp-range { display: inline-flex; align-items: center; gap: 6px; }\n.rp-range input { width: 92px; accent-color: #00B140; }\n.rp-range b { min-width: 3.2em; font-weight: 400; opacity: .85; }\n.rp-said { margin-left: auto; opacity: .75; }\n'   # the board's own look, carried inside the board: an agent draws in its own shadow root, where the page's styles never reach
+PAINT_CSS = '/* THE BOARD\'S ONE TOOL BAR (the owner 2026-10-29: "the controls are confusing and ugly. this needs to be better looking"): the mode, then only that mode\'s tools */\n/* its presses are the embedded widgets, their look embedded.css\'s (the owner 2026-11-04: "make sure all the agents inject the embedded buttons too"): the bar keeps only its layout and its kind choice */\n.rp-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 6px 0; padding: 6px 10px; background: rgba(0, 0, 0, .55); border: 1px solid rgba(255, 255, 255, .16); border-radius: 6px; font-size: .72rem; letter-spacing: .06em; }\n.rp-seg { display: inline-flex; gap: 4px; }\n.rp-pill { padding: 5px 11px; cursor: pointer; } .rp-pill:has(input:checked) { background: #00B140; color: #000; }\n.rp-pill input { display: none; }\n.rp-group { display: none; flex-wrap: wrap; align-items: center; gap: 10px; }\n.replica-marker[data-mode="mask"] .rp-group[data-for="mask"], .replica-marker[data-mode="grill"] .rp-group[data-for="grill"],\n.replica-marker[data-mode="mask"] .rp-group[data-for="bake"], .replica-marker[data-mode="tune"] .rp-group[data-for="bake"] { display: inline-flex; }\n.rp-range { display: inline-flex; align-items: center; gap: 6px; }\n.rp-range input { width: 92px; accent-color: #00B140; }\n.rp-range b { min-width: 3.2em; font-weight: 400; opacity: .85; }\n.rp-said { margin-left: auto; opacity: .75; }\n'
+
+
+def _export_inner(label, kind):
+    """THE EXPORT WIDGET'S INSIDE, buttons.html _export_inner copied class for class (the owner 2026-11-04: "make sure all the agents inject the embedded buttons too"): the data fabric, the
+    file's name, its kind, the arrow. -> markup"""
+    from markupsafe import escape
+    return ('<span class="pfb__fabric"><span class="pfb__mesh"></span><span class="pfb__nodes"></span></span>'
+            f'<span class="pfb__export-name">{escape(label)}</span><span class="pfb__export-kind">{escape(kind)}</span>'
+            '<svg class="pfb__export-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 5 16 12 9 19"/></svg>')
 
 
 def marker_html(part):
@@ -905,31 +914,31 @@ def marker_html(part):
         modes = (([('mask', 'BEFORE'), ('result', 'AFTER')] if result_url else [('mask', 'PICTURE')]) if view else
                  [('mask', 'MASK')] + ([('grill', 'GRILL')] if grill else []) + ([('tune', 'TUNE')] if tune else []) + ([('result', 'RESULT')] if result_url else []))
         show = paint.get('show') if paint.get('show') in [m for m, _l in modes] and (paint.get('show') != 'result' or result) else 'mask'   # the mode it opens in
-        seg = ('<span class="rp-seg">' + ''.join(f'<button type="button" data-paint-mode="{m}" onclick="replicaPaintMode(this, &#39;{m}&#39;)">{lbl}</button>' for m, lbl in modes)
+        seg = ('<span class="rp-seg">' + ''.join(f'<button type="button" class="pfb pfb--mini" data-paint-mode="{m}" onclick="replicaPaintMode(this, &#39;{m}&#39;)">{lbl}</button>' for m, lbl in modes)
                + '</span>') if len(modes) > 1 else ''
         rng = lambda name, lbl, lo, hi, val, unit: (f'<label class="rp-range">{lbl} <input type="range" min="{lo}" max="{hi}" step="1" value="{val}" data-paint-{name} '   # noqa: E731
                                                      f'oninput="replicaPaintTone(this, &#39;{name}&#39;)" onchange="replicaPaintToneSend(this)"> <b>{val}{unit}</b></label>')
         pills = ''.join(f'<label class="rp-pill"><input type="radio" name="kind_{escape(part.get("value", ""))}" value="{escape(k)}"{" checked" if i == 0 else ""}>{escape(k.upper())}</label>'
                         for i, k in enumerate(kinds))
-        bar = (f'<div class="rp-bar"><button type="button" class="rp-btn" data-paint-big onclick="replicaPaintBig(this)">⛶ BIG</button>'
-               '<span class="rp-seg"><button type="button" onclick="replicaPaintZoomBy(this, -1)" aria-label="zoom out">−</button><button type="button" data-paint-zoomlabel disabled>1×</button>'
-               '<button type="button" onclick="replicaPaintZoomBy(this, 1)" aria-label="zoom in">+</button></span>'   # ONE ZOOM, IN OR OUT, NEVER MOVED (the owner 2026-10-29: "a zoom just single zoom in or zoom out not move"): held on the mouth
-               + ('<button type="button" class="rp-btn" data-paint-refbtn onclick="replicaPaintRef(this)">HIDE REF</button>' if refpic else '')   # (the owner 2026-10-29: "it needs a hide reference button")
+        bar = (f'<div class="rp-bar"><button type="button" class="pfb pfb--mini" data-paint-big onclick="replicaPaintBig(this)">⛶ BIG</button>'
+               '<span class="rp-seg"><button type="button" class="pfb pfb--round pfb--round--remove" onclick="replicaPaintZoomBy(this, -1)" title="zoom out">−</button><button type="button" class="pfb pfb--mini" data-paint-zoomlabel disabled>1×</button>'
+               '<button type="button" class="pfb pfb--round pfb--round--add" onclick="replicaPaintZoomBy(this, 1)" title="zoom in">+</button></span>'   # ONE ZOOM, IN OR OUT, NEVER MOVED (the owner 2026-10-29: "a zoom just single zoom in or zoom out not move"): held on the mouth
+               + ('<button type="button" class="pfb pfb--mini" data-paint-refbtn onclick="replicaPaintRef(this)">HIDE REF</button>' if refpic else '')   # (the owner 2026-10-29: "it needs a hide reference button")
                + f'{seg}'
                + ('' if view else f'<span class="rp-group" data-for="mask"><span class="rp-seg">{pills}</span>'
                f'<label class="rp-range">SIZE <input type="range" min="1" max="60" step="1" value="{round(state["size"] * 1000)}" data-paint-size oninput="replicaPaintSize(this)"> <b></b></label>'
-               '<button type="button" class="rp-btn" onclick="replicaPaintReset(this)">RESET</button>'
-               + (f'<button type="button" class="rp-btn" data-paint-auto="{escape(paint["auto"])}" onclick="replicaPaintAuto(this)">AUTO</button>' if paint.get('auto') else '')   # a first mask from the box's finder
+               '<button type="button" class="pfb pfb--mini" onclick="replicaPaintReset(this)">RESET</button>'
+               + (f'<button type="button" class="pfb pfb--mini" data-paint-auto="{escape(paint["auto"])}" onclick="replicaPaintAuto(this)">AUTO</button>' if paint.get('auto') else '')   # a first mask from the box's finder
                + '</span>')
                + ('<span class="rp-group" data-for="bake">'
-                  + ('<button type="button" class="rp-btn" onclick="replicaTunePreview(this)">MAKE PREVIEW</button>' if tune else '')
+                  + ('<button type="button" class="pfb pfb--mini" onclick="replicaTunePreview(this)">MAKE PREVIEW</button>' if tune else '')
                   + ''.join(rng(escape(x['name']), escape(x['label']), x['min'], x['max'], round(float(x['value'])), escape(x.get('unit', ''))) for x in bake.get('sliders') or ())
-                  + '<button type="button" class="rp-btn rp-go" onclick="replicaPaintBake(this)">BAKE</button></span>' if bake else '')
+                  + '<button type="button" class="pfb pfb--mini" onclick="replicaPaintBake(this)">BAKE</button></span>' if bake else '')
                + ('<span class="rp-group" data-for="grill">'
                   + rng('match', 'MATCH', 0, 100, round(state['tone']['match']), '%') + rng('light', 'LIGHT', -50, 50, round(state['tone']['light']), '') + rng('edge', 'EDGE', 0, 10, round(state['tone']['edge']), 'px')
-                  + '<button type="button" class="rp-btn" data-paint-boxbtn onclick="replicaLayerBox(this)">HIDE BOX</button>'   # (the owner 2026-10-29: "a button to hide the resize rotate box because its hard to see")
-                  '<button type="button" class="rp-btn" onclick="replicaLayerFit(this)">FIT</button>'
-                  '<button type="button" class="rp-btn rp-go" onclick="replicaLayerBake(this)">BAKE</button></span>' if grill else '')
+                  + '<button type="button" class="pfb pfb--mini" data-paint-boxbtn onclick="replicaLayerBox(this)">HIDE BOX</button>'   # (the owner 2026-10-29: "a button to hide the resize rotate box because its hard to see")
+                  '<button type="button" class="pfb pfb--mini" onclick="replicaLayerFit(this)">FIT</button>'
+                  '<button type="button" class="pfb pfb--mini" onclick="replicaLayerBake(this)">BAKE</button></span>' if grill else '')
                + '<span class="rp-said" data-paint-said></span></div>')
         return (f'<style>{PAINT_CSS}</style><div class="replica-marker"{" data-view" if view else ""} data-kind="{escape(kinds[0] if kinds else "brush")}" data-paint="{escape(json.dumps(state))}" data-mode="{show}" style="margin:10px 0">'
                 f'<div class="subtitle">{escape(part.get("title", ""))}</div>' + bar
@@ -950,7 +959,7 @@ def marker_html(part):
             + (f'<div style="margin:4px 0">{radios if len(kinds) > 1 else ""}<span class="annotation">click the picture to put the marker</span></div>' if part.get('controls') else '')   # one kind: no choice to make
             + f'<div style="position:relative;display:inline-block;max-width:{int(part.get("width", 640))}px;width:100%">'
             f'<img src="{escape(img)}" alt="" style="display:block;width:100%;cursor:crosshair;background:#000;object-fit:contain" onclick="{escape(click)}">{dots}</div>'
-            + (('<button type="button" class="btn btn--small" style="margin-top:4px" onclick="const i=this.previousElementSibling.querySelector(&#39;img&#39;)||this.previousElementSibling; '
+            + (('<button type="button" class="pfb pfb--small" style="margin-top:4px" onclick="const i=this.previousElementSibling.querySelector(&#39;img&#39;)||this.previousElementSibling; '
                    'if (i.requestFullscreen) { i.requestFullscreen(); } else if (i.webkitRequestFullscreen) { i.webkitRequestFullscreen(); }">⛶ FULL SCREEN</button>') if part.get('full') else '') + form
             + (f'<div class="annotation">{escape(part["under"])}</div>' if part.get('under') else '') + '</div>')
 
@@ -973,7 +982,7 @@ def interface_view(parts_):
                 f'<input type="hidden" name="value" value="{escape(b.get("value", row.get("key", "")))}">'
                 + (f'<textarea name="words" class="pin-box scrum-update-words" rows="2" aria-label="{escape(b.get("label", ""))} {escape(row.get("key", ""))}" placeholder="{escape(b.get("placeholder", ""))}"></textarea>' if b.get('text') else '')
                 + sliders_html(b)
-                + f'<button class="btn btn--small scrum-{do}-btn" type="submit">{escape(b.get("label", ""))}</button></form>')
+                + f'<button class="pfb pfb--mini scrum-{do}-btn" type="submit">{escape(b.get("label", ""))}</button></form>')
         return f'<div class="scrum-verdict">{form}</div>' if b.get('do') == 'approve' else form
 
     def cell_html(i, cell):
@@ -1015,7 +1024,7 @@ def interface_view(parts_):
                        f'<input type="hidden" name="agent" value="{escape(part.get("agent", ""))}"><input type="hidden" name="do" value="{escape(part.get("do", ""))}"><input type="hidden" name="back" value="{escape(part.get("back", ""))}">'
                        + (f'<input type="hidden" name="{escape(boxes.get("name", "box"))}_said" value="1">' if boxes.get('rows') else '')
                        + f'<textarea name="{escape(part.get("name", "words"))}" class="pin-box scrum-words" rows="{int(part.get("rows", 8))}" autocomplete="off" aria-label="{escape(part.get("title", ""))}" placeholder="{escape(part.get("placeholder", ""))}" data-enter="adds"></textarea> '
-                       f'<button class="btn btn--small" type="submit">{escape(part.get("label", "Add"))}</button></form>'
+                       f'<button class="pfb pfb--small" type="submit">{escape(part.get("label", "Add"))}</button></form>'
                        '<script>(() => { const f = document.currentScript.previousElementSibling; const t = f && f.querySelector(\'textarea[data-enter="adds"]\'); if (!t) { return; }'
                        ' t.addEventListener(\'keydown\', (ev) => { if (ev.key !== \'Enter\' || ev.isComposing || ev.shiftKey) { return; } ev.preventDefault(); if (t.value.trim()) { if (f.requestSubmit) { f.requestSubmit(); } else { f.submit(); } } }); })();</script></div>')
         elif kind == 'table':
@@ -1068,7 +1077,7 @@ def interface_view(parts_):
             out.append(f'<form method="post" action="{escape(part.get("route", ""))}" class="replica-press-form"'
                        + (f' data-confirm="{escape(part["confirm"])}" onsubmit="return confirm(this.dataset.confirm)"' if part.get('confirm') else '') + '>'
                        f'<input type="hidden" name="agent" value="{escape(part.get("agent", ""))}"><input type="hidden" name="do" value="{escape(part.get("do", ""))}">'
-                       f'<input type="hidden" name="back" value="{escape(part.get("back", ""))}"><input type="hidden" name="value" value="{escape(part.get("value", ""))}"><button class="btn btn--big" type="submit">{escape(part.get("label", ""))}</button></form>')
+                       f'<input type="hidden" name="back" value="{escape(part.get("back", ""))}"><input type="hidden" name="value" value="{escape(part.get("value", ""))}"><button class="pfb pfb--clarity" type="submit">{escape(part.get("label", ""))}</button></form>')
     return f'<div id="scrum" class="replica-interface">{"".join(out)}</div>'
 
 
@@ -1144,7 +1153,7 @@ def listed(text, cls):
     items = str(text or '').split(', ')
     if len(items) <= FIRST or any(len(i.split()) > 3 for i in items):   # a list of names (R-0234, R-0325 ...), never a sentence cut at its commas (the owner 2026-10-27: "and what the fuck is this / ▶ VIEW ALL 6")
         return f'<div class="{cls}">{escape(text)}</div>'
-    return (f'<div class="{cls}">{escape(", ".join(items[:FIRST]))}</div><details class="replica-view-more"><summary class="btn btn--small">▶ View all {len(items)}</summary>'
+    return (f'<div class="{cls}">{escape(", ".join(items[:FIRST]))}</div><details class="replica-view-more"><summary class="pfb pfb--small">▶ View all {len(items)}</summary>'
             f'<div class="{cls}">{escape(", ".join(items[FIRST:]))}</div></details>')
 
 

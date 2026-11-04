@@ -173,8 +173,6 @@
 #scrum .scrum-access li[data-building] > details > summary > strong, #scrum .scrum-access li[data-building] > strong { color: var(--clarity-ink); background: var(--status-warn); padding: 0 4px; }   /* the goal in yellow, readable on the white ground: the look's own --status-warn (technology.css :root), no value of its own here (the X board's rule for all below it: CLARITY's tokens only) */
 #scrum .scrum-access li[data-building] li, #scrum .scrum-access li[data-building] li * { color: var(--clarity-ink); }
 #scrum .scrum-access #scrum-master-lock, #scrum .scrum-access #scrum-reseal-all { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px; margin: 18px 0 0; padding: 18px 0 0; border-top: 2px solid var(--clarity-ink); }
-#scrum .scrum-access #scrum-master-lock .btn, #scrum .scrum-access #scrum-reseal-all .btn { margin: 0; padding: 16px 34px; border: 2px solid var(--clarity-ink); border-radius: 0; background: var(--clarity-ink); color: var(--clarity-ground); font-family: var(--clarity-face-heading); font-size: 1.1rem; font-weight: 900; letter-spacing: .22em; line-height: 1.2; text-transform: uppercase; box-shadow: none; cursor: pointer; }   /* THE BIG CLARITY BUTTON, square, without the form's own white box (the owner 2026-10-23) */
-#scrum .scrum-access #scrum-master-lock .btn:hover, #scrum .scrum-access #scrum-reseal-all .btn:hover { background: var(--clarity-ground); color: var(--clarity-ink); }
 #scrum .scrum-access #scrum-master-now { font-family: var(--clarity-face-heading); font-size: .9rem; font-weight: 900; letter-spacing: .14em; text-transform: uppercase; color: var(--clarity-ink); }
 #scrum .scrum-access #scrum-master-lock-what, #scrum .scrum-access #scrum-reseal-all-what { list-style: none; margin: 0; padding: 0; font-family: var(--clarity-face-heading); font-size: .95rem; font-weight: 900; letter-spacing: .04em; line-height: 1.6; color: var(--clarity-ink); }   /* the font of virtual_sanity/ in the tree, so they match (the owner 2026-10-23) */
 #scrum .scrum-access #scrum-master-lock-what span, #scrum .scrum-access #scrum-reseal-all-what span { font-family: var(--clarity-face); letter-spacing: normal; }   /* its LOCKED / UNLOCKED as the tree's own (the owner 2026-10-23: "not bold and the x like the others") */
@@ -205,7 +203,6 @@
 /* A LIVE ROW, ALL IN GREEN (the owner 2026-10-24: "for fun make all the live row font green"; "the clocks are all pink except for the live row. then all the live row text are need to be green"): every row whose clock says LIVE (data-live on its block, web/page), every word of it in the look's green, the clock's own green with them; its red marks stay red, its buttons keep their own look */
 #scrum tbody.scrum-step-block[data-live] { color: var(--status-success, #2ecc71); }
 #scrum tbody.scrum-step-block[data-live] :where(.title, .subtitle, .annotation, .caption, .body, .scaf-mono, .scrum-idle, .scrum-group-tag, .smoke-status, .scrum-clock) { color: inherit; }
-#scrum tbody.scrum-step-block[data-live] .btn { background-color: var(--status-success, #2ecc71); border-color: var(--status-success, #2ecc71); }   /* its two view boxes green too (the owner 2026-10-24: "make the boxes pink to green also please"), their words as the look's buttons have them */
 #scrum .scrum-building, #scrum .scrum-building-clock { color: var(--status-success, #2ecc71); }   /* BUILDING, GREEN AND LIVE (the owner 2026-10-24): the word, its light, the little clock counting under it */
 #scrum .scrum-building-for { font-variant-numeric: tabular-nums; }
 #scrum .scrum-cycle-face { display: inline-block; width: 11px; height: 11px; vertical-align: -1px; }   /* the little cycle clock stays little (its own class: scrum-clock-face is the row clocks' 64px dial, shrunk by mistake 2026-10-24 11:20, put back) */
@@ -254,8 +251,6 @@
 #scrum .scrum-new-clarity #scrum-new .hdr-status--success, #scrum .scrum-new-clarity #scrum-new .scrum-building, #scrum .scrum-new-clarity #scrum-new .scrum-verify { color: var(--clarity-ink); font-weight: 900; }
 #scrum .scrum-new-clarity #scrum-new textarea { background-color: var(--clarity-ground); color: var(--clarity-ink); border: 2px solid var(--clarity-ink); font-size: 15px; }
 #scrum .scrum-new-clarity #scrum-new textarea::placeholder { color: var(--clarity-ink); opacity: .55; }
-#scrum .scrum-new-clarity #scrum-new .btn { background-color: var(--clarity-ink); color: var(--clarity-ground); border: 2px solid var(--clarity-ink); border-radius: 0; box-shadow: none; }
-#scrum .scrum-new-clarity #scrum-new .btn:hover, #scrum .scrum-new-clarity #scrum-new .btn:focus-visible { background-color: var(--clarity-ground); color: var(--clarity-ink); }
 #scrum .scrum-new-clarity #scrum-new, #scrum .scrum-new-clarity #scrum-new tbody, #scrum .scrum-new-clarity #scrum-new tr, #scrum .scrum-new-clarity #scrum-new td { background: var(--clarity-ground) !important; background-image: none !important; }   /* white ground in every cell: the page's own row colors never show through */
 /* BIGGER STILL (the owner 2026-10-24: "the font is much better but still too small"): today's requests read at 19px */
 #scrum .scrum-new-clarity #scrum-new-title { font-size: 1.4rem; padding: 14px 20px; }
@@ -264,7 +259,6 @@
 #scrum .scrum-new-clarity #scrum-new .scrum-builder, #scrum .scrum-new-clarity #scrum-new .scrum-brief-text { font-size: 19px; line-height: 1.5; }
 #scrum .scrum-new-clarity #scrum-new thead th { font-size: 16px; padding: 12px 14px; }
 #scrum .scrum-new-clarity #scrum-new textarea { font-size: 18px; }
-#scrum .scrum-new-clarity #scrum-new .btn { font-size: 15px; padding: 10px 18px; }
 /* THE UPDATE BOX FULL SIZE (the owner 2026-10-24: "the update input box is tiny"): the whole cell wide, four lines tall, its button under it */
 #scrum .scrum-new-clarity #scrum-new .scrum-update { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; width: 100%; margin-top: 12px; }
 #scrum .scrum-new-clarity #scrum-new .scrum-update textarea { display: block; box-sizing: border-box; width: 100%; min-height: 6.5em; padding: 8px 10px; resize: vertical; }
@@ -289,7 +283,6 @@
 #scrum .scaf-wrap > .scaf-table td .title, #scrum .scaf-wrap > .scaf-table td .body, #scrum .scaf-wrap > .scaf-table td .annotation { overflow-wrap: anywhere; white-space: normal; }
 #scrum .scaf-wrap table { max-width: 100%; }
 #scrum .scaf-wrap table td, #scrum .scaf-wrap table th, #scrum .scaf-wrap table td * { overflow-wrap: anywhere; }
-#scrum .scaf-wrap table .btn { white-space: normal; max-width: 100%; height: auto; text-align: left; }   /* a long button ("View row rules · what makes it red or green") wraps instead of widening the table */
 /* A NARROW OR ZOOMED WINDOW: today's requests stack their three parts, each the full width, instead of three thin strips */
 @media (max-width: 1150px) {
   #scrum .scrum-new-clarity #scrum-new thead { display: none; }
@@ -299,7 +292,7 @@
 }
 #scrum .scrum-verdict { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
 #scrum .scrum-test-box { display: block; box-sizing: border-box; width: 100%; border: 2px solid currentColor; padding: 8px 10px; overflow-wrap: anywhere; }   /* TEST IT in its own box below APPROVE (the owner 2026-10-24) */
-#scrum .scrum-test-box .btn { margin-top: 6px; }
+#scrum .scrum-test-box .pfb { margin-top: 6px; }
 #scrum #scrum-env-wrap { width: min(960px, 100%); }   /* THE ENVIRONMENT TABLE LINES UP WITH THE ADD BOX (the owner 2026-10-24: "make this table the same width as the input box below"; again "no longer lines up with the input box"): the box's own width, after the no-sideways-scroll rule above */
 /* COLUMN TITLES STAY WHOLE (the owner 2026-10-24: "STA RT / EN D / M IN / C H E C K ... strange wrapping"): only the long words wrap, never START, END, MIN, CHECK */
 #scrum .scaf-wrap table th, #scrum .scaf-wrap > .scaf-table th { overflow-wrap: normal; word-break: keep-all; white-space: nowrap; }
