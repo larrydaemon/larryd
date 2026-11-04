@@ -1,5 +1,5 @@
 """THE PAGE'S OWN PARTS (as the original's web/page.py): what the page draws beyond the platform's one shell, every word read at
-the draw, nothing kept. THE AGENT'S VIEW (its card and its words), THE MARK IV CARD, THE HERO, THE DATA FABRIC; and the parts of
+the draw, nothing kept. THE AGENT'S VIEW (its card and its words), THE HERO, THE DATA FABRIC; and the parts of
 the frame, drawn on the agent layer in every replica (the owner 2026-10-27: "we can not edit the frame items in the gate view so
 why do we need them? they can stay only in the replica"): THE HEADER (the original's status board, first on the page), THE X
 BOARD (the MARK IV agent's own summary, agent001), AGENT ACCESS (the real HOME tree, its lock, pin and reseal: the owner's
@@ -19,13 +19,8 @@ from frame import frame_rules as rules
 from frame import frame_skills as skills
 from frame import frame_red as red   # THE RED's own measure of a rules red, the board's too
 
-CARD = re.compile(r'<article class="agent-card[^"]*"[^>]*>.*?</article>', re.S)
-PART = re.compile(r'data-part="(class|name|info|pitch|developer|price)">(.*?)</(?:span|div)>', re.S)
 COLUMNS = ('.mk-row { display: flex; flex-wrap: wrap; gap: 44px; align-items: flex-start; padding: 0 4px } .mk-side { flex: none; width: 260px; max-width: 100%; } '
-           '.mk-say { flex: 1 1 280px; min-width: 0; padding-top: 4px } .mk-side:has(.replica-card) { width: 360px } .replica-cardbox { width: 360px; height: 626.5625px; border-radius: 16px; animation: replica-glow 4s ease-in-out infinite alternate; '
-           'box-shadow: 0 0 28px 5px color-mix(in srgb, var(--active-color-01) 89%, transparent), 0 0 95px 22px color-mix(in srgb, var(--active-color-01) 51%, transparent), 0 0 175px 47px color-mix(in srgb, var(--active-color-01) 23%, transparent) } '   # the card's own full glow (the owner 2026-10-26: "no toning it down")
-           '@keyframes replica-glow { from { filter: brightness(.92) } to { filter: brightness(1.08) } } '
-           '.replica-card { display: block; width: 360px; height: 626.5625px; border: 0; border-radius: 16px; background: transparent }   /* the card whole, at its own exact height (no line under it), its own white edge alone: its frame tight and round, its own outer glow (the card\'s four layers, in the theme\'s colour) drawn on its holder (the owner 2026-10-26: "the corners are bad"; "and missing the outter glow") */ .mk-say .body { font-size: 19px; line-height: 1.65 } .mk-hire form { display: inline-flex; margin: 0 } '
+           '.mk-say { flex: 1 1 280px; min-width: 0; padding-top: 4px } .mk-side:has(.pf-card) { width: 360px } '
            '.replica-agent-hero { margin: 4px 0 36px; text-align: center } '
            '.replica-what { margin-top: 26px; padding-top: 20px; border-top: 1px solid color-mix(in srgb, currentColor 25%, transparent) } '
            '.replica-what .notes { font-family: var(--clarity-face-notes, ui-monospace, Menlo, monospace); font-size: .82rem; font-weight: 500; line-height: 1.4; text-transform: none } '
@@ -75,77 +70,17 @@ def fabric(layer=''):
 
 
 # ---- the agent's own view -------------------------------------------------------------------------------------------
-def mark_iv_card(agent, shell, shell_url):
-    """THE MARK IV CARD, the LARRY LLM card's own page (the owner 2026-10-26: "make it like the larry llm style for mark IV"):
-    read where it is, its effects' files from its own home (settings root_shape mark_iv_card_home), carrying this agent's own
-    words (its card file's, read where it is), its class Mark IV, its price the run's, its picture as the sticker, and its toggle the
-    agent slot's switch (the whole replica's on/off). None: a file not there."""
-    from markupsafe import escape
-    try:
-        with open(frame.path('mark_iv_card'), encoding='utf-8') as fh:
-            page = fh.read()
-        own = agent.get('card_words')
-        if own is None:   # its words from its own card file, read where it is; an agent with none yet carries them in its run (card_words)
-            with open(frame.path(agent['card']), encoding='utf-8') as fh:
-                own = dict(PART.findall(fh.read()))
-    except OSError:
-        return None
-    words = {**own, 'class': 'Mark IV', 'price': str(escape(agent.get('price') or own.get('price', '')))}
-    for part, said_ in words.items():
-        page = re.sub(r'(data-part="' + part + r'">).*?(</(?:span|div)>)', lambda m: m.group(1) + said_ + m.group(2), page, count=1, flags=re.S)
-    page = page.replace('<span class="mk-annotation mk-kind">Model</span>', '<span class="mk-annotation mk-kind">Agent</span>', 1)
-    if agent.get('art'):   # its picture, the sticker; an agent with no picture yet keeps the LARRY LLM sticker
-        page = re.sub(r'/assets/img/larryllm-sticker(-squares)?\.webp(\?v=[0-9a-f]+)?', '/card.png', page)
-    if shell:
-        on = bool(shell['on'])
-        page = re.sub(r'<button type="button" class="toggle" data-hire="[^"]*" aria-pressed="[^"]*" title="Hire">(.*?)</button><span class="mk-annotation">Hire</span>',
-                      lambda m: (f'<form method="post" action="{shell_url}" target="_top" style="display:inline-flex;margin:0"><input type="hidden" name="do" value="switch">'
-                                 f'<input type="hidden" name="shell" value="{shell["id"]}"><input type="hidden" name="value" value="{"off" if on else "on"}"><input type="hidden" name="back" value="gate">'
-                                 f'<button type="submit" class="toggle" aria-pressed="{"true" if on else "false"}" title="On / off">{m.group(1)}</button></form>'
-                                 f'<span class="mk-annotation">{"On" if on else "Off"}</span>'), page, count=1, flags=re.S)
-    home = frame.SETTINGS['root_shape']['mark_iv_card_home'].rstrip('/')
-    page = re.sub(r'(["(])/(assets|cdn-pf)/', lambda m: m.group(1) + home + '/' + m.group(2) + '/', page)   # its effects' files from the card's own home
-    fit = '<style>html,body{margin:0!important;padding:0!important;overflow:hidden!important;background:transparent!important} .lx-ours,.one,.one-col{margin:0!important;padding:0!important;max-width:none!important} .one-card{margin:0!important}</style>'
-    return page.replace('</head>', fit + '</head>', 1)
-
-
 def agent_view(agent, top=None, shell=None, shell_url='/shell', what=None, module=None, job=None, rows=None, light='', controls=True):
     """A RUN'S AGENT, ITS OWN VIEW (the owner 2026-10-26: "the card on the left ... the text on the right and nothing more"):
-    its card, the markup and sheet its card maker kept, read where it is (settings reads), its picture served from there too;
-    its words beside it; under them WHAT A REPLICA IS (what: the frame's title and note, the owner 2026-10-27), in the same
+    its card (the platform's one embedded card, put in its box), its words beside it; under them WHAT A REPLICA IS (what: the frame's title and note, the owner 2026-10-27), in the same
     style; no list of points (the owner 2026-10-27: "lets remove WHAT IT DOES"). The platform shell's own answer shape (atom.html
-    view()). None: no card file."""
-    mark_iv = agent.get('class', '').upper().startswith('MARK IV')   # a MARK IV agent wears the LARRY LLM card's page (mark_iv_card): no card file of its own needed
-    try:
-        with open(frame.path(agent['card']), encoding='utf-8') as fh:
-            kept = fh.read()
-    except (OSError, KeyError):
-        kept = ''
-    found, style = CARD.search(kept), re.search(r'<style>(.*?)</style>', kept, re.S)
-    if not found and not mark_iv:
-        return None
+    view())."""
     from markupsafe import Markup, escape
-    card = found.group(0) if found else ''
-    if agent.get('class'):   # its card's mark, the replica's own class (the owner 2026-10-26: "MARK III to MARK IV")
-        word = next((w for w in ('MARK IV', 'MARK III', 'MARK II', 'MARK I') if agent['class'].upper().startswith(w)), '')
-        card = re.sub(r'(data-part="class">)[^<]*(<)', lambda m: m.group(1) + word.title().replace('Iv', 'IV').replace('Iii', 'III').replace('Ii', 'II') + m.group(2), card, count=1)
-        card = re.sub(r'data-mark="\d"', 'data-mark="' + str({'MARK IV': 4, 'MARK III': 3, 'MARK II': 2, 'MARK I': 1}.get(word, 0)) + '"', card, count=1)
-    if agent.get('price'):   # its card's price line, the replica's own word (the owner 2026-10-26: "FREE TO INTERNAL to INTERNAL-ONLY")
-        card = re.sub(r'(data-part="price">)[^<]*(<)', lambda m: m.group(1) + str(escape(agent['price'])) + m.group(2), card, count=1)
-    if shell:   # THE CARD'S TOGGLE (the owner 2026-10-26: "the card needs the toggle"): the marketplace card's own, in its corner (LARRYD's card maker: mk-hire), the agent slot's switch, the whole replica's on/off
-        on = bool(shell['on'])
-        hire = (f'<div class="mk-hire"><form method="post" action="{shell_url}"><input type="hidden" name="do" value="switch"><input type="hidden" name="shell" value="{shell["id"]}">'
-                f'<input type="hidden" name="value" value="{"off" if on else "on"}"><input type="hidden" name="back" value="gate">'
-                f'<button type="submit" class="toggle" aria-pressed="{"true" if on else "false"}" title="On / off"><span class="toggle__knob"></span></button></form>'
-                f'<span class="mk-annotation">{"On" if on else "Off"}</span></div>')
-        card = card.replace('</div></div><div class="mk-frame">', '</div>' + hire + '</div><div class="mk-frame">', 1)
-        card = card.replace('<article class="agent-card', f'<article class="agent-card{" mk-on" if on else ""}', 1)
     points = ''   # no WHAT IT DOES list (the owner 2026-10-27: "lets remove WHAT IT DOES ... also its not needed and takes up to much space")
     if what:   # WHAT A REPLICA IS, in the owner's words, straight under the agent's own and in their style (the owner 2026-10-27: "under the text in the same style as the original"): the frame's title in the subtitle, each line of its note in the body
         points = (f'<div class="replica-what"><div class="callout">{escape(what.get("title") or "")}</div>'
                   + ''.join(f'<div class="notes">{escape(line)}</div>' for line in what.get('note') or ()) + '</div>')   # the original's markup: the callout, then each line in notes
-    card_box = (f'<div class="replica-cardbox"><iframe class="replica-card" src="/card/mark-iv" title="{escape(agent["name"])}" loading="lazy"></iframe></div>'
-             if agent.get('class', '').upper().startswith('MARK IV') else card)   # a MARK IV agent wears the LARRY LLM card's look (mark_iv_card)
+    card_box = '<div class="replica-cardbox"></div>'   # THE ONE AGENT CARD (the owner 2026-11-03: "full conversion to the embedded"): the platform's embedded card is put here (data-inject), nothing of its own
     head = ''.join(f'<div class="{c}">{escape(line)}</div>' for c, line in zip(('amx-kicker', 'amx-h1', 'amx-sub'), top or ()))
     head = f'<div class="amx-hero replica-agent-hero">{head}</div>' if head else ''   # the platform's hero, above its words (the owner 2026-10-26: "the header text goes above this in the agent")
     words = f'<div class="body">{escape(agent["say"])}</div>{points}'
@@ -155,7 +90,7 @@ def agent_view(agent, top=None, shell=None, shell_url='/shell', what=None, modul
     else:
         parts_ = {'html': html}
     return {'agent_key': agent['key'], 'hire_keys': [], 'room_at': '', 'room_pass': '',
-            'view': {**{k: Markup(v) for k, v in parts_.items()}, 'css': Markup((style.group(1) if style else '') + COLUMNS + ' ' + CANVAS_CSS)}}
+            'view': {**{k: Markup(v) for k, v in parts_.items()}, 'css': Markup(COLUMNS + ' ' + CANVAS_CSS)}}
 
 
 # ---- THE CANVAS: one template for every agent ------------------------------------------------------------------------

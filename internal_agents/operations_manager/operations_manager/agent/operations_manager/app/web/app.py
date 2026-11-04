@@ -370,7 +370,6 @@ def create(store_path=None, agent=None, run=None, door=None, agents=None, serve=
         here=lambda **kw: R['home'] + '?agentlayer=' + kw.get('agentlayer', g.carry['agentlayer']) + ('&mode=' + g.carry['mode'] if g.carry.get('mode') else ''),
         csrf='', view_host=lambda: True, library_base=lambda: '', view_looks=lambda html: {}, room_hosts=lambda: '', room_line=lambda: '',
         look_sheet=lambda sheet: '/themes/' + sheet,
-        agent_art=lambda theme, mode: (lambda site: f'/cdn/themes/{site}/images/{mode}/agent_card.png' if site else '')(json.load(open(os.path.join(THEMES, 'themes.json'), encoding='utf-8')).get('sites', {}).get(theme, '')),   # a theme's card art at this page's own CDN door (the platform's look.card_art, by the look's own list of sites)
         url_for=lambda endpoint, **kw: (R['core_css'] if kw.get('filename') == 'css/core.css' else '/' + kw['filename'] if endpoint == 'static' and str(kw.get('filename', '')).startswith('js/') else url_for(endpoint, **kw)),
         look_faces=look.faces, look_place_faces=look.place_faces,   # the faces a sheet declares, for the page's preload: the platform's own answer
         dock_slot=lambda kind: next((s[-2:] for s, k in look.config().get('dock', {}).items() if k == kind), '') if look.on() else '',   # THE DOCK'S LOGO SLOT of a product, the look's own dock map (themes.json), as every site and app wears it (the owner 2026-10-27: "the footer is missing the logos in the dock .. why make text versions like that")
@@ -968,28 +967,9 @@ def create(store_path=None, agent=None, run=None, door=None, agents=None, serve=
     @app.get('/cdn/themes/<path:name>')
     def cdn_theme(name):
         """The theme's background picture, from this laptop's own CDN folder (the platform's own door, /cdn/themes/)."""
-        if re.fullmatch(r'[a-f0-9]{8}/images/(dark|light)/agent_card\.png', name or ''):   # a theme's card art (the platform's look.card_art door): the empty shell's card names its cat (atom.html canvas)
-            return _file(frame.path('cdn_themes', *name.split('/')), 'image/png', cache='max-age=3600')
         if not re.fullmatch(r'[a-f0-9]{8}/images/(dark|light)/background(_thumb)?\.webp', name or ''):
             abort(404)
         return _file(frame.path('cdn_themes', *name.split('/')), 'image/webp', cache='max-age=3600')
-
-    @app.get('/card/mark-iv')
-    def card_mark_iv():
-        """The run's MARK IV agent's card page (mark_iv_card), framed in its view."""
-        if not agent:
-            abort(404)
-        page = parts.mark_iv_card(agent, next((sh for sh in store.board() if sh['slot'] == shape['agent_slot']), None), R['shell'])
-        if page is None:
-            abort(404)
-        return Response(page, mimetype='text/html', headers={'Cache-Control': 'no-cache'})
-
-    @app.get('/card.png')
-    def card_art():
-        """The run's agent's card picture, read where it is (settings reads): the card names /card.png; an agent with no picture yet has none here."""
-        if not agent or not agent.get('art'):
-            abort(404)
-        return _file(agent['art'], 'image/png', cache='max-age=300')   # its own picture, under the office's own folder
 
     @app.get(R['board_css'])
     def board_css():

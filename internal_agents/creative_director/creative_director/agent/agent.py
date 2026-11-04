@@ -5,8 +5,8 @@ page's parts that draw its canvas) and schemas/ (its settings, routes and agent.
 ~/larryd/server/runtime/internal/instance/data/creative_director/ (its shells table, copied once from the office's instance).
 
 A CALL ({do: "canvas"}) answers the canvas the office's page draws for its MARK IV agent (web/page.py agent_view, the middle canvas):
-the platform's hero, its card, its words and what a replica is. The office drew its card in an iframe (/card/mark-iv), which the view
-gate refuses; the card's place is the platform's own card widget (data-inject="agent_card", its own card key) instead.
+the platform's hero, its card, its words and what a replica is. The office leaves an empty card box; the card's
+place is the platform's own card widget (data-inject="agent_card", its own card key) instead.
 
 A RUN ({do: "run"}) is the office's own run (agent001 run): THE CHAIN'S SANITY written into each agent's job in LARRYD (every agent's
 skills from the knowledge store's index and its rule judged against its program by the Claude reader when the program changed), then
@@ -105,7 +105,7 @@ def canvas(given, office=None):
     html, css = str(view['view']['html']), str(view['view']['css'])
     key = office.agent.get('key') or ''
     card = f'<div data-inject="agent_card" data-agent="{key}" data-size="full"></div>' if KEY.fullmatch(key) else ''
-    html = re.sub(r'<iframe class="replica-card"[^>]*></iframe>', card, html, count=1)   # THE CARD: the platform's own widget, never an iframe (the view gate)
+    html = re.sub(r'<div class="replica-cardbox"[^>]*>\s*</div>', card, html, count=1)   # THE CARD: the platform's own embedded widget in the view's card box
     return {'view': {'html': html, 'css': css}}
 
 

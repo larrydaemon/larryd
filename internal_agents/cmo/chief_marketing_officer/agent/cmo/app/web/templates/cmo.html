@@ -44,18 +44,6 @@
  </div>
 </div>
 </div></div>{% endif %}
-<script>/* THE MARK IV CARD AT ITS OWN HEIGHT: its frame and holder fit the card each card page draws (its words make it taller or shorter) */
-document.querySelectorAll('[data-agent]').forEach(function (host) {
-  var frame = host.shadowRoot && host.shadowRoot.querySelector('.replica-card'); if (!frame) return;
-  function fit() {
-    try {
-      var card = frame.contentDocument.querySelector('.one-card').shadowRoot.querySelector('.agent-card');
-      var h = card.getBoundingClientRect().height + 'px'; frame.style.height = h; frame.parentNode.style.height = h;
-    } catch (e) { /* not drawn yet: its first height stands */ }
-  }
-  frame.addEventListener('load', function () { fit(); setTimeout(fit, 400); });
-});
-</script>
 <script>/* THE TREE OPENS AS THE ORIGINAL'S (the owner 2026-10-26: "when i refresh it expands the entire tree that is annoying"): collapsed at every draw; a folder opened opens everything inside it */
 document.querySelectorAll('.replica-access details[data-depth]').forEach(function (d) { d.addEventListener('toggle', function () { if (d.dataset.depth !== '0') { d.querySelectorAll('details').forEach(function (x) { x.open = d.open; }); } }); });
 </script>

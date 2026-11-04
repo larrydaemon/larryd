@@ -44,8 +44,6 @@ def agent():
     with open(os.path.expanduser(at), encoding='utf-8') as fh:
         got = _json.load(fh)
     got.pop('about', None)
-    if got.get('art'):
-        got['art'] = got['art'].replace('{agent}', OFFICE).replace('{app}', APP)
     return got
 
 

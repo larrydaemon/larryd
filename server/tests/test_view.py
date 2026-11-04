@@ -70,7 +70,7 @@ class TheCheck(unittest.TestCase):
             self.assertTrue(view.refused({'html': '', 'css': sheet}), sheet)
 
     def test_our_cdn_passes(self):
-        good = 'https://storage.googleapis.com/positivefeedback-cdn/themes/9b7c7c13/images/light/agent_card.png?v=fd529b2e'
+        good = 'https://storage.googleapis.com/positivefeedback-cdn/themes/9b7c7c13/images/light/background.webp?v=fd529b2e'
         self.assertTrue(view.cdn_address(good))
         self.assertEqual(view.refused({'html': f'<img class="mk-art" src="{good}" alt="" loading="lazy">', 'css': f'.a {{ background: url("{good}") }}'}), '')
 

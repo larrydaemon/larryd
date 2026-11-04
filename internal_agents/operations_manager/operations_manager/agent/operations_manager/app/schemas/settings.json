@@ -18,7 +18,6 @@
   "parts_about": "THE SHAPE'S ITEMS IN THE BUCKETS (the owner 2026-10-27: 'reclassify the shape items to fit into the buckets and then include them in the xboard / like skills and rules are TOP for example / and live is LIVE for example'): each slot's items, counted on the X board's line with the slot's shells (web/page.py x_parts, agent001 x_board). SKILLS and RULES are TOP. LIVE is LIVE: the frame's own look at its stream (frame/frame_live.py), never an agent (the owner 2026-10-27: 'live should be in replica not in the agent i was very clear about this'). The buckets for AGENT ACCESS and the HEADER are his call, not said yet. X BOARD and AGENT ACCESS are TOP (the owner 2026-10-27: 'x board and agent access TOP'): their bucket gives their group word; they are not counted on the board, for neither has a run or a state of its own to be green or red (none is invented). RED (THE RED, frame/frame_red.py) is LIVE, counted once it says its own state.",
   "agent_slot": "AGENT",
   "hero": "larry/home",
-  "mark_iv_card_home": "https://larryllm.ai/",
   "vibe": [
    "crt",
    "moodlight"
@@ -143,7 +142,6 @@
   "wid_app_about": "the platform's app: its one pipeline (core_engine verbs) is the only way a record is written into LARRYD; the replica writes its jobs, runs and logs through it and nowhere else (the owner 2026-10-27), with the box's environment the platform names",
   "global_config": "~/virtual_workspace/global_config.json",
   "global_config_about": "the platform's one config, read where it is: the LARRY LLM office's host and port, for the strip's console link",
-  "mark_iv_card": "~/pf_website_hotfix/larryllm_card/larryllm-card.html",
   "wid_js": "~/virtual_workspace/wid/wid/app/static/js",
   "cdn_themes": "~/cdn/themes",
   "sanity_home": "~/virtual_sanity",

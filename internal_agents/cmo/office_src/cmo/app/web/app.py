@@ -963,23 +963,6 @@ def create(store_path=None, agent=None, run=None, door=None, agents=None, serve=
             abort(404)
         return _file(frame.path('cdn_themes', *name.split('/')), 'image/webp', cache='max-age=3600')
 
-    @app.get('/card/mark-iv')
-    def card_mark_iv():
-        """The run's MARK IV agent's card page (mark_iv_card), framed in its view."""
-        if not agent:
-            abort(404)
-        page = parts.mark_iv_card(agent, next((sh for sh in store.board() if sh['slot'] == shape['agent_slot']), None), R['shell'])
-        if page is None:
-            abort(404)
-        return Response(page, mimetype='text/html', headers={'Cache-Control': 'no-cache'})
-
-    @app.get('/card.png')
-    def card_art():
-        """The run's agent's card picture, read where it is (settings reads): the card names /card.png; an agent with no picture yet has none here."""
-        if not agent or not agent.get('art'):
-            abort(404)
-        return _file(agent['art'], 'image/png', cache='max-age=300')   # its own picture, under the office's own folder
-
     @app.get(R['board_css'])
     def board_css():
         """THE REPORT PANEL AND THE STATUS BOARD'S LINES (the header's classes): LARRY LLM's own core.css read where it is (settings
