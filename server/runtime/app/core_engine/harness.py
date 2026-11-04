@@ -58,7 +58,22 @@ def _product(card):
     return ''.join(c for c in product.lower() if c.isalnum()) if isinstance(product, str) else ''
 
 
-RUNTIME_OWN = frozenset(('room', 'frame'))   # THE RUNTIME'S OWN FIELDS OF AN ANSWER (the security review of the room rule, 2026-10-08): never an agent's word, whatever its "gives" names: an answer that holds one is refused whole
+RUNTIME_OWN = frozenset(('room', 'frame', 'keep'))   # THE RUNTIME'S OWN FIELDS OF AN ANSWER (the security review of the room rule, 2026-10-08): never an agent's word, whatever its "gives" names: an answer that holds one is refused whole
+
+
+KEEPS = ('none', 'minute', 'day')
+
+
+def _keep(manifest, given, not_read, act):
+    """HOW LONG THE PLATFORM MAY DRAW THIS ANSWER AGAIN WITHOUT ASKING (the owner 2026-11-04, "the goal is extremely fast"; step E):
+    the runtime's own word, from the approved manifest, never the agent's answer. 'none' whenever the view may hang on anything
+    the platform did not hand (the runtime's own RUNs, a live room, the counts, records it could not read) or on the member's
+    act; else what the manifest declares ("keep": "none" | "minute" | "day"), 'minute' when it declares nothing (an agent may
+    say "in 15 minutes")."""
+    if act or not_read or any(k in given for k in ('runs', 'running', 'live', 'counts')):
+        return 'none'
+    declared = manifest.get('keep')
+    return declared if declared in KEEPS else 'minute'
 
 
 def _outside_gives(manifest, answer):
@@ -353,7 +368,7 @@ class Harness:
             LOG.warning('view dropped for %s: %s', agent_key, why)
         answer.pop('frame', None)   # the field's first name (the frame attempt, 2026-10-08): never an agent's word either, whatever an old host reads
         answer.pop('room', None)   # never an agent's word (an answer that held one was refused above: RUNTIME_OWN); the runtime's own, below
-        out = {'agent_key': agent_key, 'title': card['name'], **answer}
+        out = {'agent_key': agent_key, 'title': card['name'], **answer, 'keep': _keep(manifest, given, not_read, act)}   # the runtime's own field: how long the platform may draw this answer again (step E)
         if live.declared(manifest):
             # THE ROOM INSIDE THE PLATFORM'S PAGE (the owner, 2026-10-08: "inside the page but as a regular inject like all the other agents"): the
             # runtime's OWN field beside the view, "<the room program's address>/#<the member's pass>", signed here for the member the platform named,

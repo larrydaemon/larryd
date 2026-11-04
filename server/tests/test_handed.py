@@ -166,5 +166,48 @@ class TheHandedCall(unittest.TestCase):
         self.assertIn('/agnt/records/list', p.asked())
 
 
+class TheKeepWord(TheHandedCall):
+    """STEP E: the runtime says beside every answer how long the platform may draw it again (keep), from the approved manifest,
+    never the agent's word."""
+    def answer(self, manifest_extra=None, **kw):
+        if manifest_extra:
+            folder = self.agents / 'meet'
+            m = json.loads((folder / 'agent.json').read_text())
+            (folder / 'agent.json').write_text(json.dumps({**m, **manifest_extra}))
+            con = sqlite3.connect(self.db)
+            con.execute('DELETE FROM runtime_locker WHERE agent_key = ?', (KEY,))   # the new version placed in its stead
+            con.commit()
+            con.close()
+            locker.add(self.db, self.agents, KEY, 'meet')
+            row = locker.held(self.db, KEY)
+            self.approved[0].update(code_sha256=row['code_sha256'], manifest_sha256=row['manifest_sha256'])
+        return self.harness(Platform(self.approved)).answer(ACCOUNT, SCOPE, MEMBER, KEY, handed=handed(), **kw)
+
+    def test_a_plain_answer_is_kept_the_minute(self):
+        self.assertEqual(self.answer()['keep'], 'minute')
+
+    def test_the_manifest_may_say_day_or_none(self):
+        self.assertEqual(self.answer({'keep': 'day'})['keep'], 'day')
+        self.assertEqual(self.answer({'keep': 'none'})['keep'], 'none')
+        self.assertEqual(self.answer({'keep': 'forever'})['keep'], 'minute')   # anything else: the default
+
+    def test_an_act_is_never_kept(self):
+        self.assertEqual(self.answer(act=True)['keep'], 'none')
+
+    def test_records_not_read_are_never_kept(self):
+        p = Platform(self.approved)
+        p.get = (lambda get: lambda office, route, data=None: (503, {}) if route == '/agnt/records/list' else get(office, route, data))(p.get)
+        out = self.harness(p).answer(ACCOUNT, SCOPE, MEMBER, KEY)   # nothing handed: the records asked back, and refused
+        self.assertEqual(out['keep'], 'none')
+
+    def test_an_agent_with_runs_is_never_kept(self):
+        self.assertEqual(self.answer({'gives': ['view', 'writes', 'run']})['keep'], 'none')
+
+    def test_the_agent_cannot_say_keep(self):
+        self.answers = [{'view': {'html': '<section>a</section>', 'css': ''}, 'keep': 'day'}]
+        with self.assertRaises(harness.Refused):
+            self.answer({'gives': ['view', 'writes', 'keep']})
+
+
 if __name__ == '__main__':
     unittest.main()
