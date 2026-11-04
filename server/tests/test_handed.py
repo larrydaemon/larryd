@@ -105,6 +105,20 @@ class TheHandedCall(unittest.TestCase):
             h.answer(ACCOUNT, SCOPE, MEMBER, KEY, handed=handed())
         self.assertEqual(p.asked(), ['/agents/approved', '/agents/approved'])           # asked again before the refusal
 
+    def test_frost_asked_again_at_most_once_a_call(self):
+        """Every card of a call is verified; however many miss the kept list, FROST is asked again once."""
+        import time
+        p = Platform([])                                    # FROST approves nothing: every check misses
+        h = self.harness(p)
+        h._approved = (time.monotonic(), {})                # a kept list, fresh, without the agent
+        h._handed.call = True
+        verify = h.facts(ACCOUNT, SCOPE, MEMBER)[3]
+        h._handed.call = False
+        self.assertEqual(p.asked('fs'), [])                 # the kept list: FROST not asked for the call itself
+        for _ in range(5):
+            self.assertEqual(verify(KEY), (False, 'not approved by FROST'))
+        self.assertEqual(p.asked('fs'), ['/agents/approved'])   # five misses, FROST asked again once
+
     def test_a_hire_and_a_run_ask_frost_every_time(self):
         p = Platform(self.approved)
         h = self.harness(p)

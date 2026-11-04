@@ -148,6 +148,8 @@ class Harness:
         return kept
 
     def _verifier(self, approved, refetch=False):
+        again = [refetch]   # FROST asked again at most ONCE for one call, however many of its cards miss (every card is verified)
+
         def verify(agent_key):
             nonlocal approved
             ok, why = locker.verify(self.db, self.agents, agent_key)
@@ -155,7 +157,8 @@ class Harness:
                 return ok, why
             row = locker.held(self.db, agent_key)   # by its card's key too: FROST approved the runtime's own key
             exact = (row['agent_key'], row['code_sha256'], row['manifest_sha256'])
-            if exact not in approved and refetch:   # a kept list without it: FROST asked again now, before any refusal (a new approval is seen at once)
+            if exact not in approved and again[0]:   # a kept list without it: FROST asked again now, once, before any refusal (a new approval is seen at once)
+                again[0] = False
                 approved = self._approved_now(fresh=True)
             if exact not in approved:   # THE SINK, at every call, hire and run: FROST's approval of exactly these hashes, fail closed
                 return False, 'not approved by FROST'
