@@ -37,7 +37,7 @@ def _utc_now():
 
 
 NEEDS = ('account', 'scope', 'member')
-MAX_BODY = 64 * 1024   # a signed call's body; anything larger is refused unread
+MAX_BODY = 4 * 1024 * 1024   # a signed call's body; anything larger is refused unread (4 MB since 2026-11-04: a page's call carries the platform's handed answers, records included, the platform sends at most 3.5 MB)
 RETRY_IN_REQUEST = 40   # a call back made inside a request retries this long (the request itself ends at 60 s)
 RETRY_IN_JOB = 60       # a job execution's calls back retry this long
 
@@ -200,7 +200,7 @@ def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, deve
         def work():
             d = given('agent_key')
             beside = {k: d[k] for k in lanes_harness.BESIDE if isinstance(d.get(k), dict)} if request.method == 'POST' else {}
-            return run_with.answer(*(d[k] for k in NEEDS + ('agent_key',)), beside=beside,
+            return run_with.answer(*(d[k] for k in NEEDS + ('agent_key',)), beside=beside, handed=d.get('handed') if request.method == 'POST' else None,
                                    act=request.method == 'POST' and d.get('act') is True)   # the member's own confirmed act: only the platform says so, on a POST, as a JSON true
         try:
             return answered(work)

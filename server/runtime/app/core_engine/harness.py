@@ -14,6 +14,8 @@ import os
 import pathlib
 import re
 import sqlite3
+import threading
+import time
 
 from . import fabric, gate, lanes, live, locker, member_records, outside, records as run_records, sandbox, view
 
@@ -24,6 +26,12 @@ SLOT = re.compile(r'^0(0[1-9]|1[0-5])$')   # a job's agent input slots, as wid's
 MOST_INPUT = 10_000           # characters in one input
 MOST_KEEPS = 10               # records one RUN may add for the files it stored
 A_DAY = {'image': 25, 'video': 5}   # THE OUTSIDE HAND'S DAILY LIMIT, per member and agent (the provider is paid per file made; the runtime's own config may set others)
+PLATFORM_HANDED = {('wid', 'GET', '/agnt/cards'), ('wid', 'GET', '/agnt/hired'), ('cc', 'GET', '/mtok/balance'), ('wid', 'GET', '/agnt/records/list')}
+# THE PLATFORM'S ANSWERS HANDED WITH THE CALL (the owner 2026-11-04, "the goal is extremely fast"): what the platform would answer these
+# asks of a CALL, its own doors' answers made at the platform with the same checks, handed in its signed call; nothing else is taken
+# that way. FROST is never among them: FROST's approval stays the runtime's own word, asked of FROST (APPROVED_KEEP)
+HANDED_MOST = 64              # handed answers one call may carry
+APPROVED_KEEP = 300           # seconds FROST's approved list is kept; an agent not on it is asked of FROST again before it is refused
 RUNS_HANDED = 5               # the member's last RUNs of an agent that starts RUNs from its page, handed to its CALL (state and the runtime's own code, nothing else)
 ZONE = ''                     # a made file goes to the member's DA-M with no zone named (DA-M's own general limit)
 
@@ -93,29 +101,62 @@ class Harness:
         self.caller, self.on_start = caller, on_start
         self.hand = hand if hand is not None else outside.Hand()
         self.a_day = {**A_DAY, **(a_day or {})}
+        self._handed = threading.local()   # this request's handed answers (a call's own thread: pages answered at once never mix)
+        self._approved = (0.0, None)       # FROST's approved list as last asked (monotonic time, the list)
 
     # ---------------------------------------------------------------- what the platform says
+    @staticmethod
+    def _handed_key(office, method, route, data):
+        return office, method, route, json.dumps(data or {}, sort_keys=True)
+
+    def handing(self, answers):
+        """THE PLATFORM'S ANSWERS FOR THIS CALL: [{office, method, route, data, status, body}], each one of PLATFORM_HANDED (anything else,
+        or a malformed one, is not taken: that ask goes to the platform as before). -> the number taken."""
+        taken = {}
+        for a in (answers if isinstance(answers, list) else [])[:HANDED_MOST]:
+            if not isinstance(a, dict) or (a.get('office'), a.get('method'), a.get('route')) not in PLATFORM_HANDED:
+                continue
+            if not isinstance(a.get('data'), dict) or not isinstance(a.get('body'), dict) or not isinstance(a.get('status'), int):
+                continue
+            taken[self._handed_key(a['office'], a['method'], a['route'], a['data'])] = (a['status'], a['body'])
+        self._handed.answers = taken
+        return len(taken)
+
     def _ask(self, office, method, route, data):
-        status, body = (self.client.get if method == 'GET' else self.client.post)(office, route, data)
+        handed = getattr(self._handed, 'answers', None) or {}
+        got = handed.get(self._handed_key(office, method, route, data))
+        status, body = got if got is not None else (self.client.get if method == 'GET' else self.client.post)(office, route, data)
         if status != 200:
             raise Refused(502 if status in (0, 500) else status, body.get('refused') or body.get('error') or f'{office} answered {status}')
         return body
 
     def facts(self, account, scope, member):
-        """(cards, hired, groups, verify): the platform's word now; verify(key) -> (ok, why) by the locker and FROST."""
+        """(cards, hired, groups, verify): the platform's word now; verify(key) -> (ok, why) by the locker and FROST. A page's CALL
+        (answer) may use FROST's approved list as kept (APPROVED_KEEP; a miss asks FROST again); a hire and a RUN ask FROST now."""
+        kept = bool(getattr(self._handed, 'call', False))
         cards = self._ask('wid', 'GET', '/agnt/cards', {})['cards']
         hired = self._ask('wid', 'GET', '/agnt/hired', {'account': account, 'scope': scope, 'member': member})['hired']
         groups = lanes.groups(self._ask('cc', 'GET', '/mtok/balance', {'account': account}))
-        approved = {(a['agent_key'], a['code_sha256'], a['manifest_sha256']): a.get('card_key') or '' for a in self._ask('fs', 'GET', '/agents/approved', {})['approved']}
-        return cards, hired, groups, self._verifier(approved)
+        return cards, hired, groups, self._verifier(self._approved_now(fresh=not kept), refetch=kept)
 
-    def _verifier(self, approved):
+    def _approved_now(self, fresh=False):
+        """FROST's approved list, the runtime's own word: asked of FROST, kept APPROVED_KEEP seconds (fresh: asked again now)."""
+        at, kept = self._approved
+        if fresh or kept is None or time.monotonic() - at > APPROVED_KEEP:
+            kept = {(a['agent_key'], a['code_sha256'], a['manifest_sha256']): a.get('card_key') or '' for a in self._ask('fs', 'GET', '/agents/approved', {})['approved']}
+            self._approved = (time.monotonic(), kept)
+        return kept
+
+    def _verifier(self, approved, refetch=False):
         def verify(agent_key):
+            nonlocal approved
             ok, why = locker.verify(self.db, self.agents, agent_key)
             if not ok:
                 return ok, why
             row = locker.held(self.db, agent_key)   # by its card's key too: FROST approved the runtime's own key
             exact = (row['agent_key'], row['code_sha256'], row['manifest_sha256'])
+            if exact not in approved and refetch:   # a kept list without it: FROST asked again now, before any refusal (a new approval is seen at once)
+                approved = self._approved_now(fresh=True)
             if exact not in approved:   # THE SINK, at every call, hire and run: FROST's approval of exactly these hashes, fail closed
                 return False, 'not approved by FROST'
             if (row.get('card_key') or approved[exact]) and approved[exact] != (row.get('card_key') or ''):
@@ -211,8 +252,17 @@ class Harness:
         return 'counts not read'
 
     # ---------------------------------------------------------------- the CALL lane: an agent answers now
-    def answer(self, account, scope, member, agent_key, beside=None, act=False):
-        """An agent's answer for the member's screen: only an agent that answers calls, passing the gate itself."""
+    def answer(self, account, scope, member, agent_key, beside=None, act=False, handed=None):
+        """An agent's answer for the member's screen: only an agent that answers calls, passing the gate itself. handed: the
+        platform's own answers to this call's asks (handing), so the runtime need not ask them back."""
+        self.handing(handed)
+        self._handed.call = True   # a page's CALL: FROST's approved list may be the kept one (facts)
+        try:
+            return self._answer(account, scope, member, agent_key, beside, act)
+        finally:
+            self._handed.answers, self._handed.call = {}, False
+
+    def _answer(self, account, scope, member, agent_key, beside=None, act=False):
         held = locker.held(self.db, agent_key)
         calls = locker.manifest(self.agents, held['folder']).get('calls') if held else None
         if not calls:
@@ -321,6 +371,8 @@ class Harness:
         if why:
             return 'FAILED', None, why
         written = member_records.carry(self.client.post, writes, account, scope, member, agent_key)
+        if getattr(self, '_handed', None) is not None:
+            self._handed.answers = {}   # WRITTEN: the platform's answers handed before the writes are no longer the truth; every read from here asks the platform
         carried = f'{sum(1 for w in written if w["ok"])} of {len(written)} record write{"" if len(written) == 1 else "s"} carried'   # THE RECORD SAYS WHAT WAS WRITTEN, whatever happens after: the writes are on the platform now
         try:
             given = {**given, 'records': member_records.read(self._ask, wanted, account, scope, member, agent_key, custom=custom), 'written': written}
