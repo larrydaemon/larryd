@@ -170,7 +170,7 @@ def run(folder, entry, given, seconds=20, on_start=None, most_bytes=MOST_BYTES, 
     """-> (state, answer, reason): ('DONE', {...}, '') or ('FAILED', None, why). The run is its own process group
     (start_new_session); on_start(pid) is told it before the run is fed, so the slot can kill the whole group if it
     ever has to; on the time limit the whole group is killed and waited for. most_bytes: the answer's limit (the
-    runtime's own 1 MB; a Data Fabric RUN's is its own, fabric.MOST_ANSWER)."""
+    runtime's own 1 MB)."""
     agent = os.path.realpath(folder)
     run_dir = os.path.realpath(tempfile.mkdtemp(prefix='runtime_run_'))   # private (0o700), this run's only place
     out_dir = os.path.realpath(tempfile.mkdtemp(prefix='runtime_out_'))   # its answer, outside the folder the agent can write

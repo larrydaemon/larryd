@@ -228,8 +228,7 @@ class Harness:
         beside = {k: v for k, v in (beside or {}).items() if k in BESIDE and isinstance(v, dict)}   # the page's own, beside the cards; never over them
         handed = lanes.assemble(cards, hired, groups, verify, own=agent_key)   # the cards as data alone: the platform draws each card from its own record (the owner 2026-11-03: "larryd should just have the agent code and data")
         manifest = locker.manifest(self.agents, held['folder'])
-        fabric_modules = fabric.declared(manifest)   # THE DATA FABRIC reads its modules' records on its RUN only: its page shows its own state
-        wanted = {k: v for k, v in member_records.declared(manifest).items() if k not in fabric_modules}   # THE MEMBER'S RECORDS: only what the approved manifest declares, read and written through wid's own doors
+        wanted = member_records.declared(manifest)   # THE MEMBER'S RECORDS: only what the approved manifest declares, read and written through wid's own doors
         custom = fabric.custom(card, manifest, account)   # CUSTOM DATA ONLY ON CUSTOM AGENTS (the owner, 2026-10-25): any other agent never sees nor writes a custom field
         given = {**beside, 'do': calls[0], 'cards': handed}
         if live.declared(manifest) and live.settings()[1]:
@@ -257,12 +256,10 @@ class Harness:
             not_read = 'records not read'   # and says so on its page; nothing is guessed, nothing is written without them. THE RECORD KEEPS THE RUNTIME'S OWN WORDS ONLY:
             LOG.warning('records not read for %s: %s', agent_key, no.reason)   # the platform's refusal text goes to the log, never into the audit row (fixed words, never cut, nothing written by another)
         not_read = '; '.join(r for r in (not_read, self._counts(manifest, given, account, scope, member, agent_key)) if r)   # THE COUNTS, when the approved manifest declares them
-        if fabric_modules:
+        if fabric.declared(manifest):   # THE DATA FABRIC'S ONE SNAPSHOT (the owner 2026-11-04: "no connections / just 1 updated snapshot per day"): one read of FROST's own store
             try:
-                state, who = fabric.viewer(self._ask, account, scope, member)   # FROST's identity door answers only on an open RUN (found on B, 2026-10-25): who looks comes with the state
-                given['fabric'] = {'state': fabric.with_downloads(state, (beside.get('page') or {}).get('path'), self.caller),   # THE DATA FABRIC's page: the account's state as FROST keeps it, with DA-M's own download of each file
-                                   'viewer': who,   # THE PAGE'S MASK (the owner, 2026-10-25, UI only): who looks, by FROST's own word; nothing else of them
-                                   'fields': fabric.custom_fields(self._ask, account, scope, member, agent_key, fabric_modules, strict=False)}   # each module's own custom fields, for its file's format
+                state, who = fabric.viewer(self._ask, account, scope, member)
+                given['fabric'] = {'state': state, 'viewer': who}   # who looks: the page's mask (the owner, 2026-10-25, UI only)
             except Refused as no:
                 not_read = '; '.join(r for r in (not_read, 'fabric state not read') if r)
                 LOG.warning('fabric state not read for %s: %s', agent_key, no.reason)
@@ -517,26 +514,14 @@ class Harness:
         if 'cards' in hands:
             given['cards'] = lanes.assemble(cards, hired, groups, verify, own=key)
         self._counts(manifest, given, account, scope, member, key)   # THE COUNTS, when the approved manifest declares them: handed on a RUN as on a CALL; not handed, the agent runs without
-        fabric_modules = fabric.declared(manifest)
-        if fabric_modules:
-            # THE DATA FABRIC (the owner, 2026-10-25): the newest official files from DA-M (only while this RUN is open), the account's state from
-            # FROST, and the records of its modules WITH their custom fields (it fills them); not handed whole, nothing runs: nothing is guessed
-            try:
-                given['fabric'] = {'files': fabric.files(self._ask, account, scope, member, job_key, run), 'state': fabric.state(self._ask, account, scope, member)}
-                dropped = {fabric.FILES[f['name']] for f in given['fabric']['files'] if f['name'] in fabric.FILES}   # ONLY THE MODULES WITH A FILE (found on B, 2026-10-25: a member may not list every module)
-                mapped = any(f['name'] == fabric.MAPPING for f in given['fabric']['files'])   # pf_mapping.csv names any module's fields: each module's fields are handed (its records only with a file)
-                given['fabric']['fields'] = fabric.custom_fields(self._ask, account, scope, member, key, [m for m in fabric_modules if mapped or m in dropped])   # the account's own custom fields: the only buckets a column goes into
-                given['records'] = member_records.read(self._ask, {m: ('read',) for m in fabric_modules if m in dropped}, account, scope, member, key, custom=True, most=fabric.MOST_ROWS)
-            except Refused as no:
-                return self._end(account, scope, member, key, job_key, run, 'FAILED', f'the Data Fabric could not read the platform: {no.reason}')
-        if self.internal_for(manifest) and not fabric_modules:   # RECORDS ON A RUN, internal agents (the owner 2026-11-03): what its manifest declares, read as a CALL reads them
+        if self.internal_for(manifest):   # RECORDS ON A RUN, internal agents (the owner 2026-11-03): what its manifest declares, read as a CALL reads them
             wanted = member_records.declared(manifest)
             if wanted:
                 try:
                     given['records'] = member_records.read(self._ask, wanted, account, scope, member, key, custom=False)
                 except Refused as no:
                     return self._end(account, scope, member, key, job_key, run, 'FAILED', f'the records could not be read: {no.reason}')
-        state, answer, reason = self._run(folder, manifest, given, **({'most_bytes': fabric.MOST_ANSWER} if fabric_modules else {}))   # THE SIZE LIMIT, BASED ON 100 FIELDS: a Fabric RUN's own
+        state, answer, reason = self._run(folder, manifest, given)
         if state != 'DONE':
             return self._end(account, scope, member, key, job_key, run, 'FAILED', reason)
         outside = _outside_gives(manifest, answer)
@@ -592,23 +577,10 @@ class Harness:
                 return self._end(account, scope, member, key, job_key, run, 'FAILED',
                                  f"{paid}{kept_note}, but DA-M did not store the files{left}: {stored.get('refused') or stored.get('error') or f'DA-M answered {status}'}", charged=charged)
             stored_keys[f['name']] = str(stored.get('dam_key') or '')
-        fabric_note = ''
-        if fabric_modules and 'fabric' in answer:
-            writes, rows, saved, why = fabric.check(answer, fabric_modules)
-            fields, why = (fabric.definitions(answer, fabric_modules) if not why else ([], why))
-            if why:
-                return self._end(account, scope, member, key, job_key, run, 'FAILED', f'{paid}; nothing was written: {why}', charged=charged)
-            defined = fabric.define(self.client.post, fields, account, scope, member, key)   # pf_mapping.csv first: the buckets the rows fill are defined before any row is written
-            written = member_records.carry(self.client.post, writes, account, scope, member, key)
-            ok, why = fabric.save(self.client.post, account, scope, member, locker.held(self.db, key), job_key, run, fabric.with_held(fabric.landed(fabric.merged(given['fabric']['state'], saved), writes, rows, written), stored_keys))
-            fabric_note = (f" · {sum(1 for d in defined if d['ok'])} of {len(defined)} custom field{'' if len(defined) == 1 else 's'} defined" if defined else '') + \
-                f" · {sum(1 for w in written if w['ok'])} of {len(written)} record write{'' if len(written) == 1 else 's'} carried"
-            if not ok:
-                return self._end(account, scope, member, key, job_key, run, 'FAILED', f'{paid}{fabric_note}, but FROST did not keep the Data Fabric state: {why}', charged=charged)
-        kept = {k: v for k, v in answer.items() if k not in ('files', 'makes', 'keeps', 'fabric')}
+        kept = {k: v for k, v in answer.items() if k not in ('files', 'makes', 'keeps')}
         delivery = answer.get('delivery') if isinstance(answer.get('delivery'), str) else json.dumps(kept, sort_keys=True)
         stored_note = f" · {len(files)} file{'' if len(files) == 1 else 's'} in DA-M" if files else ''
-        return self._end(account, scope, member, key, job_key, run, 'DONE', f'RUN {run} DONE · {paid}{stored_note}{kept_note}{fabric_note}', charged=charged, delivery=delivery)
+        return self._end(account, scope, member, key, job_key, run, 'DONE', f'RUN {run} DONE · {paid}{stored_note}{kept_note}', charged=charged, delivery=delivery)
 
     def started(self, agent_key, job_key, run, account, member):
         """A RUN the runtime took is written down as STARTED, once (at the door when the platform names the agent, else here as it
