@@ -100,15 +100,15 @@ def _controller(answer, find, page):
     if product and modules:
         level += ('<div class="label wl-label">Module level</div><div class="wl-btnrow">' + small('Off', not module, links.get('module_off'))
                   + ''.join(small(m, m == module, of('module', m)) for m in modules) + '</div>')
-    sorts = ' · '.join(f'<a class="{"emphasis mk-sorted" if key == sort else "annotation"}" href="{e(of("sort", key))}"{current if key == sort else ""}>{word}</a>'
+    sorts = ' · '.join(f'<a class="{"emphasis pf-card-grid-sorted" if key == sort else "annotation"}" href="{e(of("sort", key))}"{current if key == sort else ""}>{word}</a>'
                        for key, word in ORDERS if isinstance(of('sort', key), str) and of('sort', key))
     kept = page.get('search') if isinstance(page.get('search'), dict) else {}
     kept = ''.join(f'<input type="hidden" name="{e(k)}" value="{e(v)}">' for k, v in kept.items() if re.fullmatch(r'[a-z_]{1,32}', str(k)) and k != 'q' and isinstance(v, (str, int)) and str(v) != '')
     search = str(find.get('q') or '')
-    return ('<div class="sub-controller-box wl-glass mk-ctl"><div class="wl-panel"><div class="sub-contacts-header"><div class="sub-controller-box"><div class="sub-controller">'
+    return ('<div class="sub-controller-box wl-glass pf-card-grid-ctl"><div class="wl-panel"><div class="sub-contacts-header"><div class="sub-controller-box"><div class="sub-controller">'
             '<div class="wl-rule"></div><div class="emphasis">Controller</div><div class="wl-rule"></div><div class="wl-cols">'
             f'<div class="wl-col--1"><div class="subtitle">Agents</div><div class="emphasis">{answer["hired"]} hired · {answer["total"]} total in network</div><div class="wl-rule wl-rule--gap"></div>'
-            f'<div class="mk-ctl-row"><div><div class="label wl-label">Hired agents</div><div class="wl-btnrow">{small("All agents", not mine, links.get("mine_off"))}{small("Hired agents", mine, links.get("mine_on"))}</div></div>'
+            f'<div class="pf-card-grid-ctl-row"><div><div class="label wl-label">Hired agents</div><div class="wl-btnrow">{small("All agents", not mine, links.get("mine_off"))}{small("Hired agents", mine, links.get("mine_on"))}</div></div>'
             f'<div><div class="label wl-label">View</div><div class="wl-btnrow">{small("Card", not orgchart, links.get("view_card"))}{small("Org chart", orgchart, links.get("view_orgchart"))}</div></div></div>'
             f'{level}</div><div class="wl-divider"></div>'
             '<div class="wl-col--3"><div class="subtitle">Quick search</div><div class="emphasis">Lookup by</div><div class="wl-rule wl-rule--gap"></div>'
@@ -120,12 +120,12 @@ def _controller(answer, find, page):
 
 
 def view(answer, orgchart=False, page=None, find=None):
-    """THE MARKETPLACE: the controller at the top, the grid of cards below; its own sheet (marketplace.css, in its code hash) lays them out."""
+    """THE MARKETPLACE: the controller at the top, the grid of cards below, in the standard sheets alone (the owner 2026-11-05: an agent's
+    view uses the standard sheets and buttons, nothing of its own): the platform's controller and embedded.css's pf-card-grid; no sheet of its own."""
     grid = ''.join(_card(c, orgchart) for c in answer['cards'])
     markup = (_controller(answer, find if isinstance(find, dict) else {}, page if isinstance(page, dict) else {})
-              + f'<div class="mk-grid{" mk-orgchart" if orgchart else ""}">{grid}</div>')
-    path = HERE / 'marketplace.css'
-    return {'html': markup, 'css': path.read_text(encoding='utf-8') if path.is_file() else ''}
+              + f'<div class="pf-card-grid{" pf-card-grid--mini" if orgchart else ""}">{grid}</div>')
+    return {'html': markup, 'css': ''}
 
 
 def report(cards):

@@ -53,7 +53,7 @@ class TheAnswerDoor(unittest.TestCase):
         self.assertEqual(r.status_code, 200, r.get_data(as_text=True)[:300])
         out = r.get_json()
         self.assertEqual((out['total'], out['shown']), (2, 2))
-        self.assertNotIn('mk-ctl', out['view']['html'])
+        self.assertNotIn('pf-card-grid-ctl', out['view']['html'])
         self.assertNotIn('data-wears="A', out['view']['html'])
 
     def test_a_signed_post_hands_find_and_page_and_the_view_passes(self):
@@ -63,8 +63,8 @@ class TheAnswerDoor(unittest.TestCase):
         self.assertIn('view', out)   # passed the runtime's own check, with the page's path told
         self.assertEqual(view.refused(out['view'], PATH), '')
         h, css = out['view']['html'], out['view']['css']
-        self.assertEqual(css, (APP / 'agents' / 'marketplace' / 'marketplace.css').read_text())   # its own sheet alone: nothing the call adds
-        self.assertIn('mk-ctl', h)
+        self.assertEqual(css, '')   # no sheet of its own: the standard sheets alone (the owner 2026-11-05)
+        self.assertIn('pf-card-grid-ctl', h)
         self.assertEqual([c['name'] for c in out['cards']], ['Other agent', 'Scratch agent'])        # find.sort = name
         self.assertEqual(h.count('data-inject="agent_card"'), 2)                                    # where each card stands, the platform draws it
         for never in ('data-wears', '<img', 'mk-site', 'mk-rating', 'javascript:'):
