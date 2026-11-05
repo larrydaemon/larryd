@@ -441,9 +441,9 @@ def harness_for_slot(app, slot=''):
 
 
 def place(app, agent_key, data, role='', slot=''):
-    """An approved agent file into the locker (<intake folder>/<key>/, or marketplace/<key>/ for the marketplace role): the locker is
-    LARRYD's own approval. Then to the platform's wid (its card written, PENDING until the platform shows it) through the slot it
-    is for (harness_for_slot). -> what was held, and wid's answer or why wid did not take it (the agent
+    """An approved agent file into the locker (<intake folder>/<key>/, or marketplace/<key>/ for the marketplace role): the first
+    guard. Then to the platform's wid (its card written, PENDING until the platform's review, FROST's, approves these exact hashes:
+    the second guard) through the slot it is for (harness_for_slot). -> what was held, and wid's answer or why wid did not take it (the agent
     stays held; `submit <key>` sends it again)."""
     h, conf = harness_for_slot(app, slot), CONFIG['intake']   # refused before anything is held when no slot is named
     try:
@@ -532,7 +532,7 @@ def main(argv):
     """python runtime/app/web/app.py                                   the host
     python runtime/app/web/app.py submit <key> [--slot <slot>]        an agent the runtime holds, to the platform's wid (its key, its exact hashes, its manifest)
     python runtime/app/web/app.py place <card key> <file.larryd> [marketplace] [--slot <slot>]   an agent the owner approved: into the locker (and, on Cloud Run, the lockers bucket), then to the platform's wid
-    python runtime/app/web/app.py review <card key>... [--slot <slot>]   what the runtime records for those agents, with the platform's word on each card
+    python runtime/app/web/app.py review <card key>... [--slot <slot>]   what the runtime records for those agents, with the platform's word on the hashes it holds
       (on Cloud Run --slot, or LARRYD_SLOT, names the slot whose wid is asked: slot-a, slot-b or proof)
     python runtime/app/web/app.py job <slot> <account> <scope> <member> <job key> <run>   a Cloud Run job execution: one RUN, its result to that slot
     python runtime/app/web/app.py callbacks <slot> <n>                Cloud Run: the warm-up, the first call back to that slot and n more (statuses and times)

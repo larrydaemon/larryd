@@ -33,7 +33,7 @@ def _closed_port():
 
 class Wid:
     """wid as a receipt: it records what the runtime sends and answers a waiting card, and each card's word as the test
-    sets it (states: {agent_key: (state, note)})."""
+    sets it for exact hashes (states: {(key, code, manifest): (state, note)})."""
     def __init__(self, states=None):
         self.said, self.states = [], dict(states or {})
 
@@ -44,7 +44,7 @@ class Wid:
     def get(self, office, route, data=None):
         self.said.append((office, route, data))
         if route == '/agnt/review_state':
-            state, note = self.states.get(data['agent_key'], ('not submitted', ''))
+            state, note = self.states.get((data['agent_key'], data['code_sha256'], data['manifest_sha256']), ('not submitted', ''))
             return 200, {'state': state, 'note': note}
         return 404, {'refused': route}
 
@@ -209,19 +209,19 @@ class Intake(unittest.TestCase):
 
     # ---------------------------------------------------------------- review: what the runtime records, with the platform's word
     def test_the_review_is_counted_from_runtime_runs(self):
-        self.place(_agent())
+        held = self.place(_agent())
         for lane, state, charged in (('job', 'DONE', 3), ('job', 'DONE', 2), ('job', 'FAILED', 0), ('call', 'DONE', 0),
                                      ('hire', 'ON', 0), ('hire', 'ON', 0), ('hire', 'OFF', 0)):
             self.h._record(lane, KEY, state, charged=charged)
         self.h._record('job', 'MAGT_00000000D003_0003', 'DONE', charged=99)   # another agent's, never in this one's counts
-        self.wid.states = {KEY: ('approved', '')}
+        self.wid.states = {(KEY, held['code_sha256'], held['manifest_sha256']): ('approved', '')}
         agents = self.h.review_state([KEY, OTHER])['agents']
         self.assertEqual([a['agent_key'] for a in agents], [KEY, OTHER])
         mine = agents[0]
         self.assertEqual({k: mine[k] for k in ('held', 'review', 'runs', 'calls', 'hires', 'unhires', 'charged')},
                          {'held': True, 'review': 'approved', 'runs': {'DONE': 2, 'FAILED': 1}, 'calls': 1, 'hires': 2, 'unhires': 1, 'charged': 5})
         self.assertEqual(agents[1]['review'], 'not submitted')
-        self.wid.states = {KEY: ('rejected', 'the manifest names no screen')}
+        self.wid.states = {(KEY, held['code_sha256'], held['manifest_sha256']): ('rejected', 'the manifest names no screen')}
         mine = self.h.review_state([KEY])['agents'][0]
         self.assertEqual((mine['review'], mine['note']), ('rejected', 'the manifest names no screen'))
         self.h.client = host.platform.Client({'wid': f'http://127.0.0.1:{_closed_port()}'}, SECRET, timeout=2)

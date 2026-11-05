@@ -199,6 +199,9 @@ class Local:
                 said = {}
             said = said if isinstance(said, dict) else {}
             return 200, {t: said.get(t) if isinstance(said.get(t), list) else [] for t in ('files', 'held', 'slots', 'ids', 'apis')}
+        if (method, office, route) == ('GET', 'wid', '/agnt/approved'):
+            return 200, {'approved': [{'agent_key': r['agent_key'], 'code_sha256': r['code_sha256'], 'manifest_sha256': r['manifest_sha256']}
+                                      for r in self._rows()]}
         if (method, office, route) == ('GET', 'wid', '/agnt/review_state'):
             return 200, {'state': 'approved', 'note': ''}
         if (method, office, route) == ('POST', 'wid', '/agnt/submit'):

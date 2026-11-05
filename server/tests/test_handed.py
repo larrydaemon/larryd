@@ -1,8 +1,8 @@
 """THE PLATFORM'S ANSWERS HANDED WITH THE CALL (the owner 2026-11-04, "the goal is extremely fast"): a page's CALL may carry
 the platform's own answers to the asks the runtime would make back (the cards, the member's hires, the mTok balance, the
-records list); the runtime takes those and asks the platform for nothing else it was handed. The approval is never handed
-and never asked: it is the runtime's own locker (the core cleanup 2026-11-05), checked afresh at every call, hire and RUN.
-After the member's writes are carried, every read asks the platform again (the truth after the act)."""
+records list); the runtime takes those and asks the platform for nothing else it was handed. The approval is never handed:
+the approved list (FROST's review, asked of wid's /agnt/approved: the runtime never calls FROST) is the runtime's own word,
+kept a short while for a page's CALL, asked again on a miss; a hire and a RUN ask it every time. After the member's writes are carried, every read asks the platform again (the truth after the act)."""
 import json
 import pathlib
 import sqlite3
@@ -24,8 +24,8 @@ LIST = {'account': ACCOUNT, 'scope': SCOPE, 'member': MEMBER, 'agent_key': KEY, 
 
 class Platform:
     """The platform as the runtime hears it, every ask counted."""
-    def __init__(self):
-        self.said = []
+    def __init__(self, approved):
+        self.approved, self.said = approved, []
 
     def get(self, office, route, data=None):
         self.said.append((office, route))
@@ -35,6 +35,8 @@ class Platform:
             return 200, {'hired': HIRED}
         if route == '/jobs/balance':
             return 200, {'subscriptions': []}
+        if route == '/agnt/approved':
+            return 200, {'approved': self.approved}
         if route == '/agnt/records/list':
             return 200, {'rows': [dict(ROW)], 'total': 1, 'first': []}
         return 404, {'refused': route}
@@ -46,6 +48,9 @@ class Platform:
         return 200, {}
 
     def asked(self, office=None):
+        """Every route asked; 'approval': the approved list's asks alone (always of wid)."""
+        if office == 'approval':
+            return [r for o, r in self.said if r == '/agnt/approved' and o == 'wid']
         return [r for o, r in self.said if office is None or o == office]
 
 
@@ -71,6 +76,8 @@ class TheHandedCall(unittest.TestCase):
         (folder / 'agent.json').write_text(json.dumps(manifest))
         (folder / 'agent.py').write_text('print("{}")\n')
         locker.add(self.db, self.agents, KEY, 'meet')
+        row = locker.held(self.db, KEY)
+        self.approved = [{'agent_key': row['agent_key'], 'code_sha256': row['code_sha256'], 'manifest_sha256': row['manifest_sha256'], 'card_key': ''}]
         self.given, self.answers = [], []
 
         def run(folder, entry, given, seconds=20, on_start=None, most_bytes=harness.sandbox.MOST_BYTES, internal=False):
@@ -83,60 +90,81 @@ class TheHandedCall(unittest.TestCase):
     def harness(self, platform):
         return harness.Harness(self.db, self.agents, platform)
 
-    def test_a_handed_call_asks_the_platform_for_nothing(self):
-        p = Platform()
+    def test_a_handed_call_asks_the_platform_for_nothing_but_frost(self):
+        p = Platform(self.approved)
         self.harness(p).answer(ACCOUNT, SCOPE, MEMBER, KEY, beside={'page': {'path': '/x'}}, handed=handed())
-        self.assertEqual(p.asked(), [])                                                # the approval is the runtime's own locker: nothing asked
+        self.assertEqual(p.asked(), ['/agnt/approved'])                              # FROST, the runtime's own word, and nothing else
         self.assertEqual([r['key'] for r in self.given[0]['records']['opns']], [ROW['MOPN_norm_key']])   # the handed rows, as a read gives them
 
-    def test_a_changed_agent_is_refused_at_the_next_call_without_asking_anyone(self):
-        p = Platform()
+    def test_frost_kept_for_a_page_and_asked_again_on_a_miss(self):
+        p = Platform(self.approved)
         h = self.harness(p)
         h.answer(ACCOUNT, SCOPE, MEMBER, KEY, handed=handed())
-        (self.agents / 'meet' / 'agent.py').write_text('print("{ }")\n')             # the folder no longer what was placed
+        h.answer(ACCOUNT, SCOPE, MEMBER, KEY, handed=handed())
+        self.assertEqual(p.asked(), ['/agnt/approved'])                              # kept: the second page asks nothing
+        p.approved = []                                                                # revoked at FROST
+        h._approved = (h._approved[0], {})                                             # and the kept list knows it not: a miss
         with self.assertRaises(harness.Refused):
             h.answer(ACCOUNT, SCOPE, MEMBER, KEY, handed=handed())
-        self.assertEqual(p.asked(), [])
+        self.assertEqual(p.asked(), ['/agnt/approved', '/agnt/approved'])           # asked again before the refusal
 
-    def test_a_hire_and_a_run_verify_the_locker_every_time_and_never_ask_an_office(self):
-        p = Platform()
+    def test_frost_asked_again_at_most_once_a_call(self):
+        """Every card of a call is verified; however many miss the kept list, FROST is asked again once."""
+        import time
+        p = Platform([])                                    # FROST approves nothing: every check misses
         h = self.harness(p)
-        self.assertEqual(h.facts(ACCOUNT, SCOPE, MEMBER)[3](KEY), (True, ''))
-        (self.agents / 'meet' / 'agent.py').write_text('print("{ }")\n')
-        self.assertEqual(h.facts(ACCOUNT, SCOPE, MEMBER)[3](KEY), (False, 'tampered: the code changed'))
-        self.assertEqual({o for o, _r in p.said}, {'wid'})                             # wid alone, never fs, cc, so or lryllm
+        h._approved = (time.monotonic(), {})                # a kept list, fresh, without the agent
+        h._handed.call, h._handed.agent = True, 'MAGT_0000000000FF_0009'   # a call for ANOTHER agent: this card's miss asks nothing
+        verify = h.facts(ACCOUNT, SCOPE, MEMBER)[3]
+        self.assertEqual(verify(KEY), (False, 'not approved by FROST'))
+        self.assertEqual(p.asked('approval'), [])                 # the kept list, and another card's miss: FROST not asked
+        h._handed.agent = KEY                               # the call for this very agent
+        verify = h.facts(ACCOUNT, SCOPE, MEMBER)[3]
+        h._handed.call, h._handed.agent = False, ''
+        for _ in range(5):
+            self.assertEqual(verify(KEY), (False, 'not approved by FROST'))
+        self.assertEqual(p.asked('approval'), ['/agnt/approved'])   # five misses of the called agent, FROST asked again once
+
+    def test_a_hire_and_a_run_ask_frost_every_time(self):
+        p = Platform(self.approved)
+        h = self.harness(p)
+        h.answer(ACCOUNT, SCOPE, MEMBER, KEY, handed=handed())
+        h.facts(ACCOUNT, SCOPE, MEMBER)
+        h.facts(ACCOUNT, SCOPE, MEMBER)
+        self.assertEqual(p.asked('approval'), ['/agnt/approved'] * 3)
+        self.assertEqual({o for o, _r in p.said}, {'wid'})   # wid alone: never fs, cc, so or lryllm
 
     def test_only_the_four_answers_are_taken(self):
-        p = Platform()
-        forged = handed() + [{'office': 'fs', 'method': 'GET', 'route': '/agents/approved', 'data': {}, 'status': 200, 'body': {'approved': []}},
-                             {'office': 'cc', 'method': 'GET', 'route': '/mtok/balance', 'data': {'account': ACCOUNT}, 'status': 200, 'body': {'subscriptions': []}},
+        p = Platform(self.approved)
+        forged = handed() + [{'office': 'wid', 'method': 'GET', 'route': '/agnt/approved', 'data': {}, 'status': 200, 'body': {'approved': []}},
+                             {'office': 'fs', 'method': 'GET', 'route': '/agents/approved', 'data': {}, 'status': 200, 'body': {'approved': []}},
                              {'office': 'wid', 'method': 'POST', 'route': '/agnt/records/add', 'data': {}, 'status': 200, 'body': {}},
                              'junk', {'office': 'wid', 'method': 'GET', 'route': '/agnt/cards', 'data': 'x', 'status': 200, 'body': {}}]
-        self.assertEqual(self.harness(p).handing(forged), 4)
+        self.assertEqual(self.harness(p).handing(forged), 4)   # the approved list is never taken from a hand
         self.harness(p).answer(ACCOUNT, SCOPE, MEMBER, KEY, handed=forged)
-        self.assertEqual(p.asked(), [])
+        self.assertEqual(p.asked(), ['/agnt/approved'])                              # FROST asked itself, never the handed word
 
     def test_a_handed_answer_not_matching_the_ask_is_not_used(self):
-        p = Platform()
+        p = Platform(self.approved)
         other = [dict(a, data={**a['data'], 'member': 'MCON_' + 'E' * 12 + '_0009'}) if a['route'] != '/agnt/cards' else a for a in handed()]
         self.harness(p).answer(ACCOUNT, SCOPE, MEMBER, KEY, handed=other)
         self.assertIn('/agnt/hired', p.asked())                                         # another member's answer: this member's is asked
         self.assertIn('/agnt/records/list', p.asked())
 
     def test_without_handed_answers_the_call_asks_as_before(self):
-        p = Platform()
+        p = Platform(self.approved)
         self.harness(p).answer(ACCOUNT, SCOPE, MEMBER, KEY)
-        self.assertEqual(sorted(set(p.asked())), ['/agnt/cards', '/agnt/hired', '/agnt/records/list', '/jobs/balance'])
+        self.assertEqual(sorted(set(p.asked())), ['/agnt/approved', '/agnt/cards', '/agnt/hired', '/agnt/records/list', '/jobs/balance'])
 
     def test_after_the_writes_every_read_asks_the_platform(self):
-        p = Platform()
+        p = Platform(self.approved)
         self.answers = [{'writes': [{'do': 'add', 'species': 'opns', 'values': {'identity_operations_headline': 'New'}}], 'view': {'html': '<section>a</section>', 'css': ''}},
                         {'view': {'html': '<section>b</section>', 'css': ''}}]
         self.harness(p).answer(ACCOUNT, SCOPE, MEMBER, KEY, handed=handed(), act=True)
-        self.assertEqual(p.asked('wid'), ['/agnt/records/add', '/agnt/records/list'])    # the write, then the records read again from the platform
+        self.assertEqual([r for r in p.asked('wid') if r != '/agnt/approved'], ['/agnt/records/add', '/agnt/records/list'])    # the write, then the records read again from the platform (the approval is asked of wid too now)
 
     def test_the_handed_answers_do_not_outlive_the_call(self):
-        p = Platform()
+        p = Platform(self.approved)
         h = self.harness(p)
         h.answer(ACCOUNT, SCOPE, MEMBER, KEY, handed=handed())
         h.answer(ACCOUNT, SCOPE, MEMBER, KEY)
@@ -156,7 +184,9 @@ class TheKeepWord(TheHandedCall):
             con.commit()
             con.close()
             locker.add(self.db, self.agents, KEY, 'meet')
-        return self.harness(Platform()).answer(ACCOUNT, SCOPE, MEMBER, KEY, handed=handed(), **kw)
+            row = locker.held(self.db, KEY)
+            self.approved[0].update(code_sha256=row['code_sha256'], manifest_sha256=row['manifest_sha256'])
+        return self.harness(Platform(self.approved)).answer(ACCOUNT, SCOPE, MEMBER, KEY, handed=handed(), **kw)
 
     def test_a_plain_answer_is_kept_the_minute(self):
         self.assertEqual(self.answer()['keep'], 'minute')
@@ -170,7 +200,7 @@ class TheKeepWord(TheHandedCall):
         self.assertEqual(self.answer(act=True)['keep'], 'none')
 
     def test_records_not_read_are_never_kept(self):
-        p = Platform()
+        p = Platform(self.approved)
         p.get = (lambda get: lambda office, route, data=None: (503, {}) if route == '/agnt/records/list' else get(office, route, data))(p.get)
         out = self.harness(p).answer(ACCOUNT, SCOPE, MEMBER, KEY)   # nothing handed: the records asked back, and refused
         self.assertEqual(out['keep'], 'none')

@@ -151,22 +151,21 @@ if __name__ == '__main__':
 
 class ARevokedAgentsQueuedJob(Echo):
     """THE OWNER AND THE SECURITY REVIEW, 2026-10-06: revocation is total. A RUN queued while the agent was approved is
-    refused when it starts once its folder is no longer what the locker approved (verified at that moment) or once its card
-    is hidden (the platform's catalog at that moment): nothing runs, nothing is asked of wid's inputs."""
+    refused when it starts once FROST revoked it (its approved list asked of wid at that moment) or once its card is hidden (the
+    platform's catalog at that moment): nothing runs, nothing is asked of wid's inputs."""
     def queued_run(self, cards, approved_hashes):
         self.agent({'name': '001'})
+        row = locker.held(self.db, KEY)
         wid = Wid({'001': 'Harbor'})
         h = harness.Harness(self.db, self.agents, wid)
-        if not approved_hashes:   # the folder changed after it was placed: no longer what was approved
-            folder = self.agents / locker.held(self.db, KEY)['folder']
-            (folder / 'notes.txt').write_text('changed after approval\n')
-        h.facts = lambda account, scope, member: (cards, HIRED, [], h._verifier())
+        approved = {(KEY, row['code_sha256'], row['manifest_sha256']): ''} if approved_hashes else {}
+        h.facts = lambda account, scope, member: (cards, HIRED, [], h._verifier(approved))
         return h.run_job(ACCOUNT, SCOPE, MEMBER, JOB, 1), wid
 
     def test_approved_and_shown_it_runs(self):
         self.assertEqual(self.queued_run([CARD], True)[0], 'DONE')
 
-    def test_changed_after_approval_it_is_refused(self):
+    def test_revoked_at_frost_it_is_refused(self):
         state, wid = self.queued_run([CARD], False)
         self.assertEqual(state, 'REFUSED')
         self.assertEqual([d['state'] for d in self.results(wid)], ['REFUSED'])

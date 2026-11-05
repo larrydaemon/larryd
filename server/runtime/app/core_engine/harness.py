@@ -5,9 +5,9 @@ its files, the provider key, the greeting, who the agent works for), each throug
 Every agent runs in the sandbox; every call and run is a runtime_runs row. Nothing is assumed when the platform does not answer.
 DATA STAYS IN wid (the owner): what a run is handed lives in memory and its run folder only; its result goes back to wid
 and is not kept; runtime.db never holds a record value, a delivery, an account or a member.
-An agent counts as verified only when its folder matches the locker: the locker is LARRYD's own approval (an agent is held
-there only by `place`, the owner's approved file; on Cloud Run the lockers bucket's locker.json, written at approval, holds
-its exact hashes and an instance holds nothing else). The platform shows a card only when its own record says APPROVED."""
+TWO GUARDS, NEVER ONE (the owner's rule, 2026-10-04): an agent counts as verified only when its folder matches the locker
+(LARRYD's own: held only by `place`, the owner's approved file) AND the platform approved those exact hashes (FROST's
+review, asked through wid's /agnt/approved: the runtime never calls FROST itself)."""
 import base64
 import binascii
 import datetime
@@ -33,8 +33,10 @@ A_DAY = {'image': 25, 'video': 5}   # THE OUTSIDE HAND'S DAILY LIMIT, per member
 PLATFORM_HANDED = {('wid', 'GET', '/agnt/cards'), ('wid', 'GET', '/agnt/hired'), ('wid', 'GET', '/jobs/balance'), ('wid', 'GET', '/agnt/records/list')}
 # THE PLATFORM'S ANSWERS HANDED WITH THE CALL (the owner 2026-11-04, "the goal is extremely fast"): what the platform would answer these
 # asks of a CALL, its own doors' answers made at the platform with the same checks, handed in its signed call; nothing else is taken
-# that way. The approval is never among them: it is the runtime's own locker (_verifier)
+# that way. The approval is never among them: the platform's approved list is the runtime's own word, asked of wid (APPROVED_KEEP)
 HANDED_MOST = 64              # handed answers one call may carry
+APPROVED_KEEP = 300           # seconds the platform's approved list is kept; an agent not on it is asked of wid again before it is refused
+APPROVED_DOOR = '/agnt/approved'   # wid's: the exact hashes FROST's review approved, as wid reads them (the second guard)
 RUNS_HANDED = 5               # the member's last RUNs of an agent that starts RUNs from its page, handed to its CALL (state and the runtime's own code, nothing else)
 ZONE = ''                     # a made file goes to the member's DA-M with no zone named (DA-M's own general limit)
 
@@ -126,6 +128,7 @@ class Harness:
         self.hand = hand if hand is not None else outside.Hand()
         self.a_day = {**A_DAY, **(a_day or {})}
         self._handed = threading.local()   # this request's handed answers (a call's own thread: pages answered at once never mix)
+        self._approved = (0.0, None)       # the platform's approved list as last asked (monotonic time, the list)
 
     # ---------------------------------------------------------------- what the platform says
     @staticmethod
@@ -154,17 +157,43 @@ class Harness:
         return body
 
     def facts(self, account, scope, member):
-        """(cards, hired, groups, verify): the platform's word now (wid's); verify(key) -> (ok, why) by the locker alone."""
+        """(cards, hired, groups, verify): the platform's word now (wid's); verify(key) -> (ok, why) by the locker and the platform's
+        approval. A page's CALL (answer) may use the approved list as kept (APPROVED_KEEP; a miss asks wid again); a hire and a RUN
+        ask now."""
+        kept = bool(getattr(self._handed, 'call', False))
         cards = self._ask('wid', 'GET', '/agnt/cards', {})['cards']
         hired = self._ask('wid', 'GET', '/agnt/hired', {'account': account, 'scope': scope, 'member': member})['hired']
         groups = lanes.groups(self._ask('wid', 'GET', '/jobs/balance', {'account': account}))
-        return cards, hired, groups, self._verifier()
+        return cards, hired, groups, self._verifier(self._approved_now(fresh=not kept), refetch=kept)
 
-    def _verifier(self):
+    def _approved_now(self, fresh=False):
+        """The platform's approved list (FROST's review, through wid), the runtime's own word: kept APPROVED_KEEP seconds (fresh:
+        asked again now)."""
+        at, kept = self._approved
+        if fresh or kept is None or time.monotonic() - at > APPROVED_KEEP:
+            kept = {(a['agent_key'], a['code_sha256'], a['manifest_sha256']): a.get('card_key') or '' for a in self._ask('wid', 'GET', APPROVED_DOOR, {})['approved']}
+            self._approved = (time.monotonic(), kept)
+        return kept
+
+    def _verifier(self, approved, refetch=False):
+        again = [refetch]   # the platform asked again at most ONCE for one call, and only for the agent the call is for (every card is verified: another card's miss is
+        own = getattr(self._handed, 'agent', '')   # only that card unavailable, never a reason to ask again)
+
         def verify(agent_key):
-            """THE SINK, at every call, hire and run: the agent is held in the locker (LARRYD's own approval, by its exact
-            hashes) and its folder still hashes to them; fail closed."""
-            return locker.verify(self.db, self.agents, agent_key)
+            nonlocal approved
+            ok, why = locker.verify(self.db, self.agents, agent_key)   # THE FIRST GUARD: the locker's exact hashes
+            if not ok:
+                return ok, why
+            row = locker.held(self.db, agent_key)   # by its card's key too: the review approved the runtime's own key
+            exact = (row['agent_key'], row['code_sha256'], row['manifest_sha256'])
+            if exact not in approved and again[0] and agent_key == own:   # a kept list without it: asked again now, once, before any refusal (a new approval is seen at once)
+                again[0] = False
+                approved = self._approved_now(fresh=True)
+            if exact not in approved:   # THE SECOND GUARD, at every call, hire and run: the platform's approval of exactly these hashes, fail closed
+                return False, 'not approved by FROST'
+            if (row.get('card_key') or approved[exact]) and approved[exact] != (row.get('card_key') or ''):
+                return False, 'not the card FROST approved'   # the approval names the card it shows; another card is not covered
+            return True, ''
         return verify
 
     def submit(self, agent_key):
@@ -203,17 +232,18 @@ class Harness:
             if row is None:
                 review = 'not submitted'
             else:
-                review, note = self._review(key)
+                review, note = self._review(key, row)
             out.append({'agent_key': key, 'held': row is not None, 'code_sha256': row['code_sha256'] if row else '',
                         'manifest_sha256': row['manifest_sha256'] if row else '', 'review': review, 'note': note,
                         'runs': rec.by_state(key, 'job'), 'calls': rec.count(key, 'call'), 'hires': rec.count(key, 'hire', 'ON'),
                         'unhires': rec.count(key, 'hire', 'OFF'), 'charged': rec.charged(key)})
         return {'agents': out}
 
-    def _review(self, key):
-        """The platform's word on this agent's card: -> (review, note). waiting · approved · rejected · revoked · not submitted,
-        from wid's review_state door; a silent platform is said as unknown."""
-        status, body = self.client.get('wid', '/agnt/review_state', {'agent_key': key})
+    def _review(self, key, row):
+        """The platform's word on these exact hashes: -> (review, note). waiting · approved · rejected · revoked · not submitted,
+        from wid's review_state door (approved only when FROST's review approved exactly these hashes); a silent platform is
+        said as unknown."""
+        status, body = self.client.get('wid', '/agnt/review_state', {'agent_key': key, 'code_sha256': row['code_sha256'], 'manifest_sha256': row['manifest_sha256']})
         if status == 200:
             return body.get('state', 'unknown'), body.get('note', '') if body.get('state') == 'rejected' else ''
         return f"unknown: {body.get('refused') or body.get('error') or f'wid answered {status}'}", ''
@@ -250,10 +280,11 @@ class Harness:
         """An agent's answer for the member's screen: only an agent that answers calls, passing the gate itself. handed: the
         platform's own answers to this call's asks (handing), so the runtime need not ask them back."""
         self.handing(handed)
+        self._handed.call, self._handed.agent = True, agent_key   # a page's CALL: the approved list may be the kept one (facts); asked again only for this agent
         try:
             return self._answer(account, scope, member, agent_key, beside, act)
         finally:
-            self._handed.answers = {}
+            self._handed.answers, self._handed.call, self._handed.agent = {}, False, ''
 
 
     def _answer(self, account, scope, member, agent_key, beside=None, act=False):

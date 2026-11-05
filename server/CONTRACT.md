@@ -30,7 +30,8 @@ asks its office AS wid (wid's `core_engine/offices.py`), only while that member'
 | wid | POST /agnt/records/add, /agnt/records/edit, /agnt/records/remove | account, scope, member, agent_key (the agent's card key), segment, values / key | {key} / {key} / {removed}; a refusal as {error} or {refused} (carried to the agent as `written`) |
 | wid | GET /agnt/fabric | account, scope, member | apis, databases, viewer: {member_type} (an agent that declares `"fabric": {"snapshot": true}`; wid reads the snapshot) |
 | wid | POST /agnt/submit | agent_key, name, code_sha256, manifest_sha256, manifest | {state, card_key}: wid writes the card, PENDING until the platform shows it |
-| wid | GET /agnt/review_state | agent_key | {state, note}: the card's word (waiting, approved, rejected, revoked, not submitted) |
+| wid | GET /agnt/approved | nothing | approved: [{agent_key, code_sha256, manifest_sha256, card_key}] (FROST's review, as wid reads it) |
+| wid | GET /agnt/review_state | agent_key, code_sha256, manifest_sha256 | {state, note}: approved only for exactly approved hashes, else the card's word (waiting, rejected, revoked, not submitted) |
 | wid | GET /jobs/inputs | account, scope, job_key, run | inputs: {slot: value} |
 | wid | POST /jobs/result | account, scope, job_key, run, state, log, delivery | {saved} |
 | wid | GET /jobs/balance | account | subscriptions: [{agent_group}] (wid asks mTok) |
@@ -41,9 +42,11 @@ asks its office AS wid (wid's `core_engine/offices.py`), only while that member'
 | wid | GET /jobs/identity | account, scope, member, job_key, run | {first_name, member_type, account_name} (wid asks FROST) |
 | wid | GET /jobs/greeting | account, scope, member, job_key, run | the greeting (wid asks LARRY LLM) |
 
-THE APPROVAL is the runtime's own locker, never asked of the platform: an agent is held only by `place` (the owner's
-approved file; on Cloud Run the lockers bucket's locker.json with its exact hashes) and verified against it at every
-call, hire and run. The platform shows a card only when its own record says APPROVED.
+TWO GUARDS, NEVER ONE (the owner's rule, 2026-10-04): an agent is verified at every call, hire and run only when (1) the
+runtime's locker holds it with exactly these hashes (`place`, the owner's approved file; on Cloud Run the lockers bucket's
+locker.json) AND (2) wid's /agnt/approved lists exactly these hashes (FROST's review, read by wid as an office; the runtime
+never calls FROST). The list is kept APPROVED_KEEP seconds for a page's CALL (a miss asks again, once); a hire and a RUN ask
+it now. A new version (new hashes) waits for its approval again.
 
 ## The card (`core_engine/preview.CARD_KEYS`, `agents/marketplace/agent.py`, the tool's `shape.CARD`)
 key · number · class · name · status · pitch · price · image_dam_key · developer · type · residency · sends_to ·
