@@ -171,11 +171,11 @@ class LocalAnswers(unittest.TestCase):
         self.assertEqual(self.local.post('wid', '/agnt/hire', {'agent_key': preview.MARKETPLACE_KEY})[1]['already'], False)
         self.assertEqual(self.local.get('wid', '/agnt/hired', {})[1]['hired'][0]['on'], True)
         self.assertEqual(self.local.post('wid', '/agnt/unhire', {'agent_key': preview.MARKETPLACE_KEY}), (200, {'removed': 1}))
-        self.assertEqual(self.local.get('cc', '/mtok/balance', {})[1]['subscriptions'], [{'agent_group': 'larryd'}])
-        approved = self.local.get('fs', '/agents/approved', {})[1]['approved']
-        self.assertEqual([a['agent_key'] for a in approved], [preview.MARKETPLACE_KEY])
+        self.assertEqual(self.local.get('wid', '/jobs/balance', {})[1]['subscriptions'], [{'agent_group': 'larryd'}])
+        self.assertEqual(self.local.get('wid', '/agnt/review_state', {'agent_key': preview.MARKETPLACE_KEY}), (200, {'state': 'approved', 'note': ''}))
         self.assertEqual(self.local.get('wid', '/jobs/queued', {}), (200, {'jobs': []}))
-        self.assertEqual(self.local.get('so', '/dam/upload', {})[0], 404)
+        for office, route in (('so', '/dam/upload'), ('fs', '/agents/approved'), ('cc', '/mtok/balance'), ('fs', '/fabric/state')):   # wid alone stands in: no other office
+            self.assertEqual(self.local.get(office, route, {})[0], 404, route)
 
     def test_holding_the_marketplace_again_is_idempotent_and_survives_a_fresh_copy(self):
         self.assertEqual(preview.hold_marketplace(self.db, self.agents), preview.MARKETPLACE_KEY)

@@ -187,10 +187,10 @@ class Local:
             return 200, {'jobs': []}
         if office == 'wid' and route.startswith('/agnt/records/'):
             return self._records_door(method, route, data)
-        if (method, office, route) == ('GET', 'cc', '/mtok/balance'):
+        if (method, office, route) == ('GET', 'wid', '/jobs/balance'):
             groups = sorted({c['product_slug'] for c in cards.values() if c['product_slug']})
             return 200, {'account': ACCOUNT, 'balance': 0, 'subscriptions': [{'agent_group': g} for g in groups]}
-        if (method, office, route) == ('GET', 'fs', '/fabric/state'):
+        if (method, office, route) == ('GET', 'wid', '/agnt/fabric'):
             # THE DATA FABRIC's state on the developer's own runtime: fabric_state.json beside the records files when the developer
             # wrote one ({files, held, slots, ids, apis}, by hand, to try the page); else an account that has imported nothing yet
             try:
@@ -199,11 +199,8 @@ class Local:
                 said = {}
             said = said if isinstance(said, dict) else {}
             return 200, {t: said.get(t) if isinstance(said.get(t), list) else [] for t in ('files', 'held', 'slots', 'ids', 'apis')}
-        if (method, office, route) == ('GET', 'fs', '/agents/approved'):
-            return 200, {'approved': [{'agent_key': r['agent_key'], 'code_sha256': r['code_sha256'], 'manifest_sha256': r['manifest_sha256']}
-                                      for r in self._rows()]}
-        if (method, office, route) == ('GET', 'fs', '/agents/review_state'):
+        if (method, office, route) == ('GET', 'wid', '/agnt/review_state'):
             return 200, {'state': 'approved', 'note': ''}
-        if (method, office, route) == ('POST', 'fs', '/agents/submit'):
+        if (method, office, route) == ('POST', 'wid', '/agnt/submit'):
             return 200, {'state': 'approved', 'agent_key': data.get('agent_key', '')}
         return 404, {'refused': f"the developer's runtime has no {office}{route}"}

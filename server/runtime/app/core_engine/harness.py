@@ -1,9 +1,13 @@
 """THE HARNESS: how the runtime answers the platform. Everything it knows about a member comes from the platform over the
-one signed client (the cards, the member's hired shells, the account's subscriptions, FROST's approvals); every agent
-runs in the sandbox; every call and run is a runtime_runs row. Nothing is assumed when the platform does not answer.
+one signed client, and only from wid (the core cleanup, the owner 2026-11-05: "no agents should have anything to do with cc,
+fs, laryllm, so"): the cards, the member's hired shells, the account's subscriptions, and every service of a RUN (its charge,
+its files, the provider key, the greeting, who the agent works for), each through a wid door that asks its office AS wid.
+Every agent runs in the sandbox; every call and run is a runtime_runs row. Nothing is assumed when the platform does not answer.
 DATA STAYS IN wid (the owner): what a run is handed lives in memory and its run folder only; its result goes back to wid
 and is not kept; runtime.db never holds a record value, a delivery, an account or a member.
-An agent counts as verified only when its folder matches the locker AND FROST approved those exact hashes."""
+An agent counts as verified only when its folder matches the locker: the locker is LARRYD's own approval (an agent is held
+there only by `place`, the owner's approved file; on Cloud Run the lockers bucket's locker.json, written at approval, holds
+its exact hashes and an instance holds nothing else). The platform shows a card only when its own record says APPROVED."""
 import base64
 import binascii
 import datetime
@@ -26,12 +30,11 @@ SLOT = re.compile(r'^0(0[1-9]|1[0-5])$')   # a job's agent input slots, as wid's
 MOST_INPUT = 10_000           # characters in one input
 MOST_KEEPS = 10               # records one RUN may add for the files it stored
 A_DAY = {'image': 25, 'video': 5}   # THE OUTSIDE HAND'S DAILY LIMIT, per member and agent (the provider is paid per file made; the runtime's own config may set others)
-PLATFORM_HANDED = {('wid', 'GET', '/agnt/cards'), ('wid', 'GET', '/agnt/hired'), ('cc', 'GET', '/mtok/balance'), ('wid', 'GET', '/agnt/records/list')}
+PLATFORM_HANDED = {('wid', 'GET', '/agnt/cards'), ('wid', 'GET', '/agnt/hired'), ('wid', 'GET', '/jobs/balance'), ('wid', 'GET', '/agnt/records/list')}
 # THE PLATFORM'S ANSWERS HANDED WITH THE CALL (the owner 2026-11-04, "the goal is extremely fast"): what the platform would answer these
 # asks of a CALL, its own doors' answers made at the platform with the same checks, handed in its signed call; nothing else is taken
-# that way. FROST is never among them: FROST's approval stays the runtime's own word, asked of FROST (APPROVED_KEEP)
+# that way. The approval is never among them: it is the runtime's own locker (_verifier)
 HANDED_MOST = 64              # handed answers one call may carry
-APPROVED_KEEP = 300           # seconds FROST's approved list is kept; an agent not on it is asked of FROST again before it is refused
 RUNS_HANDED = 5               # the member's last RUNs of an agent that starts RUNs from its page, handed to its CALL (state and the runtime's own code, nothing else)
 ZONE = ''                     # a made file goes to the member's DA-M with no zone named (DA-M's own general limit)
 
@@ -45,9 +48,9 @@ def _skills():
 SKILLS = _skills()
 MOST_FILES = 10   # what the DA-M store keeps from one answer (all of it inside the sandbox's 1 MB answer)
 FILE_NAME = re.compile(r'^[A-Za-z0-9][A-Za-z0-9 ._-]{0,120}$')
-HANDED = {   # a skill's hand: the platform's door the runtime asks for the RUN's member and account (signed with runtime_link)
-    'greeting': ('lryllm', '/larry/greeting', "the member's greeting", 'LARRY LLM'),
-    'identity': ('fs', '/agents/identity', 'who the agent works for', 'FROST'),
+HANDED = {   # a skill's hand: the wid door the runtime asks for the RUN's member and account (wid asks LARRY LLM or FROST as itself)
+    'greeting': ('wid', '/jobs/greeting', "the member's greeting", 'wid'),
+    'identity': ('wid', '/jobs/identity', 'who the agent works for', 'wid'),
 }
 
 
@@ -115,14 +118,14 @@ class Harness:
         of the office that called (a run record names it). on_start(pid): told each sandboxed run's process (the slot).
         hand: THE OUTSIDE HAND (core_engine/outside.py). a_day: {kind: files a member may have made in a day}.
         THE RUNTIME HOLDS NO PROVIDER KEY (the owner, 2026-10-08: "a single source setup"): the key's one home is the platform's
-        vault; each errand asks FROST for it (_provider_key), uses it once and forgets it."""
+        vault (FROST's); each errand asks wid for it (_provider_key), wid reads the vault at that moment and hands it on the
+        signed answer; the runtime uses it once and forgets it."""
         self.db, self.agents, self.client, self.seconds = db, agents, client, seconds
         self.records = records if records is not None else run_records.SqliteRecords(db)
         self.caller, self.on_start = caller, on_start
         self.hand = hand if hand is not None else outside.Hand()
         self.a_day = {**A_DAY, **(a_day or {})}
         self._handed = threading.local()   # this request's handed answers (a call's own thread: pages answered at once never mix)
-        self._approved = (0.0, None)       # FROST's approved list as last asked (monotonic time, the list)
 
     # ---------------------------------------------------------------- what the platform says
     @staticmethod
@@ -151,54 +154,31 @@ class Harness:
         return body
 
     def facts(self, account, scope, member):
-        """(cards, hired, groups, verify): the platform's word now; verify(key) -> (ok, why) by the locker and FROST. A page's CALL
-        (answer) may use FROST's approved list as kept (APPROVED_KEEP; a miss asks FROST again); a hire and a RUN ask FROST now."""
-        kept = bool(getattr(self._handed, 'call', False))
+        """(cards, hired, groups, verify): the platform's word now (wid's); verify(key) -> (ok, why) by the locker alone."""
         cards = self._ask('wid', 'GET', '/agnt/cards', {})['cards']
         hired = self._ask('wid', 'GET', '/agnt/hired', {'account': account, 'scope': scope, 'member': member})['hired']
-        groups = lanes.groups(self._ask('cc', 'GET', '/mtok/balance', {'account': account}))
-        return cards, hired, groups, self._verifier(self._approved_now(fresh=not kept), refetch=kept)
+        groups = lanes.groups(self._ask('wid', 'GET', '/jobs/balance', {'account': account}))
+        return cards, hired, groups, self._verifier()
 
-    def _approved_now(self, fresh=False):
-        """FROST's approved list, the runtime's own word: asked of FROST, kept APPROVED_KEEP seconds (fresh: asked again now)."""
-        at, kept = self._approved
-        if fresh or kept is None or time.monotonic() - at > APPROVED_KEEP:
-            kept = {(a['agent_key'], a['code_sha256'], a['manifest_sha256']): a.get('card_key') or '' for a in self._ask('fs', 'GET', '/agents/approved', {})['approved']}
-            self._approved = (time.monotonic(), kept)
-        return kept
-
-    def _verifier(self, approved, refetch=False):
-        again = [refetch]   # FROST asked again at most ONCE for one call, and only for the agent the call is for (every card is verified: another card's miss is
-        own = getattr(self._handed, 'agent', '')   # only that card unavailable, never a reason to ask FROST again)
-
+    def _verifier(self):
         def verify(agent_key):
-            nonlocal approved
-            ok, why = locker.verify(self.db, self.agents, agent_key)
-            if not ok:
-                return ok, why
-            row = locker.held(self.db, agent_key)   # by its card's key too: FROST approved the runtime's own key
-            exact = (row['agent_key'], row['code_sha256'], row['manifest_sha256'])
-            if exact not in approved and again[0] and agent_key == own:   # a kept list without it: FROST asked again now, once, before any refusal (a new approval is seen at once)
-                again[0] = False
-                approved = self._approved_now(fresh=True)
-            if exact not in approved:   # THE SINK, at every call, hire and run: FROST's approval of exactly these hashes, fail closed
-                return False, 'not approved by FROST'
-            if (row.get('card_key') or approved[exact]) and approved[exact] != (row.get('card_key') or ''):
-                return False, 'not the card FROST approved'   # the approval names the card it shows; another card is not covered
-            return True, ''
+            """THE SINK, at every call, hire and run: the agent is held in the locker (LARRYD's own approval, by its exact
+            hashes) and its folder still hashes to them; fail closed."""
+            return locker.verify(self.db, self.agents, agent_key)
         return verify
 
     def submit(self, agent_key):
-        """The runtime submits an agent it holds to FROST's review: its key, its exact hashes, its manifest."""
+        """The runtime sends an agent it holds to the platform: wid writes its card (PENDING until the platform's own review
+        shows it) and answers the card's key. Its key, its exact hashes, its manifest."""
         ok, why = locker.verify(self.db, self.agents, agent_key)
         if not ok:
             raise Refused(409, why)
         row = locker.held(self.db, agent_key)
-        return self._ask('fs', 'POST', '/agents/submit', {'agent_key': agent_key, 'name': row['name'], 'code_sha256': row['code_sha256'],
-                                                          'manifest_sha256': row['manifest_sha256'], 'manifest': locker.manifest(self.agents, row['folder'])})
+        return self._ask('wid', 'POST', '/agnt/submit', {'agent_key': agent_key, 'name': row['name'], 'code_sha256': row['code_sha256'],
+                                                           'manifest_sha256': row['manifest_sha256'], 'manifest': locker.manifest(self.agents, row['folder'])})
 
     def marketplace_key(self):
-        """The marketplace's key ON THE PLATFORM: the card key FROST minted when one is linked (the platform's cards are
+        """The marketplace's key ON THE PLATFORM: the card key wid minted when one is linked (the platform's cards are
         keyed by it), else the runtime's own. A placed or bucket marketplace (marketplace/<key>) comes before the image's own
         (marketplace/), and a linked one before both."""
         con = sqlite3.connect(self.db)
@@ -213,10 +193,9 @@ class Harness:
         return row[1] or row[0]
 
     def review_state(self, keys):
-        """What the runtime records for these agents (the owner's `review` command): held or not, FROST's word on the exact
-        hashes, and the counts of runtime_runs (runs by state, calls, hires, unhires, mTok charged). Only agent keys and
+        """What the runtime records for these agents (the owner's `review` command): held or not, the platform's word on its
+        card (wid's), and the counts of runtime_runs (runs by state, calls, hires, unhires, mTok charged). Only agent keys and
         counts: no account, no member."""
-        approved = None   # FROST's approved list, asked only when FROST has no review_state door (a FROST before it)
         out, rec = [], self.records
         for key in keys:
             row = locker.held(self.db, key)
@@ -224,29 +203,20 @@ class Harness:
             if row is None:
                 review = 'not submitted'
             else:
-                review, note, approved = self._review(key, row, approved)
+                review, note = self._review(key)
             out.append({'agent_key': key, 'held': row is not None, 'code_sha256': row['code_sha256'] if row else '',
                         'manifest_sha256': row['manifest_sha256'] if row else '', 'review': review, 'note': note,
                         'runs': rec.by_state(key, 'job'), 'calls': rec.count(key, 'call'), 'hires': rec.count(key, 'hire', 'ON'),
                         'unhires': rec.count(key, 'hire', 'OFF'), 'charged': rec.charged(key)})
         return {'agents': out}
 
-    def _review(self, key, row, approved):
-        """FROST's word on these exact hashes: -> (review, note, approved). waiting · approved · rejected (with FROST's
-        reason) · not submitted, from FROST's review_state door; a FROST without that door (404) is read the older way,
-        its approved list (approved · not approved); a silent FROST is said as unknown."""
-        status, body = self.client.get('fs', '/agents/review_state', {'agent_key': key, 'code_sha256': row['code_sha256'],
-                                                                       'manifest_sha256': row['manifest_sha256']})
+    def _review(self, key):
+        """The platform's word on this agent's card: -> (review, note). waiting · approved · rejected · revoked · not submitted,
+        from wid's review_state door; a silent platform is said as unknown."""
+        status, body = self.client.get('wid', '/agnt/review_state', {'agent_key': key})
         if status == 200:
-            return body.get('state', 'unknown'), body.get('note', '') if body.get('state') == 'rejected' else '', approved
-        if status == 404:
-            if approved is None:
-                s, listed = self.client.get('fs', '/agents/approved', {})
-                if s != 200:
-                    return f"unknown: {listed.get('refused') or f'FROST answered {s}'}", '', None
-                approved = {(a['agent_key'], a['code_sha256'], a['manifest_sha256']) for a in listed['approved']}
-            return ('approved' if (key, row['code_sha256'], row['manifest_sha256']) in approved else 'not approved'), '', approved
-        return f"unknown: {body.get('refused') or body.get('error') or f'FROST answered {status}'}", '', approved
+            return body.get('state', 'unknown'), body.get('note', '') if body.get('state') == 'rejected' else ''
+        return f"unknown: {body.get('refused') or body.get('error') or f'wid answered {status}'}", ''
 
     # ---------------------------------------------------------------- the record
     def _record(self, lane, agent_key, state, reason='', job_key='', run=0, charged=0, account='', member=''):
@@ -280,11 +250,10 @@ class Harness:
         """An agent's answer for the member's screen: only an agent that answers calls, passing the gate itself. handed: the
         platform's own answers to this call's asks (handing), so the runtime need not ask them back."""
         self.handing(handed)
-        self._handed.call, self._handed.agent = True, agent_key   # a page's CALL: FROST's approved list may be the kept one (facts); asked again only for this agent
         try:
             return self._answer(account, scope, member, agent_key, beside, act)
         finally:
-            self._handed.answers, self._handed.call, self._handed.agent = {}, False, ''
+            self._handed.answers = {}
 
 
     def _answer(self, account, scope, member, agent_key, beside=None, act=False):
@@ -322,8 +291,8 @@ class Harness:
                 given['who'] = {'member': member}   # WHO THE RECORDS ARE FOR: the member's own key, so an agent can tell their own rows (system_member_roles) from the account's; nothing else of them
                 if live.declared(manifest):
                     # AN AGENT WITH A LIVE PAGE IS HANDED THE FIRST NAME ITS OWN PASS ALREADY CARRIES (PF Virtual Wire, 2026-10-08: the messenger
-                    # is inside the page now, and a message written there wears the same name as one written on the live page): FROST's own
-                    # word, plain, or none; an agent without a live page is handed the key alone, as before
+                    # is inside the page now, and a message written there wears the same name as one written on the live page): the platform's own
+                    # word (wid's), plain, or none; an agent without a live page is handed the key alone, as before
                     name = live._plain(self._identity(account, scope, member).get('first_name'), 40)
                     if name:
                         given['who']['name'] = name
@@ -331,7 +300,7 @@ class Harness:
             not_read = 'records not read'   # and says so on its page; nothing is guessed, nothing is written without them. THE RECORD KEEPS THE RUNTIME'S OWN WORDS ONLY:
             LOG.warning('records not read for %s: %s', agent_key, no.reason)   # the platform's refusal text goes to the log, never into the audit row (fixed words, never cut, nothing written by another)
         not_read = '; '.join(r for r in (not_read, self._counts(manifest, given, account, scope, member, agent_key)) if r)   # THE COUNTS, when the approved manifest declares them
-        if fabric.declared(manifest):   # THE DATA FABRIC'S ONE SNAPSHOT (the owner 2026-11-04: "no connections / just 1 updated snapshot per day"): one read of FROST's own store
+        if fabric.declared(manifest):   # THE DATA FABRIC'S ONE SNAPSHOT (the owner 2026-11-04: "no connections / just 1 updated snapshot per day"): one read through wid (FROST's store)
             try:
                 state, who = fabric.viewer(self._ask, account, scope, member)
                 given['fabric'] = {'state': state, 'viewer': who}   # who looks: the page's mask (the owner, 2026-10-25, UI only)
@@ -502,7 +471,7 @@ class Harness:
         own screen, as before, AND EVERY DEFAULT AGENT OF THIS BOARD (the owner, 2026-10-09: "a few agents will be turned on as
         default when new users come in so its not blank and empty"): a card the system owner marked on by default (the card's
         own default, the platform's word, never the agent's manifest) whose screen is this board, shown (APPROVED, in the
-        locker, FROST's exact hashes), not offline for this account, hireable and not hired. Each goes through the platform's
+        locker, its exact hashes), not offline for this account, hireable and not hired. Each goes through the platform's
         same hire door (its own decision for this member stands: a refusal there skips the card, nothing else) and leaves the
         same hire record. A CARD THAT NAMES AN OUTSIDE AI SERVICE IS NEVER PLACED BY DEFAULT: the member's own hire is the
         permission for that. TWO CHECKS: this runtime skips it from the facts it read, and the platform's door, told the ask is
@@ -615,12 +584,11 @@ class Harness:
             return self._end(account, scope, member, key, job_key, run, stop.state, stop.reason)
         if gate.rate(card) == 0 and not gate.group_of(card):   # A FREE AGENT OF NO PLAN (a LARRYD agent: found on B, 2026-10-25, PF DATA FABRIC): it costs nothing and mTok keeps no line for a free one, but refuses a charge naming no group
             status, body = 200, {'charged': 0, 'free': True}
-        else:
-            status, body = self.client.post('cc', '/mtok/use', {'account': account, 'member': member, 'agent_key': key,
-                                                                'job_key': f'{job_key}#{run}', 'agent_group': gate.group_of(card), 'rate': str(gate.rate(card))})
+        else:   # THE JOB'S BILL, wid's (the core cleanup 2026-11-05): wid charges this open RUN by its own card, asking mTok as itself
+            status, body = self.client.post('wid', '/jobs/charge', {'account': account, 'scope': scope, 'member': member, 'job_key': job_key, 'run': str(run)})
         if status != 200:
             return self._end(account, scope, member, key, job_key, run, 'FAILED',
-                             f"not charged: {body.get('refused') or f'mTok answered {status}'}; the delivery is withheld")
+                             f"not charged: {body.get('refused') or f'wid answered {status}'}; the delivery is withheld")
         charged = int(body.get('charged') or 0)
         paid = 'free' if body.get('free') else f"{charged} mTok from the {body.get('paid_from')}"
         # A STORED FILE BECOMES THE MEMBER'S RECORD, AND THE RECORD COMES FIRST (found on B, 2026-10-08: a made picture's card showed no picture). On the
@@ -642,8 +610,8 @@ class Harness:
             record_of = {by_name[k['file']]: (w['key'], k['species']) for k, w in zip(keeps, written)}   # {the file's place: (its record's key, its species)}
         stored_keys = {}   # {a stored file's name: the key DA-M gave it}
         for n, f in enumerate(files):
-            status, stored = self.client.post('so', '/dam/upload', {'account': account, 'scope': scope, 'member': member, 'job_key': job_key, 'run': str(run), 'name': f['name'],
-                                                                   'content_b64': f['content_b64'], 'source_key': record_of[n][0] if n in record_of else key})   # its record's key; a file no record keeps: the agent's card, as before
+            status, stored = self.client.post('wid', '/jobs/upload', {'account': account, 'scope': scope, 'member': member, 'job_key': job_key, 'run': str(run), 'name': f['name'],
+                                                                     'content_b64': f['content_b64'], 'source_key': record_of[n][0] if n in record_of else key})   # its record's key; a file no record keeps: the agent's card, as before (wid stores it in DA-M)
             if status != 200:
                 # A RECORD WHOSE FILE DID NOT ARRIVE IS TAKEN BACK when the platform lets the agent (its card declares remove); either way the RUN says
                 # plainly what stands: never a record left behind in silence
@@ -652,7 +620,7 @@ class Harness:
                     back = member_records.carry(self.client.post, [{'do': 'remove', 'species': record_of[n][1], 'key': record_of[n][0], 'values': {}}], account, scope, member, key)
                     left = '; its record was taken back' if back and back[0]['ok'] else f"; ITS RECORD {record_of[n][0]} STANDS WITHOUT ITS FILE"
                 return self._end(account, scope, member, key, job_key, run, 'FAILED',
-                                 f"{paid}{kept_note}, but DA-M did not store the files{left}: {stored.get('refused') or stored.get('error') or f'DA-M answered {status}'}", charged=charged)
+                                 f"{paid}{kept_note}, but DA-M did not store the files{left}: {stored.get('refused') or stored.get('error') or f'wid answered {status}'}", charged=charged)
             stored_keys[f['name']] = str(stored.get('dam_key') or '')
         kept = {k: v for k, v in answer.items() if k not in ('files', 'makes', 'keeps')}
         delivery = answer.get('delivery') if isinstance(answer.get('delivery'), str) else json.dumps(kept, sort_keys=True)
@@ -685,21 +653,19 @@ class Harness:
 
     def _provider_key(self, provider, agent_key, job_key, run, account, scope, member):
         """THE KEY FOR ONE ERRAND, FROM ITS ONE HOME (the owner, 2026-10-08: "the replicate token is on production and should point
-        to that directly always its a single source setup"): asked of FROST's vault on the platform that called, for this RUN of
-        this member and this agent as FROST approved it (its exact hashes); FROST alone decides. -> the key, or '' when FROST
-        hands none. It lives in this call's memory only: never kept, never written, never in a reason or a log."""
-        row = locker.held(self.db, agent_key)
-        if row is None:
+        to that directly always its a single source setup"): asked of wid for this open RUN of this member; wid reads the
+        platform's vault at that moment, for the agent the RUN's own job holds, and decides. -> the key, or '' when wid hands
+        none. It lives in this call's memory only: never kept, never written, never in a reason or a log."""
+        if locker.held(self.db, agent_key) is None:
             return ''
-        status, body = self.client.post('fs', '/agents/provider_key', {'account': account, 'scope': scope, 'member': member, 'job_key': job_key, 'run': str(run),
-                                                                       'agent_key': row['agent_key'], 'code_sha256': row['code_sha256'],
-                                                                       'manifest_sha256': row['manifest_sha256'], 'provider': provider})
+        status, body = self.client.post('wid', '/jobs/provider_key', {'account': account, 'scope': scope, 'member': member, 'job_key': job_key,
+                                                                     'run': str(run), 'provider': provider})
         held = body.get('key') if status == 200 and isinstance(body, dict) else ''
         return held if isinstance(held, str) else ''
 
     def _made(self, asks, agent_key, job_key, run, account, member, scope=''):
-        """The errand itself: each ask made by the outside hand with the platform's own key for that provider, asked of FROST's
-        vault for this one errand and passed nowhere else. -> the files, as the DA-M store takes them. What a provider says is never carried: the
+        """The errand itself: each ask made by the outside hand with the platform's own key for that provider, asked of wid
+        (the platform's vault) for this one errand and passed nowhere else. -> the files, as the DA-M store takes them. What a provider says is never carried: the
         reason is the hand's own fixed words.
         THE DAILY LIMIT IS THE BILL'S GUARD, AND IT FAILS CLOSED: every errand is written down BEFORE it leaves (a 'make' record: the
         agent, the member, the job) and then counted with the others of the member's day; over the limit, a limit that is not a
@@ -710,7 +676,7 @@ class Harness:
             provider = outside.MODELS[ask['model']]['provider']
             provider_key = self._provider_key(provider, agent_key, job_key, run, account, scope, member)
             if not provider_key:
-                raise _Stop('FAILED', f'not made, no {outside.PROVIDERS[provider]["name"]} key: FROST\'s vault handed none; nothing was sent')
+                raise _Stop('FAILED', f'not made, no {outside.PROVIDERS[provider]["name"]} key: the platform\'s vault handed none; nothing was sent')
             picture = self._reference(ask, account, scope, member, job_key, run)   # read before the day is counted: a reference that cannot be read sends nothing and costs nothing
             most = self.a_day.get(outside.MODELS[ask['model']]['kind'])
             if not (isinstance(most, int) and not isinstance(most, bool) and most >= 0 and member and agent_key):
@@ -731,14 +697,14 @@ class Harness:
 
     def _reference(self, ask, account, scope, member, job_key, run):
         """THE REFERENCE PICTURE (R-0040 / R-0041, the owner 2026-10-24): when the ask names one (a DA-M key the member typed on the
-        agent's page, checked by outside.check), its bytes are read from DA-M's own content door FOR THIS MEMBER, while their RUN is
-        open (the platform decides: its route must be open to the runtime, and a member reads only what their scope lets them).
+        agent's page, checked by outside.check), its bytes are read through wid's job file door FOR THIS MEMBER, while their RUN is
+        open (wid decides and asks DA-M as itself).
         -> the bytes, b'' when the ask names none. They live in this call's memory only and go to the provider's file door and
         nowhere else: never to the agent, never kept. A key that cannot be read stops the errand before anything is sent."""
         dam_key = ask.get('reference')
         if not dam_key:
             return b''
-        status, body = self.client.get('so', '/dam/file/content', {'account': account, 'scope': scope, 'member': member, 'job_key': job_key, 'run': str(run), 'dam_key': dam_key})
+        status, body = self.client.get('wid', '/jobs/file', {'account': account, 'scope': scope, 'member': member, 'job_key': job_key, 'run': str(run), 'dam_key': dam_key})
         raw = body.get('content_b64') if status == 200 and isinstance(body, dict) else None
         try:
             picture = base64.b64decode(raw, validate=True) if isinstance(raw, str) else b''
@@ -746,7 +712,7 @@ class Harness:
             picture = b''
         if not picture:
             said = (body.get('refused') or body.get('error')) if isinstance(body, dict) else ''
-            raise _Stop('FAILED', f"not made, reference unreadable: DA-M did not hand {dam_key} ({said if isinstance(said, str) and said else f'DA-M answered {status}'}); nothing was sent")
+            raise _Stop('FAILED', f"not made, reference unreadable: DA-M did not hand {dam_key} ({said if isinstance(said, str) and said else f'wid answered {status}'}); nothing was sent")
         if outside.kind_of(picture) not in outside.REFERENCE_KINDS:
             raise _Stop('FAILED', f'not made, reference not a picture: {dam_key}; nothing was sent')
         if len(picture) > outside.MOST_REFERENCE:
@@ -859,9 +825,9 @@ class Harness:
         return {'ok': written['ok'], 'key': written['key'], 'why': written['why']}
 
     def _identity(self, account, scope, member):
-        """Who the member is, for a live page's pass, from FROST's own identity door: {first_name, account_name, ...} as FROST
-        hands it; {} when FROST does not answer a CALL with it (the page then says Member): never guessed, never read from
-        anywhere else."""
+        """Who the member is, for a live page's pass, from wid's identity door (wid asks FROST as itself): {first_name,
+        account_name, ...} as wid hands it; {} when wid does not answer a CALL with it (the page then says Member): never
+        guessed, never read from anywhere else."""
         office, route, _what, _who = HANDED['identity']
         try:
             status, body = self.client.get(office, route, {'account': account, 'scope': scope, 'member': member})

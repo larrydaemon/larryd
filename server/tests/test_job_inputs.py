@@ -41,7 +41,7 @@ class Wid:
 
     def post(self, office, route, data):
         self.said.append((office, route, data))
-        return (200, {'charged': 0, 'free': True}) if route == '/mtok/use' else (200, {'saved': True})
+        return (200, {'charged': 0, 'free': True}) if route == '/jobs/charge' else (200, {'saved': True})
 
 
 class Echo(unittest.TestCase):
@@ -113,7 +113,7 @@ class JobInputs(Echo):
 
     def test_a_silent_or_refusing_wid_fails_the_run(self):
         self.agent({'name': '001'})
-        silent = platform.Client({'wid': f'http://127.0.0.1:{_closed_port()}', 'cc': f'http://127.0.0.1:{_closed_port()}'}, 'scratch', timeout=2)
+        silent = platform.Client({'wid': f'http://127.0.0.1:{_closed_port()}'}, 'scratch', timeout=2)
         self.assertEqual(self.run_with(silent), 'FAILED')
         con = __import__('sqlite3').connect(self.db)
         reason = con.execute("SELECT reason FROM runtime_runs WHERE lane = 'job' ORDER BY id DESC").fetchone()[0]
@@ -151,21 +151,22 @@ if __name__ == '__main__':
 
 class ARevokedAgentsQueuedJob(Echo):
     """THE OWNER AND THE SECURITY REVIEW, 2026-10-06: revocation is total. A RUN queued while the agent was approved is
-    refused when it starts once FROST revoked it (its approved list asked at that moment) or once its card is hidden (the
-    platform's catalog at that moment): nothing runs, nothing is asked of wid's inputs."""
+    refused when it starts once its folder is no longer what the locker approved (verified at that moment) or once its card
+    is hidden (the platform's catalog at that moment): nothing runs, nothing is asked of wid's inputs."""
     def queued_run(self, cards, approved_hashes):
         self.agent({'name': '001'})
-        row = locker.held(self.db, KEY)
         wid = Wid({'001': 'Harbor'})
         h = harness.Harness(self.db, self.agents, wid)
-        approved = {(KEY, row['code_sha256'], row['manifest_sha256']): ''} if approved_hashes else {}
-        h.facts = lambda account, scope, member: (cards, HIRED, [], h._verifier(approved))
+        if not approved_hashes:   # the folder changed after it was placed: no longer what was approved
+            folder = self.agents / locker.held(self.db, KEY)['folder']
+            (folder / 'notes.txt').write_text('changed after approval\n')
+        h.facts = lambda account, scope, member: (cards, HIRED, [], h._verifier())
         return h.run_job(ACCOUNT, SCOPE, MEMBER, JOB, 1), wid
 
     def test_approved_and_shown_it_runs(self):
         self.assertEqual(self.queued_run([CARD], True)[0], 'DONE')
 
-    def test_revoked_at_frost_it_is_refused(self):
+    def test_changed_after_approval_it_is_refused(self):
         state, wid = self.queued_run([CARD], False)
         self.assertEqual(state, 'REFUSED')
         self.assertEqual([d['state'] for d in self.results(wid)], ['REFUSED'])

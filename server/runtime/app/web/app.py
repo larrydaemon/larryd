@@ -75,7 +75,7 @@ def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, deve
         preview.hold_marketplace(db, locker_dir)
     records = cloud.get('records') or run_records.SqliteRecords(db)
     client = preview.Local(db, locker_dir, instance) if local else platform.Client(addresses or {}, secret)
-    # THE OUTSIDE HAND (core_engine/outside.py). The runtime holds NO provider key, anywhere: each errand asks FROST's vault on the platform
+    # THE OUTSIDE HAND (core_engine/outside.py). The runtime holds NO provider key, anywhere: each errand asks wid, which reads the platform's vault
     # for it (harness._provider_key; the owner: "a single source setup"). outside = {'hand', 'a_day'} replaces the hand or the limit (the lab, a test)
     hand_parts = {'a_day': (CONFIG.get('makes') or {}).get('a_day'), **(outside or {})}
     h = lanes_harness.Harness(db, locker_dir, client, CONFIG['run']['seconds'], records=records, **hand_parts)
@@ -441,8 +441,9 @@ def harness_for_slot(app, slot=''):
 
 
 def place(app, agent_key, data, role='', slot=''):
-    """An approved agent file into the locker (<intake folder>/<key>/, or marketplace/<key>/ for the marketplace role), then to FROST's review
-    through the slot it is for (harness_for_slot). -> what was held, and FROST's review or why FROST did not take it (the agent
+    """An approved agent file into the locker (<intake folder>/<key>/, or marketplace/<key>/ for the marketplace role): the locker is
+    LARRYD's own approval. Then to the platform's wid (its card written, PENDING until the platform shows it) through the slot it
+    is for (harness_for_slot). -> what was held, and wid's answer or why wid did not take it (the agent
     stays held; `submit <key>` sends it again)."""
     h, conf = harness_for_slot(app, slot), CONFIG['intake']   # refused before anything is held when no slot is named
     try:
@@ -457,7 +458,7 @@ def place(app, agent_key, data, role='', slot=''):
     try:
         review = h.submit(agent_key)
     except lanes_harness.Refused as no:
-        return {**held, 'refused': f'held in the locker, but FROST did not take it: {no.reason}; send it again with submit {agent_key}'}
+        return {**held, 'refused': f'held in the locker, but wid did not take it: {no.reason}; send it again with submit {agent_key}'}
     card_key = str(review.get('card_key') or '')
     if KEY.fullmatch(card_key):   # BOTH KEYS LINKED (the owner, 2026-10-06): the platform minted its card's key at submission
         locker.link(h.db, agent_key, card_key)
@@ -529,10 +530,10 @@ def cloud_parts():
 
 def main(argv):
     """python runtime/app/web/app.py                                   the host
-    python runtime/app/web/app.py submit <key> [--slot <slot>]        an agent the runtime holds, to FROST's review (its key, its exact hashes, its manifest)
-    python runtime/app/web/app.py place <card key> <file.larryd> [marketplace] [--slot <slot>]   an agent the owner approved: into the locker (and, on Cloud Run, the lockers bucket), then to FROST's review
-    python runtime/app/web/app.py review <card key>... [--slot <slot>]   what the runtime records for those agents, with FROST's word on the hashes it holds
-      (on Cloud Run --slot, or LARRYD_SLOT, names the slot whose FROST is asked: slot-a, slot-b or proof)
+    python runtime/app/web/app.py submit <key> [--slot <slot>]        an agent the runtime holds, to the platform's wid (its key, its exact hashes, its manifest)
+    python runtime/app/web/app.py place <card key> <file.larryd> [marketplace] [--slot <slot>]   an agent the owner approved: into the locker (and, on Cloud Run, the lockers bucket), then to the platform's wid
+    python runtime/app/web/app.py review <card key>... [--slot <slot>]   what the runtime records for those agents, with the platform's word on each card
+      (on Cloud Run --slot, or LARRYD_SLOT, names the slot whose wid is asked: slot-a, slot-b or proof)
     python runtime/app/web/app.py job <slot> <account> <scope> <member> <job key> <run>   a Cloud Run job execution: one RUN, its result to that slot
     python runtime/app/web/app.py callbacks <slot> <n>                Cloud Run: the warm-up, the first call back to that slot and n more (statuses and times)
     python runtime/app/web/app.py selftest                            Cloud Run: the marketplace agent run once in the sandbox, its record written"""
@@ -546,7 +547,7 @@ def main(argv):
                      developer=os.environ.get(DEVELOPER) == '1',
                      keys=callers.Keys(keys_dir) if keys_dir else None, nonces=callers.nonces() if keys_dir else None, cloud=cloud)
     slot = ''
-    if '--slot' in argv[2:]:   # place, submit, review: the slot whose FROST is asked
+    if '--slot' in argv[2:]:   # place, submit, review: the slot whose wid is asked
         at = argv.index('--slot')
         if at + 1 >= len(argv):
             raise SystemExit('--slot needs a slot name')

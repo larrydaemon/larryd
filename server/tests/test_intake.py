@@ -1,7 +1,8 @@
 """THE INTAKE: an agent the owner approved from LARRYD's review queue (one .larryd file, a zip of agent/) goes into the runtime's
-locker (dev/<card key>/) with the host's `place`, then to FROST's review as any agent goes. Every refusal is planted
-here. The old signed developer door is gone, and its table is dropped from an old database. FROST is a Recorder here (in
-this process: a receipt, nothing for the platform) or a silent port; what FROST answers is proven live only."""
+locker (dev/<card key>/) with the host's `place` (the locker is LARRYD's own approval), then to the platform's wid, which
+writes its card (the core cleanup 2026-11-05: the runtime reaches wid alone, never FROST). Every refusal is planted here.
+The old signed developer door is gone, and its table is dropped from an old database. wid is a Recorder here (in this
+process: a receipt, nothing for the platform) or a silent port; what wid answers is proven live only."""
 import datetime
 import hashlib
 import io
@@ -30,11 +31,11 @@ def _closed_port():
     return port
 
 
-class Frost:
-    """FROST as a receipt: it records what the runtime sends and answers a waiting review, and each review's word as the test
-    sets it (states: {(key, code, manifest): (state, note)}); older=True is a FROST before its review_state door (404)."""
-    def __init__(self, approved=(), states=None, older=False):
-        self.said, self.approved, self.states, self.older = [], list(approved), dict(states or {}), older
+class Wid:
+    """wid as a receipt: it records what the runtime sends and answers a waiting card, and each card's word as the test
+    sets it (states: {agent_key: (state, note)})."""
+    def __init__(self, states=None):
+        self.said, self.states = [], dict(states or {})
 
     def post(self, office, route, data):
         self.said.append((office, route, data))
@@ -42,12 +43,10 @@ class Frost:
 
     def get(self, office, route, data=None):
         self.said.append((office, route, data))
-        if route == '/agents/review_state':
-            if self.older:
-                return 404, {'error': 'no route GET /agents/review_state'}
-            state, note = self.states.get((data['agent_key'], data['code_sha256'], data['manifest_sha256']), ('not submitted', ''))
+        if route == '/agnt/review_state':
+            state, note = self.states.get(data['agent_key'], ('not submitted', ''))
             return 200, {'state': state, 'note': note}
-        return 200, {'approved': self.approved}
+        return 404, {'refused': route}
 
 
 def _agent(answer='hello'):
@@ -77,8 +76,8 @@ class Intake(unittest.TestCase):
         self.now = datetime.datetime.now(datetime.timezone.utc)
         self.app = host.create_app(self.instance, secret=SECRET, now=lambda: self.now, agents=self.agents)
         self.h = self.app.config['harness']
-        self.frost = Frost()
-        self.h.client = self.frost
+        self.wid = Wid()
+        self.h.client = self.wid
         self.db = self.h.db
 
     def tearDown(self):
@@ -94,7 +93,7 @@ class Intake(unittest.TestCase):
         return str(no.exception)
 
     # ---------------------------------------------------------------- place
-    def test_an_approved_file_is_held_and_sent_to_frost(self):
+    def test_an_approved_file_is_held_and_sent_to_wid(self):
         body = self.place(_agent())
         row = locker.held(self.db, KEY)
         self.assertEqual((body['code_sha256'], body['manifest_sha256']), (row['code_sha256'], row['manifest_sha256']))
@@ -103,14 +102,14 @@ class Intake(unittest.TestCase):
         code = hashlib.sha256(b'agent.py\0' + _agent()['agent.py'] + b'\0').hexdigest()
         self.assertEqual(body['code_sha256'], code)   # the locker's recipe over exactly the file's bytes
         self.assertEqual(body['review'], {'id': 1, 'state': 'waiting'})
-        office, route, sent = self.frost.said[-1]
-        self.assertEqual((office, route), ('fs', '/agents/submit'))
+        office, route, sent = self.wid.said[-1]
+        self.assertEqual((office, route), ('wid', '/agnt/submit'))
         self.assertEqual((sent['agent_key'], sent['code_sha256'], sent['manifest_sha256'], sent['name']), (KEY, code, row['manifest_sha256'], 'Scratch agent'))
 
-    def test_the_card_key_frost_answers_is_linked(self):
-        """BOTH KEYS LINKED (the owner, 2026-10-06): the platform minted the card's key at submission; FROST's answer names
+    def test_the_card_key_wid_answers_is_linked(self):
+        """BOTH KEYS LINKED (the owner, 2026-10-06): the platform minted the card's key at submission; wid's answer names
         it and the runtime keeps it beside its own key, so the agent is found by either."""
-        self.frost.post = lambda office, route, data: (self.frost.said.append((office, route, data)), (200, {'id': 1, 'state': 'waiting', 'card_key': 'MAGT_00000000CA01_0001'}))[1]
+        self.wid.post = lambda office, route, data: (self.wid.said.append((office, route, data)), (200, {'id': 1, 'state': 'waiting', 'card_key': 'MAGT_00000000CA01_0001'}))[1]
         self.place(_agent())
         self.assertEqual(locker.held(self.db, 'MAGT_00000000CA01_0001')['agent_key'], KEY)
 
@@ -175,10 +174,10 @@ class Intake(unittest.TestCase):
         self.assertEqual(locker.held(self.db, KEY)['code_sha256'], held['code_sha256'])
         self.assertEqual(locker.verify(self.db, self.agents, KEY), (True, ''))
 
-    def test_a_silent_frost_is_said_and_the_agent_stays_held(self):
-        self.h.client = host.platform.Client({'fs': f'http://127.0.0.1:{_closed_port()}'}, SECRET, timeout=2)
+    def test_a_silent_wid_is_said_and_the_agent_stays_held(self):
+        self.h.client = host.platform.Client({'wid': f'http://127.0.0.1:{_closed_port()}'}, SECRET, timeout=2)
         body = self.place(_agent())
-        self.assertIn('FROST did not take it: fs does not answer; send it again with submit', body['refused'])
+        self.assertIn('wid did not take it: wid does not answer; send it again with submit', body['refused'])
         self.assertEqual(body['code_sha256'], locker.held(self.db, KEY)['code_sha256'])
 
     # ---------------------------------------------------------------- each layer on its own (two layers each: the zip, the files)
@@ -208,33 +207,25 @@ class Intake(unittest.TestCase):
         self.assertFalse((self.agents / 'escape.py').exists() or (self.agents / 'dev' / 'escape.py').exists())
         self.assertIsNone(locker.held(self.db, KEY))
 
-    # ---------------------------------------------------------------- review: what the runtime records, with FROST's word
+    # ---------------------------------------------------------------- review: what the runtime records, with the platform's word
     def test_the_review_is_counted_from_runtime_runs(self):
-        held = self.place(_agent())
+        self.place(_agent())
         for lane, state, charged in (('job', 'DONE', 3), ('job', 'DONE', 2), ('job', 'FAILED', 0), ('call', 'DONE', 0),
                                      ('hire', 'ON', 0), ('hire', 'ON', 0), ('hire', 'OFF', 0)):
             self.h._record(lane, KEY, state, charged=charged)
         self.h._record('job', 'MAGT_00000000D003_0003', 'DONE', charged=99)   # another agent's, never in this one's counts
-        self.frost.states = {(KEY, held['code_sha256'], held['manifest_sha256']): ('approved', '')}
+        self.wid.states = {KEY: ('approved', '')}
         agents = self.h.review_state([KEY, OTHER])['agents']
         self.assertEqual([a['agent_key'] for a in agents], [KEY, OTHER])
         mine = agents[0]
         self.assertEqual({k: mine[k] for k in ('held', 'review', 'runs', 'calls', 'hires', 'unhires', 'charged')},
                          {'held': True, 'review': 'approved', 'runs': {'DONE': 2, 'FAILED': 1}, 'calls': 1, 'hires': 2, 'unhires': 1, 'charged': 5})
         self.assertEqual(agents[1]['review'], 'not submitted')
-        self.frost.states = {(KEY, held['code_sha256'], held['manifest_sha256']): ('rejected', 'the manifest names no screen')}
+        self.wid.states = {KEY: ('rejected', 'the manifest names no screen')}
         mine = self.h.review_state([KEY])['agents'][0]
         self.assertEqual((mine['review'], mine['note']), ('rejected', 'the manifest names no screen'))
-        self.h.client = host.platform.Client({'fs': f'http://127.0.0.1:{_closed_port()}'}, SECRET, timeout=2)
-        self.assertEqual(self.h.review_state([KEY])['agents'][0]['review'], 'unknown: fs does not answer')
-
-    def test_a_frost_before_its_review_state_door_is_read_the_older_way(self):
-        held = self.place(_agent())
-        self.h.client = Frost(older=True, approved=[{'agent_key': KEY, 'code_sha256': held['code_sha256'], 'manifest_sha256': held['manifest_sha256']}])
-        mine = self.h.review_state([KEY])['agents'][0]
-        self.assertEqual((mine['review'], mine['note']), ('approved', ''))
-        self.h.client = Frost(older=True)
-        self.assertEqual(self.h.review_state([KEY])['agents'][0]['review'], 'not approved')
+        self.h.client = host.platform.Client({'wid': f'http://127.0.0.1:{_closed_port()}'}, SECRET, timeout=2)
+        self.assertEqual(self.h.review_state([KEY])['agents'][0]['review'], 'unknown: wid does not answer')
 
     def test_a_hire_is_a_row_naming_its_caller_by_keys(self):
         class Hires(harness.Harness):
