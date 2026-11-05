@@ -475,8 +475,6 @@ class Harness:
         if agent_key == key and not on:   # THE MARKETPLACE IS ALWAYS ON (the owner, 2026-10-07: "all people will get this turned on and no option to turn this agent off")
             raise Refused(403, 'the marketplace is always on')
         cards, hired, groups, verify = self.facts(account, scope, member)
-        if not on and (self._card(cards, agent_key) or {}).get('role') == lanes.SEQUENCE:   # A SCREEN'S SEQUENCE IS ALWAYS ON TOO (the owner, 2026-10-09: "its always there like the marketplace itself"): by the card's role as the platform says it; the platform's own unhire door refuses it as well
-            raise Refused(403, "this page's sequence is always on")
         mcard = self._card(cards, key)
         if mcard is None:
             raise Refused(503, 'the marketplace has no card on the platform')
@@ -503,9 +501,7 @@ class Harness:
         same hire door (its own decision for this member stands: a refusal there skips the card, nothing else) and leaves the
         same hire record. A CARD THAT NAMES AN OUTSIDE AI SERVICE IS NEVER PLACED BY DEFAULT: the member's own hire is the
         permission for that. TWO CHECKS: this runtime skips it from the facts it read, and the platform's door, told the ask is
-        a default placement, refuses it on its own card (the one that counts). A SCREEN'S SEQUENCE (the card's role SEQUENCE, the
-        platform's word in the catalog's facts) IS PLACED AS A MARKED CARD IS, with no mark needed: on its own screen's first
-        visit, through the same door under the same default mark (the platform's door takes it by its role, on its own card).
+        a default placement, refuses it on its own card (the one that counts).
         Nothing is kept here: "once" is the platform's (a board is born once), so an agent a member
         let go does not come back. -> {placed: [keys], skipped: [{agent_key, why}]}."""
         key = self.marketplace_key()
@@ -513,7 +509,7 @@ class Harness:
         placed, skipped, refused = [], [], None
         for card in lanes.assemble(cards, hired, groups, verify):
             mine = card['key'] == key
-            if card['screen'] != board or not (mine or card.get('default') is True or card.get('role') == lanes.SEQUENCE):
+            if card['screen'] != board or not (mine or card.get('default') is True):
                 continue
             if card['hired']:
                 continue   # theirs already: nothing to place, nothing to say
