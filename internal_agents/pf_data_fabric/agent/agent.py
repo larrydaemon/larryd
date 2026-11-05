@@ -16,6 +16,9 @@ FILES = (('pf_contacts.csv', 'cont', 'CONTACTS'), ('pf_invoices.csv', 'invc', 'I
          ('pf_videos.csv', 'vdeo', 'VIDEOS'), ('pf_audio.csv', 'audo', 'AUDIO'), ('pf_productions.csv', 'prdn', 'PRODUCTIONS'),
          ('pf_agents.csv', 'agnt', 'AGENTS'), ('pf_models.csv', 'mdls', 'MODELS'), ('pf_logs.csv', 'logs', 'LOGS'), ('pf_jobs.csv', 'jobs', 'JOBS'))
 MAPPING = 'pf_mapping.csv'   # THE SEVENTEENTH FILE (the owner, 2026-10-25: "define the name and custom slot 001 to 100 and type and basic info for each")
+PRODUCT_OF = {'cont': 'INVOICE MAPS', 'invc': 'INVOICE MAPS', 'locn': 'INVOICE MAPS', 'opns': 'INVOICE MAPS', 'hrcy': 'AGENCY MGMT', 'mdia': 'AGENCY MGMT',
+              'brnd': 'AGENCY MGMT', 'sprt': 'AGENCY MGMT', 'imgs': 'PACE SHIFT', 'vdeo': 'PACE SHIFT', 'audo': 'PACE SHIFT', 'prdn': 'PACE SHIFT',
+              'agnt': 'LARRYD', 'mdls': 'LARRYD', 'logs': 'LARRYD', 'jobs': 'LARRYD'}   # each module's product, as the platform's engine names it
 
 
 # ---------------------------------------------------------------- THE CALL: the panel
@@ -138,7 +141,11 @@ def _db_lines(state, viewer=''):
 def _snapshot_lines():
     """THE CSV FILES (the owner 2026-11-03: "use the snapshot data and not the live data"; 2026-11-04: nothing is brought
     in): each module's file, then pf_mapping.csv, the open format, as the agent manifest shows them (wid fabric_of)."""
-    return ['<span class="rc0">CONNECTED</span>', ''] + [f'<span class="rc1">{html.escape(name)}</span>' for name in [n for n, _s, _short in FILES] + [MAPPING]] + ['...']
+    rows = [(name, short, PRODUCT_OF.get(seg, ''), 'SLOTS 001-100', 'UTF-8 · OPEN') for name, seg, short in FILES] + [(MAPPING, 'MAPPING', 'EVERY PRODUCT', 'NAME · SLOT · TYPE', 'UTF-8 · OPEN')]
+    widths = [max(len(r[i]) for r in rows) for i in range(4)]
+    return ['<span class="rc0">CONNECTED</span>', ''] + [   # MORE TO THE RIGHT (the owner 2026-11-04: "it just has csv files as a list and nothing else / so it looks strange.. id just change the color to green and fill in more data to the right and can have more columns of data if you want"): each file, its module, its product, its custom slots, its format
+        f'<span class="rc1">{html.escape(r[0].ljust(widths[0]))}</span>  <span class="rc5">{html.escape(r[1].ljust(widths[1]))}</span>  <span class="rc6">{html.escape(r[2].ljust(widths[2]))}</span>  <span class="rc2">{html.escape(r[3].ljust(widths[3]))}</span>  <span class="rc7">{html.escape(r[4])}</span>'
+        for r in rows] + ['...']
 
 
 def panel(given):
@@ -214,6 +221,7 @@ CSS = """
 .pfdf--api .pfdf-tabs span, .pfdf--api .pfdf-tabs a { color: #FFC133; }
 .pfdf--api .pfdf-tabs .on { color: #FF8A00; box-shadow: inset 0 -1px 0 #FF8A00; }
 .pfdf--api .pfdf-pre { color: #FFC133; }
+.pfdf--csv .pfdf-pre .rc0, .pfdf--csv .pfdf-pre .rc1 { color: #4DFF6B; } .pfdf--csv .pfdf-pre .rc5, .pfdf--csv .pfdf-pre .rc6 { color: #07CE3B; } .pfdf--csv .pfdf-pre .rc2, .pfdf--csv .pfdf-pre .rc7 { color: #A6FFB4; }   /* THE CSV VIEW GREEN (the owner 2026-11-04: "the fonts are blue but should be green"), its own as the API's orange and the databases' greens and pinks */
 .pfdf--api .pfdf-pre .rc0 { color: #FF8A00; }
 .pfdf--api .pfdf-pre .rc1, .pfdf--api .pfdf-pre .rc3, .pfdf--api .pfdf-pre .rc4, .pfdf--api .pfdf-pre .rc5 { color: #FF8100; }
 .pfdf--api .pfdf-pre .rc2, .pfdf--api .pfdf-pre .rc7 { color: #FFA040; }
