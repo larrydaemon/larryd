@@ -26,7 +26,7 @@ class HostLanes(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         silent = f'http://127.0.0.1:{_closed_port()}'
-        self.app = host.create_app(self.tmp.name, secret=SECRET, addresses={'wid': silent, 'cc': silent})
+        self.app = host.create_app(self.tmp.name, secret=SECRET, addresses={'wid': silent})
         self.client = self.app.test_client()
         self.db = self.app.config['harness'].db
         self.who = {'account': 'ACCT_000000000001_0001', 'scope': 'SCRATCH', 'member': 'MCON_000000000002_0002'}

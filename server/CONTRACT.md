@@ -2,7 +2,7 @@
 
 The platform changes; this is the whole list of what the runtime depends on, so re-aligning after a change is a diff
 against this file, not a rebuild. Each line names where the assumption lives in the code. Checked against the
-platform on 2026-10-05 (all held).
+platform on 2026-10-05 (all held); the doors LARRYD calls rewritten for the core cleanup on 2026-11-05.
 
 ## The doors the platform calls on LARRYD (`web/app.py`)
 | door | sends | answers |
@@ -16,6 +16,9 @@ Every call is signed: HMAC-SHA256 over `route + ' ' + at + ' ' + compact sorted 
 X-Office-At, inside the window (`core_engine/signing.py`; the platform's `offices.signature`).
 
 ## The doors LARRYD calls on the platform (`core_engine/harness.py`; stood in for by `core_engine/preview.py`)
+WID ALONE (the core cleanup, the owner 2026-11-05: "no agents should have anything to do with cc, fs, laryllm, so"). The
+runtime holds the address of wid and of no other office (`schemas/runtime.json`); every service of a RUN is a wid door that
+asks its office AS wid (wid's `core_engine/offices.py`), only while that member's RUN is open (wid's own word), never stored.
 | office | door | asks | reads back |
 |---|---|---|---|
 | wid | GET /agnt/cards | nothing | cards: [the card, below] |
@@ -25,16 +28,25 @@ X-Office-At, inside the window (`core_engine/signing.py`; the platform's `office
 | wid | GET /agnt/records/list | account, scope, member, agent_key (the agent's card key), segment, page=list, limit, offset | rows: [the record's columns], total, first: [the member's BY PRIORITY keys of this species' list, in rank order] (an agent that declares `records`; `core_engine/member_records.py` hands each ranked row its rank as `priority` 1..n, beside `key`) |
 | wid | GET /agnt/records/counts | account, scope, member, agent_key (the agent's card key) | scope, modules: {species: how many records the member may list}, products: {species: product slug}, ties: [[from, to, how many]]; numbers and codes alone (an agent that declares `"records": {"*": ["count"]}`; `core_engine/member_records.py` checks it and hands it as `counts`, on a CALL and on a RUN) |
 | wid | POST /agnt/records/add, /agnt/records/edit, /agnt/records/remove | account, scope, member, agent_key (the agent's card key), segment, values / key | {key} / {key} / {removed}; a refusal as {error} or {refused} (carried to the agent as `written`) |
+| wid | GET /agnt/fabric | account, scope, member | apis, databases, viewer: {member_type} (an agent that declares `"fabric": {"snapshot": true}`; wid reads the snapshot) |
+| wid | POST /agnt/submit | agent_key, name, code_sha256, manifest_sha256, manifest | {state, card_key}: wid writes the card, PENDING until the platform shows it |
+| wid | GET /agnt/approved | nothing | approved: [{agent_key, code_sha256, manifest_sha256, card_key}] (FROST's review, as wid reads it) |
+| wid | GET /agnt/review_state | agent_key, code_sha256, manifest_sha256 | {state, note}: approved only for exactly approved hashes, else the card's word (waiting, rejected, revoked, not submitted) |
 | wid | GET /jobs/inputs | account, scope, job_key, run | inputs: {slot: value} |
 | wid | POST /jobs/result | account, scope, job_key, run, state, log, delivery | {saved} |
-| cc | GET /mtok/balance | account | subscriptions: [{agent_group}] |
-| cc | POST /mtok/use | account, member, agent_key, job_key, agent_group, rate | {charged, free, paid_from} |
-| fs | GET /agents/approved | nothing | approved: [{agent_key, code_sha256, manifest_sha256}] |
-| fs | GET /agents/review_state | agent_key, code_sha256, manifest_sha256 | {state, note} |
-| fs | POST /agents/submit | agent_key, name, code_sha256, manifest_sha256, manifest | the review |
-| fs | GET /agents/identity | account, scope, member, job_key, run | {first_name, member_type, account_name} |
-| so | POST /dam/upload | account, scope, member, job_key, run, name, content_b64, source_key | the stored file |
-| lryllm | GET /larry/greeting | account, scope, member, job_key, run | the greeting |
+| wid | GET /jobs/balance | account | subscriptions: [{agent_group}] (wid asks mTok) |
+| wid | POST /jobs/charge | account, scope, member, job_key, run | {charged, free, paid_from}: the job's bill, from the RUN's own card (wid asks mTok) |
+| wid | GET /jobs/file | account, scope, member, job_key, run, dam_key | {dam_key, content_b64, ...} (wid asks DA-M) |
+| wid | POST /jobs/upload | account, scope, member, job_key, run, name, content_b64, source_key | the stored file (wid asks DA-M) |
+| wid | POST /jobs/provider_key | account, scope, member, job_key, run, provider | {key}, for one errand of the RUN's own agent; read from the platform's vault at that moment, never stored |
+| wid | GET /jobs/identity | account, scope, member, job_key, run | {first_name, member_type, account_name} (wid asks FROST) |
+| wid | GET /jobs/greeting | account, scope, member, job_key, run | the greeting (wid asks LARRY LLM) |
+
+TWO GUARDS, NEVER ONE (the owner's rule, 2026-10-04): an agent is verified at every call, hire and run only when (1) the
+runtime's locker holds it with exactly these hashes (`place`, the owner's approved file; on Cloud Run the lockers bucket's
+locker.json) AND (2) wid's /agnt/approved lists exactly these hashes (FROST's review, read by wid as an office; the runtime
+never calls FROST). The list is kept APPROVED_KEEP seconds for a page's CALL (a miss asks again, once); a hire and a RUN ask
+it now. A new version (new hashes) waits for its approval again.
 
 ## The card (`core_engine/preview.CARD_KEYS`, `agents/marketplace/agent.py`, the tool's `shape.CARD`)
 key · number · class · name · status · pitch · price · image_dam_key · developer · type · residency · sends_to ·

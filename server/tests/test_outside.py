@@ -63,13 +63,13 @@ class Platform:
 
     def post(self, office, route, data):
         self.said.append((office, route, data))
-        if route == '/dam/upload':
+        if route == '/jobs/upload':
             return 200, {'dam_key': 'DA-M_0123456789AB_0001', 'repeat': False}
-        if route == '/agents/provider_key':
+        if route == '/jobs/provider_key':
             return (200, {'key': self.vault}) if self.vault else (404, {'refused': 'nothing by that key'})
         if route == '/agnt/records/add':
             return (200, {'key': 'MIMG_0123456789AB_0002'}) if self.add == 200 else (self.add, {'refused': 'no'})
-        return (200, {'charged': 0, 'free': True}) if route == '/mtok/use' else (200, {'saved': True})
+        return (200, {'charged': 0, 'free': True}) if route == '/jobs/charge' else (200, {'saved': True})
 
 
 class TheList(World):
@@ -147,11 +147,9 @@ class TheRun(World):
         self.placed(self.ANSWER, self.DECLARED, ('makes', 'keeps', 'delivery'))
         p = Platform()
         self.assertEqual(self.run_with(p), 'DONE')
-        asked = next(d for o, r, d in p.said if (o, r) == ('fs', '/agents/provider_key'))   # THE KEY'S ONE HOME: asked of FROST for this RUN, this member, this agent as approved
-        row = locker.held(self.db, KEY)
-        self.assertEqual(asked, {'account': ACCOUNT, 'scope': SCOPE, 'member': MEMBER, 'job_key': JOB, 'run': '1', 'agent_key': KEY, 'code_sha256': row['code_sha256'],
-                                 'manifest_sha256': row['manifest_sha256'], 'provider': 'replicate'})
-        upload = next(d for _o, r, d in p.said if r == '/dam/upload')
+        asked = next(d for o, r, d in p.said if (o, r) == ('wid', '/jobs/provider_key'))   # THE KEY'S ONE HOME: asked of wid for this open RUN of this member (wid reads the vault for the RUN's own agent)
+        self.assertEqual(asked, {'account': ACCOUNT, 'scope': SCOPE, 'member': MEMBER, 'job_key': JOB, 'run': '1', 'provider': 'replicate'})
+        upload = next(d for _o, r, d in p.said if r == '/jobs/upload')
         self.assertEqual((upload['name'], base64.b64decode(upload['content_b64']), upload['job_key'], upload['run']), ('A red fox.png', PNG, JOB, '1'))
         added = next(d for _o, r, d in p.said if r == '/agnt/records/add')
         import hashlib
@@ -159,11 +157,11 @@ class TheRun(World):
         self.assertEqual((added['segment'], added['member'], added['values']), ('imgs', MEMBER, {'data_nickname': 'A red fox', 'identity_dam_file': companion}))
         self.assertEqual(upload['source_key'], 'MIMG_0123456789AB_0002')   # THE FILE IS STORED TIED TO ITS RECORD (the card's look book reads a record's files by its key), never to the agent
         order = [r for _o, r, _d in p.said]
-        self.assertLess(order.index('/agnt/records/add'), order.index('/dam/upload'))   # the record first: its key is what the file is stored under
+        self.assertLess(order.index('/agnt/records/add'), order.index('/jobs/upload'))   # the record first: its key is what the file is stored under
         last = self.results(p)[-1]
         self.assertEqual((last['state'], last['log'], last['delivery']), ('DONE', 'RUN 1 DONE · free · 1 file in DA-M · 1 of 1 record added', 'made'))
         routes = [r for _o, r, _d in p.said]
-        self.assertLess(routes.index('/mtok/use'), routes.index('/dam/upload'))   # charged before anything is stored, as every run
+        self.assertLess(routes.index('/jobs/charge'), routes.index('/jobs/upload'))   # charged before anything is stored, as every run
 
     def test_nothing_of_the_errand_is_kept_by_the_runtime(self):
         self.placed(self.ANSWER, self.DECLARED, ('makes', 'keeps', 'delivery'))
@@ -185,7 +183,7 @@ class TheRun(World):
             self.assertEqual(self.run_with(p, provider), 'FAILED')
             self.assertIn(said, self.results(p)[-1]['log'])
             self.assertEqual(provider.asked, [])   # nothing left for the provider
-            self.assertNotIn('/dam/upload', [r for _o, r, _d in p.said])
+            self.assertNotIn('/jobs/upload', [r for _o, r, _d in p.said])
 
     def test_no_key_a_refusing_provider_and_a_full_day_make_nothing(self):
         self.placed(self.ANSWER, self.DECLARED, ('makes', 'keeps', 'delivery'))
@@ -196,7 +194,7 @@ class TheRun(World):
         p = Platform()
         self.assertEqual(self.run_with(p, Provider(submit=401)), 'FAILED')
         self.assertEqual(self.results(p)[-1]['log'], 'not made, Replicate refused the key')
-        self.assertNotIn('/mtok/use', [r for _o, r, _d in p.said])   # a file that was not made is never charged
+        self.assertNotIn('/jobs/charge', [r for _o, r, _d in p.said])   # a file that was not made is never charged
         self.assertEqual(self.h.records.recent(KEY, MEMBER, 5)[0]['code'], 'NOT_MADE_REPLICATE_REFUSED_THE_KEY')   # the record keeps the whole of it, as a code
         self.assertEqual(self.run_with(Platform()), 'DONE')
 
@@ -236,7 +234,7 @@ class TheRun(World):
         added = next(d for _o, r, d in p.said if r == '/agnt/records/add')
         import hashlib
         self.assertEqual((added['segment'], added['values']['identity_dam_file']), ('audo', 'DA-M_' + hashlib.sha256(b'RIFF0000WAVEfmt ').hexdigest().upper()[:12]))
-        self.assertEqual(next(d for _o, r, d in p.said if r == '/dam/upload')['source_key'], 'MIMG_0123456789AB_0002')
+        self.assertEqual(next(d for _o, r, d in p.said if r == '/jobs/upload')['source_key'], 'MIMG_0123456789AB_0002')
 
     def test_one_name_one_file_one_record(self):
         wav = base64.b64encode(b'RIFF0000WAVEfmt ').decode()
@@ -246,7 +244,7 @@ class TheRun(World):
             p, provider = Platform(), Provider()
             self.assertEqual(self.run_with(p, provider), 'FAILED')
             self.assertIn(said, self.results(p)[-1]['log'])
-            self.assertEqual((provider.asked, [r for _o, r, _d in p.said if r in ('/dam/upload', '/agnt/records/add')]), ([], []))
+            self.assertEqual((provider.asked, [r for _o, r, _d in p.said if r in ('/jobs/upload', '/agnt/records/add')]), ([], []))
 
     def test_a_carried_file_never_takes_a_made_files_record(self):
         """A carried file named as the made one WILL be named (its ask's name plus the kind that came back) is refused before anything
@@ -257,7 +255,7 @@ class TheRun(World):
         p = Platform()
         self.assertEqual(self.run_with(p), 'FAILED')
         self.assertIn('stored under one name', self.results(p)[-1]['log'])
-        self.assertEqual([r for _o, r, _d in p.said if r in ('/dam/upload', '/agnt/records/add', '/mtok/use')], [])
+        self.assertEqual([r for _o, r, _d in p.said if r in ('/jobs/upload', '/agnt/records/add', '/jobs/charge')], [])
 
     def test_a_kept_file_and_another_go_each_to_its_own_place(self):
         wav = base64.b64encode(b'RIFF0000WAVEfmt ').decode()
@@ -265,14 +263,14 @@ class TheRun(World):
         self.placed(answer, {**self.DECLARED, 'skills': [STORE]}, ('files', 'makes', 'keeps', 'delivery'))
         p = Platform()
         self.assertEqual(self.run_with(p), 'DONE')
-        self.assertEqual({d['name']: d['source_key'] for _o, r, d in p.said if r == '/dam/upload'}, {'Notes.wav': KEY, 'A red fox.png': 'MIMG_0123456789AB_0002'})   # the kept one under its record, the other under the agent's card
+        self.assertEqual({d['name']: d['source_key'] for _o, r, d in p.said if r == '/jobs/upload'}, {'Notes.wav': KEY, 'A red fox.png': 'MIMG_0123456789AB_0002'})   # the kept one under its record, the other under the agent's card
 
     def test_a_file_dam_refuses_leaves_no_record_in_silence(self):
         self.placed(self.ANSWER, self.DECLARED, ('makes', 'keeps', 'delivery'))
 
         class NoRoom(Platform):
             def post(self, office, route, data):
-                if route == '/dam/upload':
+                if route == '/jobs/upload':
                     self.said.append((office, route, data))
                     return 413, {'refused': 'larger than the zone takes'}
                 if route == '/agnt/records/remove':
@@ -291,7 +289,7 @@ class TheRun(World):
         p = Platform(add=403)
         self.assertEqual(self.run_with(p), 'FAILED')
         self.assertIn('not every record was added', self.results(p)[-1]['log'])
-        self.assertNotIn('/dam/upload', [r for _o, r, _d in p.said])   # a record the platform refuses: nothing is stored
+        self.assertNotIn('/jobs/upload', [r for _o, r, _d in p.said])   # a record the platform refuses: nothing is stored
 
 
 class TheRunInFlight(World):
@@ -377,7 +375,7 @@ class RefPlatform(Platform):
         self.content, self.status = content, status
 
     def get(self, office, route, data=None):
-        if route == '/dam/file/content':
+        if route == '/jobs/file':
             self.said.append((office, route, data))
             if self.status != 200:
                 return self.status, {'refused': 'not open to the runtime'}
@@ -429,7 +427,7 @@ class TheReference(World):
         self.placed({**TheRun.ANSWER, 'makes': [{**ASK, 'reference': REF}]})
         p, f = RefPlatform(), FileDoor()
         self.assertEqual(self.run_with(p, f), 'DONE')
-        read = next(d for o, r, d in p.said if (o, r) == ('so', '/dam/file/content'))
+        read = next(d for o, r, d in p.said if (o, r) == ('wid', '/jobs/file'))
         self.assertEqual(read, {'account': ACCOUNT, 'scope': SCOPE, 'member': MEMBER, 'job_key': JOB, 'run': '1', 'dam_key': REF})
         self.assertIn(JPG, f.asked[0][3])
 
@@ -439,7 +437,7 @@ class TheReference(World):
             f = FileDoor()
             self.assertEqual(self.run_with(platform, f), 'FAILED')
             self.assertEqual(f.asked, [])
-            self.assertNotIn('/mtok/use', [r for _o, r, _d in platform.said])
+            self.assertNotIn('/jobs/charge', [r for _o, r, _d in platform.said])
             self.assertIn('nothing was sent', self.results(platform)[-1]['log'])
         from core_engine.records import error_code
         self.assertEqual([error_code(r) for r in ('not made, reference unreadable: DA-M did not hand x', 'not made, reference not a picture: x', 'not made, reference too large: x',

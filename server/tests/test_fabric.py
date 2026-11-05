@@ -44,7 +44,7 @@ class Platform:
             return 200, {'files': self.files}
         if route == '/agnt/records/fields':   # the account's own custom fields, every module asked in one answer (EDIT CUSTOM FIELDS)
             return 200, {'fields_by': {g: [{'slot': 'custom_0004', 'name': 'total', 'type': 'text'}, {'slot': 'not_a_bucket', 'name': 'x', 'type': 'text'}] for g in data['segments'].split(',')}}
-        if route == '/fabric/state':
+        if route == '/agnt/fabric':
             return 200, self.state
         return 404, {'refused': route}
 
@@ -58,7 +58,7 @@ class Platform:
             return 200, {'key': ''}   # custom values alone: the platform keeps the row waiting at its entry (RULE 13)
         if route == '/agnt/records/fields':   # pf_mapping.csv: one custom field set (a REMOVEd bucket refused)
             return (400, {'refused': 'custom_0009 is not a free custom bucket of this module'}) if data['slot'] == 'custom_0009' else (200, {'slot': data['slot']})
-        if route == '/mtok/use':
+        if route == '/jobs/charge':
             return 200, {'charged': 0, 'free': True}
         return 200, {'saved': True}
 
@@ -154,7 +154,7 @@ class TheRun(World):
             self.assertEqual(self.harness(p).run_job(ACCOUNT, SCOPE, MEMBER, JOB, 1), 'DONE')
         self.assertNotIn('fabric', self.given[0])
         self.assertEqual(self.most_bytes, harness.sandbox.MOST_BYTES)   # the runtime's own 1 MB, as every agent
-        self.assertEqual((p.asked('/dam/fabric'), p.asked('/agnt/records/fields'), p.asked('/fabric/state'), p.posted('/fabric/state')), ([], [], [], []))
+        self.assertEqual((p.asked('/dam/fabric'), p.asked('/agnt/records/fields'), p.asked('/agnt/fabric'), p.posted('/agnt/fabric')), ([], [], [], []))
 
 
 class TheCall(World):
@@ -165,7 +165,7 @@ class TheCall(World):
             self.harness(p).answer(ACCOUNT, SCOPE, MEMBER, KEY)
         state = self.given[0]['fabric']['state']
         self.assertEqual((sorted(state), state['apis'][0]['api_state'], state['databases'][0]['db_state']), (['apis', 'databases'], 'live', 'UP'))
-        self.assertEqual(len(p.asked('/fabric/state')), 1)   # ONE read
+        self.assertEqual(len(p.asked('/agnt/fabric')), 1)   # ONE read
         self.assertEqual((p.asked('/dam/fabric'), p.asked('/agnt/records/fields'), p.asked('/agnt/records/list')), ([], [], []))   # no files, no fields, no records
         self.assertNotIn('records', self.given[0])
         self.assertEqual(self.given[0]['fabric']['viewer'], {'member_type': ''})   # FROST did not say who looks: the page masks

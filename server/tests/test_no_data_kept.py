@@ -24,7 +24,7 @@ class Recorder:
 
     def post(self, office, route, data):
         self.said.append((office, route, data))
-        return (200, {'charged': 0, 'free': True}) if route == '/mtok/use' else (200, {'saved': True})
+        return (200, {'charged': 0, 'free': True}) if route == '/jobs/charge' else (200, {'saved': True})
 
 
 class NoDataKept(unittest.TestCase):
