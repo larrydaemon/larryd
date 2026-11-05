@@ -5,13 +5,13 @@
 set -euo pipefail
 DIR=$(cd "$1" && pwd); LIB=$(cd "$(dirname "$0")" && pwd)
 KEY=$(python3 -c "import json,sys; print(json.load(open(sys.argv[1]))['key'])" "$DIR/agent.json")
-I=$HOME/larryd/server/runtime/internal/instance
+I=$HOME/virtual_sanity/runtime_internal/instance   # LARRYD RUNTIME INTERNAL in its own home (the owner 2026-11-05: "nothing internal in larryd")
 WORK=$(mktemp -d); trap 'rm -rf "$WORK"' EXIT
 cp "$DIR/agent.json" "$DIR/agent.py" "$LIB/office.py" "$WORK/"
 LIBS=$(python3 -c "import json,sys; print(' '.join(l + '.py' for l in json.load(open(sys.argv[1])).get('libs', [])))" "$DIR/agent.json")   # its office kits, named in agent.json "libs" (one source each, in _office)
 for l in $LIBS; do cp "$LIB/$l" "$WORK/"; done
 PKG="$WORK/$KEY.larryd"; (cd "$WORK" && zip -q "$PKG" agent.json agent.py office.py $LIBS)
-OUT=$(cd ~/larryd/server && LARRYD_INTERNAL=1 LARRYD_INSTANCE=$I LARRYD_KEYS_DIR=$I/keys LARRYD_OUTBOUND_DIR=$I/out LARRYD_ENV=localhost.rnd .venv/bin/python -B runtime/app/web/app.py place "$KEY" "$PKG" --slot proof 2>&1 | tail -1)
+OUT=$(cd ~/virtual_sanity/runtime_internal && LARRYD_INTERNAL=1 LARRYD_INSTANCE=$I LARRYD_KEYS_DIR=$I/keys LARRYD_OUTBOUND_DIR=$I/out LARRYD_ENV=localhost.rnd .venv/bin/python -B runtime/app/web/app.py place "$KEY" "$PKG" --slot proof 2>&1 | tail -1)
 ID=$(echo "$OUT" | python3 -c "import json,sys; d=json.loads(sys.stdin.read()); r=d.get('review') or {}; assert r.get('card_key')=='$KEY', ('card key', d); print(r['id'])")
 cd ~/virtual_workspace/fs/fs && WID_ENV=localhost.rnd ~/virtual_workspace/.venv/bin/python -B - "$ID" "$KEY" <<'PY'
 import sys, datetime; sys.path.insert(0, 'app')
