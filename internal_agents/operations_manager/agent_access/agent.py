@@ -83,7 +83,10 @@ def reseal_state():
         with open(office.fact('pin_ledger'), encoding='utf-8') as fh:
             last = [ln for ln in fh.read().splitlines() if ln.strip()][-1]
         at = str(json.loads(last).get('at') or '')
-        out['pin'] = 'PINNED ' + (when(datetime.datetime.fromisoformat(at.replace('Z', '+00:00')).timestamp()) if at else '')
+        pinned = datetime.datetime.fromisoformat(at.replace('Z', '+00:00')) if at else None
+        if pinned and pinned.tzinfo is None:   # the lie detector's ledger writes UTC with no zone (cebf/pins.jsonl): read it as UTC, never as this machine's clock
+            pinned = pinned.replace(tzinfo=datetime.timezone.utc)
+        out['pin'] = 'PINNED ' + (when(pinned.timestamp()) if pinned else '')
     except (OSError, IndexError, ValueError):
         out['pin'] = ''
     base = office.fact('moire_baseline')
