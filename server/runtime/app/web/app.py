@@ -497,7 +497,7 @@ def catch_up(app):
     sources = list(app.config['harnesses'].items()) or [('', app.config['harness'])]
     for caller, h in sources:
         began = time.monotonic()
-        status, body = h.client.get('wid', '/jobs/queued')
+        status, body = h.client.get('wid', '/jobs/queued', {'runtime': 'internal'} if os.environ.get('LARRYD_INTERNAL') == '1' else None)   # THE TWO RUNTIMES: each is handed its own queue
         if caller:   # the instance's first call back to that slot: its answer and how long it took (no data)
             logging.getLogger('runtime').warning('catch-up: %s answered %s in %.1f s', caller, status, time.monotonic() - began)
         for j in body.get('jobs', []) if status == 200 else []:

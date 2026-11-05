@@ -85,6 +85,11 @@ def _outside_gives(manifest, answer):
     extra = sorted(set(answer) - (set(gives) - RUNTIME_OWN))
     return f'the answer holds {extra}, which "gives" does not name' if extra else ''
 
+def _first_line(text):
+    """An internal agent's delivery, its first line alone, plain and short (its job's TODAY line)."""
+    return ((text if isinstance(text, str) else '').strip().splitlines() or [''])[0][:280]
+
+
 class _Stop(Exception):
     def __init__(self, state, reason):
         super().__init__(reason)
@@ -453,7 +458,7 @@ class Harness:
         return {'inputs': {declared[n]: v for n, v in asked.items() if v != ''}}, ''
 
     INTERNAL = os.environ.get('LARRYD_INTERNAL') == '1'   # LARRYD RUNTIME INTERNAL: this runtime runs on this computer for internal agents (its start says so); the external one never
-    MOST_INTERNAL_SECONDS = 3 * 3600   # an internal agent's own limit at most (a hot fix walk takes up to 3 hours)
+    MOST_INTERNAL_SECONDS = 6 * 3600   # an internal agent's own limit at most (the night's Web build and Test each hold the smoke test, up to 4 hours, after the Judge)
 
     def internal_for(self, manifest):
         """Does this agent run with this computer's reach? Only on LARRYD RUNTIME INTERNAL, and only when its approved manifest declares
@@ -462,7 +467,7 @@ class Harness:
 
     def _run(self, folder, manifest, given, **kw):
         """ONE RUN OF AN AGENT: in the sandbox (every external agent, and any agent on the external runtime); an internal agent on
-        LARRYD RUNTIME INTERNAL as this computer's own process, its time limit its manifest's own (internal.seconds, at most 3 hours)."""
+        LARRYD RUNTIME INTERNAL as this computer's own process, its time limit its manifest's own (internal.seconds, at most 6 hours)."""
         if self.internal_for(manifest):
             seconds = manifest['internal'].get('seconds')
             seconds = min(int(seconds), self.MOST_INTERNAL_SECONDS) if isinstance(seconds, int) and seconds > 0 else self.seconds
@@ -595,6 +600,10 @@ class Harness:
         outside = _outside_gives(manifest, answer)
         if outside:
             return self._end(account, scope, member, key, job_key, run, 'FAILED', f'{outside}; the delivery is withheld')
+        inside = self.internal_for(manifest)
+        said = _first_line(answer.get('delivery')) if inside else ''   # AN INTERNAL AGENT'S OWN WORDS ON ITS JOB (the owner 2026-11-03, Scrum Master 3: every value from the database): its delivery's first line is its log, so its job's TODAY says what it found
+        if inside and answer.get('light') == 'RED':   # AN INTERNAL CHECK THAT FOUND A RED (Lie Detector, New Files ...): the RUN ran, what it found is red; its light RED and its own words, never just an exit code
+            return self._end(account, scope, member, key, job_key, run, 'FAILED', f'RUN {run} RED · {said or "red"}', delivery=answer.get('delivery') if isinstance(answer.get('delivery'), str) else '')
         try:
             files = self._files(manifest, answer)
             asks = self._asks(manifest, answer, key, member)
@@ -648,7 +657,7 @@ class Harness:
         kept = {k: v for k, v in answer.items() if k not in ('files', 'makes', 'keeps')}
         delivery = answer.get('delivery') if isinstance(answer.get('delivery'), str) else json.dumps(kept, sort_keys=True)
         stored_note = f" · {len(files)} file{'' if len(files) == 1 else 's'} in DA-M" if files else ''
-        return self._end(account, scope, member, key, job_key, run, 'DONE', f'RUN {run} DONE · {paid}{stored_note}{kept_note}', charged=charged, delivery=delivery)
+        return self._end(account, scope, member, key, job_key, run, 'DONE', f'RUN {run} DONE · {said}' if said else f'RUN {run} DONE · {paid}{stored_note}{kept_note}', charged=charged, delivery=delivery)
 
     def started(self, agent_key, job_key, run, account, member):
         """A RUN the runtime took is written down as STARTED, once (at the door when the platform names the agent, else here as it
