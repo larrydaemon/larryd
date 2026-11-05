@@ -189,6 +189,9 @@ def answer(lines, would, why='', step='', data=None, healed='', said=''):
 
 def run(given):
     """ONE STEP OF THE CHAIN, ON DEMAND: the tree free, its own checks, then (dry) what it would run, or (real) its plan, its lock held"""
+    group = (office.me().get('group') or '').upper()
+    if group in ('NIGHT', 'RELEASE') and not slot_on(group)[0]:   # ITS GROUP SWITCHED OFF ON ITS PANEL (the owner 2026-11-04): nothing run
+        return office.done(f'GREEN · {group} is off: nothing run, nothing changed', 'GREEN', {group.lower(): 'off'})
     dry = F('dry') is not False
     plan = F('plan') or []
     stop = busy()
@@ -273,17 +276,30 @@ def scoped_theme(sheet, site, scope):
     return '\n'.join(out)
 
 
+def slot_on(slot):
+    """THE NIGHT OR RELEASE SWITCH (the owner 2026-11-04: "the scrum master toggles are broken fix those too"): one row of the office's
+    database per group ({slot}_switch), written only by the owner's press on its panel, read by every step of that group's RUN, as DAY's
+    is. (on, its row); no row yet is on"""
+    row = next((r for r in office.live_all() if r['key'] == f'{slot.lower()}_switch'), None)
+    return (not row or row['state'] != 'OFF'), row
+
+
 def panel(given, p):
-    """SM2's NIGHT / RELEASE block (day_view), its one switch: a press only answers what it would switch (the shells' switches are the board's)"""
+    """SM2's NIGHT / RELEASE block (day_view), its one switch: every step of its group runs when on; off, each step's RUN changes nothing"""
     slot, low = p['slot'], p['slot'].lower()
     total = sum(1 for j in office.workflow(given) if group_of(j) == slot)
-    pressed = office.asked(given, 'slot') == slot
-    said = (f'<div class="annotation">Pressed: it would switch {office.e(office.asked(given, "to") or "off")} the {total} {slot} agents. '
-            "Their on and off is each shell's own switch on the board (the owner's): nothing was changed.</div>") if pressed else ''
-    form = (f'<form method="post" action="/day_switch" class="ct-form" id="{low}-switch-form"><input type="hidden" name="to" value="off">'
-            f'<input type="hidden" name="slot" value="{slot}"><input type="hidden" name="back" value="agent"><span class="body">{slot.capitalize()} agents</span> '
-            '<button class="pfb pfb--toggle pfb--on" type="submit" aria-pressed="true" title="On"><span class="pfb__knob"></span></button> '
-            f'<span class="annotation">{total} {slot} agents on the board</span></form>')
+    on, _row = slot_on(slot)
+    to = office.asked(given, 'to')
+    if office.asked(given, 'slot') == slot and to in ('on', 'off') and (to == 'on') != on:
+        office.live_set(f'{low}_switch', slot.capitalize(), 'GREEN' if to == 'on' else 'OFF',
+                        f'{slot} is on: every {slot} step runs when its RUN is pressed' if to == 'on' else f"{slot} is off: every {slot} step's RUN says {slot} is off and changes nothing",
+                        trigger='press')
+        on, _row = slot_on(slot)
+    said = ''
+    form = (f'<form class="ct-form" id="{low}-switch-form"><input type="hidden" name="to" value="{"off" if on else "on"}">'
+            f'<input type="hidden" name="slot" value="{slot}"><span class="body">{slot.capitalize()} agents</span> '
+            f'<button class="pfb pfb--toggle{" pfb--on" if on else ""}" type="submit" aria-pressed="{"true" if on else "false"}" title="{"On" if on else "Off"}"><span class="pfb__knob"></span></button> '
+            f'<span class="annotation">{total if on else 0} of {total} {slot} agents on</span></form>')
     html_ = (f'<div class="replica-normal-block replica-frame-part replica-{low}-part" aria-label="{slot}"><div class="replica-day" id="replica-{low}" data-place="agencymgmt">'
              '<div class="replica-day-mark" role="img" aria-label="Agency Mgmt">Agency Mgmt</div>'
              f'<div class="title" id="{low}-name">{office.e(p["title"])}</div><div class="annotation">One switch for every {slot} agent</div>{form}{said}</div></div>')
