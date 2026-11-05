@@ -1,0 +1,74 @@
+{
+  "key": "MAGT_A3333CBDAD5A_1786",
+  "name": "Moiré",
+  "office": "scrum_master_3",
+  "workflow": "Scrum Master 3",
+  "group": "LIVE",
+  "entry": "agent.py",
+  "about": "Scrum Master 3's LIVE Moiré, on demand: what changed since the baseline, shown as information (the lie detector's D3 drift, and the workspace's files not committed yet). Red only when the change report is not running; a change is never red.",
+  "does": [
+    "canvas",
+    "run"
+  ],
+  "calls": [
+    "canvas"
+  ],
+  "records": {
+    "agnt": [
+      "read"
+    ],
+    "jobs": [
+      "read"
+    ]
+  },
+  "run": {
+    "do": "run",
+    "hands": []
+  },
+  "gives": [
+    "view",
+    "delivery",
+    "light"
+  ],
+  "skills": [],
+  "knowledge": [],
+  "facts": {
+    "live_key": "moire",
+    "workspace": "~/virtual_workspace",
+    "report": "~/virtual_workspace/lryllm/lryllm/instance/logs/cebf/report.json",
+    "console": "~/virtual_workspace/lryllm/lryllm/app/schemas/console.json",
+    "baseline": "~/virtual_workspace/lryllm/lryllm/instance/logs/moire/baseline.json",
+    "deadman": 900,
+    "ahead": 60,
+    "pass": "PASS",
+    "probe": "D3",
+    "drift_words": "^\\s*(\\d+)\\s+drift",
+    "no_baseline_words": "no baseline",
+    "git_seconds": 90,
+    "first_files": 3,
+    "most": 800,
+    "rerun": "cd ~/virtual_workspace/lryllm/lryllm/app && env -u PYTHONPATH PYTHONDONTWRITEBYTECODE=1 WID_ENV=localhost.rnd ~/virtual_workspace/.venv/bin/python -c \"from core_engine import cebf; r = cebf.run(); print(r['at'], r['verdict'], r['pass'], 'pass', r['fail'], 'fail', r['no_data'], 'no data')\"",
+    "git_step": "git -C ~/virtual_workspace status (the workspace must be a repository's own top and git must answer: what it prints is the fault; the lie detector cannot clear this)",
+    "no_baseline_said": "no baseline frozen yet (freezing one is your own act: run PIN AND RESEAL yourself, by hand in the terminal)"
+  },
+  "card": {
+    "class": "MARK I AGENT (NORMAL)",
+    "pitch": "What changed, shown; red only when the report is not running",
+    "price": "0",
+    "type": "DEVELOPER",
+    "residency": "INTERNAL",
+    "authorization": "PRIVATE",
+    "screen": "larryd/jobs/home",
+    "product": "LARRYD",
+    "module": "Jobs",
+    "developer": "LARRYD",
+    "sends_to": "",
+    "data_sent": ""
+  },
+  "internal": {
+    "seconds": 180
+  },
+  "libs": [
+    "look"
+  ]
+}

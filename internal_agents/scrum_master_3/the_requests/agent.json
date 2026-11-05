@@ -1,0 +1,231 @@
+{
+  "key": "MAGT_0F6F622B0EB6_B035",
+  "name": "The requests",
+  "office": "scrum_master_3",
+  "workflow": "Scrum Master 3",
+  "group": "DAY",
+  "entry": "agent.py",
+  "libs": [
+    "day",
+    "look"
+  ],
+  "about": "Scrum Master 3's request inbox: every request of the office's own database, ADD REQUEST TO BACKLOG with its ENVIRONMENT, today's new requests with REMOVE, UPDATE and APPROVE; its RUN takes the swear words out of the stored words and says what each state holds.",
+  "does": [
+    "canvas",
+    "run"
+  ],
+  "calls": [
+    "canvas"
+  ],
+  "records": {
+    "agnt": [
+      "read"
+    ],
+    "jobs": [
+      "read"
+    ]
+  },
+  "run": {
+    "do": "run",
+    "hands": []
+  },
+  "gives": [
+    "view",
+    "delivery",
+    "light"
+  ],
+  "skills": [],
+  "knowledge": [],
+  "facts": {
+    "day_key": "day",
+    "day_off": "OFF",
+    "press": "requests",
+    "zone": "America/New_York",
+    "asked": "asked",
+    "removed": "removed",
+    "approved": "green",
+    "ready": "waiting_takein",
+    "stuck": "stuck_today",
+    "in_hand": [
+      "planned",
+      "building",
+      "proven",
+      "reviewed",
+      "approved"
+    ],
+    "closed": [
+      "green",
+      "shipped",
+      "taken_in"
+    ],
+    "status": [
+      [
+        "WAITING",
+        [
+          "asked",
+          "stuck_today"
+        ]
+      ],
+      [
+        "BUILDING",
+        [
+          "planned",
+          "building",
+          "proven",
+          "reviewed",
+          "approved"
+        ]
+      ],
+      [
+        "VERIFY",
+        [
+          "waiting_takein"
+        ]
+      ]
+    ],
+    "source": "session",
+    "ref": "the owner, typed in ADD REQUEST TO BACKLOG",
+    "by_his_page": "on his page",
+    "environments": [
+      [
+        "localhost_rnd",
+        "localhost",
+        "rnd"
+      ],
+      [
+        "localhost_pf",
+        "localhost",
+        "pf"
+      ],
+      [
+        "production_rnd",
+        "production",
+        "rnd"
+      ],
+      [
+        "production_pf",
+        "production",
+        "pf"
+      ],
+      [
+        "agent_larryd",
+        "agent",
+        "larryd"
+      ],
+      [
+        "native_ios",
+        "native",
+        "ios"
+      ],
+      [
+        "native_macos",
+        "native",
+        "macos"
+      ]
+    ],
+    "off_by_default": [
+      "native_ios",
+      "native_macos"
+    ],
+    "notes": {
+      "agent": "(if agent)",
+      "native": "(if only that build)"
+    },
+    "global_config": "~/virtual_workspace/global_config.json",
+    "swaps": "~/virtual_workspace/lryllm/lryllm/instance/tower/swaps.jsonl",
+    "production_a": "^https?://(?:www\\.)?positivefeedback\\.(?:ai|com)(?:[/?#]|$)",
+    "swear": "\\b(?:motherfuck\\w*|fuck\\w*|bullshit|shit\\w*|crap\\w*|assholes?|goddamn\\w*|damn\\w*|wtf|bitch\\w*)\\b",
+    "plain": [
+      [
+        "\\bmotherfuck\\w*",
+        ""
+      ],
+      [
+        "\\bwhat the fuck\\b",
+        "what"
+      ],
+      [
+        "\\bthe fuck\\b",
+        ""
+      ],
+      [
+        "\\bfuck(?:ed|ing)? up\\b",
+        "messed up"
+      ],
+      [
+        "\\bfuck(?:ing|ign|in|en)\\b",
+        ""
+      ],
+      [
+        "\\bfucked\\b",
+        "messed up"
+      ],
+      [
+        "\\bfuck(?:er|ers|s)?\\b",
+        ""
+      ],
+      [
+        "\\bbullshit\\b",
+        "nonsense"
+      ],
+      [
+        "\\bshitty\\b",
+        "bad"
+      ],
+      [
+        "\\bshit(?:s)?\\b",
+        "junk"
+      ],
+      [
+        "\\bcrappy\\b",
+        "bad"
+      ],
+      [
+        "\\bcrap\\b",
+        "junk"
+      ],
+      [
+        "\\bassholes?\\b",
+        "jerk"
+      ],
+      [
+        "\\bgoddamn(?:ed)?\\b",
+        ""
+      ],
+      [
+        "\\bdamn(?:ed|it)?\\b",
+        ""
+      ],
+      [
+        "\\bwtf\\b",
+        ""
+      ],
+      [
+        "\\bbitch(?:es|ing)?\\b",
+        ""
+      ]
+    ],
+    "cut": 160,
+    "env_title": "ENVIRONMENT · WHERE THE WORK GOES · A HOT FIX, A DIRECT EDIT",
+    "box_words": "your request, in your words · Enter adds it",
+    "list_title": "4 · THE REQUESTS",
+    "line_cut": 70
+  },
+  "card": {
+    "class": "MARK I AGENT (NORMAL)",
+    "pitch": "The requests: stored or not, this office's own, its swear words out",
+    "price": "0",
+    "type": "DEVELOPER",
+    "residency": "INTERNAL",
+    "authorization": "PRIVATE",
+    "screen": "larryd/jobs/home",
+    "product": "LARRYD",
+    "module": "Jobs",
+    "developer": "LARRYD",
+    "sends_to": "",
+    "data_sent": ""
+  },
+  "internal": {
+    "seconds": 60
+  }
+}

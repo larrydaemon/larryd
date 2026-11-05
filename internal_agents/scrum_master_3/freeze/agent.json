@@ -1,0 +1,99 @@
+{
+  "key": "MAGT_24FC14C842AD_C31C",
+  "name": "Freeze",
+  "office": "scrum_master_3",
+  "workflow": "Scrum Master 3",
+  "group": "RELEASE",
+  "entry": "agent.py",
+  "libs": [
+    "night",
+    "look"
+  ],
+  "about": "FREEZE, RELEASE's first step: the countdown to the freeze (freeze_weeks before the swap day) and to the swap. Green while it can be told; red once the swap day is past (the next sprint's dates are the owner's to set in agent.json). From the freeze DAY's Pick takes only a request marked FIX. It only counts days: dry or not, nothing is run.",
+  "does": [
+    "canvas",
+    "run"
+  ],
+  "calls": [
+    "canvas"
+  ],
+  "records": {
+    "agnt": [
+      "read"
+    ],
+    "jobs": [
+      "read"
+    ]
+  },
+  "run": {
+    "do": "run",
+    "hands": []
+  },
+  "gives": [
+    "view",
+    "delivery",
+    "light"
+  ],
+  "skills": [],
+  "knowledge": [],
+  "facts": {
+    "dry": true,
+    "chain": "RELEASE",
+    "lock": "~/scratch/tests/release/.release.lock",
+    "waits_for": {
+      "the NIGHT": "~/scratch/tests/night/.night.lock",
+      "a DAY run": "~/scratch/tests/day/.day.lock",
+      "the tower": "~/spine_scratch/tower_auto/auto.lock"
+    },
+    "utility_pid": "~/spine_scratch/hotfix_runs/running.lock",
+    "python": "~/virtual_workspace/.venv/bin/python",
+    "tower_app": "~/virtual_workspace/lryllm/lryllm/app",
+    "reruns": "~/spine_scratch/tower_auto/reruns",
+    "targets": {
+      "here": "localhost_pf",
+      "rnd": "frost-b.rnd",
+      "native": "this laptop"
+    },
+    "native_prefixes": [
+      "native_",
+      "hot_fix"
+    ],
+    "native_steps": [
+      "native_generate",
+      "native_iphone",
+      "native_test_iphone",
+      "native_macos",
+      "native_test_macos"
+    ],
+    "plan": [],
+    "next": "Sync",
+    "took": "seconds",
+    "heals": false,
+    "heal_most": 2,
+    "release_day": "2026-12-13",
+    "freeze_weeks": 4,
+    "panel": {
+      "slot": "RELEASE",
+      "title": "Release - Freeze to Swap"
+    },
+    "agency_sheet": "~/virtual_workspace/themes/7573b188/css/B9AF66CF6633.css",
+    "agency_site": "/themes/7573b188"
+  },
+  "card": {
+    "class": "MARK I AGENT (NORMAL)",
+    "pitch": "The countdown to the freeze (November 15) and to the swap (December 13)",
+    "price": "0",
+    "type": "DEVELOPER",
+    "residency": "INTERNAL",
+    "authorization": "PRIVATE",
+    "screen": "larryd/jobs/home",
+    "product": "LARRYD",
+    "module": "Jobs",
+    "developer": "LARRYD",
+    "sends_to": "",
+    "data_sent": ""
+  },
+  "internal": {
+    "seconds": 60
+  }
+}

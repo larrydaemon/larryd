@@ -1,0 +1,67 @@
+{
+  "key": "MAGT_796241D6E79A_ADBC",
+  "name": "Live",
+  "office": "operations_manager",
+  "workflow": "",
+  "group": "LIVE",
+  "entry": "agent.py",
+  "about": "SCRUM MASTER 2's ACTIVE MONITORING panel for the page workflow: today's work from its X board, what runs now, and the tools table from its own blocks.",
+  "does": [
+    "canvas",
+    "run"
+  ],
+  "calls": [
+    "canvas"
+  ],
+  "records": {
+    "agnt": [
+      "read"
+    ],
+    "jobs": [
+      "read"
+    ]
+  },
+  "run": {
+    "do": "run",
+    "hands": []
+  },
+  "gives": [
+    "view",
+    "delivery",
+    "light"
+  ],
+  "skills": [],
+  "knowledge": [],
+  "facts": {
+    "offices": {
+      "Scrum Master 3": "scrum_master_3",
+      "Operations Manager": "operations_manager",
+      "Chief Marketing Officer": "cmo",
+      "Creative Director": "creative_director"
+    },
+    "board_name": "X Board",
+    "memory_name": "Memory",
+    "hosts_name": "Audit",
+    "css": ".replica-live .scrum-term th, .replica-live .scrum-term td { text-transform: uppercase; }"
+  },
+  "card": {
+    "class": "MARK I AGENT (NORMAL)",
+    "pitch": "The office's live checks, each its light and its words",
+    "price": "0",
+    "type": "DEVELOPER",
+    "residency": "INTERNAL",
+    "authorization": "PRIVATE",
+    "screen": "larryd/jobs/home",
+    "product": "LARRYD",
+    "module": "Jobs",
+    "developer": "LARRYD",
+    "sends_to": "",
+    "data_sent": ""
+  },
+  "internal": {
+    "seconds": 60
+  },
+  "libs": [
+    "look"
+  ]
+}

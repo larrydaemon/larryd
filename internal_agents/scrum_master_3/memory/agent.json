@@ -1,0 +1,83 @@
+{
+  "key": "MAGT_5C5B680C75B0_2848",
+  "name": "Memory",
+  "office": "scrum_master_3",
+  "workflow": "Scrum Master 3",
+  "group": "LIVE",
+  "entry": "agent.py",
+  "about": "Scrum Master 3's LIVE Memory, on demand: the 3 way switch works or not (the knowledge store reads, Claude Code's hooks are wired, every known-answer question is answered right through the knowledge door's read-only ask), and the memory's live updates today, as information.",
+  "does": [
+    "canvas",
+    "run"
+  ],
+  "calls": [
+    "canvas"
+  ],
+  "records": {
+    "agnt": [
+      "read"
+    ],
+    "jobs": [
+      "read"
+    ]
+  },
+  "run": {
+    "do": "run",
+    "hands": []
+  },
+  "gives": [
+    "view",
+    "delivery",
+    "light"
+  ],
+  "skills": [],
+  "knowledge": [],
+  "facts": {
+    "live_key": "memory",
+    "home": "~/virtual_sanity/knowledge",
+    "db": "~/virtual_sanity/knowledge/instance/knowledge.db",
+    "door": "~/virtual_sanity/knowledge/bin/knowledge",
+    "settings": "~/.claude/settings.json",
+    "prompt_hook": "-m knowledge.hook_prompt",
+    "write_hook": "-m knowledge.hook_write",
+    "write_matcher": "Write|Edit|MultiEdit|NotebookEdit|Bash",
+    "python": "python3",
+    "old_hook_word": "cortex",
+    "known_questions": "~/virtual_sanity/knowledge/questions/known.json",
+    "known_within": 3,
+    "switch_seconds": 20,
+    "zone": "America/New_York",
+    "positions": {
+      "1": "the skills index",
+      "2": "the knowledge store",
+      "3": "the facts fast search"
+    },
+    "most": 600,
+    "store_step": "put the store back from the newest backup (seconds): cp \"$(ls -d ~/scratch/scrum_master/backups/scrum_master_*/knowledge.db | tail -1)\" ~/virtual_sanity/knowledge/instance/knowledge.db, then ~/virtual_sanity/knowledge/bin/knowledge ask \"<a known question>\"",
+    "questions_step": "write the known-answer questions file (question, expect for each), never from the session that builds the switch",
+    "door_step": "see the door's fault whole by hand (seconds): ~/virtual_sanity/knowledge/bin/knowledge ask \"<question {n}>\"; a fault in its code is code work, sent as a request",
+    "switch_step": "ask question {n} alone (seconds): ~/virtual_sanity/knowledge/bin/knowledge ask \"<question {n}>\"; its right answer turns this green. The switch's fix itself is a builder's (~/virtual_sanity/knowledge/app/knowledge/switch.py), sent as a request",
+    "settings_step": "make ~/.claude/settings.json read again (seconds): python3 -m json.tool ~/.claude/settings.json names the broken line; mend it, then press RUN on Memory",
+    "old_hook_step": "take the old Cortex hook out of ~/.claude/settings.json: the UserPromptSubmit or SessionStart entry whose command names cortex (seconds)"
+  },
+  "card": {
+    "class": "MARK I AGENT (NORMAL)",
+    "pitch": "The 3 way switch works or not, and the memory's live updates",
+    "price": "0",
+    "type": "DEVELOPER",
+    "residency": "INTERNAL",
+    "authorization": "PRIVATE",
+    "screen": "larryd/jobs/home",
+    "product": "LARRYD",
+    "module": "Jobs",
+    "developer": "LARRYD",
+    "sends_to": "",
+    "data_sent": ""
+  },
+  "internal": {
+    "seconds": 600
+  },
+  "libs": [
+    "look"
+  ]
+}

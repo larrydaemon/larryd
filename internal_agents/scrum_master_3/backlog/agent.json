@@ -1,0 +1,221 @@
+{
+  "key": "MAGT_59F6B9236C0F_08F7",
+  "name": "Backlog",
+  "office": "scrum_master_3",
+  "workflow": "Scrum Master 3",
+  "group": "DAY",
+  "entry": "agent.py",
+  "libs": [
+    "day",
+    "look"
+  ],
+  "about": "Scrum Master 3's backlog: every request waiting to be built (asked before today, or stuck today), in build order, from the office's own database, each with REMOVE, UPDATE and APPROVE (in VERIFY), and CLEAR ALL BACKLOG for the waiting ones (asked once more before it goes). Never red for the work: red only when the requests do not read.",
+  "does": [
+    "canvas",
+    "run"
+  ],
+  "calls": [
+    "canvas"
+  ],
+  "records": {
+    "agnt": [
+      "read"
+    ],
+    "jobs": [
+      "read"
+    ]
+  },
+  "run": {
+    "do": "run",
+    "hands": []
+  },
+  "gives": [
+    "view",
+    "delivery",
+    "light"
+  ],
+  "skills": [],
+  "knowledge": [],
+  "facts": {
+    "press": "backlog",
+    "zone": "America/New_York",
+    "asked": "asked",
+    "removed": "removed",
+    "approved": "green",
+    "ready": "waiting_takein",
+    "stuck": "stuck_today",
+    "in_hand": [
+      "planned",
+      "building",
+      "proven",
+      "reviewed",
+      "approved"
+    ],
+    "closed": [
+      "green",
+      "shipped",
+      "taken_in"
+    ],
+    "status": [
+      [
+        "WAITING",
+        [
+          "asked",
+          "stuck_today"
+        ]
+      ],
+      [
+        "BUILDING",
+        [
+          "planned",
+          "building",
+          "proven",
+          "reviewed",
+          "approved"
+        ]
+      ],
+      [
+        "VERIFY",
+        [
+          "waiting_takein"
+        ]
+      ]
+    ],
+    "by_his_page": "on his page",
+    "environments": [
+      [
+        "localhost_rnd",
+        "localhost",
+        "rnd"
+      ],
+      [
+        "localhost_pf",
+        "localhost",
+        "pf"
+      ],
+      [
+        "production_rnd",
+        "production",
+        "rnd"
+      ],
+      [
+        "production_pf",
+        "production",
+        "pf"
+      ],
+      [
+        "agent_larryd",
+        "agent",
+        "larryd"
+      ],
+      [
+        "native_ios",
+        "native",
+        "ios"
+      ],
+      [
+        "native_macos",
+        "native",
+        "macos"
+      ]
+    ],
+    "off_by_default": [
+      "native_ios",
+      "native_macos"
+    ],
+    "production_a": "^https?://(?:www\\.)?positivefeedback\\.(?:ai|com)(?:[/?#]|$)",
+    "swear": "\\b(?:motherfuck\\w*|fuck\\w*|bullshit|shit\\w*|crap\\w*|assholes?|goddamn\\w*|damn\\w*|wtf|bitch\\w*)\\b",
+    "plain": [
+      [
+        "\\bmotherfuck\\w*",
+        ""
+      ],
+      [
+        "\\bwhat the fuck\\b",
+        "what"
+      ],
+      [
+        "\\bthe fuck\\b",
+        ""
+      ],
+      [
+        "\\bfuck(?:ed|ing)? up\\b",
+        "messed up"
+      ],
+      [
+        "\\bfuck(?:ing|ign|in|en)\\b",
+        ""
+      ],
+      [
+        "\\bfucked\\b",
+        "messed up"
+      ],
+      [
+        "\\bfuck(?:er|ers|s)?\\b",
+        ""
+      ],
+      [
+        "\\bbullshit\\b",
+        "nonsense"
+      ],
+      [
+        "\\bshitty\\b",
+        "bad"
+      ],
+      [
+        "\\bshit(?:s)?\\b",
+        "junk"
+      ],
+      [
+        "\\bcrappy\\b",
+        "bad"
+      ],
+      [
+        "\\bcrap\\b",
+        "junk"
+      ],
+      [
+        "\\bassholes?\\b",
+        "jerk"
+      ],
+      [
+        "\\bgoddamn(?:ed)?\\b",
+        ""
+      ],
+      [
+        "\\bdamn(?:ed|it)?\\b",
+        ""
+      ],
+      [
+        "\\bwtf\\b",
+        ""
+      ],
+      [
+        "\\bbitch(?:es|ing)?\\b",
+        ""
+      ]
+    ],
+    "waiting": [
+      "asked",
+      "stuck_today"
+    ],
+    "cleared": "cleared by CLEAR ALL BACKLOG"
+  },
+  "card": {
+    "class": "MARK I AGENT (NORMAL)",
+    "pitch": "The backlog: every request waiting to be built, in build order",
+    "price": "0",
+    "type": "DEVELOPER",
+    "residency": "INTERNAL",
+    "authorization": "PRIVATE",
+    "screen": "larryd/jobs/home",
+    "product": "LARRYD",
+    "module": "Jobs",
+    "developer": "LARRYD",
+    "sends_to": "",
+    "data_sent": ""
+  },
+  "internal": {
+    "seconds": 60
+  }
+}

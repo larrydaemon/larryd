@@ -1,0 +1,85 @@
+{
+  "key": "MAGT_F8A0389F498B_ABDF",
+  "name": "Pick",
+  "office": "scrum_master_3",
+  "workflow": "Scrum Master 3",
+  "group": "DAY",
+  "entry": "agent.py",
+  "libs": [
+    "day",
+    "look"
+  ],
+  "about": "Scrum Master 3's DAY step: the next asked request in build order (position, then id), picked only on a clean hot fix tree with nothing in hand, its base HEAD kept in its side file; one at a time. The backlog built to its end: Cleanup next.",
+  "does": [
+    "canvas",
+    "run"
+  ],
+  "calls": [
+    "canvas"
+  ],
+  "records": {
+    "agnt": [
+      "read"
+    ],
+    "jobs": [
+      "read"
+    ]
+  },
+  "run": {
+    "do": "run",
+    "hands": []
+  },
+  "gives": [
+    "view",
+    "delivery",
+    "light"
+  ],
+  "skills": [],
+  "knowledge": [],
+  "facts": {
+    "tree": "~/spine_worktrees/hotfix",
+    "branch": "hold/20261021",
+    "repo": "~/virtual_workspace",
+    "main": "main",
+    "tests": "~/scratch/tests/day",
+    "python": "~/virtual_workspace/.venv/bin/python",
+    "git_seconds": 120,
+    "day_key": "day",
+    "day_off": "OFF",
+    "writer": "~/scratch/reports/scrum_master/developer.lock",
+    "utility_lock": "~/spine_scratch/hotfix_runs/running.lock",
+    "in_hand": [
+      "planned",
+      "building",
+      "proven",
+      "reviewed"
+    ],
+    "side_dir": "day_side",
+    "day_name": "THE DAY",
+    "day_email": "day@localhost",
+    "stuck": "stuck_today",
+    "hire_mark": ".day_hire",
+    "asked": "asked",
+    "picked": "planned",
+    "done_next": "Cleanup",
+    "dry": false,
+    "next": "Build"
+  },
+  "card": {
+    "class": "MARK I AGENT (NORMAL)",
+    "pitch": "Pick: the next request in build order",
+    "price": "0",
+    "type": "DEVELOPER",
+    "residency": "INTERNAL",
+    "authorization": "PRIVATE",
+    "screen": "larryd/jobs/home",
+    "product": "LARRYD",
+    "module": "Jobs",
+    "developer": "LARRYD",
+    "sends_to": "",
+    "data_sent": ""
+  },
+  "internal": {
+    "seconds": 120
+  }
+}

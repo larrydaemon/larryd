@@ -1,0 +1,107 @@
+{
+  "key": "MAGT_E8B14382D926_5104",
+  "name": "iPhone build",
+  "office": "scrum_master_3",
+  "workflow": "Scrum Master 3",
+  "group": "NIGHT",
+  "entry": "agent.py",
+  "libs": [
+    "night",
+    "look"
+  ],
+  "about": "IPHONE BUILD: the night's clean build of the iPhone app (native_iphone --clean), then its whole walk (native_test_iphone). Dry: their last real results and the commands it would run.",
+  "does": [
+    "canvas",
+    "run"
+  ],
+  "calls": [
+    "canvas"
+  ],
+  "records": {
+    "agnt": [
+      "read"
+    ],
+    "jobs": [
+      "read"
+    ]
+  },
+  "run": {
+    "do": "run",
+    "hands": []
+  },
+  "gives": [
+    "view",
+    "delivery",
+    "light"
+  ],
+  "skills": [],
+  "knowledge": [],
+  "facts": {
+    "dry": true,
+    "chain": "NIGHT",
+    "lock": "~/scratch/tests/night/.night.lock",
+    "waits_for": {
+      "a DAY run": "~/scratch/tests/day/.day.lock",
+      "the tower": "~/spine_scratch/tower_auto/auto.lock"
+    },
+    "utility_pid": "~/spine_scratch/hotfix_runs/running.lock",
+    "python": "~/virtual_workspace/.venv/bin/python",
+    "tower_app": "~/virtual_workspace/lryllm/lryllm/app",
+    "reruns": "~/spine_scratch/tower_auto/reruns",
+    "targets": {
+      "here": "localhost_pf",
+      "rnd": "frost-b.rnd",
+      "native": "this laptop"
+    },
+    "native_prefixes": [
+      "native_",
+      "hot_fix"
+    ],
+    "native_steps": [
+      "native_generate",
+      "native_iphone",
+      "native_test_iphone",
+      "native_macos",
+      "native_test_macos"
+    ],
+    "plan": [
+      {
+        "say": "iphone · build",
+        "tower": [
+          "--clean",
+          "native_iphone"
+        ],
+        "seconds": 10800
+      },
+      {
+        "say": "iphone · walk",
+        "tower": [
+          "native_test_iphone"
+        ],
+        "seconds": 10800
+      }
+    ],
+    "next": "iPhone publish",
+    "took": "the clean build 7 to 8 min, the walk minutes",
+    "heals": true,
+    "heal_most": 2,
+    "builds": "~/spine_scratch/tower_native"
+  },
+  "card": {
+    "class": "MARK I AGENT (NORMAL)",
+    "pitch": "iPhone build: the clean iPhone build, then its whole walk",
+    "price": "0",
+    "type": "DEVELOPER",
+    "residency": "INTERNAL",
+    "authorization": "PRIVATE",
+    "screen": "larryd/jobs/home",
+    "product": "LARRYD",
+    "module": "Jobs",
+    "developer": "LARRYD",
+    "sends_to": "",
+    "data_sent": ""
+  },
+  "internal": {
+    "seconds": 10800
+  }
+}

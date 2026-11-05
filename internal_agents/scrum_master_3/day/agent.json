@@ -1,0 +1,68 @@
+{
+  "key": "MAGT_466A59501DFF_7DDD",
+  "name": "Day",
+  "office": "scrum_master_3",
+  "workflow": "Scrum Master 3",
+  "group": "DAY",
+  "entry": "agent.py",
+  "libs": [
+    "day",
+    "look"
+  ],
+  "about": "Scrum Master 3's DAY switch: one toggle for the whole DAY group. Its state is one row of the office's database (live_status, key day); every DAY step reads it, and a DAY that is off makes their RUN say DAY is off and change nothing.",
+  "does": [
+    "canvas",
+    "run"
+  ],
+  "calls": [
+    "canvas"
+  ],
+  "records": {
+    "agnt": [
+      "read"
+    ],
+    "jobs": [
+      "read"
+    ]
+  },
+  "run": {
+    "do": "run",
+    "hands": []
+  },
+  "gives": [
+    "view",
+    "delivery",
+    "light"
+  ],
+  "skills": [],
+  "knowledge": [],
+  "facts": {
+    "day_key": "day",
+    "press": "day_to",
+    "on": "GREEN",
+    "group": "DAY",
+    "said_on": "DAY is on: every DAY step runs when its RUN is pressed",
+    "said_off": "DAY is off: every DAY step's RUN says DAY is off and changes nothing",
+    "day_off": "OFF",
+    "title": "Day shift - Hotfix Agent",
+    "theme_sheet": "~/virtual_workspace/themes/7573b188/css/B9AF66CF6633.css",
+    "theme_site": "/themes/7573b188"
+  },
+  "card": {
+    "class": "MARK I AGENT (NORMAL)",
+    "pitch": "One switch for every DAY agent",
+    "price": "0",
+    "type": "DEVELOPER",
+    "residency": "INTERNAL",
+    "authorization": "PRIVATE",
+    "screen": "larryd/jobs/home",
+    "product": "LARRYD",
+    "module": "Jobs",
+    "developer": "LARRYD",
+    "sends_to": "",
+    "data_sent": ""
+  },
+  "internal": {
+    "seconds": 30
+  }
+}

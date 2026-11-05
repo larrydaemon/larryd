@@ -1,0 +1,116 @@
+{
+  "key": "MAGT_FEA5DF81A11B_452A",
+  "name": "Test",
+  "office": "scrum_master_3",
+  "workflow": "Scrum Master 3",
+  "group": "RELEASE",
+  "entry": "agent.py",
+  "libs": [
+    "night",
+    "look"
+  ],
+  "about": "TEST, on the data just synced: the newest NIGHT Web build (the Judge), iPhone build and macOS build (their walks, the pixel compare) must have ended green on a real run (their jobs' lights, read from its workflow's records; a dry run built nothing), then the smoke test and the look run again. No app is built here. Dry: it reads the three and names the commands it would run.",
+  "does": [
+    "canvas",
+    "run"
+  ],
+  "calls": [
+    "canvas"
+  ],
+  "records": {
+    "agnt": [
+      "read"
+    ],
+    "jobs": [
+      "read"
+    ]
+  },
+  "run": {
+    "do": "run",
+    "hands": []
+  },
+  "gives": [
+    "view",
+    "delivery",
+    "light"
+  ],
+  "skills": [],
+  "knowledge": [],
+  "facts": {
+    "dry": true,
+    "chain": "RELEASE",
+    "lock": "~/scratch/tests/release/.release.lock",
+    "waits_for": {
+      "the NIGHT": "~/scratch/tests/night/.night.lock",
+      "a DAY run": "~/scratch/tests/day/.day.lock",
+      "the tower": "~/spine_scratch/tower_auto/auto.lock"
+    },
+    "utility_pid": "~/spine_scratch/hotfix_runs/running.lock",
+    "python": "~/virtual_workspace/.venv/bin/python",
+    "tower_app": "~/virtual_workspace/lryllm/lryllm/app",
+    "reruns": "~/spine_scratch/tower_auto/reruns",
+    "targets": {
+      "here": "localhost_pf",
+      "rnd": "frost-b.rnd",
+      "native": "this laptop"
+    },
+    "native_prefixes": [
+      "native_",
+      "hot_fix"
+    ],
+    "native_steps": [
+      "native_generate",
+      "native_iphone",
+      "native_test_iphone",
+      "native_macos",
+      "native_test_macos"
+    ],
+    "plan": [
+      {
+        "say": "test · the smoke test on the synced data",
+        "argv": [
+          "python3",
+          "smoke.py"
+        ],
+        "cwd": "~/virtual_sanity/smoke",
+        "needs": [
+          "~/virtual_sanity/smoke/smoke.py"
+        ],
+        "seconds": 14400
+      },
+      {
+        "say": "test · the look",
+        "tower": [
+          "look"
+        ],
+        "seconds": 1800
+      }
+    ],
+    "next": "Knowledge night",
+    "took": "the smoke test up to 4 h, the look about 2 min",
+    "heals": true,
+    "heal_most": 2,
+    "from_night": [
+      "Web build",
+      "iPhone build",
+      "macOS build"
+    ]
+  },
+  "card": {
+    "class": "MARK I AGENT (NORMAL)",
+    "pitch": "Runs the smoke test and the look on the synced data and reads the night tests",
+    "price": "0",
+    "type": "DEVELOPER",
+    "residency": "INTERNAL",
+    "authorization": "PRIVATE",
+    "screen": "larryd/jobs/home",
+    "product": "LARRYD",
+    "module": "Jobs",
+    "developer": "LARRYD",
+    "sends_to": "",
+    "data_sent": ""
+  },
+  "internal": {
+    "seconds": 21600
+  }
+}
