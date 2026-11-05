@@ -87,7 +87,7 @@ def _controller(answer, find, page):
     current = ' aria-current="true"'
 
     def small(word, on, at):
-        return f'<a class="pfb pfb--small" href="{e(at)}"{current if on else ""}>{e(word)}</a>' if isinstance(at, str) and at else ''   # THE EMBEDDED SMALL (the owner 2026-11-04: "do you know the controler buttons are broken right now?"): the old btn rules are gone; its look is embedded.css's
+        return f'<a class="pfb pfb--micro" href="{e(at)}"{current if on else ""}>{e(word)}</a>' if isinstance(at, str) and at else ''   # THE EMBEDDED MICRO (the owner 2026-11-04: "do you know the controler buttons are broken right now?"; "the search button overlaps so it needs a smaller button"; "these need to be smaller buttons too"): the old btn rules are gone; its look is embedded.css's
 
     mine, orgchart, sort = bool(find.get('hired')), find.get('orgchart') is True, find.get('sort') if find.get('sort') in dict(ORDERS) else 'number'
     products = [(str(p[0]), str(p[1])) for p in page.get('products') or [] if isinstance(p, (list, tuple)) and len(p) == 2] if isinstance(page.get('products'), list) else []
@@ -113,7 +113,7 @@ def _controller(answer, find, page):
             f'{level}</div><div class="wl-divider"></div>'
             '<div class="wl-col--3"><div class="subtitle">Quick search</div><div class="emphasis">Lookup by</div><div class="wl-rule wl-rule--gap"></div>'
             f'<form method="get" action="{e(links["search"])}" class="sub-search-form">{kept}<div class="sub-search-form-container">'
-            f'<input type="text" name="q" class="sub-search-input" placeholder="Find…" value="{e(search)}"><button class="pfb pfb--small" type="submit">Search</button>'
+            f'<input type="text" name="q" class="sub-search-input" placeholder="Find…" value="{e(search)}"><button class="pfb pfb--micro" type="submit">Search</button>'
             + (small('Reset', False, links.get('reset')) if search else '') + '</div></form>'
             + (f'<div class="label wl-label">Sort by</div><div class="annotation">{sorts}</div>' if sorts else '') + '</div>'
             '</div></div></div></div></div></div>')
