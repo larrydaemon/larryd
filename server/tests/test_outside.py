@@ -476,3 +476,99 @@ class TheReference(World):
         self.assertEqual([error_code(r) for r in ('not made, reference unreadable: DA-M did not hand x', 'not made, reference not a picture: x', 'not made, reference too large: x',
                                                   'not made, Replicate kept no reference', 'not made, reference not read')],
                          ['NOT_MADE_REFERENCE_UNREADABLE', 'NOT_MADE_REFERENCE_NOT_A_PICTURE', 'NOT_MADE_REFERENCE_TOO_LARGE', 'NOT_MADE_REPLICATE_KEPT_NO_REFERENCE', 'NOT_MADE_REFERENCE_NOT_READ'])   # each a whole code the agent's page can say
+
+
+WAV = b'RIFF\x24\x00\x00\x00WAVEfmt ' + b'2' * 64
+MP3 = b'ID3\x04\x00\x00' + b'3' * 64
+FLAC = b'fLaC' + b'4' * 64
+SUBS = '1\n00:00:00,000 --> 00:00:02,500\nHello there.\n\n2\n00:00:02,500 --> 00:00:04,000\nGood morning.\n'
+
+
+class TheRowsFiftyOneToFiftyFour(World):
+    """CORE_CLEANUP_IV 17 / 39 (rows 51 to 54, agents_20261106/IV17_REPLICATE_CANDIDATES.md): Topaz Video Upscale (a video in, a video out),
+    Whisper (a sound in, SRT subtitles answered in words), Chatterbox (words and a voice in, a sound out), Resemble Enhance (a sound in,
+    the enhanced sound out). The member's file is lent through Replicate's file door as its own kind; a model Replicate does not mark
+    official goes by its pinned version; what comes back must be the kind each makes. The provider is the fake opener: nothing leaves."""
+
+    def ask(self, model, **more):
+        asks, why = outside.check([{'model': model, 'name': 'Made', **more}], (model,))
+        self.assertEqual(why, '', (model, more))
+        return asks[0]
+
+    def test_each_takes_only_its_own_fields_and_the_three_need_the_members_file(self):
+        for model in ('topaz-video-upscale', 'whisper', 'resemble-enhance'):
+            self.assertEqual(outside.check([{'model': model, 'name': 'Made'}], (model,)), ([], f'the ask names no reference {outside.MODELS[model]["name"]} needs'))
+            self.assertEqual(outside.check([{'model': model, 'name': 'Made', 'reference': [REF, REF2]}], (model,))[0], [])   # one file, never two
+        self.assertEqual(outside.goes_out(self.ask('topaz-video-upscale', reference=REF), ['https://api.replicate.com/v1/files/f1']),
+                         {'target_resolution': '1080p', 'video': 'https://api.replicate.com/v1/files/f1'})   # the video's own fps kept: none sent
+        self.assertEqual(outside.goes_out(self.ask('topaz-video-upscale', reference=REF, size='720p', fps='60'))['target_fps'], 60)
+        for wrong in ({'size': '4k'}, {'fps': '120'}, {'fps': 60}, {'prompt': 'make it sharp', 'size': '8k'}):
+            self.assertEqual(outside.check([{'model': 'topaz-video-upscale', 'name': 'Made', 'reference': REF, **wrong}], ('topaz-video-upscale',))[0], [], wrong)
+        self.assertEqual(outside.goes_out(self.ask('whisper', reference=REF), ['https://api.replicate.com/v1/files/f1']),
+                         {'transcription': 'srt', 'language': 'auto', 'translate': False, 'audio': 'https://api.replicate.com/v1/files/f1'})
+        self.assertEqual(outside.goes_out(self.ask('chatterbox', prompt='Good morning'), ['https://api.replicate.com/v1/files/f1']),
+                         {'prompt': 'Good morning', 'audio_prompt': 'https://api.replicate.com/v1/files/f1'})
+        self.assertEqual(outside.check([{'model': 'chatterbox', 'name': 'Made'}], ('chatterbox',))[0], [])   # chatterbox speaks words: none, nothing
+        self.assertEqual(outside.goes_out(self.ask('resemble-enhance', reference=REF), ['https://api.replicate.com/v1/files/f1']),
+                         {'denoise_flag': True, 'input_audio': 'https://api.replicate.com/v1/files/f1'})
+
+    def test_a_sound_is_what_its_first_bytes_say(self):
+        sounds = ('wav', 'mp3', 'flac')
+        self.assertEqual([outside.reference_kind(d, sounds) for d in (WAV, MP3, FLAC, b'\xff\xfb\x90' + b'5' * 8)], ['wav', 'mp3', 'flac', 'mp3'])
+        self.assertEqual([outside.reference_kind(d, sounds) for d in (JPG, PNG, MP4, b'<html>', b'\xff\xe0\x00')], ['', '', '', '', ''])   # a picture is no sound; a sync with no layer is nothing
+        self.assertEqual(outside.reference_kind(WAV, outside.REFERENCE_KINDS), '')   # a picture's slot never takes a sound
+
+    def test_topaz_lends_the_video_and_brings_back_a_video_by_its_name(self):
+        p = FileDoor(output='https://x.replicate.delivery/out.mp4', data=MP4)
+        made, why = hand(p).make(self.ask('topaz-video-upscale', reference=REF, fps='30'), SECRET_KEY, MP4)
+        self.assertEqual((why, made['name'], made['kind']), ('', 'Made.mp4', 'mp4'))
+        self.assertIn(b'Content-Type: video/mp4', p.asked[0][3])
+        self.assertEqual(p.asked[1][1], 'https://api.replicate.com/v1/models/topazlabs/video-upscale/predictions')   # official: by its name
+        self.assertEqual(json.loads(p.asked[1][3]), {'input': {'target_resolution': '1080p', 'target_fps': 30, 'video': 'https://api.replicate.com/v1/files/f1'}})
+        self.assertEqual(hand(FileDoor()).make(self.ask('topaz-video-upscale', reference=REF), SECRET_KEY, JPG), (None, 'reference not a kind its slot takes'))
+        self.assertEqual(hand(FileDoor(output='https://x.replicate.delivery/out.mp4', data=PNG)).make(self.ask('topaz-video-upscale', reference=REF), SECRET_KEY, MP4),
+                         (None, 'file not a video'))
+        big = MP4 + b'0' * (outside.MODELS['topaz-video-upscale']['reference_rules'][0][1])
+        self.assertEqual(hand(FileDoor()).make(self.ask('topaz-video-upscale', reference=REF), SECRET_KEY, big), (None, 'reference too large'))
+
+    def test_whisper_goes_by_its_pinned_version_and_its_subtitles_are_its_answers_words_never_fetched(self):
+        p = FileDoor(output={'transcription': SUBS, 'detected_language': 'english', 'srt_file': 'https://evil.example/x.srt'})
+        made, why = hand(p).make(self.ask('whisper', reference=REF), SECRET_KEY, MP3)
+        self.assertEqual((why, made['name'], made['kind'], made['data']), ('', 'Made.srt', 'srt', SUBS.encode()))
+        self.assertIn(b'Content-Type: audio/mpeg', p.asked[0][3])
+        self.assertEqual(p.asked[1][1], 'https://api.replicate.com/v1/predictions')   # not official: the pinned version, never the name
+        self.assertEqual(json.loads(p.asked[1][3])['version'], outside.MODELS['whisper']['version'])
+        self.assertEqual([u for _m, u, _h, _d in p.asked if 'evil' in u or 'delivery' in u], [])   # nothing fetched: the words were the answer
+        for said, why in (('Hello there, no times at all', 'file not subtitles'), ('', 'Replicate made nothing'), ('1\n00:00:00,000 --> 00:00:01,000\nA\x00B', 'file not subtitles'),
+                          ('1\n00:00:00,000 --> 00:00:01,000\n' + 'x' * outside.MODELS['whisper']['most_bytes'], 'file too large')):
+            self.assertEqual(hand(FileDoor(output={'transcription': said})).make(self.ask('whisper', reference=REF), SECRET_KEY, WAV), (None, why), said[:40])
+        self.assertEqual(hand(FileDoor(output='https://x.replicate.delivery/a.srt')).make(self.ask('whisper', reference=REF), SECRET_KEY, WAV), (None, 'Replicate made nothing'))   # not its named part
+
+    def test_chatterbox_speaks_the_words_in_the_lent_voice_and_brings_back_a_sound(self):
+        p = FileDoor(output='https://x.replicate.delivery/output.wav', data=WAV)
+        made, why = hand(p).make(self.ask('chatterbox', prompt='Good morning', reference=REF), SECRET_KEY, FLAC)
+        self.assertEqual((why, made['name'], made['kind']), ('', 'Made.wav', 'wav'))
+        self.assertIn(b'Content-Type: audio/flac', p.asked[0][3])
+        self.assertEqual(p.asked[1][1], 'https://api.replicate.com/v1/models/resemble-ai/chatterbox/predictions')
+        self.assertEqual(hand(FileDoor(output='https://x.replicate.delivery/output.wav', data=MP4)).make(self.ask('chatterbox', prompt='Hi'), SECRET_KEY, b''), (None, 'file not a sound'))
+
+    def test_resemble_enhance_keeps_the_enhanced_one_of_its_two(self):
+        p = FileDoor(output=['https://x.replicate.delivery/output-denoised.wav', 'https://x.replicate.delivery/output-enhanced.wav'], data=WAV)
+        made, why = hand(p).make(self.ask('resemble-enhance', reference=REF), SECRET_KEY, WAV)
+        self.assertEqual((why, made['kind']), ('', 'wav'))
+        self.assertEqual(json.loads(p.asked[1][3])['version'], outside.MODELS['resemble-enhance']['version'])
+        self.assertEqual([u for m, u, _h, _d in p.asked if m == 'GET' and 'delivery' in u], ['https://x.replicate.delivery/output-enhanced.wav'])
+        self.assertEqual(hand(FileDoor(output=['https://x.replicate.delivery/output-denoised.wav'], data=WAV)).make(self.ask('resemble-enhance', reference=REF), SECRET_KEY, WAV),
+                         (None, 'Replicate made nothing'))   # the enhanced one missing: nothing kept
+
+    def test_a_run_makes_subtitles_from_the_members_sound_and_the_day_counts_text(self):
+        TheRun.placed(self, {**TheRun.ANSWER, 'makes': [{'model': 'whisper', 'name': 'Talk', 'reference': REF}]},
+                      {'makes': ['whisper'], 'records': {'imgs': ['read', 'add']}}, ('makes', 'keeps', 'delivery'))
+        p, f = RefPlatform(content=WAV), FileDoor(output={'transcription': SUBS})
+        self.assertEqual(TheRun.run_with(self, p, f, a_day=dict(harness.A_DAY)), 'DONE')
+        self.assertIn(WAV, f.asked[0][3])
+        self.assertEqual(harness.A_DAY['text'], 25)
+        self.assertEqual(harness.A_DAY['audio'], 25)
+        TheRun.placed(self, {**TheRun.ANSWER, 'makes': [{'model': 'whisper', 'name': 'Talk', 'reference': REF}]},
+                      {'makes': ['whisper'], 'records': {'imgs': ['read', 'add']}}, ('makes', 'keeps', 'delivery'))
+        self.assertEqual(TheRun.run_with(self, RefPlatform(content=JPG), FileDoor(output={'transcription': SUBS})), 'FAILED')   # a picture is not a sound: nothing sent

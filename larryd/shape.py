@@ -82,6 +82,11 @@ MAKES = {   # THE OUTSIDE HAND'S LIST (the same as the runtime's core_engine/out
     'flux-krea': ('a picture', 'Replicate', {'aspect': ('1:1', '16:9', '9:16', '4:3', '3:4')}),   # FLUX Krea (CORE_CLEANUP_IV 44); "reference": one DA-M key, image to image
     'kling-2.5': ('a video', 'Replicate', {'aspect': ('16:9', '9:16', '1:1'), 'seconds': ('5', '10')}),   # Kling 2.5 Turbo Pro (44); "reference": one DA-M key, the first frame
     'seedance-2.5': ('a video', 'Replicate', {'aspect': ('16:9', '9:16', '1:1'), 'seconds': tuple(str(n) for n in range(4, 31)), 'size': ('480p', '720p')}),   # 4 to 30 seconds, the model's own range (R-0041)
+    # CORE_CLEANUP_IV 17 / 39 (rows 51 to 54): "reference": the member's own file, ONE, a video (topaz) or a sound (the rest); topaz, whisper and resemble-enhance make nothing without it
+    'topaz-video-upscale': ('a video', 'Replicate', {'size': ('1080p', '720p'), 'fps': ('keep', '24', '30', '60')}),   # upscale and retime (row 51); no words
+    'whisper': ('subtitles', 'Replicate', {}),               # the sound's words as SRT subtitles (row 52); no words
+    'chatterbox': ('a sound', 'Replicate', {}),              # these words in the voice of the reference recording (row 53)
+    'resemble-enhance': ('a sound', 'Replicate', {}),        # the sound cleaned (row 54); no words
     # THE EXXACT BOX (CORE_CLEANUP_IV 97): the runtime builds these from Exxact_Loot's own list of types; "reference": the type's input slots, in order
     'exxact/gpu-status': ('numbers', 'Exxact', {}),                           # the two GPUs' memory, as a JSON file
     'exxact/face-swap': ('a picture', 'Exxact', {'enhance': ('natural',)}),   # references: source, target (png or jpg, 20 MB each)
@@ -93,7 +98,7 @@ MAKES_NUMBERS = {   # THE NUMBER FIELDS an ask may name (the runtime's outside.p
     'exxact/face-swap': {'target_box': {'list_numbers': (0, 20000), 'most': 4, 'optional': True}},
     'exxact/lips': {'slots': {'list_ints': (1, 8), 'most': 8}},   # the ON slots, each one's move_<n> laid in its order
 }
-MAKES_NO_WORDS = ('exxact/gpu-status', 'exxact/face-swap', 'exxact/face-landmarks', 'exxact/lips')   # models an ask need not give a "prompt" (the Exxact box takes none)
+MAKES_NO_WORDS = ('exxact/gpu-status', 'exxact/face-swap', 'exxact/face-landmarks', 'exxact/lips', 'topaz-video-upscale', 'whisper', 'resemble-enhance')   # models an ask need not give a "prompt" (the Exxact box takes none)
 RECORD_VERBS = ('read', 'add', 'edit', 'remove')   # what an agent may declare on a species' records
 RECORD_COUNTS = ('*', ['count'])   # THE COUNTS: "records": {"*": ["count"]}, of no one species: how many, never which
 RECORD_EVERY = ('*', ('count', 'roster', 'reviews', 'joins', 'payments', 'history'))   # what "*" may hold, each once: the counts (CALL and RUN) and the roster (CORE_CLEANUP_IV 37: the account's members, key, name, type, active, read only, on a CALL; the reviews waiting, CORE_CLEANUP_IV 23: an internal agent only, on a CALL; the join requests and the payments, row 142: read only, on a CALL; the review history, row 78: an internal agent only, on a CALL)

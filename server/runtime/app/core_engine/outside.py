@@ -71,6 +71,43 @@ MODELS = {
         'most_references': 1,
         'most_bytes': 24 * 1024 * 1024, 'most_seconds': 900,
     },
+    # CORE_CLEANUP_IV 17 / 39 (frost-05's go 2026-11-06; agents_20261106/IV17_REPLICATE_CANDIDATES.md): rows 51 to 54. The fields as each model's own
+    # text names them (replicate.com/<path>/llms.txt, read 2026-11-06), the choices conservative. A model Replicate does not mark official is
+    # reached by its pinned version (POST /predictions with that version), never its name alone. THE REFERENCE IS THE MEMBER'S OWN FILE and
+    # these make nothing without it (reference_required); it is a video or a sound, by its first bytes (reference_rules)
+    'topaz-video-upscale': {
+        'provider': 'replicate', 'path': 'topazlabs/video-upscale', 'kind': 'video', 'name': 'Topaz Video Upscale', 'prompt': False,   # row 51: upscale AND retime, one model (official)
+        'choices': {'size': ('1080p', '720p'), 'fps': ('keep', '24', '30', '60')},   # 4k left out: its file passes DA-M's 25 MB; 'keep': no target_fps sent, the video's own
+        'first': {'size': '1080p', 'fps': 'keep'},
+        'reference': 'video', 'reference_one': True, 'reference_required': True, 'most_references': 1,
+        'reference_rules': ((('mp4',), 24 * 1024 * 1024),),
+        'most_bytes': 24 * 1024 * 1024, 'most_seconds': 1800,
+    },
+    'whisper': {
+        'provider': 'replicate', 'path': 'openai/whisper', 'version': '8099696689d249cf8b122d833c36ac3f75505c666a395ca40ef26f68e7d3d16e',   # row 52: transcription as subtitles
+        'kind': 'text', 'name': 'Whisper', 'prompt': False,
+        'choices': {}, 'first': {},
+        'reference': 'audio', 'reference_one': True, 'reference_required': True, 'most_references': 1,
+        'reference_rules': ((('wav', 'mp3', 'flac'), 24 * 1024 * 1024),),
+        'output_key': 'transcription',   # the SRT text itself, in the answer (never a file to fetch)
+        'most_bytes': 512 * 1024, 'most_seconds': 900,   # within the 1 MB the hand reads of a prediction's answer (_call); an hour's subtitles are some 60 KB
+    },
+    'chatterbox': {
+        'provider': 'replicate', 'path': 'resemble-ai/chatterbox', 'kind': 'audio', 'name': 'Chatterbox', 'prompt': True,   # row 53: these words in this voice (official)
+        'choices': {}, 'first': {},
+        'reference': 'audio_prompt', 'reference_one': True, 'most_references': 1,   # the member's own consented recording; without it, the model's own voice
+        'reference_rules': ((('wav', 'mp3', 'flac'), 20 * 1024 * 1024),),
+        'most_bytes': 24 * 1024 * 1024, 'most_seconds': 600,
+    },
+    'resemble-enhance': {
+        'provider': 'replicate', 'path': 'resemble-ai/resemble-enhance', 'version': '93266a7e7f5805fb79bcf213b1a4e0ef2e45aff3c06eefd96c59e850c87fd6a2',   # row 54: a sound cleaned
+        'kind': 'audio', 'name': 'Resemble Enhance', 'prompt': False,
+        'choices': {}, 'first': {},
+        'reference': 'input_audio', 'reference_one': True, 'reference_required': True, 'most_references': 1,
+        'reference_rules': ((('wav', 'mp3', 'flac'), 24 * 1024 * 1024),),
+        'output_index': 1,   # it makes two: [denoised, enhanced]; the enhanced one is kept
+        'most_bytes': 24 * 1024 * 1024, 'most_seconds': 900,
+    },
 }
 MOST_SAID = 1024 * 1024   # bytes of what an Exxact type that makes no file says (its numbers, as JSON)
 NUMBER_RULES = ('list_numbers', 'list_ints')   # the number rules exxact.check_fields reads (a short list of numbers, of whole numbers), and no other
@@ -114,7 +151,10 @@ for _spec in MODELS.values():   # Replicate's models: every reference a picture 
     _spec.setdefault('numbers', {})
     _spec.setdefault('reference_rules', ((REFERENCE_KINDS, MOST_REFERENCE),) * _spec['most_references'])
 MODELS.update(_exxact_models())
-KINDS = {'image': ('png', 'jpg', 'webp'), 'video': ('mp4',)}
+KINDS = {'image': ('png', 'jpg', 'webp'), 'video': ('mp4',), 'audio': ('wav',), 'text': ('srt',)}   # text: a model that answers with words (whisper's SRT), never fetched
+KIND_WORDS = {'image': 'a picture', 'video': 'a video', 'audio': 'a sound', 'text': 'subtitles'}
+MIME = {'png': 'image/png', 'jpg': 'image/jpeg', 'webp': 'image/webp', 'mp4': 'video/mp4', 'wav': 'audio/wav', 'mp3': 'audio/mpeg', 'flac': 'audio/flac'}
+SRT = re.compile(r'\A\s*\d+\s*\n\d\d:\d\d:\d\d,\d{3} --> \d\d:\d\d:\d\d,\d{3}')   # subtitles: the first cue's number and times
 MOST_PROMPT = 4000
 NAME = re.compile(r'^[A-Za-z0-9][A-Za-z0-9 _-]{0,79}$')   # the file's plain name, without its ending (the hand adds the kind's own)
 _ID = re.compile(r'^[A-Za-z0-9]{1,64}$')                  # a provider's request id, before it is put in an address
@@ -179,6 +219,8 @@ def check(makes, allowed):
         if len(refs) > most or len(set(refs)) != len(refs):
             return [], f'the ask names more than {most} reference{"" if most == 1 else "s"} {spec["name"]} takes, or one twice'
         out['reference'] = list(refs)
+    elif spec.get('reference_required'):
+        return [], f'the ask names no reference {spec["name"]} needs'
     return [out], ''
 
 
@@ -195,6 +237,16 @@ def goes_out(ask, reference=()):
     elif ask['model'] == 'seedance-2.5':
         out = {'prompt': ask['prompt'], 'duration': int(ask['seconds']), 'resolution': ask['size'], 'aspect_ratio': ask['aspect'],
                'generate_audio': False}   # never a sound track nobody asked for
+    elif ask['model'] == 'topaz-video-upscale':
+        out = {'target_resolution': ask['size']}
+        if ask['fps'] != 'keep':
+            out['target_fps'] = int(ask['fps'])
+    elif ask['model'] == 'whisper':
+        out = {'transcription': 'srt', 'language': 'auto', 'translate': False}
+    elif ask['model'] == 'chatterbox':
+        out = {'prompt': ask['prompt']}
+    elif ask['model'] == 'resemble-enhance':
+        out = {'denoise_flag': True}
     else:
         raise KeyError(ask['model'])
     refs = [reference] if isinstance(reference, str) else list(reference or ())
@@ -206,12 +258,21 @@ def goes_out(ask, reference=()):
 
 
 def reference_kind(data, kinds):
-    """What a reference IS, from its first bytes (never a name or a header), when it is one of kinds (its slot's): kind_of's, and wav
-    (RIFF....WAVE) only when the slot takes wav; '' otherwise."""
-    kind = kind_of(data)
-    if not kind and 'wav' in kinds and data[:4] == b'RIFF' and data[8:12] == b'WAVE':
-        kind = 'wav'
+    """What a reference IS, from its first bytes (never a name or a header), when it is one of kinds (its slot's): kind_of's, or a
+    sound's (sound_of: wav, mp3, flac); '' otherwise."""
+    kind = kind_of(data) or sound_of(data)
     return kind if kind in kinds else ''
+
+
+def sound_of(data):
+    """What a sound IS, from its first bytes: wav (RIFF....WAVE), flac (fLaC), mp3 (an ID3 tag, or an MPEG audio frame's sync), or ''."""
+    if data[:4] == b'RIFF' and data[8:12] == b'WAVE':
+        return 'wav'
+    if data[:4] == b'fLaC':
+        return 'flac'
+    if data[:3] == b'ID3' or (len(data) > 1 and data[0] == 0xFF and data[1] & 0xE0 == 0xE0 and data[1] & 0x06):   # sync, and a layer named
+        return 'mp3'
+    return ''
 
 
 def kind_of(data):
@@ -279,19 +340,20 @@ class Hand:
             return f'{name} is busy'
         return f'{name} answered {status}'
 
-    def lend(self, ask, picture, key):
+    def lend(self, ask, picture, key, slot=0):
         """THE REFERENCE PICTURE, LENT TO THE PROVIDER: the member's picture (bytes the harness read from their DA-M) put through the
         provider's own file door (Replicate's /files, on the list's api address, with the key), so the model can read it there.
         -> (its address at the provider, '') or ('', why). Only a picture goes (from its first bytes), within MOST_REFERENCE; the
         address that comes back must be on the provider's own api address (law 1: nothing the provider says is followed elsewhere)."""
         spec = MODELS[ask['model']]
         place, name = self.places[spec['provider']], PROVIDERS[spec['provider']]['name']
-        kind = kind_of(picture)
-        if kind not in REFERENCE_KINDS:
-            return '', 'reference not a picture'
-        if len(picture) > MOST_REFERENCE:
+        kinds, most = spec['reference_rules'][slot] if slot < len(spec['reference_rules']) else ((), 0)   # THE SLOT'S OWN KINDS AND MOST (a picture, a video, a sound)
+        kind = reference_kind(picture, kinds)
+        if not kind:
+            return '', 'reference not a picture' if set(kinds) <= set(REFERENCE_KINDS) else 'reference not a kind its slot takes'
+        if len(picture) > most:
             return '', 'reference too large'
-        mime = {'png': 'image/png', 'jpg': 'image/jpeg', 'webp': 'image/webp'}[kind]
+        mime = MIME[kind]
         edge = 'larryd' + hashlib.sha256(picture).hexdigest()[:24]
         body = (f'--{edge}\r\nContent-Disposition: form-data; name="content"; filename="reference.{kind}"\r\nContent-Type: {mime}\r\n\r\n').encode('ascii') + picture + f'\r\n--{edge}--\r\n'.encode('ascii')
         status, raw = self._call('POST', f"{place['api']}/files", key, raw=(body, f'multipart/form-data; boundary={edge}'), seconds=120)
@@ -307,7 +369,10 @@ class Hand:
         """-> (request id, '') or ('', why)."""
         spec = MODELS[ask['model']]
         place, name = self.places[spec['provider']], PROVIDERS[spec['provider']]['name']
-        status, raw = self._call('POST', f"{place['api']}/models/{spec['path']}/predictions", key, {'input': goes_out(ask, reference)})
+        if spec.get('version'):   # a model Replicate does not mark official: its pinned version, never whatever its name points at today
+            status, raw = self._call('POST', f"{place['api']}/predictions", key, {'version': spec['version'], 'input': goes_out(ask, reference)})
+        else:
+            status, raw = self._call('POST', f"{place['api']}/models/{spec['path']}/predictions", key, {'input': goes_out(ask, reference)})
         if status not in (200, 201, 202):
             return '', self._refusal(status, name)
         rid = self._json(raw).get('id')
@@ -328,7 +393,11 @@ class Hand:
         state = str(body.get('status') or '').lower()
         if state == 'succeeded':
             out = body.get('output')
-            out = out[0] if isinstance(out, list) and out else out
+            if spec.get('output_key'):   # an answer of named parts: the one the list names (whisper's transcription)
+                out = out.get(spec['output_key']) if isinstance(out, dict) else None
+            elif isinstance(out, list):   # files: the one the list names, else the first
+                at = spec.get('output_index', 0)
+                out = out[at] if len(out) > at else None
             return ('done', out) if isinstance(out, str) and out else ('failed', f'{name} made nothing')
         if state in ('failed', 'canceled'):
             return 'failed', f'{name} failed'   # its own reason is outside text: never carried
@@ -358,10 +427,21 @@ class Hand:
             return b'', '', 'file not fetched'
         if len(data) > spec['most_bytes']:
             return b'', '', 'file too large'
-        kind = kind_of(data)
+        kind = kind_of(data) or sound_of(data)
         if kind not in KINDS[spec['kind']]:
-            return b'', '', f'file not {"a picture" if spec["kind"] == "image" else "a video"}'
+            return b'', '', f'file not {KIND_WORDS[spec["kind"]]}'
         return data, kind, ''
+
+    def words(self, ask, said):
+        """WHAT A MODEL ANSWERS IN WORDS (whisper's subtitles): never an address, never fetched; within the model's size, and it must BE
+        subtitles (SRT: the first cue's number and times), as a file must be its kind (law 6). -> (bytes, 'srt', '') or (b'', '', why)."""
+        spec = MODELS[ask['model']]
+        data = said.encode('utf-8')
+        if len(data) > spec['most_bytes']:
+            return b'', '', 'file too large'
+        if '\x00' in said or not SRT.match(said):
+            return b'', '', f'file not {KIND_WORDS[spec["kind"]]}'
+        return data, 'srt', ''
 
     def make(self, ask, key, picture=b''):
         """The whole errand: -> ({'name', 'kind', 'data'}, '') or (None, why). picture: the references' bytes when the ask names
@@ -377,8 +457,8 @@ class Hand:
         if wanted:
             if len(pictures) != len(wanted):
                 return None, 'reference not read'
-            for one in pictures:
-                address, why = self.lend(ask, one, key)
+            for slot, one in enumerate(pictures):
+                address, why = self.lend(ask, one, key, slot)
                 if why:
                     return None, why
                 reference.append(address)
@@ -395,7 +475,7 @@ class Hand:
             if self.clock() >= until:
                 return None, f'{name} timed out'
             self.sleep(EVERY_SECONDS)
-        data, kind, why = self.fetch(ask, said)
+        data, kind, why = self.words(ask, said) if spec['kind'] == 'text' else self.fetch(ask, said)
         if why:
             return None, why
         return {'name': f"{ask['name']}.{kind}", 'kind': kind, 'data': data}, ''

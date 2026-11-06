@@ -32,7 +32,7 @@ MOST_KEEPS = 10               # records one RUN may add for the files it stored
 MOST_RUN_FILES = 3            # files one RUN may be handed (hands ["files"], CORE_CLEANUP_IV 21): the member's own DA-M files, named by the job's inputs the manifest declares as files
 MOST_RUN_FILE = 20 * 1024 * 1024   # bytes of one handed file (a picture or a short video: the sandbox's 512 MB holds three, base64 and parsed)
 RECORD_KEY = re.compile(r'^M[A-Z]{2,4}_[0-9A-F]{12}_[0-9A-F]{4}$')   # a member's record, as wid names the record a DA-M file belongs to (its source_key)
-A_DAY = {'image': 25, 'video': 5, 'data': 25}   # THE OUTSIDE HAND'S DAILY LIMIT, per member and agent (the provider is paid per file made; the runtime's own config may set others). data: an Exxact type that makes numbers, no file (outside.MODELS)
+A_DAY = {'image': 25, 'video': 5, 'data': 25, 'audio': 25, 'text': 25}   # THE OUTSIDE HAND'S DAILY LIMIT, per member and agent (the provider is paid per file made; the runtime's own config may set others). data: an Exxact type that makes numbers, no file (outside.MODELS)
 PLATFORM_HANDED = {('wid', 'GET', '/agnt/cards'), ('wid', 'GET', '/agnt/hired'), ('wid', 'GET', '/jobs/balance'), ('wid', 'GET', '/agnt/records/list')}
 # THE PLATFORM'S ANSWERS HANDED WITH THE CALL (the owner 2026-11-04, "the goal is extremely fast"): what the platform would answer these
 # asks of a CALL, its own doors' answers made at the platform with the same checks, handed in its signed call; nothing else is taken
