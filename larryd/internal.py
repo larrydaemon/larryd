@@ -3,7 +3,8 @@ external"). An internal agent (~/virtual_sanity/sanity_agents/<name>, ~/virtual_
 ~/virtual_sanity/pf_loot/<block>) is checked for the SAME things as an external one, by the doctor's own checks: the manifest and its
 card, the entry, no secret, the shape, the skills, the knowledge. Three rules are the internal contract's, not the external's:
 
-1. Its own fields: an OFFICE agent (agent.json names "office") carries "key" (its runtime key, MAGT_<12>_<4>), "office" (one of the
+1. Its own fields and hand: the "service_key" hand (the member's key for the service its card names first, CORE_CLEANUP_IV 53),
+   checked here, never handed to an external agent. An OFFICE agent (agent.json names "office") carries "key" (its runtime key, MAGT_<12>_<4>), "office" (one of the
    offices), "libs" (kits of its repository's _office, each there) and may carry "workflow", "group", "facts", "internal"
    ({"seconds": its own time limit}). They are checked here, then set aside so the shared checks see the rest. "reads" is not asked of
    an office agent: what it reads is its "facts".
@@ -104,15 +105,32 @@ def _records(card, f):
     if records is None or records == {}:
         return
     good = isinstance(records, dict) and all(
-        (k in SPECIES and isinstance(v, list) and v and all(x in VERBS for x in v)) or (k == '*' and v == ['count']) for k, v in records.items())
+        (k in SPECIES and isinstance(v, list) and v and all(x in VERBS for x in v))
+        or (k == shape.RECORD_EVERY[0] and isinstance(v, list) and v and all(x in shape.RECORD_EVERY[1] for x in v) and len(set(v)) == len(v))
+        for k, v in records.items())
     if not good:
         f.add(C_MANIFEST, 'agent/agent.json', '"records" is not {species: [verbs]} of the platform\'s modules',
-              f'set "records" to {{"<one of {", ".join(SPECIES)}>": ["read", ...]}} or {{"*": ["count"]}}')
+              f'set "records" to {{"<one of {", ".join(SPECIES)}>": ["read", ...]}} or {{"*": [{", ".join(repr(x) for x in shape.RECORD_EVERY[1])}, each once]}}')
+
+
+SERVICE_KEY = 'service_key'   # an internal agent's own hand (CORE_CLEANUP_IV 53): the member's key for the service its card names FIRST in sends_to
+
+
+def _service_key(card, f):
+    """rule 1b: the "service_key" hand is an internal agent's, and only for a card that names its service first in sends_to"""
+    run = card.get('run') if isinstance(card.get('run'), dict) else {}
+    hands = run.get('hands') if isinstance(run.get('hands'), list) else []
+    if SERVICE_KEY in hands and not str((card.get('card') or {}).get('sends_to') or '').strip():
+        f.add(C_MANIFEST, 'agent/agent.json', 'run "hands" has "service_key", but its card names no service in "sends_to"',
+              'name the service first in the card\'s "sends_to" (its key is that service\'s), or take "service_key" out')
 
 
 def _shared(card):
     """the manifest the shared checks read: the internal fields set aside, the records checked by rule 2, the Jobs page as its screen"""
     out = {k: v for k, v in card.items() if k not in INTERNAL_FIELDS and k != 'records'}   # its records: rule 2, checked here
+    run = out.get('run')
+    if isinstance(run, dict) and isinstance(run.get('hands'), list) and SERVICE_KEY in run['hands']:
+        out['run'] = {**run, 'hands': [h for h in run['hands'] if h != SERVICE_KEY]}   # rule 1b, checked here
     if 'office' in card and 'reads' not in out:
         out['reads'] = ['its facts']   # rule 1: an office agent's reads are its facts
     c = out.get('card')
@@ -200,6 +218,7 @@ def check(root):
         f.add(C_MANIFEST, 'agent/agent.json', 'it is not one JSON object', 'write agent.json as one JSON object')
         return f.problems
     _fields(root, card, f)
+    _service_key(card, f)
     _records(card, f)
     with tempfile.TemporaryDirectory() as d:   # the shared checks read the manifest from a project: the same file, its internal fields aside
         shared_root = pathlib.Path(d) / root.name

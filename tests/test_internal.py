@@ -119,3 +119,22 @@ def test_the_cli_runs_the_internal_mode(repo, capsys):
     assert 'larryd doctor --internal:' in capsys.readouterr().out
     make(repo, 'bad', {'key': 'x'})
     assert cli.main(['doctor', '--internal', str(repo / 'bad')]) == 1
+
+
+@pytest.mark.parametrize('every', [['reviews'], ['count', 'roster'], ['count']])
+def test_star_takes_what_the_shape_lets_it_hold_each_once(repo, every):
+    assert internal.check(make(repo, 'star-' + '-'.join(every), {'records': {'*': every}})) == []
+
+
+def test_star_refuses_anything_else_or_twice(repo):
+    for bad in (['count', 'count'], ['everything'], []):
+        assert any('"records" is not' in w for _, w in failed(make(repo, 'bad-star-' + str(len(bad)) + ''.join(bad), {'records': {'*': bad}})))
+
+
+def test_the_service_key_hand_needs_a_service_named_first(repo):
+    card = {**CARD, 'sends_to': 'monday.com (monday.com Ltd.)', 'data_sent': 'the board ids'}
+    ok = make(repo, 'connector', {'run': {'do': 'run', 'hands': ['job', 'service_key']}, 'inputs': {'boards': '001'}, 'card': card})
+    assert internal.check(ok) == []
+    bad = make(repo, 'connector-unnamed', {'run': {'do': 'run', 'hands': ['job', 'service_key']}, 'inputs': {'boards': '001'}})
+    assert any('names no service' in w for _, w in failed(bad))
+
