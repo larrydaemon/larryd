@@ -50,6 +50,7 @@ SECRET_TEXT = (
     (re.compile(r'\bAIza[0-9A-Za-z_-]{35}\b'), 'a Google API key'),
     (re.compile(r'(?i)\b\w*(secret|password|passwd|token|api_?key|private_?key)\w*["\']?\s*[:=]\s*["\'][^"\'\s]{8,}["\']'), 'a secret written into the code'),
 )
+NOT_A_SECRET = re.compile(r'^(?:~/|\.{1,2}/|/)?(?:[\w.-]+/)*[\w.-]+\.(?:json|txt|db|sqlite3?|log|csv|md|py|ya?ml|toml|html|lock)$', re.I)   # a file's name or path: a name is not a secret (CORE_CLEANUP_IV 55)
 KINDS = {'.py', '.json', '.txt', '.md', '.csv'}   # never .css: an agent ships no sheet, the platform draws its card from the card's data
 DESIGN = 'design'   # where --fix keeps a sheet written while designing, beside agent/, never in it
 
@@ -320,7 +321,10 @@ def _secrets(root, f):
             continue
         for i, line in enumerate(text.splitlines(), 1):
             for pattern, what in SECRET_TEXT:
-                if pattern.search(line):
+                found = pattern.search(line)
+                if found and what == 'a secret written into the code' and all(NOT_A_SECRET.match(v) for v in re.findall(r'["\']([^"\'\s]{8,})["\']', found.group(0))):
+                    continue   # it names a file (TOKENS = 'press_tokens.json'): not a secret
+                if found:
                     f.add('no secret', where, f'it holds what looks like {what}',
                           'take it out and revoke it if it was real. An agent holds no secret; LARRYD hands it what it needs', i)
                     break
