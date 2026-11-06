@@ -59,17 +59,88 @@ def download_address(address, path):
     return bool(page and got and got.groups() == page.groups())
 
 
-def download_of(path, dam_key, origin=''):
+def download_of(path, dam_key, origin='', local=()):
     """DA-M's own DOWNLOAD address of one file on the page's own side and language, built by the runtime (an agent never
     writes an address of the platform's), as an https address of the caller's page host (origin), opened in a new tab:
     the platform's own view gate takes no other link (found on B, 2026-10-25: a same-site path dropped the whole view).
     '' when the page's path, the key or the host is not plain."""
     page = _PAGE_SIDE.fullmatch(path) if isinstance(path, str) else None
     address = f'/so/{page.group(1)}/{page.group(2)}/app/files/card/{dam_key}/download' if page and isinstance(dam_key, str) else ''
-    if not (address and download_address(address, path) and isinstance(origin, str) and link_address(origin)):
+    if not (address and download_address(address, path) and isinstance(origin, str) and (link_address(origin) or origin in (local or ()))):
+        return ''
+    return _built(origin, address, local)
+
+
+_DAM_ADD = re.compile(r'/so/([a-z0-9_-]{1,32})/([a-z]{2}(?:-[a-z]{2,4})?)/app/files/add(?:\?zone=[a-z0-9_-]{1,32})?')
+_FROST_PAGE = re.compile(r'/fs/([a-z0-9_-]{1,32})/([a-z]{2}(?:-[a-z]{2,4})?)/[a-z0-9_-]{1,32}(?:/[a-z0-9_-]{1,32}){0,2}')
+_ZONE = re.compile(r'[a-z0-9_-]{1,32}')
+_PAGE_NAME = re.compile(r'[a-z0-9_-]{1,32}(?:/[a-z0-9_-]{1,32}){0,2}')
+_LOCAL_ORIGIN = re.compile(r'http://(?:127\.0\.0\.1|localhost):[0-9]{2,5}')
+SERVES = {'upload': 'so', 'download': 'so', 'frost': 'fs'}   # which office serves each marker's page (DA-M: so; FROST: fs): only to pick its origin from page.origins
+MARKER = re.compile(r'href="larryd:(upload|download|frost)/([^"<>\s]{0,80})"')   # an agent's own word for a platform page it may link: the runtime builds the address
+
+
+def local_link(address, origins):
+    """A LINK ON A LOCALHOST BOX (CORE_CLEANUP_IV 20/96, ruling c'): plain http to EXACTLY one of the origins the platform handed for this
+    page (wid, DA-M, FROST, each its own port on this Mac), then a plain path; nothing else (another host, another port, any user,
+    query beyond plain words). origins is empty on any box that is not localhost, so this is never true there."""
+    if not (isinstance(address, str) and origins) or any(c.isspace() or ord(c) < 32 or c in '"\'<>\\`' for c in address) or '..' in address:
+        return False
+    for origin in origins:
+        if isinstance(origin, str) and _LOCAL_ORIGIN.fullmatch(origin) and address.startswith(origin + '/'):
+            rest = address[len(origin):]
+            return bool(re.fullmatch(r'/[A-Za-z0-9_./-]{1,300}(?:\?[a-z_]{1,32}=[A-Za-z0-9_-]{1,64})?', rest))
+    return False
+
+
+def _built(origin, address, local):
+    """origin + address when the whole is a link the gate takes: https to a named host, or (local origins only) http to that origin."""
+    if not (isinstance(origin, str) and address):
         return ''
     whole = origin.rstrip('/') + address
-    return whole if link_address(whole) else ''
+    if link_address(whole):
+        return whole
+    return whole if origin in (local or ()) and local_link(whole, local) else ''
+
+
+def upload_of(path, zone, origin='', local=()):
+    """DA-M's own ADD FILES page (its drop zone and uploader: the file goes from the member's browser to DA-M with the member's own session,
+    never through the agent), on the page's own side and language: /so/<side>/<lang>/app/files/add[?zone=<zone>], on DA-M's origin.
+    zone: plain, or '' for none. '' when the page's path, the zone or the origin is not plain (CORE_CLEANUP_IV 20)."""
+    page = _PAGE_SIDE.fullmatch(path) if isinstance(path, str) else None
+    if not (page and isinstance(zone, str) and (zone == '' or _ZONE.fullmatch(zone))):
+        return ''
+    address = f'/so/{page.group(1)}/{page.group(2)}/app/files/add' + (f'?zone={zone}' if zone else '')
+    return _built(origin, address, local) if _DAM_ADD.fullmatch(address) else ''
+
+
+def frost_of(path, name, origin='', local=()):
+    """One of FROST's own pages, on the page's own side and language: /fs/<side>/<lang>/<name> on FROST's origin (CORE_CLEANUP_IV 96: pf
+    Access, pf The Vault). '' when the page's path, the name or the origin is not plain."""
+    page = _PAGE_SIDE.fullmatch(path) if isinstance(path, str) else None
+    if not (page and isinstance(name, str) and _PAGE_NAME.fullmatch(name)):
+        return ''
+    address = f'/fs/{page.group(1)}/{page.group(2)}/{name}'
+    return _built(origin, address, local) if _FROST_PAGE.fullmatch(address) else ''
+
+
+def resolve(markup, path, origins, local=False):
+    """THE MARKERS (CORE_CLEANUP_IV 20/96, ruling b): an agent never writes an address of the platform's. It writes href="larryd:upload/<zone>",
+    href="larryd:download/<DA-M key>" or href="larryd:frost/<page>"; this builds each address on the origin of the office that serves it
+    (origins: the platform's own word for this page, {wid, so, fs}), or drops the href when none can be built (the link is then inert).
+    local: a localhost box, where the handed origins are plain http (each office its own port)."""
+    if not isinstance(markup, str) or 'larryd:' not in markup:
+        return markup
+    origins = origins if isinstance(origins, dict) else {}
+    allowed = tuple(v for v in origins.values() if isinstance(v, str)) if local else ()
+
+    def one(m):
+        kind, word = m.group(1), m.group(2)
+        origin = origins[SERVES[kind]] if isinstance(origins.get(SERVES[kind]), str) else ''   # the origin wid handed for the office that serves this page (a lookup in wid's own word; no office is called)
+        build = {'upload': upload_of, 'frost': frost_of, 'download': download_of}[kind]
+        address = build(path, word, origin, allowed)
+        return f'href="{address}"' if address else ''
+    return MARKER.sub(one, markup)
 
 
 def package_address(address):
@@ -102,9 +173,9 @@ def cdn_address(address):
 
 
 class _Check(html.parser.HTMLParser):
-    def __init__(self, path=''):
+    def __init__(self, path='', local=()):
         super().__init__(convert_charrefs=True)
-        self.why, self.path, self.forms = '', path, 0
+        self.why, self.path, self.forms, self.local = '', path, 0, tuple(local or ())
 
     def _no(self, why):
         if not self.why:
@@ -118,7 +189,7 @@ class _Check(html.parser.HTMLParser):
             return self._no('an attribute written twice')
         if tag == 'a':   # A LINK: either THE PAGE ITSELF with its query changed (no target, no rel), or A LINK OUT (href, target and rel all three, exactly)
             same = (page_address(had.get('href'), self.path) or download_address(had.get('href'), self.path)) and 'target' not in had and 'rel' not in had
-            out = link_address(had.get('href')) and all(had.get(k) == v for k, v in LINK.items())
+            out = (link_address(had.get('href')) or local_link(had.get('href'), self.local)) and all(had.get(k) == v for k, v in LINK.items())
             if not (same or out):
                 return self._no('a link that is neither the page itself, DA-M\'s own download of a file, nor https to a named host in a new tab, noopener noreferrer')
         if tag == 'form':   # A SEARCH: a GET to the page itself, nothing else
@@ -173,8 +244,8 @@ class _Check(html.parser.HTMLParser):
         self._no('the view\'s markup holds a declaration')
 
 
-def _markup(markup, path=''):
-    check = _Check(path)
+def _markup(markup, path='', local=()):
+    check = _Check(path, local)
     try:
         check.feed(markup)
         check.close()
@@ -200,7 +271,7 @@ def _sheet(sheet):
     return ''
 
 
-def refused(view, path=''):
+def refused(view, path='', local=()):
     """Why this view may not be drawn, or '' when it may. path: the page's own path (the one address a controller's links and search may name)."""
     if not isinstance(view, dict) or set(view) - {'html', 'css'} or not all(isinstance(view.get(k, ''), str) for k in ('html', 'css')):
         return 'a view is {html, css}, two texts'
@@ -209,14 +280,18 @@ def refused(view, path=''):
         return 'the view\'s markup is over 200 KB'
     if len(sheet.encode('utf-8')) > MAX_CSS:
         return 'the view\'s sheet is over 100 KB'
-    return _markup(markup, path) or _sheet(sheet)
+    return _markup(markup, path, local) or _sheet(sheet)
 
 
-def checked(answer, path=''):
-    """The answer with its view passed on, or dropped whole when refused (-> (answer, why))."""
+def checked(answer, path='', origins=None, local=False):
+    """The answer with its view passed on, or dropped whole when refused (-> (answer, why)). origins: the platform's own word for this page's
+    offices ({wid, so, fs}); its markers are resolved first; on a localhost box (local) the gate takes http for exactly those origins."""
     if not isinstance(answer, dict) or 'view' not in answer:
         return answer, ''
-    why = refused(answer['view'], path)
+    if isinstance(answer['view'], dict) and isinstance(answer['view'].get('html'), str):
+        answer = {**answer, 'view': {**answer['view'], 'html': resolve(answer['view']['html'], path, origins, local)}}
+    allowed = tuple(v for v in (origins or {}).values() if isinstance(v, str)) if local and isinstance(origins, dict) else ()
+    why = refused(answer['view'], path, allowed)
     if why:
         answer = {k: v for k, v in answer.items() if k != 'view'}
     else:   # PASSED ON WHOLE, both texts always there (PF Virtual Wire, 2026-10-08: its door handed markup and no sheet, the platform's own gate reads a view as {html, css} and placed nothing)

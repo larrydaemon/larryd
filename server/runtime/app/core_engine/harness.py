@@ -40,6 +40,7 @@ PLATFORM_HANDED = {('wid', 'GET', '/agnt/cards'), ('wid', 'GET', '/agnt/hired'),
 HANDED_MOST = 64              # handed answers one call may carry
 APPROVED_KEEP = 300           # seconds the platform's approved list is kept; an agent not on it is asked of wid again before it is refused
 APPROVED_DOOR = '/agnt/approved'   # wid's: the exact hashes FROST's review approved, as wid reads them (the second guard)
+LOCAL_CALLERS = ('proof',)   # THE LOCALHOST BOX: the caller slot of this Mac (runtime.json); only its calls may draw http links, and only to the origins the platform handed (CORE_CLEANUP_IV 20/96, ruling c')
 RUNS_HANDED = 5               # the member's last RUNs of an agent that starts RUNs from its page, handed to its CALL (state and the runtime's own code, nothing else)
 ZONE = ''                     # a made file goes to the member's DA-M with no zone named (DA-M's own general limit)
 
@@ -422,7 +423,8 @@ class Harness:
             raise Refused(500, reason)
         answer.pop('writes', None)
         path = (beside.get('page') or {}).get('path')
-        answer, why = view.checked(answer, path if isinstance(path, str) else '')   # the agent's own view, passed on only when it holds nothing that runs or reaches out
+        origins = (beside.get('page') or {}).get('origins')   # THE PLATFORM'S OWN WORD for this page's offices ({wid, so, fs}: CORE_CLEANUP_IV 20/96): the markers' addresses are built on them
+        answer, why = view.checked(answer, path if isinstance(path, str) else '', origins if isinstance(origins, dict) else None, self.caller in LOCAL_CALLERS)   # the agent's own view, passed on only when it holds nothing that runs or reaches out
         if why:
             LOG.warning('view dropped for %s: %s', agent_key, why)
         answer.pop('frame', None)   # the field's first name (the frame attempt, 2026-10-08): never an agent's word either, whatever an old host reads
