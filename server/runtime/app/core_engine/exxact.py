@@ -79,6 +79,8 @@ def kind_of(data):
         return 'mp4'
     if head.startswith(b'RIFF') and head[8:12] == b'WAVE':
         return 'wav'
+    if head.startswith(b'ID3') or (len(head) > 1 and head[0] == 0xFF and head[1] & 0xE6 in (0xE2, 0xE4, 0xE6)):   # an mp3: its tag, or a frame's sync and layer III
+        return 'mp3'
     if head.startswith(b'{') or head.startswith(b'['):
         return 'json'
     return ''
@@ -91,6 +93,9 @@ def kind_of(data):
 
 MB = 1024 * 1024
 LIPS_SLOTS = range(1, 9)
+MIX_SOURCES = range(1, 17)                                  # a mix's sources: up to 16 audio files, named by number in its clips
+MIX_TRACKS = ('VOICE A', 'VOICE B', 'MUSIC', 'SFX')         # LARRY 5's four tracks (pf Soundtrack's TRACKS)
+MIX_MOST_CLIPS, MIX_MOST_SECONDS = 64, 3600                 # LARRY 5's bounds: 64 clips; a timeline of at most an hour
 TYPES = {
     'gpu-status': {
         'about': 'the two GPUs: memory used and free on each card, read once (nvidia-smi); runs nothing',
@@ -123,6 +128,16 @@ TYPES = {
         'outputs': {**{f'lips_{n}': {'kinds': ('mp4',), 'most': 1024 * MB, 'from': f'slot_{n}/lips.mp4', 'optional': True} for n in LIPS_SLOTS}},
         'most_seconds': 6 * 3600,
     },
+    'mix': {
+        'about': 'the mixdown of a soundtrack (row 55, LARRY 5\'s EXPORT): each clip trimmed, its gain and fades, set at its start, the four '
+                 'tracks\' volume, mute and solo, mixed to one wav with ffmpeg (box/kits/mix); CPU only',
+        'lane': 'none', 'room': 0,
+        'fields': {'tracks': {'check': 'mix_tracks'}, 'clips': {'check': 'mix_clips'}},
+        'inputs': {f'source_{n}': {'kinds': ('wav', 'mp3', 'mp4'), 'most': 300 * MB, 'need': n == 1} for n in MIX_SOURCES},
+        'kit': 'mix', 'fields_as': 'mix.json', 'run': {'command': ['python3', 'mixrun.py']},
+        'outputs': {'mix': {'kinds': ('wav',), 'most': 1024 * MB, 'from': 'out/mix.wav'}},
+        'most_seconds': 1800,
+    },
 }
 
 
@@ -133,6 +148,30 @@ ENGINES = {
 }
 for _t in ('face-swap', 'face-landmarks'):
     TYPES[_t]['engine'] = 'faceswap'
+
+
+def _n(x, lo, hi):
+    return isinstance(x, (int, float)) and not isinstance(x, bool) and x == x and lo <= x <= hi
+
+
+def _mix_tracks(v):
+    """the four tracks, in order: {vol 0..2, mute, solo} each"""
+    return (isinstance(v, list) and len(v) == len(MIX_TRACKS)
+            and all(isinstance(t, dict) and set(t) == {'vol', 'mute', 'solo'} and _n(t['vol'], 0, 2)
+                    and isinstance(t['mute'], bool) and isinstance(t['solo'], bool) for t in v))
+
+
+def _mix_clips(v):
+    """1..64 clips: {source 1..16, track, at, in, out (in < out), gain 0..4, fade_in, fade_out 0..30}, seconds"""
+    keys = {'source', 'track', 'at', 'in', 'out', 'gain', 'fade_in', 'fade_out'}
+    return (isinstance(v, list) and 0 < len(v) <= MIX_MOST_CLIPS
+            and all(isinstance(c, dict) and set(c) == keys and isinstance(c['source'], int) and not isinstance(c['source'], bool)
+                    and c['source'] in MIX_SOURCES and c['track'] in MIX_TRACKS and _n(c['at'], 0, MIX_MOST_SECONDS)
+                    and _n(c['in'], 0, MIX_MOST_SECONDS) and _n(c['out'], 0, MIX_MOST_SECONDS) and c['in'] < c['out']
+                    and _n(c['gain'], 0, 4) and _n(c['fade_in'], 0, 30) and _n(c['fade_out'], 0, 30) for c in v))
+
+
+FIELD_CHECKS = {'mix_tracks': _mix_tracks, 'mix_clips': _mix_clips}
 
 
 def check_fields(kind, fields):
@@ -160,6 +199,8 @@ def check_fields(kind, fields):
             lo, hi = rule['list_ints']
             if not (isinstance(v, list) and 0 < len(v) <= rule['most'] and all(isinstance(x, int) and not isinstance(x, bool) and lo <= x <= hi for x in v)):
                 raise Red('TAKEN', f'the field {name} is not a short list of whole numbers in range')
+        if 'check' in rule and not FIELD_CHECKS[rule['check']](v):
+            raise Red('TAKEN', f'the field {name} is not in the shape its type takes')
         out[name] = v
     return out
 
@@ -731,6 +772,8 @@ class Runner:
             for slot, data in files.items():
                 if kind_of(data) not in rules[slot]['kinds'] or len(data) > rules[slot]['most']:
                     raise Red('TAKEN', f'the file {slot} is not what the type takes')
+            if kind == 'mix' and any(f"source_{c['source']}" not in files for c in fields['clips']):
+                raise Red('TAKEN', 'a clip names a source that was not sent')
             work = self._work(job)
             os.makedirs(os.path.join(work, 'in'), exist_ok=True)
             for slot, data in files.items():
@@ -804,6 +847,8 @@ class Runner:
                         self.box.put(job, name, fh.read())
         if j['type'] == 'lips':
             self.box.put(job, 'slots.txt', ' '.join(str(n) for n in j['fields']['slots']).encode())
+        if t.get('fields_as'):   # the checked fields, as the kit reads them (never a command line)
+            self.box.put(job, t['fields_as'], json.dumps(j['fields'], sort_keys=True).encode())
         self.stamp(job, 'SENT', f'{len(j["slots"])} files')
 
     def run(self, job, j, t):

@@ -34,6 +34,7 @@ def test_the_same_number_fields_and_the_same_models_without_words():
     models = _runtime_models()
     assert {m: spec['numbers'] for m, spec in models.items() if spec['numbers']} == shape.MAKES_NUMBERS
     assert sorted(m for m, spec in models.items() if not spec['prompt']) == sorted(shape.MAKES_NO_WORDS)
+    assert {m: spec['checks'] for m, spec in models.items() if spec['checks']} == shape.MAKES_CHECKS   # the fields of a shape (row 55's mix)
 
 
 def test_the_doctors_star_words_are_the_runtimes_reviews_aside():

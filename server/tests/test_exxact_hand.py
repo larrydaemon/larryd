@@ -6,8 +6,11 @@ FakeBox (~/virtual_sanity/exxact_loot/tests, read only) answering. The sealing n
 import base64
 import hashlib
 import importlib.util
+import json
 import pathlib
 import re
+import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -19,7 +22,7 @@ from test_skills import ACCOUNT, JOB, KEY, MEMBER, World
 
 LOOT = pathlib.Path.home() / 'virtual_sanity' / 'exxact_loot'
 ORIGINALS = {   # THE PINS: Exxact_Loot's two files as copied (a change on either side is seen here first)
-    'exxact.py': '6e087b084a86749c18532b4cb2f5d66464fbde62e41e22d42c1e4ffe9b9c21e7',   # Exxact_Loot 7ada929: names no address and no user
+    'exxact.py': '4216e5b5ea55506e51d9df12569f54abbf9a936486d73ad8b6cd92d2250614d1',   # Exxact_Loot 2bfc275: the mix type (row 55)
     'locker.py': '3674a52f362c85ff165fe2c19085c236844c94e80739a4f072bce7cadd65a026',
 }
 COPIES = {'exxact.py': 'exxact.py', 'locker.py': 'exxact_locker.py'}
@@ -41,6 +44,18 @@ LIPS = {'model': 'exxact/lips', 'name': 'Lips', 'slots': [1, 2], 'reference': ['
 SWAP = {'model': 'exxact/face-swap', 'prompt': 'swap the face', 'name': 'Swapped',
         'reference': ['DA-M_AAAAAAAAAAAA_0001', 'DA-M_AAAAAAAAAAAA_0002']}
 ASKER = {'card': KEY, 'job_key': JOB, 'member': MEMBER}
+MP3 = b'ID3\x04\x00' + b'\x00' * 64
+ON = {'vol': 1, 'mute': False, 'solo': False}
+SECRET = 'MEMBERS-OWN-WORDS'   # a value no refusal may carry
+
+
+def _clip(source, track, at, out, gain=1, fade_in=0, fade_out=0, in_=0):
+    return {'source': source, 'track': track, 'at': at, 'in': in_, 'out': out, 'gain': gain, 'fade_in': fade_in, 'fade_out': fade_out}
+
+
+MIX = {'model': 'exxact/mix', 'name': 'Mix', 'tracks': [dict(ON) for _ in range(4)],
+       'clips': [_clip(1, 'VOICE A', 0, 1), _clip(2, 'MUSIC', 1.5, 2, gain=0.5, fade_out=0.5), _clip(1, 'SFX', 2.5, 0.5, in_=0.25)],
+       'reference': ['DA-M_AAAAAAAAAAAA_0001', 'DA-M_AAAAAAAAAAAA_0002']}
 
 
 def _loot_fakes():
@@ -159,6 +174,63 @@ class TheNumbersAndTheWords(unittest.TestCase):
         self.assertEqual(outside.check([{'model': 'nano-banana-2', 'prompt': 'x', 'name': 'X', 'slots': [1]}], ('nano-banana-2',))[0], [])
 
 
+class TheMix(unittest.TestCase):
+    """ROW 55'S MIX (Exxact_Loot 2bfc275): on the list from TYPES with its 16 source slots; its tracks and clips held to Exxact_Loot's own
+    FIELD_CHECKS through the rule {'check': ...}; a refusal in fixed words that never carries the member's value; the made file capped."""
+    def ok(self, ask):
+        return outside.check([ask], ('exxact/mix',))
+
+    def test_the_mix_is_on_the_list_with_sixteen_source_slots(self):
+        spec = outside.MODELS['exxact/mix']
+        self.assertEqual(spec['references'], tuple(f'source_{n}' for n in range(1, 17)))
+        self.assertEqual(spec['most_references'], 16)
+        self.assertEqual(spec['reference_rules'], ((('wav', 'mp3', 'mp4'), outside.MOST_ASK_REFERENCES),) * 16)
+        self.assertEqual((spec['checks'], spec['numbers'], spec['choices'], spec['prompt'], spec['kind']),
+                         ({'tracks': 'mix_tracks', 'clips': 'mix_clips'}, {}, {}, False, 'audio'))
+        self.assertEqual({m: s['checks'] for m, s in outside.MODELS.items() if s['checks']}, {'exxact/mix': spec['checks']})   # no other model's grammar moved
+        self.assertTrue(exxact.TYPES['mix']['inputs']['source_1']['need'])
+
+    def test_a_good_mix_is_taken_as_the_box_takes_it(self):
+        asks, why = self.ok(MIX)
+        self.assertEqual((why, asks), ('', [MIX]))
+        fields = {f: asks[0][f] for f in ('tracks', 'clips')}
+        self.assertEqual(exxact.check_fields('mix', fields), fields)   # what the grammar takes, the box's own check takes
+        sixteen = {**MIX, 'reference': [f'DA-M_AAAAAAAAAAAA_{n:04d}' for n in range(1, 17)], 'clips': [_clip(16, 'SFX', 0, 1)]}
+        self.assertEqual(self.ok(sixteen)[1], '')
+
+    def test_a_bad_mix_is_refused_in_fixed_words_without_its_value(self):
+        bad = [({**MIX, 'tracks': MIX['tracks'][:3]}, "the ask's tracks is not in the shape Exxact mix takes"),
+               ({**MIX, 'tracks': [{**ON, 'vol': SECRET}] * 4}, "the ask's tracks is not in the shape Exxact mix takes"),
+               ({**MIX, 'clips': [_clip(1, 'VOICE A', 0, 1, in_=1)]}, "the ask's clips is not in the shape Exxact mix takes"),
+               ({**MIX, 'clips': [_clip(1, 'VOICE A', 0, 1, in_=2)]}, "the ask's clips is not in the shape Exxact mix takes"),
+               ({**MIX, 'clips': [_clip(1, 'VOICE A', 0, 1, gain=4.5)]}, "the ask's clips is not in the shape Exxact mix takes"),
+               ({**MIX, 'clips': [{**_clip(1, 'VOICE A', 0, 1), 'cmd': SECRET}]}, "the ask's clips is not in the shape Exxact mix takes"),
+               ({**MIX, 'clips': [_clip(1, SECRET, 0, 1)]}, "the ask's clips is not in the shape Exxact mix takes"),
+               ({**MIX, 'clips': [_clip(1, 'VOICE A', 0, 1)] * 65}, "the ask's clips is not in the shape Exxact mix takes"),
+               ({**MIX, 'clips': SECRET}, "the ask's clips is not in the shape Exxact mix takes"),
+               ({**MIX, 'clips': [_clip(3, 'VOICE A', 0, 1)]}, "the ask's clips name a source it does not send"),
+               ({k: v for k, v in MIX.items() if k != 'reference'}, "the ask's clips name a source it does not send"),
+               ({k: v for k, v in MIX.items() if k != 'tracks'}, 'the ask names no tracks'),
+               ({**MIX, SECRET: 1}, 'the ask holds more than Exxact mix takes')]
+        for ask, words in bad:
+            with self.subTest(words=words):
+                self.assertEqual(self.ok(ask), ([], words))
+                self.assertNotIn(SECRET, words)
+
+    def test_the_made_file_is_capped_at_one_asks_most(self):
+        spec = outside.MODELS['exxact/mix']
+        self.assertGreater(exxact.TYPES['mix']['outputs']['mix']['most'], outside.MOST_ASK_REFERENCES)
+        self.assertEqual(spec['most_bytes'], outside.MOST_ASK_REFERENCES)
+        self.assertTrue(all(s['most_bytes'] <= outside.MOST_ASK_REFERENCES for m, s in outside.MODELS.items() if m.startswith('exxact/')))
+        ask = self.ok(MIX)[0][0]
+        for size, want in ((1000, (None, exxact_hand.TOO_LARGE)), (10 ** 6, ({'name': 'Mix.wav', 'kind': 'wav', 'data': WAV + b'\x00' * 999}, ''))):
+            hand = exxact_hand.ExxactHand(lanes=object(), keys_dir='k')
+            with mock.patch.object(hand, 'set_up', lambda: True), mock.patch.object(hand, '_sweep', lambda: None), \
+                    mock.patch.object(exxact, 'ask', lambda *a: 'JOB1') as _a, mock.patch.dict(spec, {'most_bytes': size}), \
+                    mock.patch.object(exxact, 'collect', lambda *a: ({'type': 'mix', 'state': 'DONE'}, {'mix': WAV + b'\x00' * 999})):
+                self.assertEqual(hand.make(ask, '', [WAV, MP3], asker=ASKER), want, size)
+
+
 class TheReferenceKinds(World):
     """THE REFERENCES BY KIND, PER MODEL (2026-11-06): the harness reads each DA-M reference and holds it to its slot's kinds (from its
     first bytes) and most bytes; Replicate's models keep png, jpg, webp within outside.MOST_REFERENCE."""
@@ -192,6 +264,17 @@ class TheReferenceKinds(World):
         for data in (WAV, MP4):
             reason = self.refused(nano, {key: data})
             self.assertEqual(reason, f'not made, reference not a picture: {key}; nothing was sent')
+
+    def test_an_mp3_is_taken_on_a_mix_slot_and_refused_by_nano_banana_2(self):
+        mix = outside.check([MIX], ('exxact/mix',))[0][0]
+        a, b = MIX['reference']
+        self.assertEqual(self.read(mix, {a: MP3, b: WAV}), [MP3, WAV])
+        self.assertEqual(self.read(mix, {a: b'\xff\xfb\x90\x00' + b'\x00' * 64, b: MP4})[1], MP4)   # an mp3 frame's sync, no tag; an mp4's sound
+        self.assertIn('reference not a kind its slot takes', self.refused(mix, {a: PNG, b: WAV}))
+        self.assertEqual((outside.reference_kind(MP3, ('wav', 'mp3', 'mp4')), exxact.kind_of(MP3)), ('mp3', 'mp3'))   # one reading: Exxact_Loot's
+        key = 'DA-M_AAAAAAAAAAAA_0001'
+        nano = outside.check([{'model': 'nano-banana-2', 'prompt': 'x', 'name': 'X', 'reference': key}], ('nano-banana-2',))[0][0]
+        self.assertEqual(self.refused(nano, {key: MP3}), f'not made, reference not a picture: {key}; nothing was sent')
 
     def test_a_reference_over_its_slots_most_bytes_is_refused(self):
         key = 'DA-M_AAAAAAAAAAAA_0001'
@@ -264,6 +347,25 @@ class TheRoad(unittest.TestCase):
         made, why = self.hand({}).make(lips, '', [WAV, WAV, MP4], asker=ASKER)
         self.assertEqual((why, made['name'], made['kind']), ('', 'Lips.mp4', 'mp4'))
         self.assertEqual(made['data'][4:8], b'ftyp')
+
+    @unittest.skipUnless(shutil.which('ffmpeg'), 'ffmpeg is not on this computer: the mix kit runs it')
+    def test_a_mix_its_sources_in_order_and_its_fields_reach_the_box_and_a_wav_comes_back(self):   # row 55, on Exxact_Loot's FakeBox with a real ffmpeg
+        def tone(freq, seconds):
+            return subprocess.run(['ffmpeg', '-v', 'error', '-f', 'lavfi', '-i', f'sine=frequency={freq}:duration={seconds}:sample_rate=44100',
+                                   '-ac', '1', '-c:a', 'pcm_s16le', '-f', 'wav', '-'], capture_output=True, check=True).stdout
+        a, b = tone(440, 1), tone(660, 2)
+        mix = outside.check([MIX], ('exxact/mix',))[0][0]
+        hand, put = self.hand({}), {}
+        box_put = self.runner.box.put
+        self.runner.box.put = lambda job, rel, data: put.__setitem__(rel, data) or box_put(job, rel, data)   # what reached the box, kept to read
+        made, why = hand.make(mix, '', [a, b], asker=ASKER)
+        self.assertEqual((why, made['name'], made['kind']), ('', 'Mix.wav', 'wav'))
+        self.assertEqual(made['data'][8:12], b'WAVE')
+        self.assertGreater(len(made['data']), 3 * 48000 * 4)   # some 3.5 seconds of 48 kHz stereo, the clips laid at their starts
+        self.assertEqual((put['in/source_1'], put['in/source_2']), (a, b))   # the references in the ask's order, source_1 first
+        self.assertEqual(json.loads(put['mix.json']), {'tracks': MIX['tracks'], 'clips': MIX['clips']})   # the checked fields, as the kit reads them
+        label = self.runner.label(next(iter(sorted((self.root / 'state' / 'labels').iterdir()))).stem)
+        self.assertEqual(label['status'], 'DONE')
 
     def test_red_comes_back_in_fixed_words(self):
         self.assertEqual(self.hand({'engine_makes_nothing': True}).make(self.swap(), '', [JPEG, PNG], asker=ASKER), (None, 'NOT_MADE_EXXACT_RUN'))

@@ -92,13 +92,19 @@ MAKES = {   # THE OUTSIDE HAND'S LIST (the same as the runtime's core_engine/out
     'exxact/face-swap': ('a picture', 'Exxact', {'enhance': ('natural',)}),   # references: source, target (png or jpg, 20 MB each)
     'exxact/face-landmarks': ('numbers', 'Exxact', {}),                       # references: image (png or jpg, 40 MB); every face's box and five points, as a JSON file
     'exxact/lips': ('a video', 'Exxact', {}),                                 # references: minute_vocals (wav), minute_voice (wav), move_1 to move_8 (mp4), in that order
+    'exxact/mix': ('a sound', 'Exxact', {}),                                  # row 55's mixdown: references source_1 to source_16 (wav, mp3 or mp4), source_1 needed; one wav back
 }
 MAKES_NUMBERS = {   # THE NUMBER FIELDS an ask may name (the runtime's outside.py MODELS[model]['numbers'], from Exxact_Loot's list): a list of at most
     # 'most' numbers ('list_numbers') or whole numbers ('list_ints') within the range; optional ones may be left out. A model not named here has none
     'exxact/face-swap': {'target_box': {'list_numbers': (0, 20000), 'most': 4, 'optional': True}},
     'exxact/lips': {'slots': {'list_ints': (1, 8), 'most': 8}},   # the ON slots, each one's move_<n> laid in its order
 }
-MAKES_NO_WORDS = ('exxact/gpu-status', 'exxact/face-swap', 'exxact/face-landmarks', 'exxact/lips', 'topaz-video-upscale', 'whisper', 'resemble-enhance')   # models an ask need not give a "prompt" (the Exxact box takes none)
+MAKES_CHECKS = {   # THE FIELDS OF A SHAPE an ask must name (the runtime's outside.py MODELS[model]['checks'], held to Exxact_Loot's own exxact.FIELD_CHECKS)
+    # mix_tracks: exactly 4 tracks in order (VOICE A, VOICE B, MUSIC, SFX), each {vol 0 to 2, mute, solo};
+    # mix_clips: 1 to 64 clips, each {source 1 to 16 (a reference sent), track, at, in, out (in < out), gain 0 to 4, fade_in, fade_out 0 to 30}, in seconds
+    'exxact/mix': {'tracks': 'mix_tracks', 'clips': 'mix_clips'},
+}
+MAKES_NO_WORDS = ('exxact/gpu-status', 'exxact/face-swap', 'exxact/face-landmarks', 'exxact/lips', 'exxact/mix', 'topaz-video-upscale', 'whisper', 'resemble-enhance')   # models an ask need not give a "prompt" (the Exxact box takes none)
 RECORD_VERBS = ('read', 'add', 'edit', 'remove')   # what an agent may declare on a species' records
 RECORD_COUNTS = ('*', ['count'])   # THE COUNTS: "records": {"*": ["count"]}, of no one species: how many, never which
 RECORD_EVERY = ('*', ('count', 'roster', 'reviews', 'joins', 'payments', 'history'))   # what "*" may hold, each once: the counts (CALL and RUN) and the roster (CORE_CLEANUP_IV 37: the account's members, key, name, type, active, read only, on a CALL; the reviews waiting, CORE_CLEANUP_IV 23: an internal agent only, on a CALL; the join requests and the payments, row 142: read only, on a CALL; the review history, row 78: an internal agent only, on a CALL)

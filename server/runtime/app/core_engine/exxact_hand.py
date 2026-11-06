@@ -2,7 +2,9 @@
 outside.Hand makes a Replicate ask, under outside.py's same laws. The box has no door of its own: this hand only writes a sealed job into
 the MISSIONS bucket and reads the box's sealed answer from the RETURNS bucket (exxact.py, Exxact_Loot's own code, copied unchanged).
 1. THE LIST ONLY: the type is the model's own (outside.MODELS, built from exxact.TYPES); its fields are checked by exxact.check_fields,
-   its inputs (the references, the member's DA-M files, read by the harness) put on the type's input slots in order.
+   its inputs (the references, the member's DA-M files, read by the harness) put on the type's input slots in order (the mix's: source_1,
+   source_2, ... as its clips name them); a field of a shape (the mix's tracks and clips) travels in the job, and the box lays it as its
+   fields_as file (mix.json).
 2. A FIXED GRAMMAR: the job carries the type's fields and files and the asker (the agent's card, the job, the member), nothing else.
 3. THE KEY NEVER TRAVELS: there is no vault key for the box. The buckets are reached with the runtime's own token (a function handed in
    at the runtime's start; on Cloud Run its service account), and the job is sealed with the hand's own locker keys (keys_dir).
@@ -30,6 +32,7 @@ UNREACHABLE = 'NOT_MADE_EXXACT_UNREACHABLE'
 TIME_UP = 'NOT_MADE_EXXACT_TIME_UP'
 NOT_TRUSTED = 'NOT_MADE_EXXACT_RETURN_NOT_TRUSTED'
 NOTHING_MADE = 'NOT_MADE_EXXACT_NOTHING_MADE'
+TOO_LARGE = 'NOT_MADE_EXXACT_TOO_LARGE'   # a made file over the model's most_bytes (outside.MOST_ASK_REFERENCES at most): never handed on
 RED = 'NOT_MADE_EXXACT_RED'   # a RED whose step is not one of exxact.STEPS
 
 
@@ -113,7 +116,7 @@ class ExxactHand:
         if why:
             return None, why
         try:
-            fields = exxact.check_fields(kind, {f: ask[f] for f in (*spec['choices'], *spec.get('numbers', {})) if f in ask})
+            fields = exxact.check_fields(kind, {f: ask[f] for f in (*spec['choices'], *spec.get('numbers', {}), *spec.get('checks', {})) if f in ask})
         except exxact.Red:
             return None, TAKEN
         who = asker if isinstance(asker, dict) else {}
@@ -155,6 +158,8 @@ class ExxactHand:
         # outputs (lips: one per ON slot) gives its FIRST output that came home, in the type's order; the others are not kept
         for slot in outputs:
             data = made.get(slot)
+            if data and len(data) > spec['most_bytes']:   # THE MADE FILE'S MOST (row 55's mix makes up to 1 GB): held here, it goes no further
+                return None, TOO_LARGE
             if data:
                 ext = outside.kind_of(data) or exxact.kind_of(data)
                 return {'name': f"{ask['name']}.{ext}", 'kind': ext, 'data': data}, ''

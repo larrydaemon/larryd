@@ -109,6 +109,7 @@ MODELS = {
         'most_bytes': 24 * 1024 * 1024, 'most_seconds': 900,
     },
 }
+SOUND_KINDS = {'wav', 'mp3', 'flac'}   # what a type that makes a sound makes
 MOST_SAID = 1024 * 1024   # bytes of what an Exxact type that makes no file says (its numbers, as JSON)
 NUMBER_RULES = ('list_numbers', 'list_ints')   # the number rules exxact.check_fields reads (a short list of numbers, of whole numbers), and no other
 NUMBER_KEYS = NUMBER_RULES + ('most', 'optional')
@@ -123,7 +124,11 @@ def _exxact_models():
     THE NUMBERS (the lips gaps closed, 2026-11-06): a field whose rule is a short list of numbers ('list_numbers': face-swap's target_box) or
     of whole numbers ('list_ints': lips' slots) is on the grammar as a number field, its rule copied from TYPES as exxact.check_fields reads it
     (the range, the most, optional); a field of any other rule is not on the grammar. A type takes no words (prompt: False): TYPES has no
-    prompt. Each reference slot's kinds and most bytes are the type's own input slot's (reference_rules), jpeg named jpg as kind_of names it."""
+    prompt. Each reference slot's kinds and most bytes are the type's own input slot's (reference_rules), jpeg named jpg as kind_of names it.
+    THE SHAPES (row 55's mix, 2026-11-06): a field whose rule is {'check': <name>} (the mix's tracks and clips) is on the grammar as a checked
+    field (checks: {field: name}), held to exxact.FIELD_CHECKS[name], Exxact_Loot's own rule, never a copy of it. A type that makes a sound
+    is kind 'audio'. THE MADE FILE is held whole in the runtime's memory before it goes to DA-M: most_bytes is the type's own most, capped at
+    MOST_ASK_REFERENCES (the mix's 1 GB and the lips' are not held here)."""
     out = {}
     for name, t in exxact.TYPES.items():
         made = {k for o in t['outputs'].values() for k in o['kinds']}
@@ -131,14 +136,18 @@ def _exxact_models():
                    if 'choices' in r and r['choices'] and all(isinstance(v, str) for v in r['choices'])}
         numbers = {f: {k: (tuple(v) if isinstance(v, (list, tuple)) else v) for k, v in r.items() if k in NUMBER_KEYS}
                    for f, r in t['fields'].items() if f not in choices and sum(k in r for k in NUMBER_RULES) == 1}
+        checks = {f: r['check'] for f, r in t['fields'].items()
+                  if f not in choices and f not in numbers and r.get('check') in exxact.FIELD_CHECKS}
         slots = tuple(t['inputs'])
         out[f'exxact/{name}'] = {
-            'provider': 'exxact', 'path': name, 'kind': 'video' if 'mp4' in made else 'image' if made else 'data', 'name': f'Exxact {name}',
+            'provider': 'exxact', 'path': name, 'kind': 'video' if 'mp4' in made else 'audio' if made and made <= SOUND_KINDS else 'image' if made else 'data', 'name': f'Exxact {name}',
             'prompt': False, 'choices': choices, 'first': {f: v[0] for f, v in choices.items()}, 'numbers': numbers,
+            'checks': checks,
             'reference': 'inputs' if slots else '', 'references': slots, 'most_references': len(slots),
             'reference_rules': tuple((tuple(dict.fromkeys(_KIND_NAMES.get(k, k) for k in t['inputs'][s]['kinds'])), min(t['inputs'][s]['most'], MOST_ASK_REFERENCES))
                                      for s in slots),   # each slot within what one ask may hold, whatever the box takes
-            'most_bytes': max([o['most'] for o in t['outputs'].values()] or [MOST_SAID]), 'most_seconds': t['most_seconds'],
+            'most_bytes': min(max([o['most'] for o in t['outputs'].values()] or [MOST_SAID]), MOST_ASK_REFERENCES),   # held in memory: within one ask's most
+            'most_seconds': t['most_seconds'],
         }
     return out
 
@@ -149,6 +158,7 @@ MOST_ASK_REFERENCES = 100 * 1000 * 1000                  # bytes of ALL of one a
                                                          # 1 GiB at most; a file read as base64 in JSON, then decoded, holds about 2.4 times its size)
 for _spec in MODELS.values():   # Replicate's models: every reference a picture within MOST_REFERENCE, no number field (as before)
     _spec.setdefault('numbers', {})
+    _spec.setdefault('checks', {})
     _spec.setdefault('reference_rules', ((REFERENCE_KINDS, MOST_REFERENCE),) * _spec['most_references'])
 MODELS.update(_exxact_models())
 KINDS = {'image': ('png', 'jpg', 'webp'), 'video': ('mp4',), 'audio': ('wav',), 'text': ('srt',)}   # text: a model that answers with words (whisper's SRT), never fetched
@@ -184,7 +194,8 @@ def check(makes, allowed):
         return [], 'the ask names a model the agent does not declare'
     spec = MODELS[model]
     numbers = spec.get('numbers') or {}
-    if set(ask) - {'model', 'prompt', 'name', *spec['choices'], *numbers, *(('reference', 'companion_of') if spec.get('reference') else ())}:
+    checks = spec.get('checks') or {}
+    if set(ask) - {'model', 'prompt', 'name', *spec['choices'], *numbers, *checks, *(('reference', 'companion_of') if spec.get('reference') else ())}:
         return [], f'the ask holds more than {spec["name"]} takes'
     prompt = ask.get('prompt')
     if (spec.get('prompt') or 'prompt' in ask) and not (isinstance(prompt, str) and prompt.strip() and len(prompt) <= MOST_PROMPT):
@@ -211,6 +222,16 @@ def check(makes, allowed):
                 and all(isinstance(x, int if whole else (int, float)) and not isinstance(x, bool) and lo <= x <= hi for x in value)):
             return [], f'the ask\'s {field} is not a list of at most {rule["most"]} {"whole numbers" if whole else "numbers"} from {lo} to {hi}'
         out[field] = list(value)
+    for field, rule in checks.items():   # THE SHAPES (row 55): Exxact_Loot's own rule decides, exxact.FIELD_CHECKS; the refusal never says the value
+        if field not in ask:
+            return [], f'the ask names no {field}'
+        try:
+            fits = exxact.FIELD_CHECKS[rule](ask[field]) is True
+        except (TypeError, ValueError, KeyError, RecursionError):
+            fits = False
+        if not fits:
+            return [], f'the ask\'s {field} is not in the shape {spec["name"]} takes'
+        out[field] = json.loads(json.dumps(ask[field]))   # the member's value as checked, a copy of its own
     if 'reference' in ask:   # optional: a DA-M key, or a list of them up to the model's most, and nothing else (never an address: law 1); the harness reads each file for this member
         refs = [ask['reference']] if isinstance(ask['reference'], str) else ask['reference']
         most = spec.get('most_references', 1)
@@ -219,7 +240,11 @@ def check(makes, allowed):
         if len(refs) > most or len(set(refs)) != len(refs):
             return [], f'the ask names more than {most} reference{"" if most == 1 else "s"} {spec["name"]} takes, or one twice'
         out['reference'] = list(refs)
-    elif spec.get('reference_required'):
+    if spec['provider'] == 'exxact' and spec['path'] == 'mix':   # a clip names its source by number: that reference must be sent (the box's TAKEN rule, kept before anything is counted)
+        sent = len(out.get('reference', ()))
+        if any(c['source'] > sent for c in out['clips']):
+            return [], 'the ask\'s clips name a source it does not send'
+    if 'reference' not in ask and spec.get('reference_required'):
         return [], f'the ask names no reference {spec["name"]} needs'
     if 'companion_of' in ask:   # THE MADE FILE STORED BESIDE THE MEMBER'S OWN (CORE_CLEANUP_IV 94 b, for a made file): "reference", its first reference's record, and nothing else
         if ask['companion_of'] != 'reference' or 'reference' not in out:
@@ -274,7 +299,7 @@ def sound_of(data):
         return 'wav'
     if data[:4] == b'fLaC':
         return 'flac'
-    if data[:3] == b'ID3' or (len(data) > 1 and data[0] == 0xFF and data[1] & 0xE0 == 0xE0 and data[1] & 0x06):   # sync, and a layer named
+    if exxact.kind_of(data[:16]) == 'mp3':   # Exxact_Loot's own reading (row 55): an ID3 tag, or a frame's sync with a layer named
         return 'mp3'
     return ''
 
