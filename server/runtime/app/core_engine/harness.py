@@ -90,6 +90,40 @@ def _outside_gives(manifest, answer):
     extra = sorted(set(answer) - (set(gives) - RUNTIME_OWN))
     return f'the answer holds {extra}, which "gives" does not name' if extra else ''
 
+FILE_SLOTS = {'image': 'data_image_key', 'video': 'data_video_key', 'audio': 'data_audio_key'}   # THE STORED FILES' SLOTS (the owner 2026-11-05): the runtime's own word, never an agent's
+
+
+def file_kind(data):
+    """What a stored file IS, read from its first bytes (never its name): image, video, audio, or ''."""
+    if data[:8] == b'\x89PNG\r\n\x1a\n' or data[:3] == b'\xff\xd8\xff' or (data[:4] == b'RIFF' and data[8:12] == b'WEBP') or data[:6] in (b'GIF87a', b'GIF89a'):
+        return 'image'
+    if (data[:4] == b'RIFF' and data[8:12] == b'WAVE') or data[:3] == b'ID3' or data[:4] in (b'OggS', b'fLaC') or (len(data) > 1 and data[0] == 0xFF and data[1] & 0xE0 == 0xE0):
+        return 'audio'
+    if data[4:8] == b'ftyp':
+        return 'audio' if data[8:12] in (b'M4A ', b'M4B ') else 'video'
+    return ''
+
+
+def stored_slots(slots, files, stored_keys):
+    """THE JOB'S SLOTS AS THE RUNTIME SENDS THEM (the owner 2026-11-05): the agent's own, without the stored files' slots (those are
+    the runtime's word: an agent's image, video or sound key is never kept); then, for each kind this RUN actually stored, the FIRST
+    stored file's DA-M key in its slot, and every stored file's key listed in the payload. A RUN that stored nothing leaves them empty."""
+    out = {k: v for k, v in (slots or {}).items() if k not in FILE_SLOTS.values()}
+    listed = []
+    for f in files:
+        key = stored_keys.get(f['name'])
+        if not key:
+            continue
+        kind = file_kind(base64.b64decode(f['content_b64']))
+        if kind:
+            out.setdefault(FILE_SLOTS[kind], key)
+        listed.append(f"{kind or 'file'} {key}")
+    if listed:
+        said = str(out.get('data_job_payload') or '')
+        out['data_job_payload'] = (said + '\n' if said else '') + 'stored in DA-M: ' + ', '.join(listed)
+    return out or None
+
+
 class _Stop(Exception):
     def __init__(self, state, reason):
         super().__init__(reason)
@@ -586,6 +620,7 @@ class Harness:
         slots = answer.get('job') if isinstance(answer.get('job'), dict) else None   # THE JOB'S SLOTS (the owner 2026-11-05: "all of the agents need to be updated to use all the new slots we added in the ai atom jobs view"): the agent's `job`, named in its "gives", passed on to wid as it is; wid keeps only the slots an agent fills
         if 'job' in answer and slots is None:
             return self._end(account, scope, member, key, job_key, run, 'FAILED', 'the answer\'s job is not an object of slots; the delivery is withheld')
+        slots = stored_slots(slots, [], {})   # an agent's own image, video or sound key is never kept: those slots are the runtime's
         try:
             files = self._files(manifest, answer)
             asks = self._asks(manifest, answer, key, member)
@@ -635,6 +670,7 @@ class Harness:
                 return self._end(account, scope, member, key, job_key, run, 'FAILED',
                                  f"{paid}{kept_note}, but DA-M did not store the files{left}: {stored.get('refused') or stored.get('error') or f'wid answered {status}'}", charged=charged)
             stored_keys[f['name']] = str(stored.get('dam_key') or '')
+        slots = stored_slots(slots, files, stored_keys)   # the stored files' keys, the runtime's own
         kept = {k: v for k, v in answer.items() if k not in ('files', 'makes', 'keeps', 'job')}   # job: its own slots, never the delivery
         delivery = answer.get('delivery') if isinstance(answer.get('delivery'), str) else json.dumps(kept, sort_keys=True)
         stored_note = f" · {len(files)} file{'' if len(files) == 1 else 's'} in DA-M" if files else ''
