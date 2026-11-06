@@ -31,6 +31,7 @@ MOST_INPUT = 10_000           # characters in one input
 MOST_KEEPS = 10               # records one RUN may add for the files it stored
 MOST_RUN_FILES = 3            # files one RUN may be handed (hands ["files"], CORE_CLEANUP_IV 21): the member's own DA-M files, named by the job's inputs the manifest declares as files
 MOST_RUN_FILE = 20 * 1024 * 1024   # bytes of one handed file (a picture or a short video: the sandbox's 512 MB holds three, base64 and parsed)
+RECORD_KEY = re.compile(r'^M[A-Z]{2,4}_[0-9A-F]{12}_[0-9A-F]{4}$')   # a member's record, as wid names the record a DA-M file belongs to (its source_key)
 A_DAY = {'image': 25, 'video': 5}   # THE OUTSIDE HAND'S DAILY LIMIT, per member and agent (the provider is paid per file made; the runtime's own config may set others)
 PLATFORM_HANDED = {('wid', 'GET', '/agnt/cards'), ('wid', 'GET', '/agnt/hired'), ('wid', 'GET', '/jobs/balance'), ('wid', 'GET', '/agnt/records/list')}
 # THE PLATFORM'S ANSWERS HANDED WITH THE CALL (the owner 2026-11-04, "the goal is extremely fast"): what the platform would answer these
@@ -654,8 +655,11 @@ class Harness:
         slots = stored_slots(slots, [], {})   # an agent's own image, video or sound key is never kept: those slots are the runtime's
         try:
             files = self._files(manifest, answer)
+            beside = self._companions(files, given.get('files'))   # {a file's place: the record it is stored beside}: checked before anything is charged
             asks = self._asks(manifest, answer, key, member)
             keeps = self._keeps(manifest, answer, files, asks, custom=fabric.custom(card, manifest, account))
+            if {files[n]['name'] for n in beside} & {k['file'] for k in keeps}:   # one file, one place: beside the member's record OR its own new record, never both
+                raise _Stop('FAILED', 'a file is both a companion and kept as a new record; nothing was sent')
             files = files + self._made(asks, key, job_key, run, account, member, scope)   # THE ERRAND, before anything is charged or stored: a file that was not made costs the member nothing and leaves nothing behind
             if len({f['name'] for f in files}) != len(files):   # a made file's own name is its ask's plus the kind that came back: it may not land on a carried file's name
                 raise _Stop('FAILED', 'two files of this run would be stored under one name; nothing was stored')
@@ -690,7 +694,7 @@ class Harness:
         stored_keys = {}   # {a stored file's name: the key DA-M gave it}
         for n, f in enumerate(files):
             status, stored = self.client.post('wid', '/jobs/upload', {'account': account, 'scope': scope, 'member': member, 'job_key': job_key, 'run': str(run), 'name': f['name'],
-                                                                     'content_b64': f['content_b64'], 'source_key': record_of[n][0] if n in record_of else key})   # its record's key; a file no record keeps: the agent's card, as before (wid stores it in DA-M)
+                                                                     'content_b64': f['content_b64'], 'source_key': record_of[n][0] if n in record_of else beside.get(n, key)})   # its record's key; a file no record keeps: the agent's card, as before (wid stores it in DA-M)
             if status != 200:
                 # A RECORD WHOSE FILE DID NOT ARRIVE IS TAKEN BACK when the platform lets the agent (its card declares remove); either way the RUN says
                 # plainly what stands: never a record left behind in silence
@@ -839,9 +843,9 @@ class Harness:
         if not isinstance(files, list) or len(files) > MOST_FILES:
             raise _Stop('FAILED', f'the answer\'s files are not a list of at most {MOST_FILES}; the delivery is withheld')
         for i, f in enumerate(files, 1):
-            if not (isinstance(f, dict) and set(f) == {'name', 'content_b64'} and isinstance(f['name'], str) and FILE_NAME.match(f['name'])
-                    and isinstance(f['content_b64'], str)):
-                raise _Stop('FAILED', f'file {i} is not {{name, content_b64}} with a plain name; the delivery is withheld')
+            if not (isinstance(f, dict) and set(f) in ({'name', 'content_b64'}, {'name', 'content_b64', 'companion_of'}) and isinstance(f['name'], str)
+                    and FILE_NAME.match(f['name']) and isinstance(f['content_b64'], str) and isinstance(f.get('companion_of', ''), str)):
+                raise _Stop('FAILED', f'file {i} is not {{name, content_b64}} (and an optional companion_of) with a plain name; the delivery is withheld')
             try:
                 size = len(base64.b64decode(f['content_b64'], validate=True))
             except (binascii.Error, ValueError):
@@ -849,6 +853,25 @@ class Harness:
             if size == 0:
                 raise _Stop('FAILED', f'file {i} is empty; the delivery is withheld')
         return files
+
+    @staticmethod
+    def _companions(files, handed):
+        """A FILE STORED BESIDE THE MEMBER'S OWN (CORE_CLEANUP_IV 94): an answer file may carry "companion_of": <one of this RUN's handed
+        file inputs>; it is then stored with that input file's own record as its source (a picture's preview beside the picture), and wid
+        checks the member owns that record. -> {the file's place in files: the record key}. Refused, nothing charged or stored: a name
+        that is not a handed file of this RUN, or one whose record wid did not name."""
+        out = {}
+        for n, f in enumerate(files):
+            name = f.get('companion_of')
+            if name is None:
+                continue
+            got = (handed or {}).get(name) if isinstance(handed, dict) else None
+            if not isinstance(got, dict):
+                raise _Stop('FAILED', f'file {n + 1} is the companion of "{name}", which is not a file this RUN was handed; the delivery is withheld')
+            if not got.get('record_key'):
+                raise _Stop('FAILED', f'file {n + 1} is the companion of "{name}", whose record the platform did not name; the delivery is withheld')
+            out[n] = got['record_key']
+        return out
 
     def _skill_hands(self, manifest, account, scope, member, job_key, run):
         """The skills the agent declares, carried out before the RUN: -> {hand: what it hands}. A skill LARRYD does not have
@@ -947,6 +970,9 @@ class Harness:
             if len(data) > MOST_RUN_FILE:
                 raise _Stop('FAILED', f'the file of input {declared[name]} is over {MOST_RUN_FILE // (1024 * 1024)} MB: {dam_key}')
             out[name] = {'dam_key': dam_key, 'kind': outside.kind_of(data), 'bytes': len(data), 'content_b64': base64.b64encode(data).decode('ascii')}
+            record = body.get('source_key') if isinstance(body, dict) else None
+            if isinstance(record, str) and RECORD_KEY.fullmatch(record):   # THE RECORD THE FILE BELONGS TO, when wid names it (CORE_CLEANUP_IV 94): an answer file may be stored as its companion
+                out[name]['record_key'] = record
         return out
 
     def _job_inputs(self, manifest, account, scope, job_key, run):

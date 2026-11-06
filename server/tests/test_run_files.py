@@ -11,7 +11,7 @@ import unittest
 
 from _here import APP  # noqa: F401
 from core_engine import harness, locker
-from test_job_inputs import ACCOUNT, JOB, KEY, MEMBER, SCOPE, Echo
+from test_job_inputs import ACCOUNT, CARD, HIRED, JOB, KEY, MEMBER, SCOPE, Echo
 
 PNG = b'\x89PNG\r\n\x1a\n' + b'Zanzibar-7731-private-picture' * 10
 PIC = 'DA-M_' + 'E' * 12 + '_0005'
@@ -119,3 +119,62 @@ class RunFiles(Echo):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class Companion(Echo):
+    """A FILE STORED BESIDE THE MEMBER'S OWN (CORE_CLEANUP_IV 94): "companion_of": <a handed file input> stores the answer's file with
+    that input file's own record as its source; refused before anything is charged when the input was not handed or wid named no record."""
+    RECORD = 'MIMG_' + 'A' * 12 + '_0007'
+    agent = RunFiles.agent   # the same echo agent as RunFiles, without running RunFiles' own tests again
+
+    def stored(self, answer, source_key=RECORD):
+        self.agent()
+        manifest = self.agents / 'echo' / 'agent.json'
+        card = json.loads(manifest.read_text())
+        card['skills'] = [next(h for h, s in harness.SKILLS.items() if s.get('after') == 'files')]   # the DA-M store
+        card['gives'] = card['gives'] + ['files']
+        manifest.write_text(json.dumps(card))
+        wid = Wid({'001': PIC}, {PIC: PNG})
+        got = wid.get
+
+        def get(office, route, data=None):
+            status, body = got(office, route, data)
+            if route == '/jobs/file' and status == 200 and source_key:
+                body = {**body, 'source_key': source_key}   # wid naming the record the file belongs to
+            return status, body
+        wid.get = get
+        h = harness.Harness(self.db, self.agents, wid)
+        h.facts = lambda account, scope, member: ([CARD], HIRED, [], lambda key: (True, ''))
+        h._skill_hands = lambda *a, **k: {}
+        seen = {}
+        h._run = lambda folder, manifest, given: (seen.update(given) or 'DONE', answer, '')
+        return h.run_job(ACCOUNT, SCOPE, MEMBER, JOB, 1), wid, seen
+
+    @staticmethod
+    def file(name, companion=None):
+        return {'name': name, 'content_b64': base64.b64encode(PNG).decode('ascii'), **({'companion_of': companion} if companion else {})}
+
+    def uploads(self, wid):
+        return [d for _o, route, d in wid.said if route == '/jobs/upload']
+
+    def test_a_companion_is_stored_with_the_input_files_own_record(self):
+        state, wid, seen = self.stored({'delivery': 'a preview', 'files': [self.file('preview.png', 'picture'), self.file('other.png')]})
+        self.assertEqual(state, 'DONE')
+        self.assertEqual(seen['files']['picture']['record_key'], self.RECORD)   # the agent is told the record too
+        self.assertEqual([(u['name'], u['source_key']) for u in self.uploads(wid)], [('preview.png', self.RECORD), ('other.png', KEY)])   # the other: the agent's card, as before
+
+    def test_a_companion_of_an_input_not_handed_or_with_no_record_is_refused_before_anything_is_stored(self):
+        for answer, source_key, said in (({'delivery': 'x', 'files': [self.file('p.png', 'mood')]}, self.RECORD, 'which is not a file this RUN was handed'),
+                                         ({'delivery': 'x', 'files': [self.file('p.png', 'picture')]}, '', 'whose record the platform did not name'),
+                                         ({'delivery': 'x', 'files': [self.file('p.png', 'picture')]}, 'not a key', 'whose record the platform did not name')):
+            with self.subTest(said=said, source_key=source_key):
+                state, wid, _seen = self.stored(answer, source_key)
+                self.assertEqual(state, 'FAILED')
+                self.assertIn(said, self.results(wid)[-1]['log'])
+                self.assertEqual(self.uploads(wid), [])
+                self.assertFalse([r for _o, r, _d in wid.said if r == '/jobs/charge'])   # nothing charged
+
+    def test_a_companion_must_be_text_and_files_keep_their_shape(self):
+        state, wid, _seen = self.stored({'delivery': 'x', 'files': [{**self.file('p.png'), 'companion_of': 7}]})
+        self.assertEqual(state, 'FAILED')
+        self.assertIn('an optional companion_of', self.results(wid)[-1]['log'])
