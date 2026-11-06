@@ -88,7 +88,7 @@ MODELS = {
         'kind': 'text', 'name': 'Whisper', 'prompt': False,
         'choices': {}, 'first': {},
         'reference': 'audio', 'reference_one': True, 'reference_required': True, 'most_references': 1,
-        'reference_rules': ((('wav', 'mp3', 'flac'), 24 * 1024 * 1024),),
+        'reference_rules': ((('wav', 'mp3', 'flac', 'mp4'), 24 * 1024 * 1024),),   # a sound, or a video whose sound it hears (whisper reads its file through ffmpeg)
         'output_key': 'transcription',   # the SRT text itself, in the answer (never a file to fetch)
         'most_bytes': 512 * 1024, 'most_seconds': 900,   # within the 1 MB the hand reads of a prediction's answer (_call); an hour's subtitles are some 60 KB
     },
@@ -184,7 +184,7 @@ def check(makes, allowed):
         return [], 'the ask names a model the agent does not declare'
     spec = MODELS[model]
     numbers = spec.get('numbers') or {}
-    if set(ask) - {'model', 'prompt', 'name', *spec['choices'], *numbers, *(('reference',) if spec.get('reference') else ())}:
+    if set(ask) - {'model', 'prompt', 'name', *spec['choices'], *numbers, *(('reference', 'companion_of') if spec.get('reference') else ())}:
         return [], f'the ask holds more than {spec["name"]} takes'
     prompt = ask.get('prompt')
     if (spec.get('prompt') or 'prompt' in ask) and not (isinstance(prompt, str) and prompt.strip() and len(prompt) <= MOST_PROMPT):
@@ -221,6 +221,10 @@ def check(makes, allowed):
         out['reference'] = list(refs)
     elif spec.get('reference_required'):
         return [], f'the ask names no reference {spec["name"]} needs'
+    if 'companion_of' in ask:   # THE MADE FILE STORED BESIDE THE MEMBER'S OWN (CORE_CLEANUP_IV 94 b, for a made file): "reference", its first reference's record, and nothing else
+        if ask['companion_of'] != 'reference' or 'reference' not in out:
+            return [], 'the ask\'s companion_of is not "reference", or it names no reference'
+        out['companion_of'] = 'reference'
     return [out], ''
 
 

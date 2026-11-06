@@ -191,6 +191,22 @@ def key_of(row):
     return row.get('key') if isinstance(row.get('key'), str) else ''
 
 
+# WHY THE RECORDS WERE NOT HANDED, IN ONE WORD (frost-05 2026-11-06, frost-99's and frost-e4's finding: an agent handed nothing could not
+# tell "the member has not pressed Allow" from any other failure): given['records_refused'] is one of these, never more. Read from wid's
+# own fixed refusal sentences (larryd_runtime.records_right), exactly; anything else, wid away or a shape it never says: 'failed'.
+REFUSED_WORDS = (("refused by FROST: not allowed to send this member's data out", 'no_allowance'),
+                 ('refused by FROST: not in the records that agent declares', 'not_declared'))
+
+
+def refused_word(status, reason):
+    """-> 'no_allowance' | 'not_declared' | 'failed': the one word an agent is handed when its records were not."""
+    if status == 403 and isinstance(reason, str):
+        for said, word in REFUSED_WORDS:
+            if reason == said:
+                return word
+    return 'failed'
+
+
 def read(ask, wanted, account, scope, member, agent_key='', custom=False, most=MOST_ROWS):
     """{species: [rows]} for every species declared with read, through wid's list door for this member, page by page
     up to MOST_ROWS; a refusal propagates (nothing is guessed when wid does not answer). CUSTOM DATA ONLY ON CUSTOM

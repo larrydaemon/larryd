@@ -410,6 +410,7 @@ class Harness:
                         given['who']['name'] = name
         except Refused as no:   # THE PLATFORM DID NOT HAND THEM (a slot without the record doors yet, a member not allowed, wid away): the agent is handed none
             not_read = 'records not read'   # and says so on its page; nothing is guessed, nothing is written without them. THE RECORD KEEPS THE RUNTIME'S OWN WORDS ONLY:
+            given['records_refused'] = member_records.refused_word(no.status, no.reason)   # and the agent is told why in ONE word, never the platform's text
             LOG.warning('records not read for %s: %s', agent_key, no.reason)   # the platform's refusal text goes to the log, never into the audit row (fixed words, never cut, nothing written by another)
         not_read = '; '.join(r for r in (not_read, self._counts(manifest, given, account, scope, member, agent_key),
                                          self._roster(manifest, given, account, scope, member, agent_key),
@@ -691,7 +692,10 @@ class Harness:
             keeps = self._keeps(manifest, answer, files, asks, custom=fabric.custom(card, manifest, account))
             if {files[n]['name'] for n in beside} & {k['file'] for k in keeps}:   # one file, one place: beside the member's record OR its own new record, never both
                 raise _Stop('FAILED', 'a file is both a companion and kept as a new record; nothing was sent')
+            if any(a.get('companion_of') for a in asks) and {a['name'] for a in asks if a.get('companion_of')} & {k['file'] for k in keeps}:   # one file, one place (94 b)
+                raise _Stop('FAILED', 'a file is both a companion and kept as a new record; nothing was sent')
             files = files + self._made(asks, key, job_key, run, account, member, scope)   # THE ERRAND, before anything is charged or stored: a file that was not made costs the member nothing and leaves nothing behind
+            beside.update({n: f['beside'] for n, f in enumerate(files) if f.get('beside')})   # a made file beside its reference's record (94 b)
             if len({f['name'] for f in files}) != len(files):   # a made file's own name is its ask's plus the kind that came back: it may not land on a carried file's name
                 raise _Stop('FAILED', 'two files of this run would be stored under one name; nothing was stored')
         except _Stop as stop:
@@ -796,7 +800,10 @@ class Harness:
                 provider_key = self._provider_key(provider, agent_key, job_key, run, account, scope, member)
                 if not provider_key:
                     raise _Stop('FAILED', f'not made, no {outside.PROVIDERS[provider]["name"]} key: the platform\'s vault handed none; nothing was sent')
-            picture = self._reference(ask, account, scope, member, job_key, run)   # read before the day is counted: a reference that cannot be read sends nothing and costs nothing
+            records = []
+            picture = self._reference(ask, account, scope, member, job_key, run, records)   # read before the day is counted: a reference that cannot be read sends nothing and costs nothing
+            if ask.get('companion_of') == 'reference' and not (records and records[0]):   # BESIDE ITS REFERENCE'S RECORD (94 b): the record wid names for the first reference, or nothing is sent
+                raise _Stop('FAILED', f"not made, the made file is the companion of its reference, whose record the platform did not name: {(ask.get('reference') or [''])[0]}; nothing was sent")
             most = self.a_day.get(outside.MODELS[ask['model']]['kind'])
             if not (isinstance(most, int) and not isinstance(most, bool) and most >= 0 and member and agent_key):
                 raise _Stop('REFUSED', 'the day is not counted: no limit is set for this kind, or the member is not named; nothing was sent')
@@ -811,10 +818,11 @@ class Harness:
             made, why = hand.make(ask, provider_key, picture, **more)
             if why:
                 raise _Stop('FAILED', f'not made, {why}')
-            out.append({'name': made['name'], 'content_b64': base64.b64encode(made['data']).decode('ascii'), 'asked_as': ask['name']})
+            out.append({'name': made['name'], 'content_b64': base64.b64encode(made['data']).decode('ascii'), 'asked_as': ask['name'],
+                        **({'beside': records[0]} if ask.get('companion_of') == 'reference' else {})})   # stored with its reference's record as its source (94 b)
         return out
 
-    def _reference(self, ask, account, scope, member, job_key, run):
+    def _reference(self, ask, account, scope, member, job_key, run, records=None):
         """THE REFERENCE PICTURES (R-0040 / R-0041, the owner 2026-10-24; up to two: CORE_CLEANUP_IV 18): when the ask names them (DA-M
         keys the member typed or picked on the agent's page, checked by outside.check), each one's bytes are read through wid's job
         file door FOR THIS MEMBER, while their RUN is open (wid decides and asks DA-M as itself).
@@ -847,6 +855,9 @@ class Harness:
                 raise _Stop('FAILED', f'not made, reference not {"a picture" if pictures_only else "a kind its slot takes"}: {dam_key}; nothing was sent')
             if len(picture) > slot_most:   # its slot within what is left of the ask
                 raise _Stop('FAILED', f'not made, reference too large: {dam_key} is over {slot_most // (1024 * 1024)} MB; nothing was sent')
+            if records is not None:   # THE RECORD EACH REFERENCE BELONGS TO, as wid names it (its DA-M source_key, a member's record key), else ''
+                record = body.get('source_key') if isinstance(body, dict) else None
+                records.append(record if isinstance(record, str) and RECORD_KEY.fullmatch(record) else '')
             out.append(picture)
         return out
 

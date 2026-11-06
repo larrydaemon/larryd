@@ -562,13 +562,68 @@ class TheRowsFiftyOneToFiftyFour(World):
                          (None, 'Replicate made nothing'))   # the enhanced one missing: nothing kept
 
     def test_a_run_makes_subtitles_from_the_members_sound_and_the_day_counts_text(self):
-        TheRun.placed(self, {**TheRun.ANSWER, 'makes': [{'model': 'whisper', 'name': 'Talk', 'reference': REF}]},
-                      {'makes': ['whisper'], 'records': {'imgs': ['read', 'add']}}, ('makes', 'keeps', 'delivery'))
+        """The whole errand of a RUN (the agent's own process stood in for, so this proves the same on every machine): the member's sound read
+        from DA-M for this RUN, lent, the subtitles made and stored; a picture where a sound belongs sends nothing."""
+        answer = {'delivery': 'made', 'makes': [{'model': 'whisper', 'name': 'Talk', 'reference': REF}]}
+        TheRun.placed(self, answer, {'makes': ['whisper'], 'records': {'audo': ['read', 'add']}}, ('makes', 'keeps', 'delivery'))
+        real = harness.Harness._run
+        harness.Harness._run = lambda h, folder, manifest, given: ('DONE', dict(answer), '')
+        self.addCleanup(setattr, harness.Harness, '_run', real)
         p, f = RefPlatform(content=WAV), FileDoor(output={'transcription': SUBS})
         self.assertEqual(TheRun.run_with(self, p, f, a_day=dict(harness.A_DAY)), 'DONE')
         self.assertIn(WAV, f.asked[0][3])
-        self.assertEqual(harness.A_DAY['text'], 25)
-        self.assertEqual(harness.A_DAY['audio'], 25)
-        TheRun.placed(self, {**TheRun.ANSWER, 'makes': [{'model': 'whisper', 'name': 'Talk', 'reference': REF}]},
-                      {'makes': ['whisper'], 'records': {'imgs': ['read', 'add']}}, ('makes', 'keeps', 'delivery'))
-        self.assertEqual(TheRun.run_with(self, RefPlatform(content=JPG), FileDoor(output={'transcription': SUBS})), 'FAILED')   # a picture is not a sound: nothing sent
+        self.assertEqual([(d['name'], base64.b64decode(d['content_b64'])) for o, r, d in p.said if r == '/jobs/upload'], [('Talk.srt', SUBS.encode())])
+        self.assertEqual((harness.A_DAY['text'], harness.A_DAY['audio']), (25, 25))
+        p, f = RefPlatform(content=JPG), FileDoor(output={'transcription': SUBS})
+        self.assertEqual(TheRun.run_with(self, p, f, a_day=dict(harness.A_DAY)), 'FAILED')   # a picture is not a sound: nothing sent
+        self.assertEqual(f.asked, [])
+
+class TheMadeCompanion(World):
+    """CORE_CLEANUP_IV 94 b FOR A MADE FILE (frost-05 2026-11-06, pf Subtitles Tool): an ask may say "companion_of": "reference"; the made
+    file is then stored with its first reference's record as its source (the record wid names for that DA-M file), never as a loose
+    file and never as a new record. A record wid does not name, or a keep of the same file: nothing is sent and nothing is charged."""
+    VIDEO = 'MVDO_0123456789AB_0007'
+    ASK = {'model': 'whisper', 'name': 'Talk', 'reference': REF, 'companion_of': 'reference'}
+
+    def test_the_grammar_takes_reference_and_nothing_else(self):
+        self.assertEqual(outside.check([self.ASK], ('whisper',))[0][0]['companion_of'], 'reference')
+        for wrong in ('MVDO_0123456789AB_0007', 'file', '', ['reference']):
+            self.assertEqual(outside.check([{**self.ASK, 'companion_of': wrong}], ('whisper',))[0], [], wrong)
+        self.assertEqual(outside.check([{'model': 'chatterbox', 'name': 'X', 'prompt': 'Hi', 'companion_of': 'reference'}], ('chatterbox',))[0], [])   # no reference: no companion
+        self.assertNotIn('companion_of', outside.goes_out(outside.check([self.ASK], ('whisper',))[0][0]))   # never sent to the provider
+
+    def placed(self, answer):
+        """The agent's answer, as its process would give it: the agent's own run is stood in for (harness._run), so the hand, the
+        reference's record and the store are proven on any machine (the agent sandbox runs on Linux only)."""
+        TheRun.placed(self, answer, {'makes': ['whisper'], 'records': {'vdeo': ['read', 'add']}}, ('makes', 'keeps', 'delivery'))
+        real = harness.Harness._run
+        harness.Harness._run = lambda h, folder, manifest, given: ('DONE', dict(answer), '')
+        self.addCleanup(setattr, harness.Harness, '_run', real)
+
+    def platform(self, record):
+        p = RefPlatform(content=MP4)
+        real = p.get
+        p.get = lambda office, route, data=None, most=None: ((200, {'dam_key': REF, 'mime_type': 'video/mp4', 'content_b64': base64.b64encode(MP4).decode(), **({'source_key': record} if record else {})})
+                                                             if route == '/jobs/file' else real(office, route, data, most))
+        return p
+
+    def test_a_made_file_is_stored_beside_its_references_record(self):
+        outside.MODELS['whisper']['reference_rules'][0][0] and self.assertIn('mp4', outside.MODELS['whisper']['reference_rules'][0][0])   # subtitles from a video's own sound
+        self.placed({'delivery': 'made', 'makes': [self.ASK]})
+        p = self.platform(self.VIDEO)
+        self.assertEqual(TheRun.run_with(self, p, FileDoor(output={'transcription': SUBS}), a_day=dict(harness.A_DAY)), 'DONE')
+        up = [d for o, r, d in p.said if r == '/jobs/upload']
+        self.assertEqual([(u['name'], u['source_key']) for u in up], [('Talk.srt', self.VIDEO)])
+        self.assertNotIn('/agnt/records/add', [r for _o, r, _d in p.said])   # beside the record: never a new one
+
+    def test_no_record_named_or_a_keep_of_the_same_file_sends_nothing(self):
+        for record in ('', 'not a record key'):
+            self.placed({'delivery': 'made', 'makes': [self.ASK]})
+            p, f = self.platform(record), FileDoor(output={'transcription': SUBS})
+            self.assertEqual(TheRun.run_with(self, p, f, a_day=dict(harness.A_DAY)), 'FAILED')
+            self.assertEqual([u for _m, u, _h, _d in f.asked], [])   # nothing lent, nothing asked
+            self.assertNotIn('/jobs/charge', [r for _o, r, _d in p.said])
+        self.placed({'delivery': 'made', 'makes': [self.ASK], 'keeps': [{'species': 'vdeo', 'values': {'data_nickname': 'Talk'}, 'file': 'Talk'}]})
+        p, f = self.platform(self.VIDEO), FileDoor(output={'transcription': SUBS})
+        self.assertEqual(TheRun.run_with(self, p, f, a_day=dict(harness.A_DAY)), 'FAILED')
+        self.assertEqual(f.asked, [])
