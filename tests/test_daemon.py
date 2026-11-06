@@ -46,6 +46,8 @@ def test_the_daemon(tmp_path):
         line = daemon.stdout.readline()
         assert line.startswith(f"LARRYD's runtime listens on http://127.0.0.1:{port} (pid {daemon.pid})"), line
         assert f'its instance: {instance}' in line and f'stop it: Ctrl-C (or kill {daemon.pid})' in line
+        with urllib.request.urlopen(f'http://127.0.0.1:{port}/ready', timeout=2) as r:   # said only once it answers (frost-92's rc16 X1)
+            assert r.status == 200
         for _ in range(60):
             try:
                 status, body = get(port)
@@ -54,7 +56,9 @@ def test_the_daemon(tmp_path):
                 time.sleep(0.25)
         assert (status, body) == (401, {'refused': 'not a signed call'})
         secret = (instance / 'secrets' / 'runtime_link').read_text().strip()
-        assert get(port, secret) == (200, {'office': 'runtime', 'locker': 0, 'runs': 0})
+        assert get(port, secret) == (200, {'office': 'runtime', 'locker': 1, 'runs': 0})   # the marketplace, held as a server holds it
+        with urllib.request.urlopen(f'http://127.0.0.1:{port}/marketplace', timeout=20) as page:   # the developer's own shelf, unsigned
+            assert page.status == 200 and 'class="mk-grid' in page.read().decode('utf-8')   # the marketplace: its controller and its grid
         assert stat.S_IMODE(os.stat(instance).st_mode) == 0o700 and stat.S_IMODE(os.stat(instance / 'secrets' / 'runtime_link').st_mode) == 0o600
         assert json.loads((instance / 'platform.json').read_text()) == {}
         assert (instance / 'agents' / 'marketplace' / 'agent.py').is_file()
@@ -114,3 +118,15 @@ def test_the_runtimes_own_marketplace_is_placed_fresh_and_nothing_else_is_touche
     assert (mine / 'agent.json').read_text() == '{"name": "the developer\'s"}'
     daemon.prepare(instance, runtime)
     assert (instance / 'secrets' / 'runtime_link').read_text() == secret
+
+
+def test_the_listen_line_waits_for_ready(monkeypatch):
+    import io
+    from larryd import daemon as d
+    asked = []
+    monkeypatch.setattr(d, 'ready', lambda port, timeout=0.5: (asked.append(port), len(asked) >= 3)[1])
+    out = io.StringIO()
+    assert d.say_when_ready(5999, 'LISTENS', every=0.01, out=out) and out.getvalue() == 'LISTENS\n' and len(asked) == 3
+    monkeypatch.setattr(d, 'ready', lambda port, timeout=0.5: False)
+    out = io.StringIO()
+    assert not d.say_when_ready(5999, 'LISTENS', most=0.05, every=0.01, out=out) and out.getvalue() == ''

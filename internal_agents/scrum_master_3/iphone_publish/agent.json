@@ -1,0 +1,92 @@
+{
+  "key": "MAGT_3A433C907BA6_C39B",
+  "name": "iPhone publish",
+  "office": "scrum_master_3",
+  "workflow": "Scrum Master 3",
+  "group": "NIGHT",
+  "entry": "agent.py",
+  "libs": [
+    "night",
+    "look"
+  ],
+  "about": "IPHONE PUBLISH: the walked iPhone build staged for the phone, then put on it when it is on its cable at this RUN (native.transfer); not on the cable, it stays staged and the next RUN tries again (on demand: no watcher, no clock). Red: the kept build is not ready (never walked, or walked red). Dry: it reads the kept build, its walk and the staged record, and names what it would stage and run.",
+  "does": [
+    "canvas",
+    "run"
+  ],
+  "calls": [
+    "canvas"
+  ],
+  "records": {
+    "agnt": [
+      "read"
+    ],
+    "jobs": [
+      "read"
+    ]
+  },
+  "run": {
+    "do": "run",
+    "hands": []
+  },
+  "gives": [
+    "view",
+    "delivery",
+    "light"
+  ],
+  "skills": [],
+  "knowledge": [],
+  "facts": {
+    "dry": true,
+    "chain": "NIGHT",
+    "lock": "~/scratch/tests/night/.night.lock",
+    "waits_for": {
+      "a DAY run": "~/scratch/tests/day/.day.lock",
+      "the tower": "~/spine_scratch/tower_auto/auto.lock"
+    },
+    "utility_pid": "~/spine_scratch/hotfix_runs/running.lock",
+    "python": "~/virtual_workspace/.venv/bin/python",
+    "tower_app": "~/virtual_workspace/lryllm/lryllm/app",
+    "reruns": "~/spine_scratch/tower_auto/reruns",
+    "targets": {
+      "here": "localhost_pf",
+      "rnd": "frost-b.rnd",
+      "native": "this laptop"
+    },
+    "native_prefixes": [
+      "native_",
+      "hot_fix"
+    ],
+    "native_steps": [
+      "native_generate",
+      "native_iphone",
+      "native_test_iphone",
+      "native_macos",
+      "native_test_macos"
+    ],
+    "plan": [],
+    "next": "macOS take in",
+    "took": "seconds",
+    "heals": false,
+    "heal_most": 2,
+    "builds": "~/spine_scratch/tower_native",
+    "staged": "~/scratch/tests/night/iphone_staged.json"
+  },
+  "card": {
+    "class": "MARK I AGENT (NORMAL)",
+    "pitch": "iPhone publish: stages the walked iPhone build: it installs by itself the next time the phone is on its cable",
+    "price": "0",
+    "type": "DEVELOPER",
+    "residency": "INTERNAL",
+    "authorization": "PRIVATE",
+    "screen": "larryd/jobs/home",
+    "product": "LARRYD",
+    "module": "Jobs",
+    "developer": "LARRYD",
+    "sends_to": "",
+    "data_sent": ""
+  },
+  "internal": {
+    "seconds": 900
+  }
+}

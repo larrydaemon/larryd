@@ -1,4 +1,4 @@
-"""ONE FILE: the agent as LARRYD reviews it. `<name>.larryd` is a zip of agent/ and nothing else (no project file, no
+"""ONE FILE: the agent as LARRYD reviews it. `<name>.larryd` is a zip of agent/ (and, under `live/`, the live half of an agent that declares a live page) and nothing else (no project file, no
 key, no compiled cache), made the same way every time (sorted names, one fixed time), so its sha256 names it.
 open_safely() is what LARRYD does with a file anyone sent: a size cap, at most 200 plain files, no link, no path that
 leaves the folder, no file that grows past the cap when unpacked; it unpacks into agent/ and runs nothing."""
@@ -15,18 +15,43 @@ MOST_FILES = 200
 FIXED_TIME = (2026, 1, 1, 0, 0, 0)
 
 
+def files(root):
+    """[(the path inside the file, the file)] of an agent project, in one fixed order: every file of agent/, and, for an agent
+    whose manifest declares a live page, the live half (live/ beside agent/) under `live/`. THE LIVE HALF IS PART OF THE AGENT:
+    packed with it, hashed with it, approved with it."""
+    root = pathlib.Path(root).resolve()
+    agent, out = root / shape.AGENT, []
+    for p in agent.rglob('*'):
+        rel = p.relative_to(agent)
+        if p.is_file() and not p.is_symlink() and '__pycache__' not in rel.parts:
+            out.append((rel.as_posix(), p))
+    half = root / shape.LIVE
+    if half.is_dir() and not half.is_symlink() and has_live(agent):
+        for name in shape.LIVE_FILES + shape.LIVE_MAY:
+            if (half / name).is_file() and not (half / name).is_symlink():
+                out.append((f'{shape.LIVE}/{name}', half / name))
+    return sorted(out, key=lambda x: pathlib.PurePosixPath(x[0]))
+
+
+def has_live(agent):
+    try:
+        import json
+        return isinstance(json.loads((pathlib.Path(agent) / shape.MANIFEST).read_text()).get('live'), dict)
+    except (OSError, ValueError, AttributeError):
+        return False
+
+
 def make(root):
     """-> (the file's bytes, its sha256) for the agent project at root."""
-    agent = pathlib.Path(root).resolve() / shape.AGENT
+    root = pathlib.Path(root).resolve()
+    agent = root / shape.AGENT
     out = io.BytesIO()
     with zipfile.ZipFile(out, 'w', zipfile.ZIP_DEFLATED) as z:
-        for p in sorted(agent.rglob('*')):
-            rel = p.relative_to(agent)
-            if p.is_file() and not p.is_symlink() and '__pycache__' not in rel.parts:
-                info = zipfile.ZipInfo(rel.as_posix(), FIXED_TIME)
-                info.external_attr = (stat.S_IFREG | 0o644) << 16
-                info.compress_type = zipfile.ZIP_DEFLATED
-                z.writestr(info, p.read_bytes())
+        for rel, p in files(root):
+            info = zipfile.ZipInfo(rel, FIXED_TIME)
+            info.external_attr = (stat.S_IFREG | 0o644) << 16
+            info.compress_type = zipfile.ZIP_DEFLATED
+            z.writestr(info, p.read_bytes())
     data = out.getvalue()
     return data, hashlib.sha256(data).hexdigest()
 
@@ -61,7 +86,8 @@ def open_safely(data, into):
     agent = pathlib.Path(into) / shape.AGENT
     agent.mkdir(parents=True)
     for i in infos:
-        target = agent / i.filename
+        first, _, rest = i.filename.partition('/')
+        target = pathlib.Path(into) / shape.LIVE / rest if first == shape.LIVE and rest else agent / i.filename   # the live half unpacks beside agent/, as the developer keeps it
         target.parent.mkdir(parents=True, exist_ok=True)
         with z.open(i) as src:
             body = src.read(i.file_size + 1)   # never more than it says (a lying header cannot grow it)

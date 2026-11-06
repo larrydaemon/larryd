@@ -1,0 +1,136 @@
+{
+  "key": "MAGT_87105404DCCF_7F8F",
+  "name": "New Files",
+  "office": "scrum_master_3",
+  "workflow": "Scrum Master 3",
+  "group": "LIVE",
+  "entry": "agent.py",
+  "about": "Scrum Master 3's LIVE New Files, on demand: every file of the workspace new, changed or gone since its last RUN, every new page named; red only while an UNEXPECTED new file is open and unanswered, each by its own number (F-0001 ...). Claude Code's own files are where they are expected, never red.",
+  "does": [
+    "canvas",
+    "run"
+  ],
+  "calls": [
+    "canvas"
+  ],
+  "records": {
+    "agnt": [
+      "read"
+    ],
+    "jobs": [
+      "read"
+    ]
+  },
+  "run": {
+    "do": "run",
+    "hands": []
+  },
+  "gives": [
+    "view",
+    "delivery",
+    "light"
+  ],
+  "skills": [],
+  "knowledge": [],
+  "facts": {
+    "live_key": "new_files",
+    "workspace": "~/virtual_workspace",
+    "global_config": "~/virtual_workspace/global_config.json",
+    "most_files": 600000,
+    "list_most": 200,
+    "never_walked": [
+      ".git"
+    ],
+    "claude_folder": ".claude",
+    "claude_names": [
+      "claude.md",
+      "claude.local.md",
+      ".mcp.json"
+    ],
+    "sealed_folders": [
+      "core_engine",
+      "schemas"
+    ],
+    "sealed_names": [
+      "global_config.json"
+    ],
+    "programs": [
+      ".py",
+      ".pyc",
+      ".pyo",
+      ".pyw",
+      ".pyx",
+      ".pyd",
+      ".pth",
+      ".sh",
+      ".zsh",
+      ".bash",
+      ".command",
+      ".swift",
+      ".js",
+      ".mjs",
+      ".cjs",
+      ".ts",
+      ".html",
+      ".htm",
+      ".plist",
+      ".dylib",
+      ".so",
+      ".bundle",
+      ".app",
+      ".bin",
+      ".exe",
+      ".dll",
+      ".jar",
+      ".wasm",
+      ".node",
+      ".rb",
+      ".pl",
+      ".php",
+      ".lua",
+      ".applescript",
+      ".scpt"
+    ],
+    "compilers": {
+      "__pycache__": [
+        ".pyc"
+      ],
+      ".pytest_cache": null,
+      ".build": null,
+      "DerivedData": null,
+      "ios/build": null,
+      "macos/build": null
+    },
+    "page_kind": ".html",
+    "git_seconds": 60,
+    "belongs": {},
+    "unexpected_step": "remove it by hand, or say it belongs: write its number and why in this agent's facts \"belongs\" (agent.json, e.g. \"{n}\": \"<why it belongs>\"), place the agent again, then press RUN on New Files",
+    "cut_step": "du -sh ~/virtual_workspace/* | sort -h | tail -5 (it names the biggest folders): move the one that does not belong out of the workspace, then press RUN on New Files",
+    "fault_steps": {
+      "global_config.json": "~/virtual_workspace/.venv/bin/python -m json.tool ~/virtual_workspace/global_config.json > /dev/null (it names the broken line: put it right), then press RUN on New Files",
+      "git check-ignore": "cd ~/virtual_workspace && git status (it names what git refuses, e.g. a stale .git/index.lock: rm .git/index.lock only when no git is running), then press RUN on New Files",
+      "the timeout": "cd ~/virtual_workspace && time git check-ignore -v global_config.json (over a few seconds: git status names the folder it is slow on; move that folder out of the workspace or into .gitignore), then press RUN on New Files",
+      "the program": "press RUN on New Files once more; if the same line comes back, send it to a builder as a request"
+    }
+  },
+  "card": {
+    "class": "MARK I AGENT (NORMAL)",
+    "pitch": "Every new file known; an unexpected one is red",
+    "price": "0",
+    "type": "DEVELOPER",
+    "residency": "INTERNAL",
+    "authorization": "PRIVATE",
+    "screen": "larryd/jobs/home",
+    "product": "LARRYD",
+    "module": "Jobs",
+    "developer": "LARRYD",
+    "sends_to": "",
+    "data_sent": ""
+  },
+  "internal": {
+    "seconds": 300
+  },
+  "libs": [
+    "look"
+  ]
+}

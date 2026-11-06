@@ -1,0 +1,22 @@
+{
+ "about": "ITS PAGE'S ROUTES: every address its host (web/app.py) answers, by name. app.py registers each route from here.",
+ "routes": {
+  "home": "/",
+  "shell": "/shell",
+  "core_css": "/look/core.css",
+  "page_css": "/static/css/{office}.css",
+  "press": "/press",
+  "voice": "/voice/<door>",
+  "board_css": "/look/board.css",
+  "theme": "/themes/<path:name>",
+  "stream": "/stream",
+  "mode": "/mode",
+  "security": "/security",
+  "agent_press": "/agent_press",
+  "day_switch": "/day_switch",
+  "internal_run": "/internal/run",
+  "health": "/health",
+  "internal_view": "/internal/view"
+ },
+ "routes_about": "home: the board (GET, ?agentlayer=gate|agent); shell: one shell action (POST, from its own page only), then back to the board; core_css and theme: the look's files, read where they are; page_css: its page's own sheet, carrying the office's own name (app/static/css/<office>.css: replica.css in the template, scrum_master_2.css, cmo.css; the owner 2026-10-27: \"it would have its own css not called replica\"; {office} is filled by frame/frame_replica.py). board_css: the header's status board lines, LARRY LLM's core.css read where it is, its .lsb rules alone. stream: THE LIVE (GET): this page's own Server-Sent Events (frame/frame_live.py follow, as the original's): the hello, every shell's row today, the X board, what runs now, the five tools, each new LARRYD log of this office's jobs as it is written; read by the page's own panel and by the LIVE agent's check (agent003), never by polling. mode: the header's DARK / LIGHT (POST from its own page), nobody signed in here, so the mode rides in the page's address as the platform carries it for a signed-out visitor, then back to the page it was pressed on (the owner 2026-10-27: \"when i click light mode ... make sure all header and footer links work\"). security: THE OWNER'S SECURITY SWITCH (POST from its own page, the page's guard): writes this office's settings security.scan on or off (to=on|off), atomically, then back to the face it was pressed on; it never starts a scan, off is never red, and the watcher's settings trigger looks again. agent_press: AN AGENT'S OWN BUTTON (POST from its own page, the page's guard; the owner 2026-10-28: \"for the backlog add a big button to clear all backlog\"): the agent's key and one of its own PRESSES, its press(store, job_key, do) run, its words said on its shell, then back to the face it was pressed on. day_switch: THE DAY BLOCK'S ONE TOGGLE (POST from its own page, the page's guard; the owner 2026-10-28: \"you can have a single day block at the top with a toggle and 1 toggle turns off all the day agents ... it does nothign else\"): every DAY agent's shell switched on or off (to=on|off), then back to the face it was pressed on."
+}

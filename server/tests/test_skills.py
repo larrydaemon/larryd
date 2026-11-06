@@ -19,7 +19,7 @@ WHO = {'first_name': 'Ann', 'member_type': 'user', 'account_name': 'Scratch Acco
 KEY, JOB = 'MAGT_00000000D0B2_0001', 'MJOB_00000000D0B2_0001'
 ACCOUNT, SCOPE, MEMBER = 'ACCT_' + 'A' * 12 + '_0001', 'SCRATCH', 'MCON_' + 'B' * 12 + '_0002'
 CARD = {'key': KEY, 'name': 'Echo', 'screen': 'larryd/agnt/home', 'product': 'LARRYD', 'product_slug': 'larryd', 'module': 'Agents',
-        'price': '0', 'status': 'LIVE'}
+        'price': '0', 'status': 'APPROVED'}
 HIRED = [{'agent_key': KEY, 'board': CARD['screen'], 'shell_id': 1, 'on': True, 'job_key': JOB}]
 RUN_OF = {'account': ACCOUNT, 'scope': SCOPE, 'member': MEMBER, 'job_key': JOB, 'run': '1'}
 SAID = {'date': '2026-09-30', 'lang': 'en', 'greetings': {'morning': 'Up with the sun', 'afternoon': 'Good afternoon', 'evening': 'Good evening', 'night': 'Good night'}}
@@ -33,13 +33,13 @@ class Platform:
         self.said.append((office, route, data))
         if self.status != 200:
             return self.status, {'refused': 'sign in first'}
-        return 200, {'/larry/greeting': SAID, '/agents/identity': WHO}[route]
+        return 200, {'/jobs/greeting': SAID, '/jobs/identity': WHO}[route]
 
     def post(self, office, route, data):
         self.said.append((office, route, data))
-        if route == '/dam/upload':
+        if route == '/jobs/upload':
             return (200, {'dam_key': 'DA-M_' + '0' * 12 + '_0001', 'repeat': False}) if self.store_status == 200 else (self.store_status, {'error': 'the zone does not take it'})
-        return (200, {'charged': 0, 'free': True}) if route == '/mtok/use' else (200, {'saved': True})
+        return (200, {'charged': 0, 'free': True}) if route == '/jobs/charge' else (200, {'saved': True})
 
 
 def _closed_port():
@@ -97,17 +97,17 @@ class Skills(World):
         self.agent([GREETING])
         p = Platform()
         self.assertEqual(self.run_with(p), 'DONE')
-        self.assertIn(('lryllm', '/larry/greeting', RUN_OF), p.said)   # the RUN it is for, so the platform answers only for an open RUN
+        self.assertIn(('wid', '/jobs/greeting', RUN_OF), p.said)   # the RUN it is for, so the platform answers only for an open RUN
         self.assertEqual(json.loads(self.results(p)[-1]['delivery']), {'greeting': SAID})
         for path in self.instance.rglob('*'):
             if path.is_file():
                 self.assertNotIn(b'Up with the sun', path.read_bytes())
 
-    def test_who_the_agent_works_for_is_asked_of_frost_and_handed_in(self):
+    def test_who_the_agent_works_for_is_asked_of_wid_and_handed_in(self):
         self.agent([IDENTITY, GREETING])
         p = Platform()
         self.assertEqual(self.run_with(p), 'DONE')
-        self.assertIn(('fs', '/agents/identity', RUN_OF), p.said)
+        self.assertIn(('wid', '/jobs/identity', RUN_OF), p.said)
         self.assertEqual(json.loads(self.results(p)[-1]['delivery']), {'greeting': SAID, 'identity': WHO})
         for path in self.instance.rglob('*'):
             if path.is_file():
@@ -124,7 +124,7 @@ class Skills(World):
         p = Platform(status=401)
         self.assertEqual(self.run_with(p), 'FAILED')
         self.assertEqual(self.results(p)[-1]['log'], "LARRYD could not read the member's greeting: sign in first")
-        silent = platform.Client({'lryllm': f'http://127.0.0.1:{_closed_port()}', 'wid': f'http://127.0.0.1:{_closed_port()}'}, 'scratch', timeout=2)
+        silent = platform.Client({'wid': f'http://127.0.0.1:{_closed_port()}'}, 'scratch', timeout=2)
         self.assertEqual(self.run_with(silent), 'FAILED')
 
     def test_a_skill_runtime_does_not_have_fails_before_anything_is_asked(self):
@@ -138,14 +138,14 @@ class Skills(World):
         self.agent([MTOK])
         p = Platform()
         self.assertEqual(self.run_with(p), 'DONE')
-        self.assertFalse([r for _o, r, _d in p.said if r == '/larry/greeting'])
+        self.assertFalse([r for _o, r, _d in p.said if r == '/jobs/greeting'])
         self.assertEqual(json.loads(self.results(p)[-1]['delivery']), None)
 
     def test_no_skill_asks_nothing(self):
         self.agent([])
         p = Platform()
         self.assertEqual(self.run_with(p), 'DONE')
-        self.assertFalse([r for _o, r, _d in p.said if r == '/larry/greeting'])
+        self.assertFalse([r for _o, r, _d in p.said if r == '/jobs/greeting'])
 
 
 class Store(World):
@@ -155,11 +155,11 @@ class Store(World):
         self.agent([STORE], {'delivery': 'one theme', 'files': [self.FILE]})
         p = Platform()
         self.assertEqual(self.run_with(p), 'DONE')
-        routes = [r for _o, r, _d in p.said if r in ('/mtok/use', '/dam/upload')]
-        self.assertEqual(routes, ['/mtok/use', '/dam/upload'])   # paid first: files are part of the delivery
-        stored = next(d for o, r, d in p.said if r == '/dam/upload')
+        routes = [r for _o, r, _d in p.said if r in ('/jobs/charge', '/jobs/upload')]
+        self.assertEqual(routes, ['/jobs/charge', '/jobs/upload'])   # paid first: files are part of the delivery
+        stored = next(d for o, r, d in p.said if r == '/jobs/upload')
         self.assertEqual(stored, {**RUN_OF, 'source_key': KEY, **self.FILE})
-        self.assertIn(('so', '/dam/upload', stored), p.said)
+        self.assertIn(('wid', '/jobs/upload', stored), p.said)
         end = self.results(p)[-1]
         self.assertEqual((end['log'], end['delivery']), ('RUN 1 DONE · free · 1 file in DA-M', 'one theme'))
         for path in self.instance.rglob('*'):
@@ -188,7 +188,7 @@ class Store(World):
                 p = Platform()
                 self.assertEqual(self.run_with(p), 'FAILED')
                 self.assertIn(words, self.results(p)[-1]['log'])
-                self.assertFalse([r for _o, r, _d in p.said if r in ('/mtok/use', '/dam/upload')])
+                self.assertFalse([r for _o, r, _d in p.said if r in ('/jobs/charge', '/jobs/upload')])
 
     def test_a_refusing_da_m_fails_the_run_and_says_it_was_charged(self):
         self.agent([STORE], {'delivery': 'x', 'files': [self.FILE]})
@@ -200,7 +200,7 @@ class Store(World):
         self.agent([STORE], {'delivery': 'nothing to keep'})
         p = Platform()
         self.assertEqual(self.run_with(p), 'DONE')
-        self.assertFalse([r for _o, r, _d in p.said if r == '/dam/upload'])
+        self.assertFalse([r for _o, r, _d in p.said if r == '/jobs/upload'])
 
 
 if __name__ == '__main__':
@@ -217,14 +217,14 @@ class Gives(World):
         end = self.results(p)[-1]
         self.assertIn("the answer holds ['secret_extra'], which \"gives\" does not name", end['log'])
         self.assertFalse(end.get('delivery'))
-        self.assertFalse([r for _o, r, _d in p.said if r in ('/mtok/use', '/dam/upload')])
+        self.assertFalse([r for _o, r, _d in p.said if r in ('/jobs/charge', '/jobs/upload')])
 
     def test_an_agent_that_declares_no_gives_delivers_nothing(self):
         self.agent([], {'delivery': 'x'}, gives=None)
         p = Platform()
         self.assertEqual(self.run_with(p), 'FAILED')
         self.assertIn('"gives"', self.results(p)[-1]['log'])
-        self.assertFalse([r for _o, r, _d in p.said if r == '/mtok/use'])
+        self.assertFalse([r for _o, r, _d in p.said if r == '/jobs/charge'])
 
     def test_what_gives_names_is_delivered(self):
         self.agent([], {'delivery': 'x'}, gives=('delivery',))

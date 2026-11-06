@@ -2,21 +2,34 @@
 one message per line) that serves LARRYD's tools to Claude Code. It runs on the developer's computer and reaches
 nothing itself; each tool is the same code as the command of the same name."""
 import json
+import pathlib
 import sys
 
-from . import __version__, doctor, knowledge, new, runner, skills, submit
+from . import __version__, doctor, knowledge, new, place, runner, skills, submit
 
 VERSIONS = ('2025-11-25', '2025-06-18', '2025-03-26', '2024-11-05')   # the protocol versions this server speaks, newest first
 
 
 def _new(args):
-    root = new.make(args['name'], args.get('where') or '.')
+    try:
+        root = new.make(args['name'], args.get('where') or '.', example=args.get('from') or None)
+    except ValueError as no:
+        return {'ok': False, 'wrong': str(no)}, True
     return {'made': str(root), 'next': f'work in {root}: read its CLAUDE.md, change agent/agent.py and agent/agent.json, then larryd_doctor'}, False
 
 
 def _doctor(args):
-    problems = doctor.check(args.get('path') or '.')
-    return doctor.as_json(problems), False
+    path = args.get('path') or '.'
+    if not doctor.is_project(path):   # no project: an error, never eight checks that look passed
+        return {'ok': False, 'wrong': f'there is no agent project at {pathlib.Path(path).resolve()} (no agent/agent.json)',
+                'todo': 'give the project\'s folder as "path", or make one with larryd_new'}, True
+    fixed = doctor.fix(path) if args.get('fix') else []
+    problems = doctor.check(path)
+    out = doctor.as_json(problems)
+    out['warnings'] = [w + ' (larryd_submit refuses it until then)' for w in doctor.placeholders(path)]
+    if args.get('fix'):
+        out['fixed'] = fixed
+    return out, False
 
 
 def _run(args):
@@ -46,11 +59,13 @@ TOOLS = {
     'larryd_new': (_new, 'Make a new LARRYD agent project: agent/ (the manifest and one entry that answers a job), CLAUDE.md with the '
                          'spec and the rules, the larryd skill and a sample job.',
                    {'type': 'object', 'properties': {'name': {'type': 'string', 'description': 'the agent\'s name, also its folder'},
-                                                     'where': {'type': 'string', 'description': 'the folder to make it in (default: here)'}},
+                                                     'where': {'type': 'string', 'description': 'the folder to make it in (default: here)'},
+                                                     'from': {'type': 'string', 'enum': list(new.EXAMPLES), 'description': 'start from a LARRYD example agent (marketplace: the PF agent marketplace)'}},
                     'required': ['name'], 'additionalProperties': False}),
-    'larryd_doctor': (_doctor, 'Check the agent before submission: the manifest, the entry, the air gap, no secret, the shape, the skills. '
+    'larryd_doctor': (_doctor, 'Check the agent before submission: the manifest, the entry, no network, no secret, the shape, the skills. '
                                'Every problem names the file and line, what is wrong and what to do; fix each one and check again.',
-                      {'type': 'object', 'properties': {'path': PATH}, 'additionalProperties': False}),
+                      {'type': 'object', 'properties': {'path': PATH, 'fix': {'type': 'boolean', 'description': 'first move a design sheet out of agent/ and fill the card\'s missing facts, as larryd doctor --fix'}},
+                       'additionalProperties': False}),
     'larryd_run': (_run, 'Run the agent here the way LARRYD runs it (no network, no new process, a scratch run folder, a time limit) '
                          'with the sample job, and see its answer or why it failed. On a Mac or Linux.',
                    {'type': 'object', 'properties': {'path': PATH, 'job': {'type': 'string', 'description': 'a sample job file (default: samples/job.json)'}},
@@ -64,6 +79,19 @@ TOOLS = {
                     {'type': 'object', 'properties': {'folder': {'type': 'string', 'description': 'the pack\'s folder'}},
                      'required': ['folder'], 'additionalProperties': False}),
 }
+
+
+def _card(args):
+    try:
+        return place.card(args.get('path') or '.', open_browser=False), False
+    except place.Refused as no:
+        return no.as_json(), True
+
+
+TOOLS['larryd_card'] = (_card, 'Place the agent on your own LARRYD (the runtime on this computer, started with `larryd`) and give the '
+                               'marketplace page\'s address: every agent held here as a card with its hire toggle, as the platform will '
+                               'show it; a card the gate cannot show is listed with why.',
+                        {'type': 'object', 'properties': {'path': PATH}, 'additionalProperties': False})
 
 
 def _tools():

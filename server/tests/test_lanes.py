@@ -11,7 +11,7 @@ OK = (True, '')
 def card(key, **over):
     base = {'key': key, 'number': '1', 'class': 'MARK I AGENT (NORMAL)', 'name': key, 'screen': 'larryd/agnt/home', 'product': 'LARRYD',
             'product_slug': 'larryd', 'module': 'AGENT', 'pitch': '', 'developer': '', 'price': '0', 'image_dam_key': '',
-            'type': 'OFF-THE-SHELF', 'residency': 'INTERNAL', 'status': 'LIVE'}
+            'type': 'OFF-THE-SHELF', 'residency': 'INTERNAL', 'status': 'APPROVED'}
     base.update(over)
     return base
 
@@ -24,8 +24,12 @@ class AssembleTest(unittest.TestCase):
         verify = {'FREE': OK, 'PAID': OK, 'DRAFT': OK, 'NOCODE': (False, 'not in the locker')}.get
         out = lanes.assemble(cards, hired, [], verify)
         self.assertEqual([(c['key'], c['hired'], c['hireable'], c['reason']) for c in out],
-                         [('FREE', True, True, ''), ('PAID', False, False, 'needs the PACE SHIFT subscription')])
+                         [('FREE', True, True, ''), ('PAID', False, True, 'needs the PACE SHIFT subscription')])   # every card can be hired (the owner, 2026-10-06); its run needs the subscription
         self.assertEqual([c['needs'] for c in out], ['', 'PACE SHIFT'])
+
+    def test_an_agent_is_never_handed_its_own_card(self):
+        out = lanes.assemble([card('MARKET'), card('WEEKLY')], [], [], lambda k: OK, own='MARKET')
+        self.assertEqual([c['key'] for c in out], ['WEEKLY'])
 
     def test_a_subscription_opens_its_group(self):
         cards = [card('PAID', price='10', product_slug='paceshift', product='PACE SHIFT')]
@@ -44,3 +48,34 @@ class AssembleTest(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class OfflineIsForTheSubscription(unittest.TestCase):
+    """The owner, 2026-10-07: "no subscription = offline and locked; they buy an invoice maps subscription = subscription; then can turn on or off whenever";
+    "all 4 products work the same". A product's subscription is its PLAN in mTok, the word under its name in the dock: Organize (Invoice Maps), Manage
+    (Agency Mgmt), Create (Pace Shift); the account's bought plans come as mTok's subscriptions' agent_group."""
+    PLANS = (('INVOICE MAPS', 'invoicemaps', 'organize'), ('AGENCY MGMT', 'agencymgmt', 'manage'), ('PACE SHIFT', 'paceshift', 'create'))
+
+    def test_a_card_marked_offline_is_offline_until_its_products_plan_is_bought(self):
+        for name, slug, plan in self.PLANS:
+            marked = card('X', product=name, product_slug=slug, offline=True)
+            others = [p for _n, _s, p in self.PLANS if p != plan]
+            for bought, offline in (([], True), (others, True), ([slug], True), ([plan], False), (others + [plan], False)):   # the plan's name, never the product's slug
+                got = lanes.assemble([marked], [], bought, lambda k: OK)[0]
+                self.assertEqual((got['offline'], got['subscription']), (offline, not offline), (name, bought))
+
+    def test_never_marked_never_offline_and_a_free_agent_is_free_with_no_subscription(self):
+        for name, slug, plan in self.PLANS + (('LARRYD', 'larryd', ''),):
+            for not_marked in (False, None, 'true', 1):
+                self.assertIs(lanes.assemble([card('C', product=name, product_slug=slug, offline=not_marked)], [], [], lambda k: OK)[0]['offline'], False)
+            free = lanes.assemble([card('F', product=name, product_slug=slug)], [], [], lambda k: OK)[0]
+            self.assertEqual((free['offline'], free['subscription'], free['needs']), (False, False, ''), name)
+
+    def test_the_platforms_own_group_on_a_card_wins(self):   # when the platform hands the card's agent_group itself, that is the plan
+        marked = card('X', product='INVOICE MAPS', product_slug='invoicemaps', offline=True, agent_group='special')
+        self.assertIs(lanes.assemble([marked], [], ['organize'], lambda k: OK)[0]['offline'], True)
+        self.assertIs(lanes.assemble([marked], [], ['special'], lambda k: OK)[0]['offline'], False)
+
+    def test_a_product_with_no_plan_stays_offline_when_marked(self):   # LARRYD has no plan today: nothing can be bought to open it
+        marked = card('X', product='LARRYD', product_slug='larryd', offline=True)
+        self.assertIs(lanes.assemble([marked], [], ['organize', 'manage', 'create', 'larryd'], lambda k: OK)[0]['offline'], True)

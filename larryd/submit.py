@@ -1,4 +1,5 @@
-"""`larryd submit`: three steps, one gate, nothing to carry. The doctor first; then agent/ packed into one file
+"""`larryd submit`: three steps, one gate, nothing to carry. The card sheet written in the platform's form (never a
+reason to refuse), then the doctor; then agent/ packed into one file
 (bundle.py); the file sent to LARRYD's submit door; the claim page opened in the browser, where the developer signs in
 with Google or Apple. Nothing to paste and nothing to save: no key, no secret, no account on this computer.
 LARRYD_SUBMIT names another door (a scratch one); the default is LARRYD's own."""
@@ -50,7 +51,10 @@ TODO = {0: 'check this computer\'s network, then submit again',
 
 
 def submit(root, open_browser=True):
+    sheets = doctor.fix_sheets(root)   # a design sheet leaves the agent first: CSS is never a reason to refuse
     problems = doctor.check(root)
+    if not problems and doctor.placeholders(root):
+        raise Refused('the manifest still says the blank\'s placeholder words', 'write what your agent really does: ' + '; '.join(doctor.placeholders(root)))
     if problems:
         raise Refused('the doctor found problems; LARRYD would not take this agent', 'fix each one (`larryd doctor`), then submit again',
                       problems=[doctor.asdict(p) for p in problems])
@@ -60,4 +64,4 @@ def submit(root, open_browser=True):
         raise Refused(f"LARRYD refused it: {answer.get('refused', status)}", TODO.get(status, 'read what LARRYD said, fix it, then submit again'),
                       status=status, **({'problems': answer['problems']} if answer.get('problems') else {}))
     opened = bool(open_browser) and webbrowser.open(answer['claim'])
-    return {'ok': True, 'sha256': digest, 'claim': answer['claim'], 'minutes': answer.get('minutes', 10), 'opened': opened}
+    return {'ok': True, 'sha256': digest, 'claim': answer['claim'], 'minutes': answer.get('minutes', 10), 'opened': opened, 'sheets': sheets}

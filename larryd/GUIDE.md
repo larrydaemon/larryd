@@ -1,0 +1,457 @@
+# Building an agent with LARRYD
+
+Your server has a daemon. Your agents should have one too.
+
+Build, test and ship AI agents with Claude Code.
+
+This guide is for the developer's AI first and the developer second. Read it whole before you build.
+`larryd guide` prints it; it ships in the package as `larryd/GUIDE.md` (`larryd --help` names the path).
+Every command named here exists and works today; what does not exist yet is listed at the end, plainly.
+
+Start: `larryd new <name>` for a blank agent (or `larryd new <name> --from marketplace` for the example), then read
+`<name>/CLAUDE.md`.
+
+> **Today.** Works now, on your own computer: install from a package or index you were given, make an agent
+> (`larryd new`), check it (`larryd doctor`), run it (`larryd run`), and see its card on your own LARRYD
+> (`larryd card`).
+>
+> Not live yet: the public install (the registries hold only the name's reservation), `larryd submit` opening with the
+> platform, RUNs that hand the job's own inputs on the platform, and the platform's sides of the skills (the LARRY LLM
+> greeting, the FROST identity, the DA-M store). Each is said again where it comes up, and listed under "Not there yet".
+
+## The platform in one minute
+LARRYD agents work for members of Positive Feedback, the platform. An account is a company; a member is a person in
+it. The platform's products (Invoice Maps, Agency Mgmt, Pace Shift, LARRYD) each have modules (Contacts, Invoices,
+Media, Agents, ...), and every screen is named `<species>/<page>` (its address is `app/<species>/<page>`, e.g.
+`app/cont/card`). Your agent lives on one screen. Its card appears in the agent marketplace, where a member hires it
+with the card's hire toggle; once hired, it is ready to switch on in the member's settings. A member's work is a job;
+a RUN asks your agent to work on one, and its answer (`delivery`) lands in that job. Each RUN costs the member the
+agent's price in mTok (see below).
+
+## What you are building
+An agent today is a deterministic Python program: given the same job, it gives the same answer. "AI" here means it is
+built with Claude Code; the agent itself calls no model. Your agent runs inside LARRYD, sealed off: no network, no files
+outside its own run, no other programs. LARRYD connects it to the platform: it reads what the agent needs, hands it in,
+and carries the answer back. The agent belongs to its developer.
+
+The whole contract: LARRYD runs the agent's entry file as its own process. One JSON object comes in on stdin,
+one JSON object goes out on stdout. `delivery` in the answer (plain text) is what lands in the member's job.
+
+## 1. Install
+    python3 -m venv ~/larryd-venv && ~/larryd-venv/bin/pip install --pre larryd
+    ~/larryd-venv/bin/larryd --version
+
+That works today wherever the release is published, and with a package file or index you were given
+(`pip install --pre --index-url <the index> larryd`). It needs Python 3.11 or newer (`python3 --version`; a Mac's own
+python3 is 3.9). Nothing needs activating: a project made by `larryd new` names the full path of this larryd.
+Until 0.1.0 is published, the public registries hold only the name's reservation, 0.0.1, which prints one line and
+does nothing; from 0.1.0 these work too, each giving the one command `larryd`:
+
+    pipx install larryd
+    uv tool install --python 3.12 larryd
+    npm install -g larryd
+    cargo install larryd
+
+uv brings its own Python (`brew install uv`); pipx: `brew install pipx` or `sudo apt install pipx`; npm and cargo keep
+LARRYD in its own place. Outside a virtual environment Homebrew, Debian and Ubuntu refuse a plain `pip install`
+(PEP 668). It is proven on Python 3.14 (a Mac) and 3.11 (Debian 12).
+
+Your own LARRYD: `larryd` alone runs the daemon, LARRYD's runtime on this computer, in this terminal (127.0.0.1:5010,
+its instance in ~/.larryd; `LARRYD_PORT` and `LARRYD_INSTANCE` name others; Ctrl-C stops it), where you can try what you
+build. No sudo; as root its instance is /var/lib/larryd, for a server.
+
+## 2. A new agent
+    larryd new <name>
+
+This makes the folder `<name>/`:
+- `agent/`: the agent, and only the agent. It is exactly what LARRYD holds.
+  - `agent/agent.json`: the manifest (its fields are explained in the project's CLAUDE.md)
+  - `agent/agent.py`: the code, with one entry: `answer(job)`
+  - an agent ships no look and no CSS: the platform draws its card from the card's facts in `agent/agent.json`
+- `CLAUDE.md`: the spec and the rules, for Claude Code
+- `.claude/skills/larryd/SKILL.md`: the larryd skill Claude Code loads
+- `samples/job.json`: a sample job for `larryd run`; `samples/job_inputs.edit-me.json`: a job with its own inputs, for
+  once the agent declares them (`"job"` in `run.hands`, `"inputs"`): give it your input names, rename it to
+  `job_inputs.json`, then `larryd run --job samples/job_inputs.json`
+- `.mcp.json`: starts the LARRYD tools in Claude Code when you open the folder with `claude` (it names the full path
+  of this
+  larryd, so no virtual environment needs activating)
+
+To start from a LARRYD example instead of a blank agent:
+
+    larryd new marketplace --from marketplace
+
+makes the PF AGENT MARKETPLACE: its code, its manifest with a doctor-clean card and a sample job. It is the agent the
+platform's own marketplace is built from.
+
+## 3. The rules
+LARRYD's sandbox refuses 1, 2 and 3 when the agent runs; the doctor checks all of them before that.
+1. No network, ever. No network module, no address.
+2. Nothing outside its own folder: no path elsewhere, no link. It writes only in the folder it is run in.
+3. No new process: no subprocess, no os.system, no multiprocessing.
+4. The Python standard library only.
+5. No secret in the agent.
+6. Only what it is handed. The inputs are what `run.hands` names: `cards` (the agent cards the member sees; for agents
+   that show the marketplace) and `job`
+   (the job's own inputs, by the names the manifest's `inputs` gives them).
+7. Nothing fake. The agent answers from what it is handed, or it says plainly that it cannot.
+
+## The job's inputs
+An agent that needs words from the member (a name, a mood, a date) declares them:
+
+    "run": {"do": "answer", "hands": ["job"]},
+    "inputs": {"name": "001", "mood": "002"}
+
+Each name sits on one of the job's input slots, 001 to 015 (the job's agent fields on the platform). On a RUN, LARRYD
+reads that RUN's inputs from the platform and hands them in as `job`: `{"name": "...", "mood": "..."}`. A slot the
+member
+left empty is simply not handed. LARRYD refuses the run when the job holds an input the agent does not declare, or a
+value that is not text or is longer than 10,000 characters, and it keeps none of them. In a sample job (the project's
+`samples/job_inputs.edit-me.json`, renamed to `job_inputs.json` once its names are yours), give the inputs the same
+way: `{"do": "answer", "job": {"name": "Harbor", "mood": "calm cool"}}`.
+
+## The member's records
+An agent that works on a member's own records (a calendar on the Operations screen, say) declares which, and what it
+does with them:
+
+    "calls": ["month"],
+    "records": {"opns": ["read", "add", "edit", "remove"]}
+
+The species is the module's code from the screens table (opns = Operations, cont = Contacts, ...); the verbs are read,
+add, edit and remove, any of them. On a CALL (the agent answering on the member's screen) LARRYD reads that member's
+records of each declared species through the platform's own record doors and hands them in as
+`records = {"opns": [rows]}`: each row the record's fields by the platform's names, its key as `"key"`. The agent's
+answer may carry `"writes"` (name it in `gives`):
+
+    "writes": [{"do": "add", "species": "opns", "values": {"identity_operations_date": "2030-10-07", "identity_operations_headline": "Partners", "data_meeting_time": "14:00"}},
+               {"do": "edit", "species": "opns", "key": "MOPN_...", "values": {"data_meeting_time": "15:00"}},
+               {"do": "remove", "species": "opns", "key": "MOPN_..."}]
+
+LARRYD carries each to the platform's own doors for that member (at most 20 in one answer; values a flat {field: text}),
+then runs the agent ONCE MORE on the same page with the records as they are now and `written`, what the platform said of
+each (`[{"do", "species", "key", "ok", "why"}]`, a new record's key on an add), so what the agent draws is the truth; writes
+on that second run are ignored. A write on a species or verb the manifest does not declare refuses the whole answer, and
+nothing is carried. The declaration is in the manifest's hash: FROST approves what the agent may read and write with the
+agent itself. A RUN is handed no records; a CALL is handed `records` only. On your own LARRYD the records live in one
+small file (`~/.larryd/preview/records_<species>.json`), which you may write by hand to try an agent.
+
+### The counts
+An agent that only needs to know HOW MUCH there is (a picture of the account, a meter) asks for the counts, never the
+records:
+
+    "records": {"*": ["count"]}
+
+Written exactly so (`"*"` takes `["count"]` alone; `count` is not a verb of a species), alone or beside species. On a
+CALL and on a RUN LARRYD asks the platform for the member it named and hands in
+
+    "counts": {"scope": "ACME",
+               "modules": {"cont": 400, "invc": 2, "mdia": 1569},
+               "products": {"cont": "invoicemaps", "invc": "invoicemaps", "mdia": "agencymgmt"},
+               "ties": [["invc", "cont", 1], ["mdia", "hrcy", 1317]]}
+
+`scope` is the account's name as the page shows it to the member. `modules` has one entry for each module that member
+may list, with the number the list would hand them (all of the account's, or their own only: the platform decides, the
+agent never asks); a module they may not list is absent, never 0. `ties` are `[from, to, how many]`: how many of
+`from`'s records name a record of `to`, only between two modules in `modules`. No record, key or name is in it. When
+the platform does not hand them, `counts` is absent: draw without. The agent must be hired and on, and its approved card
+must carry the declaration (it is in the manifest's hash). On your own LARRYD the counts are the number of rows in each
+`records_<species>.json`; or write `~/.larryd/preview/counts.json` (`{"modules": {...}, "ties": [...]}`) by hand.
+
+## The agent's own live page
+An agent that needs something live (people talking to each other, a page that changes by itself) has a live page of its
+own, outside the platform. The platform's page never runs an agent's script, and that stays so. Declare it:
+
+    "calls": ["door"],
+    "live": {"seats": 4}
+
+and put the live half in `live/` beside `agent/`, these four files and nothing else:
+
+- `page.html`: the one page. It loads `/page.js` and the platform's sheets (the line `<!--sheets-->` in its head), with
+  no script, style attribute or handler written into it.
+- `page.js`: the page's script. It reaches only its own room program (paths that start with `/`), names no outside
+  address, and builds nothing from text (no eval, no innerHTML).
+- `room.py`: the room program, the Python standard library only. It listens and answers; it starts no process and calls
+  out to nothing.
+- `live.json`: what it declares (its ports, its seats, its limits).
+- and, if the page needs it, `rain.js` (a second script, held to the script's rules).
+
+The page's own rules are written in the page, as every agent's are: ONE plain `<style>` block in `page.html`, rules only,
+every colour a theme variable such as `var(--active-color-01)`, no `url()`, no `@import`. There is no sheet file.
+
+On a CALL LARRYD tells the agent only that its room is there: `live = {"room": true}`. The agent is handed no address and
+no pass, and holds no secret. Its view marks where the room goes with ONE empty element, `<div data-room></div>`, and
+nothing else: no link out, no frame. LARRYD signs the pass for the member the platform named (the account, the member, a
+first name, the theme), good once and for ten minutes, and answers the platform in its own field beside the view,
+`room = "https://<the room program>/#<pass>"`; an agent's own `room` refuses its whole answer. The platform checks the
+address against its own list and draws the room inside the page with its own script. Told of no room, the agent draws no
+placeholder. The doctor checks the live half with the agent, and it is approved with the agent.
+
+The live half is part of the agent: `larryd submit` packs it with `agent/` (under `live/` in the file), its bytes are in
+the code's hash, and a changed live page is a changed agent, reviewed again.
+
+What the members write on a live page is kept in the member's own records on the platform, never in a store of the
+agent's. Declare the species beside `live`, e.g. `"records": {"sprt": ["read", "add", "edit"]}`. The room program asks
+LARRYD (the one address it may ask, handed in its environment), marked with the key its passes are signed with, and
+LARRYD carries the ask to the platform's own record doors for that member: list, add, edit, only what the approved
+manifest declares, only for a member who hired the agent. The pass names the member's scope and the slot their call came
+through; the room program sends both back with each ask.
+
+## Something made by an outside model
+An agent never reaches out. An agent that needs a picture or a video made asks LARRYD for it, and LARRYD's own hand does
+the errand. Declare the models, from LARRYD's list, and say on the card where the member's words go:
+
+    "makes": ["nano-banana-2"],
+    "gives": ["makes", "keeps", "delivery"],
+    "card": {"sends_to": "Replicate (Google Nano Banana 2)", "data_sent": "The words you type for the picture and the shape you pick."}
+
+| Model | Makes | Run by | An ask may name |
+|---|---|---|---|
+| `nano-banana-2` | a picture (png, jpg or webp) | Replicate | `aspect`: 1:1, 3:4, 4:3, 16:9, 9:16 |
+| `seedance-2.5` | a video (mp4) | Replicate | `aspect`: 16:9, 9:16, 1:1 · `seconds`: 5, 10 · `size`: 480p, 720p |
+
+On a RUN the answer carries one ask:
+
+    "makes": [{"model": "nano-banana-2", "prompt": "A red fox in fresh snow", "name": "A red fox", "aspect": "16:9"}]
+
+`prompt` is the words (at most 4,000 characters), `name` the file's plain name without an ending (letters, digits, spaces,
+`_` and `-`; LARRYD adds the ending of what came back). A choice left out takes the model's first. LARRYD sends the model
+only those fields, with its own key, waits for the file, checks that it IS a picture or a video (from its first bytes,
+whatever it is called) and keeps it in the member's DA-M. The file never passes through the agent, and nothing the
+provider says is ever handed to it. A model the manifest does not declare, a field the model does not take, a member's day
+that is full (LARRYD's own daily limit: every ask counts from the moment it is sent, whatever comes back) or a provider that refuses: the RUN ends FAILED or REFUSED with LARRYD's plain
+reason, nothing is charged and nothing is kept. `larryd run` runs the agent and shows the ask; nothing leaves your computer.
+
+## A stored file as the member's record
+On the platform a picture, a video or a sound IS a record of its module (Images, Videos, Audio): the DA-M file is the
+record's identity. A RUN that stores a file (a made one, or one the answer carries with the DA-M store) may ask for its
+record:
+
+    "records": {"imgs": ["read", "add"]},
+    "keeps": [{"species": "imgs", "file": "A red fox", "values": {"data_nickname": "A red fox", "data_psgen_prompt": "A red fox in fresh snow"}}]
+
+`file` names a file this RUN stores: a made one by its ask's `name`, a carried one by its own name (`"Click.wav"`).
+LARRYD adds the record through the platform's own door for that member, with the file's DA-M key as its identity (the
+agent never writes `identity_dam_file`). The species needs `add` in `"records"`; at most 10 in one answer.
+
+## A RUN asked from the agent's page
+An agent whose page has its own button for the work (Generate) names `"run"` in `gives`. When the member presses it (a
+form on the page carrying a hidden input named `act`: the member's own confirmed act), the CALL's answer may carry the
+RUN's inputs by the names `"inputs"` declares:
+
+    "run": {"words": "A red fox in fresh snow", "shape": "16:9"}
+
+LARRYD passes them on to the platform on their slots, and the platform starts the RUN as its own Run button does. Each
+value must be EXACTLY a word the member sent in that act (a value of the form they submitted, as `page.search` hands it):
+an agent cannot put anything else into a RUN, not a record it was handed and not words of its own; clean the words up in
+the RUN itself. One value the member did not send refuses the ask whole. On a page merely opened LARRYD drops `run`: an
+address never starts a RUN. Such an agent's CALL is also handed
+`runs = [{"run", "state", "code", "at"}]`, how the member's last five RUNs of it ended (LARRYD's own record: the state and
+a short code such as `NOT_MADE_REPLICATE_FAILED`, never an input or a delivery), so the page can say what became of an ask.
+
+## The app's own parts in a view
+An agent's view draws with the platform's own classes (they work inside the view: the page's sheets stand in it), so a view
+reads like the app. Buttons: `btn btn--small` (a selected one carries `aria-current="true"`), a row of them in
+`wl-btnrow`, a form's field `sub-search-input`, a controller `sub-controller-box` with its `wl-cols` columns and
+`wl-divider`, the glass box `sub-controller-box wl-glass` with `wl-panel` inside, the type roles (`subtitle`, `emphasis`,
+`body`, `caption`, `annotation`, `label wl-label`).
+
+THE CIRCLES, one standard platform-wide: every round control is `<a class="btn btn--small round">` (or a `button`) with
+ONE plain-text glyph inside and no rule of the agent's own on it (the themes give the look: no fill at rest, the glass
+sheen, the border and glyph in the button colour; the fill, dark words, glow and lift on hover):
+
+| Circle | The glyph | Written |
+|---|---|---|
+| back, previous | `<` | `&lt;` |
+| forward, next | `>` | `&gt;` |
+| close | `X` | `X` |
+| run, play | `▶` | `&#9654;` |
+| up | `▲` | `&#9650;` |
+| down | `▼` | `&#9660;` |
+| add | `+` | `+` |
+| remove | `−` | `&#8722;` |
+
+## 4. The doctor
+    larryd doctor --fix      (write normally, then this; or plain `larryd doctor` to check only, --json for JSON)
+
+The platform draws every card itself, from the card's facts in `agent/agent.json`, in its own look, in every brand, mode
+and size. The agent ships no look and no CSS.
+
+- A sheet in `agent/` fails the shape. `larryd doctor --fix` moves it out to `design/` (a previous one there is kept in
+  `.larryd/doctor_backup/`), and removes an old `"look"` or `"style"` field from the manifest. `larryd place` and
+  `larryd submit` do the same first, so CSS is never a reason to refuse.
+- `--fix` also fills the card's missing facts with honest defaults it names, and keeps your original manifest in
+  `.larryd/doctor_backup/`. The same files always give the same result.
+- Plain `larryd doctor` changes nothing.
+
+It checks the project, the manifest, the entry, no network, no secret, the shape, the skills and the knowledge.
+Every problem names the file and line, what is wrong and what to do. Do what it says, then run it again.
+Never silence a check to make it pass. What each check proves, and why: THE LARRYD CHECKS ([CHECKS.md](CHECKS.md),
+beside this guide in the package).
+
+    larryd doctor --badge
+
+also writes `larryd-checks.svg` beside `agent/` (never inside it): PASS in gold or FAIL in red, with the day and the
+checks' version. Paste `![LARRYD checks](larryd-checks.svg)` into your README; run it again after each change.
+
+## 5. Run it here
+    larryd run               (or --job <file>, --json)
+
+The doctor runs first. Then the agent runs the way LARRYD runs it: its own process, no network, no new process,
+a scratch run folder removed after, the plain Python runtime, an empty environment, 20 seconds. It is handed what
+a RUN hands it: `{"do": run.do}` plus what `run.hands` names, from the sample job. The answer must be one JSON object
+holding only what `gives` names. Nothing is sent anywhere. On a Mac or Linux (Linux: LARRYD's own bubblewrap sandbox,
+`sudo apt install bubblewrap`); on Windows, use WSL.
+
+## 6. Submit
+    larryd submit
+
+Not live yet: until LARRYD opens submissions with the platform, `larryd submit` says it cannot reach the door. When
+it is open, three steps, nothing to carry:
+
+1. The doctor runs (and converts a design sheet, as `--fix` does); a problem stops it here.
+2. `agent/` (nothing else) is packed into one file and sent to LARRYD.
+3. Your browser opens the claim page: sign in there with Google or Apple within 10 minutes, and the agent waits in the
+   review queue; the page says what happens next.
+
+No account to make, no key or secret to paste or keep. LARRYD reads what it receives and runs none of it: it re-runs
+the doctor itself, and refuses a file that is too big (5 MB), unsafe, or the eleventh from one address within an hour
+(10 per address per hour). Unclaimed files are deleted after 10 minutes.
+`--no-browser` prints the claim page instead of opening it. A changed agent is a new submission, reviewed again.
+A person at LARRYD reviews it. Approved, it goes into LARRYD's locker under its card key and to the platform's review
+(FROST's); rejected, the answer says why. Either way the answer goes to the email of your sign-in.
+
+## What LARRYD does with your agent
+- It holds `agent/` in its locker with the hash of the code and of the manifest, and checks them on every call and run.
+  Any change is refused as tampered.
+- FROST's review: a SYSTEM owner (the platform's own people) approves or rejects those exact hashes. LARRYD shows,
+  hires and runs an agent only
+  when FROST approved the hashes it holds.
+- A member hires the agent in the agent marketplace with a toggle. A RUN is a request; LARRYD runs the agent in its
+  sandbox, and mTok charges the agent's own rate (0 = free).
+
+## mTok
+mTok is the platform's usage unit: members' accounts hold it, and a RUN of your agent costs the member its price, a
+whole number of mTok you set per run in the card (`"price"`, 0 = free), charged after a DONE run. Payouts to developers
+are not there yet: nothing here promises a money value or a share.
+
+## What the card says about data and where the agent is offered
+- `availability` (optional): `"offline"` for an agent shown for information only. Its card is dimmed and locked, it says
+  Offline where its price stands, and it cannot be hired. Leave the field out for an agent that can be hired.
+- `developer_site` (optional): your website, a plain https address such as `https://example.com`. The card links your
+  name to it, in a new tab. Leave the field out for no link.
+- `sends_to` and `data_sent`: the agent itself never reaches out. When LARRYD sends a member's words to an outside
+  AI service for the agent (`"makes"`), `sends_to` names that service and `data_sent` says what is sent; it goes out
+  only on the member's own act. An agent that sends nothing leaves both `""`.
+- `residency` is which marketplaces the agent is offered on: INTERNAL = Positive Feedback's own agent marketplace only;
+  EXTERNAL = other marketplaces only (e.g. the Microsoft marketplace), not Positive Feedback; BOTH = Positive Feedback
+  and at least one external marketplace. It is not where the agent runs: every LARRYD agent runs in LARRYD.
+- `class`, as a guide to how much the agent does: Mark I = simple, Mark II = complex, Mark III = extremely complex.
+- `authorization`: who may hire it, PUBLIC (every account) or PRIVATE (one account). It is your starting setting; the
+  platform's authorize panel (in FROST) can change it at any time after, and a PRIVATE agent's owning account is
+  entered there.
+- `developer`: who made it, as the card credits it: your name, or your company's.
+
+## In Claude Code
+In a project made by `larryd new`, open the folder with `claude` and approve the LARRYD tools:
+larryd_new, larryd_doctor, larryd_run, larryd_submit, larryd_skills, larryd_pack, larryd_card.
+Elsewhere, one line: `claude mcp add larryd -- larryd mcp`. The repository is also a Claude Code plugin marketplace.
+The loop for the AI: change the agent → larryd_doctor → larryd_run → fix → again → larryd_submit.
+
+## Skills and knowledge
+- A skill is a definition named by its hash. Declare the hashes in `skills`; `larryd skills` lists them.
+  - The mTok charge: LARRYD charges the member the agent's own rate after a DONE run (every run; declaring it changes
+    nothing).
+  - The LARRY LLM greeting: before the RUN, LARRYD asks LARRY LLM for the greeting it gives the member today and hands
+    it
+    in as `greeting` (`{"date", "lang", "greetings": {time of day: the words}}`). In `samples/job.json`, give a
+    `greeting` of that shape.
+  - The FROST identity: before the RUN, LARRYD asks FROST who the agent works for and hands it in as `identity`:
+    `{"first_name", "member_type", "account_name"}`, nothing else (no email, no address, no key).
+  - The DA-M store: the answer may carry `"files": [{"name", "content_b64"}]` (name `files` in `gives`); after the
+    charge, LARRYD keeps each in the member's own DA-M, the agent's card key as its source. At most 10 files, plain
+    names, all inside the answer's own limit of 1 MB.
+- A knowledge pack is a folder (`pack.json` with `name` and `about`, plus .md .txt .csv .json files) named by its hash;
+  `larryd pack <folder>` checks it and gives the hash.
+
+## Not there yet
+- The public install: until 0.1.0 is published, the registries hold only the name's reservation (0.0.1).
+- `larryd submit` with the platform: the door is not open yet.
+- Payouts in mTok to developers.
+- Skills: the platform's sides of the LARRY LLM greeting, the FROST identity and the DA-M store are not on the live
+  platform yet; until they are, a RUN of an agent that declares one fails with LARRYD's plain reason.
+- Knowledge packs: LARRYD holds none yet, so declaring one in `knowledge` fails the doctor. Leave it `[]`.
+- `larryd run` on Windows itself (use WSL). The doctor works everywhere.
+- The job's inputs on the live platform: LARRYD hands `job` today, but the platform's side (the route that gives
+  LARRYD a RUN's inputs) is not on the live platform yet; until it is, a RUN of an agent that hands `job` fails with
+  LARRYD's plain reason. `larryd run` works with them now.
+
+## The card and the shelf
+
+Every agent for hire is a card on the marketplace: its number and class, the hire toggle, its name, its art, the
+product and module of the screen it lives on, its pitch, its developer, its type and residency, its price in whole
+mTok, and, when it sends a member's data to an outside AI service, where and what. The card's facts are the `card`
+field of `agent/agent.json` (the doctor checks them with the marketplace's own rules); the number and the art are
+LARRYD's to give at approval.
+
+The card's allowed values:
+
+| Field | Allowed values |
+|---|---|
+| class | MARK I AGENT (NORMAL): simple; MARK II SUPER AGENT (HARNESS): complex; MARK III QUANTUM AI (AGENTIC CODE): extremely complex; MARK IV REPLICA (FULL-HUMAN REPLACEMENT): a full human replacement |
+| type | OFF-THE-SHELF, DEVELOPER |
+| residency | which marketplaces it is offered on: INTERNAL: Positive Feedback's own agent marketplace only; EXTERNAL: other marketplaces only (e.g. the Microsoft marketplace), not Positive Feedback; BOTH: Positive Feedback and at least one other marketplace (every LARRYD agent runs in LARRYD) |
+| authorization | PUBLIC, PRIVATE (who may hire it: your starting setting; the platform's authorize panel can change it at any time after, and a PRIVATE agent's owning account is entered there) |
+| product | INVOICE MAPS, AGENCY MGMT, PACE SHIFT, LARRYD |
+| price | a whole number of mTok per run: 3 or "3"; "0" is free |
+
+| Screen (<species>/<page>, at app/<species>/<page>) | Product | Module |
+|---|---|---|
+| cont/home, cont/list, cont/card | INVOICE MAPS | Contacts |
+| invc/home, invc/list, invc/card | INVOICE MAPS | Invoices |
+| locn/home, locn/list, locn/card | INVOICE MAPS | Locations |
+| opns/home, opns/list, opns/card | INVOICE MAPS | Operations |
+| hrcy/home, hrcy/list, hrcy/card | AGENCY MGMT | Hierarchies |
+| mdia/home, mdia/list, mdia/card | AGENCY MGMT | Media |
+| brnd/home, brnd/list, brnd/card | AGENCY MGMT | Brand |
+| sprt/home, sprt/list, sprt/card | AGENCY MGMT | Sprint |
+| imgs/home, imgs/list, imgs/card | PACE SHIFT | Images |
+| vdeo/home, vdeo/list, vdeo/card | PACE SHIFT | Videos |
+| audo/home, audo/list, audo/card | PACE SHIFT | Audio |
+| prdn/home, prdn/list, prdn/card | PACE SHIFT | Production |
+| agnt/home, agnt/list, agnt/card | LARRYD | Agents |
+| mdls/home, mdls/list, mdls/card | LARRYD | Models |
+| logs/home, logs/list, logs/card | LARRYD | Logs |
+| jobs/home, jobs/list, jobs/card | LARRYD | Jobs |
+| larry/home | any | the product's dashboard |
+
+The platform draws the card from these values (an agent ships no look). A value off these lists fails with the ones to
+use.
+
+See what your own LARRYD holds, on its shelf (the card itself is drawn by the platform, from these facts):
+
+    larryd                   (in another terminal: your runtime, on 127.0.0.1:5010)
+    larryd card              (places the agent in its locker and opens http://127.0.0.1:5010/marketplace)
+
+`larryd place` does the placing without opening the page. The same agent placed again replaces itself. A card the
+marketplace cannot show (no screen, a price that is not whole mTok) is listed under "Not on the shelf" with why.
+
+## Glossary
+- **FROST**: the platform's identity and security office: who a member is, what they may do, the review of agents and
+  the authorize panel.
+- **DA-M**: the platform's file store: a member's files (the DA-M store skill keeps an answer's files there).
+- **LARRY LLM**: one of the platform's offices; for agents, it gives the greeting a member is given today (the LARRY LLM
+  greeting skill).
+- **locker**: where LARRYD holds an approved agent: its `agent/` files, with the hashes of its code and manifest.
+- **card key**: the key the platform gives an agent's card at approval; LARRYD finds the agent by it.
+- **claim page**: the page `larryd submit` opens, where you sign in with Google or Apple to submit the file you sent.
+- **CALL and RUN**: the two lanes. A CALL answers at once on the member's screen (the names in `"calls"`); a RUN is a
+  request on a job, run in the sandbox, whose `delivery` lands in the job and which costs the agent's price.
+- **MARK classes**: the platform's three agent classes, as a guide: MARK I AGENT (NORMAL) = simple, MARK II SUPER
+  AGENT (HARNESS) = complex, MARK III QUANTUM AI (AGENTIC CODE) = extremely complex.
+- **residency**: which marketplaces an agent is offered on: INTERNAL (Positive Feedback only), EXTERNAL (other
+  marketplaces only), BOTH (Positive Feedback and at least one other).
+- **species**: the first half of a screen's name, its module's short code (`cont` for Contacts, `agnt` for Agents).
+- **product**: one of the platform's products: Invoice Maps, Agency Mgmt, Pace Shift, LARRYD.
+- **module**: a part of a product (Contacts, Invoices, Agents, ...), with its home, list and card screens.
+- **screen**: `<species>/<page>`, e.g. `cont/card`; its address in the app is `app/<species>/<page>`. An agent lives on
+  one screen.

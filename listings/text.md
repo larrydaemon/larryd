@@ -15,7 +15,7 @@ Build, test and ship AI agents with Claude Code: new, doctor, run, submit.
 Your server has a daemon. Your agents should have one too. LARRYD is one command and a Claude Code connector for
 building AI agents: `larryd new` makes the agent, `larryd doctor` checks it before you ship it (every problem says
 what is wrong and what to do), `larryd run` runs it on your computer the way LARRYD runs it, `larryd submit` sends it
-for review (sign in with Google or Apple; nothing to paste or keep). Your agent runs on LARRYD, air gapped, and stays yours.
+for review (sign in with Google or Apple; nothing to paste or keep). Your agent runs on LARRYD and stays yours.
 
 ## Install
     pipx install larryd

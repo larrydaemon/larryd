@@ -1,0 +1,93 @@
+{
+  "key": "MAGT_9F4B9EC45DB4_11B4",
+  "name": "Building now",
+  "office": "scrum_master_3",
+  "workflow": "Scrum Master 3",
+  "group": "DAY",
+  "entry": "agent.py",
+  "libs": [
+    "day",
+    "look"
+  ],
+  "about": "Scrum Master 3's DAY step: the request in hand (one at a time on the hot fix tree), its state and the step that is next, whether a worker is on it, its tree change against what its build recorded, the last build against the 3 minute rule, and the ones committed waiting for tonight's take-in. It reads and writes nothing.",
+  "does": [
+    "canvas",
+    "run"
+  ],
+  "calls": [
+    "canvas"
+  ],
+  "records": {
+    "agnt": [
+      "read"
+    ],
+    "jobs": [
+      "read"
+    ]
+  },
+  "run": {
+    "do": "run",
+    "hands": []
+  },
+  "gives": [
+    "view",
+    "delivery",
+    "light"
+  ],
+  "skills": [],
+  "knowledge": [],
+  "facts": {
+    "tree": "~/spine_worktrees/hotfix",
+    "branch": "hold/20261021",
+    "repo": "~/virtual_workspace",
+    "main": "main",
+    "tests": "~/scratch/tests/day",
+    "python": "~/virtual_workspace/.venv/bin/python",
+    "git_seconds": 120,
+    "day_key": "day",
+    "day_off": "OFF",
+    "writer": "~/scratch/reports/scrum_master/developer.lock",
+    "utility_lock": "~/spine_scratch/hotfix_runs/running.lock",
+    "in_hand": [
+      "planned",
+      "building",
+      "proven",
+      "reviewed"
+    ],
+    "side_dir": "day_side",
+    "day_name": "THE DAY",
+    "day_email": "day@localhost",
+    "stuck": "stuck_today",
+    "hire_mark": ".day_hire",
+    "stage": {
+      "planned": "Build",
+      "building": "Prove",
+      "proven": "Review",
+      "reviewed": "Commit"
+    },
+    "build_key": "MAGT_BB27466A77BB_06FF",
+    "within": 180,
+    "ready": "waiting_takein",
+    "committed": "approved",
+    "nothing_next": "Main first",
+    "dry": false,
+    "next": ""
+  },
+  "card": {
+    "class": "MARK I AGENT (NORMAL)",
+    "pitch": "Building now: the request in hand",
+    "price": "0",
+    "type": "DEVELOPER",
+    "residency": "INTERNAL",
+    "authorization": "PRIVATE",
+    "screen": "larryd/jobs/home",
+    "product": "LARRYD",
+    "module": "Jobs",
+    "developer": "LARRYD",
+    "sends_to": "",
+    "data_sent": ""
+  },
+  "internal": {
+    "seconds": 120
+  }
+}

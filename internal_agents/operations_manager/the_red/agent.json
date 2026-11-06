@@ -1,0 +1,99 @@
+{
+  "key": "MAGT_A530B90D20E7_CB2A",
+  "name": "The Red",
+  "office": "operations_manager",
+  "workflow": "",
+  "group": "LIVE",
+  "entry": "agent.py",
+  "about": "The red blocks of the page workflow, red since when, the YOUR 3 MIN line each carries, and whether a FIX request works on it; THE RED rounds counted from the office's FIX requests.",
+  "does": [
+    "canvas",
+    "run"
+  ],
+  "calls": [
+    "canvas"
+  ],
+  "records": {
+    "agnt": [
+      "read"
+    ],
+    "jobs": [
+      "read"
+    ]
+  },
+  "run": {
+    "do": "run",
+    "hands": []
+  },
+  "gives": [
+    "view",
+    "delivery",
+    "light"
+  ],
+  "skills": [],
+  "knowledge": [],
+  "facts": {
+    "offices": {
+      "Scrum Master 3": "scrum_master_3",
+      "Operations Manager": "operations_manager",
+      "Chief Marketing Officer": "cmo",
+      "Creative Director": "creative_director"
+    },
+    "fix_words": "FIX ·",
+    "step_words": "YOUR 3 MIN:",
+    "working": [
+      "asked",
+      "planned",
+      "building",
+      "proven",
+      "reviewed",
+      "waiting_takein",
+      "approved"
+    ],
+    "bad_verdict": "STUPID",
+    "bad_detector": [
+      "DRIFT",
+      "TAMPER"
+    ],
+    "rules_step": "make the rule and the code say the same, then press RUN on the Rules block for a new read",
+    "rule_fields": [
+      [
+        "The rule",
+        "data_job_rule"
+      ],
+      [
+        "Red when",
+        "data_job_rule_red"
+      ],
+      [
+        "Green when",
+        "data_job_rule_green"
+      ],
+      [
+        "The fix",
+        "data_job_rule_fix"
+      ]
+    ],
+    "css": ".replica-live #scrum-why td .scrum-why-press { margin: 4px 0 0; } .replica-live .scrum-term th, .replica-live .scrum-term td { text-transform: uppercase; }"
+  },
+  "card": {
+    "class": "MARK I AGENT (NORMAL)",
+    "pitch": "Whatever is red, since when, and your 3 minute step",
+    "price": "0",
+    "type": "DEVELOPER",
+    "residency": "INTERNAL",
+    "authorization": "PRIVATE",
+    "screen": "larryd/jobs/home",
+    "product": "LARRYD",
+    "module": "Jobs",
+    "developer": "LARRYD",
+    "sends_to": "",
+    "data_sent": ""
+  },
+  "internal": {
+    "seconds": 60
+  },
+  "libs": [
+    "look"
+  ]
+}

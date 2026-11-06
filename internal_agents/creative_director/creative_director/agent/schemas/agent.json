@@ -1,0 +1,23 @@
+{
+ "about": "CREATIVE DIRECTOR (the owner 2026-11-02: \"lets make Creative Director for pace shift production and then give it the audio for the voice to read the standups because audio is in pace shift same setup as the rest\"; \"then all 4 have a full working agent internally on the last module page\"): its card only, the same setup as Scrum Master 3, Operations Manager and CMO. It holds the VOICE: the standups of every internal manager are read in its voice, through its own page. On a board it is a WORKFLOW (wid's one shell, non-executing) whose blocks hold its agents.",
+ "name": "Creative Director",
+ "art": "{agent}/app/static/images/creative_director.png",
+ "say": "A Creative Director sets the look and the sound of the work: every picture, film and voice carries one direction.",
+ "price": "Internal-only",
+ "class": "MARK IV REPLICA (FULL-HUMAN REPLACEMENT)",
+ "card_words": {
+  "name": "CREATIVE DIRECTOR",
+  "info": "LARRY LLM · Console",
+  "pitch": "Leads the creative side, and is the voice that reads every standup.",
+  "developer": "Developer · LARRYD"
+ },
+ "facts": {
+  "git": "~/virtual_workspace",
+  "knowledge": "~/virtual_sanity/knowledge/instance/knowledge.db"
+ },
+ "facts_about": "THE OFFICE'S OWN (the owner 2026-10-27: \"nothing can depend on the orginal. we need to update all\"): the project's git and the knowledge store, read where they are, read only; its requests are its own database's (instance/<office>.db, the requests table), its red its own agents' runs, nothing from the original",
+ "voice": {
+  "service": "http://127.0.0.1:8824",
+  "voice": "christensen"
+ }
+}

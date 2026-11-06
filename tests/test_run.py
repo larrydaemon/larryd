@@ -252,7 +252,7 @@ def test_the_doctor_comes_first(project):
     path = project / 'agent' / 'agent.py'
     path.write_text(path.read_text() + '\nimport socket\n')
     result = runner.run(project)
-    assert result.state == 'REFUSED' and result.problems and result.problems[0].check == 'the air gap'
+    assert result.state == 'REFUSED' and result.problems and result.problems[0].check == 'no network'
 
 
 def test_the_job_is_what_the_runtime_hands(project):

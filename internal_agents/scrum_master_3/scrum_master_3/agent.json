@@ -1,0 +1,76 @@
+{
+  "key": "MAGT_1F1B00CCD202_CA69",
+  "name": "Scrum Master 3",
+  "office": "scrum_master_3",
+  "workflow": "Scrum Master 3",
+  "group": "AGENT",
+  "entry": "agent.py",
+  "libs": [
+    "look"
+  ],
+  "about": "Scrum Master 3, the MARK IV agent of its workflow: checks that things are running. Its RUN reads every block of its workflow from the jobs records and says the day: each group's green and red, HEALTHY or CRITICAL.",
+  "does": [
+    "canvas",
+    "run"
+  ],
+  "calls": [
+    "canvas"
+  ],
+  "records": {
+    "agnt": [
+      "read"
+    ],
+    "jobs": [
+      "read"
+    ]
+  },
+  "run": {
+    "do": "run",
+    "hands": []
+  },
+  "gives": [
+    "view",
+    "delivery",
+    "light"
+  ],
+  "skills": [],
+  "knowledge": [],
+  "facts": {
+    "groups": [
+      "AGENT",
+      "TOP",
+      "LIVE",
+      "DAY",
+      "NIGHT",
+      "RELEASE"
+    ],
+    "healthy": "HEALTHY",
+    "critical": "CRITICAL",
+    "pitch": "Checks to see if things are running. When something breaks, he gets to work to fix it, and the step must run on its own again to clear.",
+    "card_manifest": "~/virtual_workspace/wid/wid/app/schemas/card.json",
+    "hero": {
+      "kicker": "POSITIVE FEEDBACK™",
+      "title": "LARRY LLM (version 6.024)",
+      "sub": "Artificial intelligence model"
+    },
+    "card_drawn": 218,
+    "card_box": 360
+  },
+  "card": {
+    "class": "MARK IV REPLICA (FULL-HUMAN REPLACEMENT)",
+    "pitch": "Checks to see if things are running. When something breaks, he gets to work to fix it, and the step must run on its own again to clear.",
+    "price": "0",
+    "type": "DEVELOPER",
+    "residency": "INTERNAL",
+    "authorization": "PRIVATE",
+    "screen": "larryd/jobs/home",
+    "product": "LARRYD",
+    "module": "Jobs",
+    "developer": "LARRYD",
+    "sends_to": "",
+    "data_sent": ""
+  },
+  "internal": {
+    "seconds": 60
+  }
+}

@@ -98,7 +98,7 @@ def test_the_doctor_is_run_here_and_nothing_is_kept(world):
     code = world['project'] / 'agent' / 'agent.py'
     code.write_text(code.read_text() + '\nimport socket\n')
     answer = _upload(world)
-    assert answer.status_code == 422 and answer.get_json()['problems'][0]['check'] == 'the air gap'
+    assert answer.status_code == 422 and answer.get_json()['problems'][0]['check'] == 'no network'
     assert _rows(world, 'held') == [] and not list((world['instance'] / 'held').iterdir())
 
 

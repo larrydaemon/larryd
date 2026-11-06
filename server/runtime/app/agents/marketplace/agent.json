@@ -1,7 +1,7 @@
 {
-  "name": "THE AGENT MARKETPLACE",
+  "name": "PF AGENT MARKETPLACE",
   "entry": "agent.py",
-  "about": "The collection: every card the harness shows (LIVE, a screen, a whole mTok rate, in the locker and verified), laid out as the original's cards, with the member's hired state; its RUN delivers the collection report.",
+  "about": "The marketplace: a controller at the top and a grid of cards below (each card the platform's own, put where the grid says); its RUN delivers the collection report.",
   "does": [
     "collection",
     "report"
@@ -25,6 +25,25 @@
     "total",
     "hired",
     "filters",
+    "shown",
+    "view",
     "delivery"
-  ]
+  ],
+  "card": {
+    "class": "MARK II SUPER AGENT (HARNESS)",
+    "pitch": "Every agent of the platform as a card: hire one with its toggle.",
+    "price": "0",
+    "type": "OFF-THE-SHELF",
+    "residency": "INTERNAL",
+    "authorization": "PUBLIC",
+    "screen": "agnt/home",
+    "product": "LARRYD",
+    "module": "Agents",
+    "developer": "Positive Feedback",
+    "sends_to": "",
+    "data_sent": "",
+    "developer_site": "https://positivefeedback.ai"
+  },
+  "skills": [],
+  "knowledge": []
 }

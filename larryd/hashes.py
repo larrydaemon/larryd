@@ -23,7 +23,21 @@ def _tree(folder, skip=()):
 
 
 def code(agent, manifest='agent.json'):
-    return _tree(agent, skip=(manifest,))
+    """The code's hash as the runtime's locker computes it. The live half of an agent that declares a live page (live/ beside
+    agent/) counts as `live/<file>`: it sits in the locker's folder that way, and is approved with the agent by this one hash."""
+    agent = pathlib.Path(agent)
+    listed = [(f.relative_to(agent).as_posix(), f) for f in _files(agent, skip=(manifest,))]
+    half = agent.parent / 'live'
+    try:
+        declares = isinstance(json.loads((agent / manifest).read_text()).get('live'), dict)
+    except (OSError, ValueError, AttributeError):
+        declares = False
+    if declares and half.is_dir() and not (agent / 'live').exists():
+        listed += [(f'live/{f.name}', f) for f in sorted(half.iterdir()) if f.is_file() and f.name in ('live.json', 'page.html', 'page.js', 'room.py', 'page.css', 'rain.js')]
+    h = hashlib.sha256()
+    for rel, f in sorted(listed, key=lambda x: pathlib.PurePosixPath(x[0])):
+        h.update(rel.encode('utf-8') + b'\0' + f.read_bytes() + b'\0')
+    return h.hexdigest()
 
 
 def manifest(agent, name='agent.json'):

@@ -4,20 +4,21 @@ macOS sandbox-exec, or on Linux bubblewrap (bwrap) with a seccomp filter; on any
 - no new process (no fork, no other program);
 - writes only in its own run folder (made for the run, removed after), never into the locker;
 - reads nothing but its own folder, its run folder and what the Python runtime needs to start (the binary, its standard
-  library, the libraries those link, the system's own libraries; never the packages installed into it): on macOS every other read is refused (a file's name
+  library, the libraries those link, the system's own libraries): on macOS every other read is refused (a file's name
   and size may be looked up, never its contents: /etc/hosts, another project, the home folders); on Linux nothing
   else is mounted;
 - an empty environment, one JSON object in on stdin, one JSON object out on stdout, inside the time limit.
 Anything else is FAILED with the kind of failure (never the agent's words)."""
-import glob
 import json
 import os
 import pathlib
 import re
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
+import time
 
 _BASE = os.path.realpath(sys.base_prefix)
 _FRAMEWORK = os.path.join(_BASE, 'Resources', 'Python.app', 'Contents', 'MacOS', 'Python')   # a framework python3 only spawns this
@@ -25,33 +26,36 @@ PYTHON = _FRAMEWORK if os.path.isfile(_FRAMEWORK) else os.path.realpath(os.path.
 SANDBOX_EXEC = '/usr/bin/sandbox-exec'
 BWRAP = shutil.which('bwrap') or '/usr/bin/bwrap'
 MOST_BYTES = 1_000_000
+MOST_MEMORY = 512 * 1024 * 1024   # a run's address space (the runtime's own limit, beside Cloud Run's)
+MOST_CPU_SECONDS = 30             # a run's CPU time; the wall clock is `seconds` in run()
+MOST_FILE_BYTES = MOST_BYTES + 1  # any file a run writes, its answer included, is cut at this size
+
+
+def limits(most_file=MOST_FILE_BYTES):
+    """Applied in the child before the sandbox starts (Linux): memory, CPU and file size, enforced by the kernel."""
+    import resource
+    resource.setrlimit(resource.RLIMIT_AS, (MOST_MEMORY, MOST_MEMORY))
+    resource.setrlimit(resource.RLIMIT_CPU, (MOST_CPU_SECONDS, MOST_CPU_SECONDS))
+    resource.setrlimit(resource.RLIMIT_FSIZE, (most_file, most_file))
 
 # LINUX: before the agent's code runs, a start-up written with the standard library alone installs a seccomp filter
-# (x86_64 and aarch64): fork, vfork, execve, execveat and a clone that is not a thread are refused with EPERM ("Operation not
+# (x86_64): fork, vfork, execve, execveat and a clone that is not a thread are refused with EPERM ("Operation not
 # permitted", the Mac's words); clone3 answers ENOSYS so a thread falls back to clone. Then the agent's entry runs.
 _BOOT = r'''
 import ctypes, os, platform, runpy, struct, sys
 os.environ.pop("PWD", None)   # bwrap's --chdir sets it; the environment is only what the runtime gives
+if platform.machine() != "x86_64":
+    raise SystemExit("the Linux sandbox knows x86_64 only")
 def f(code, jt, jf, k):
     return struct.pack("HBBI", code, jt, jf, k)
 LD, JEQ, JSET, RET = 0x20, 0x15, 0x45, 0x06
 ALLOW, KILL, EPERM, ENOSYS = 0x7fff0000, 0x80000000, 0x00050001, 0x00050026
-if platform.machine() == "x86_64":
-    prog = [f(LD, 0, 0, 4), f(JEQ, 1, 0, 0xc000003e), f(RET, 0, 0, KILL), f(LD, 0, 0, 0),
-            f(JEQ, 6, 0, 57), f(JEQ, 5, 0, 58), f(JEQ, 4, 0, 59), f(JEQ, 3, 0, 322), f(JEQ, 4, 0, 435), f(JEQ, 5, 0, 56),
-            f(RET, 0, 0, ALLOW), f(RET, 0, 0, EPERM),                                   # 10 allow; 11 deny
-            f(RET, 0, 0, EPERM), f(RET, 0, 0, ENOSYS),                                  # 12 (unused) · 13 clone3
-            f(RET, 0, 0, ALLOW),                                                         # 14 (unused)
-            f(LD, 0, 0, 16), f(JSET, 1, 0, 0x10000), f(RET, 0, 0, EPERM), f(RET, 0, 0, ALLOW)]   # 15.. clone: a thread only
-elif platform.machine() in ("aarch64", "arm64"):
-    # the same rules on 64-bit ARM (its own numbers; it has no fork or vfork): execve 221 and execveat 281 refused,
-    # clone3 435 ENOSYS, clone 220 a thread only
-    prog = [f(LD, 0, 0, 4), f(JEQ, 1, 0, 0xc00000b7), f(RET, 0, 0, KILL), f(LD, 0, 0, 0),
-            f(JEQ, 4, 0, 221), f(JEQ, 3, 0, 281), f(JEQ, 3, 0, 435), f(JEQ, 3, 0, 220),
-            f(RET, 0, 0, ALLOW), f(RET, 0, 0, EPERM), f(RET, 0, 0, ENOSYS),            # 8 allow · 9 deny · 10 clone3
-            f(LD, 0, 0, 16), f(JSET, 1, 0, 0x10000), f(RET, 0, 0, EPERM), f(RET, 0, 0, ALLOW)]   # 11.. clone: a thread only
-else:
-    raise SystemExit("the Linux sandbox knows x86_64 and aarch64 only")
+prog = [f(LD, 0, 0, 4), f(JEQ, 1, 0, 0xc000003e), f(RET, 0, 0, KILL), f(LD, 0, 0, 0),
+        f(JEQ, 6, 0, 57), f(JEQ, 5, 0, 58), f(JEQ, 4, 0, 59), f(JEQ, 3, 0, 322), f(JEQ, 4, 0, 435), f(JEQ, 5, 0, 56),
+        f(RET, 0, 0, ALLOW), f(RET, 0, 0, EPERM),                                   # 10 allow; 11 deny
+        f(RET, 0, 0, EPERM), f(RET, 0, 0, ENOSYS),                                  # 12 (unused) · 13 clone3
+        f(RET, 0, 0, ALLOW),                                                         # 14 (unused)
+        f(LD, 0, 0, 16), f(JSET, 1, 0, 0x10000), f(RET, 0, 0, EPERM), f(RET, 0, 0, ALLOW)]   # 15.. clone: a thread only
 class Prog(ctypes.Structure):
     _fields_ = [("len", ctypes.c_ushort), ("filter", ctypes.c_void_p)]
 raw = ctypes.create_string_buffer(b"".join(prog))
@@ -65,68 +69,38 @@ runpy.run_path(entry, run_name="__main__")
 
 
 def _linux_runtime():
-    """What the agent may read of the Python runtime: the binary, its standard library, its shared libraries."""
+    """What the agent may read of the Python runtime: the binary, its standard library, its shared libraries. On a
+    glibc system those sit under /usr/lib/<arch>; on Alpine (musl, the runtime's image) the loader and the system's
+    libraries are /lib and /usr/lib, and Python's own (libpython, its compiled standard library) /usr/local/lib."""
     import sysconfig
     stdlib = os.path.realpath(sysconfig.get_paths()['stdlib'])
     arch = sysconfig.get_config_var('MULTIARCH') or 'x86_64-linux-gnu'
-    # A Python built with a shared libpython that lives in its own folder (GitHub's setup-python, pyenv --enable-shared,
-    # Homebrew on Linux) loads it from there; without it bound, the binary picks up the system's libpython, a different
-    # build ("undefined symbol"), or none. Only those library files, nothing else of that folder.
-    own = []
-    if sysconfig.get_config_var('Py_ENABLE_SHARED'):
-        libdir = sysconfig.get_config_var('LIBDIR') or ''
-        own = sorted(glob.glob(os.path.join(libdir, 'libpython*.so*')))
-    return [PYTHON, stdlib, f'/usr/lib/{arch}', '/usr/lib64', *own, *_loader()]
+    libdir = os.path.realpath(sysconfig.get_config_var('LIBDIR') or '/usr/local/lib')
+    return [PYTHON, stdlib, libdir, f'/usr/lib/{arch}', '/usr/lib64']
 
 
-def _loader():
-    """The program loader the Python binary names (its ELF interpreter). On x86_64 it is under /lib64 (bound above); on
-    aarch64 it is /lib/ld-linux-aarch64.so.1, a link in /usr/lib itself, which the arch folder alone does not hold.
-    -> [its path inside the sandbox's /usr], or [] when it is already covered or cannot be read."""
-    import struct
-    try:
-        with open(PYTHON, 'rb') as fh:
-            head = fh.read(64)
-            if head[:4] != b'\x7fELF' or head[4] != 2:   # 64-bit ELF only
-                return []
-            end = '<' if head[5] == 1 else '>'
-            phoff, = struct.unpack_from(end + 'Q', head, 0x20)
-            phentsize, phnum = struct.unpack_from(end + 'HH', head, 0x36)
-            fh.seek(phoff)
-            table = fh.read(phentsize * phnum)
-            for i in range(phnum):
-                kind, = struct.unpack_from(end + 'I', table, i * phentsize)
-                if kind == 3:   # PT_INTERP: the loader's path, wherever in the file it is stored
-                    off, = struct.unpack_from(end + 'Q', table, i * phentsize + 8)
-                    size, = struct.unpack_from(end + 'Q', table, i * phentsize + 32)
-                    fh.seek(off)
-                    path = fh.read(size).rstrip(b'\x00').decode()
-                    break
-            else:
-                return []
-    except (OSError, struct.error, UnicodeDecodeError):
-        return []
-    if not path:
-        return []
-    if path.startswith('/lib/'):
-        path = '/usr' + path   # /lib is the sandbox's link to usr/lib
-    return [] if path.startswith(('/lib64/', '/usr/lib64/')) else [path]
+_SYSTEM_LIBS = ('/lib', '/lib64', '/usr/lib')
+
+
+def _linux_libs():
+    """bwrap's arguments for the system's library folders: a folder that is a link on the host is the same link inside;
+    a real folder (Alpine's /lib, where musl's loader lives) is bound read-only."""
+    out = []
+    for path in _SYSTEM_LIBS:
+        if os.path.islink(path):
+            out += ['--symlink', os.readlink(path), path]
+        elif os.path.isdir(path):
+            out += ['--ro-bind', path, path]
+    return out
 
 
 def _linux_command(agent, run, entry):
     cmd = [BWRAP, '--unshare-all', '--die-with-parent', '--new-session', '--clearenv',
            '--setenv', 'PATH', '/usr/bin:/bin', '--setenv', 'HOME', run, '--setenv', 'TMPDIR', run, '--setenv', 'LC_CTYPE', 'C.UTF-8',
-           '--dev', '/dev', '--symlink', 'usr/lib', '/lib', '--symlink', 'usr/lib64', '/lib64']
-    runtime = _linux_runtime()
-    for path in runtime:
-        if os.path.exists(path):
+           '--dev', '/dev'] + _linux_libs()
+    for path in _linux_runtime():
+        if os.path.exists(path) and not any(path == lib or path.startswith(lib + '/') for lib in _SYSTEM_LIBS if os.path.isdir(lib) and not os.path.islink(lib)):
             cmd += ['--ro-bind', path, path]
-    # A self-contained Python (GitHub's, uv's, pyenv's) keeps the packages pip installs into it INSIDE its standard
-    # library folder; that folder is covered with an empty, read-only one, so an agent has the plain runtime only
-    for folder in runtime:
-        for packages in (os.path.join(folder, 'site-packages'), os.path.join(folder, 'dist-packages')):
-            if os.path.isdir(packages):
-                cmd += ['--tmpfs', packages, '--remount-ro', packages]
     cmd += ['--ro-bind', agent, agent, '--bind', run, run,
             '--remount-ro', '/',   # bwrap's own root (a tmpfs holding the mount points) read-only: the run folder is the one place to write
             '--chdir', run, PYTHON, '-I', '-B', '-c', _BOOT, os.path.join(agent, entry)]
@@ -158,37 +132,8 @@ def _mac_runtime():
     return sorted(folders)
 
 
-_PACKAGES = ('site-packages', 'dist-packages')
-_SITE_PACKAGES = None
-
-
-def site_packages():
-    """Every packages folder the runtime's Python puts on its own path (sys.path and site's list, exactly as the agent's
-    process sees them, run with -I as the agent is), plus any under its own folder; each as named and as it really is (a
-    link resolved). These are where pip installs into a Python that is not a venv (GitHub's, python.org's, uv's)."""
-    global _SITE_PACKAGES
-    if _SITE_PACKAGES is None:
-        named = set(glob.glob(os.path.join(_BASE, 'lib', 'python*', 'site-packages')))
-        try:
-            done = subprocess.run([PYTHON, '-I', '-c', 'import json, site, sys; print(json.dumps(sys.path + site.getsitepackages()))'],
-                                  capture_output=True, text=True, timeout=30, env={'PATH': '/usr/bin:/bin'})
-            named.update(json.loads(done.stdout) if done.returncode == 0 else [])
-        except (OSError, ValueError, subprocess.TimeoutExpired):
-            pass
-        found = set()
-        for p in named:
-            if isinstance(p, str) and os.path.basename(p.rstrip('/')) in _PACKAGES:
-                found.update({os.path.normpath(p), os.path.realpath(p)})
-        _SITE_PACKAGES = sorted(found)
-    return _SITE_PACKAGES
-
-
 def _profile(agent, run):
     reads = ' '.join(f'(subpath "{p}")' for p in [agent, run, *_mac_runtime(), *_MAC_SYSTEM]) + ' ' + ' '.join(f'(literal "{p}")' for p in _MAC_LITERAL)
-    # the plain runtime only: the runtime's packages folders are refused even where its own folder is readable (the last
-    # rule that matches wins), as the Linux sandbox covers them with an empty one
-    packages = ' '.join(f'(subpath "{p}")' for p in site_packages())
-    hidden = f'(deny file-read* {packages})\n' if packages else ''
     return f'''(version 1)
 (allow default)
 (deny network*)
@@ -200,7 +145,7 @@ def _profile(agent, run):
 (deny file-read*)
 (allow file-read-metadata)
 (allow file-read* {reads})
-{hidden}'''
+'''
 
 
 def _kind(stderr, code):
@@ -213,33 +158,83 @@ def _kind(stderr, code):
     return m.group(1) + (f': {m.group(2).strip()}' if m.group(2) else '')
 
 
-def run(folder, entry, given, seconds=20):
-    """-> (state, answer, reason): ('DONE', {...}, '') or ('FAILED', None, why)."""
+def _kill_group(pid):
+    """The run's whole process group (its own session: the sandbox and anything under it), killed and waited for."""
+    try:
+        os.killpg(pid, signal.SIGKILL)
+    except (ProcessLookupError, PermissionError):
+        pass
+
+
+def run(folder, entry, given, seconds=20, on_start=None, most_bytes=MOST_BYTES, internal=False):
+    """-> (state, answer, reason): ('DONE', {...}, '') or ('FAILED', None, why). The run is its own process group
+    (start_new_session); on_start(pid) is told it before the run is fed, so the slot can kill the whole group if it
+    ever has to; on the time limit the whole group is killed and waited for. most_bytes: the answer's limit (the
+    runtime's own 1 MB)."""
     agent = os.path.realpath(folder)
-    run_dir = os.path.realpath(tempfile.mkdtemp(prefix='runtime_run_'))
+    run_dir = os.path.realpath(tempfile.mkdtemp(prefix='runtime_run_'))   # private (0o700), this run's only place
+    out_dir = os.path.realpath(tempfile.mkdtemp(prefix='runtime_out_'))   # its answer, outside the folder the agent can write
     try:
         try:
-            if sys.platform == 'darwin' and os.path.isfile(SANDBOX_EXEC):
+            if internal:   # LARRYD RUNTIME INTERNAL (the owner 2026-11-03: "its internal so i dont think it matters and seems normal"): an internal agent runs as this computer's own process, in its own folder, with this computer's reach; never on the external runtime (harness._run decides)
+                command = [sys.executable, '-B', str(pathlib.Path(agent) / entry)]
+            elif sys.platform == 'darwin' and os.path.isfile(SANDBOX_EXEC):
                 command = [SANDBOX_EXEC, '-p', _profile(agent, run_dir), PYTHON, '-I', '-B', str(pathlib.Path(agent) / entry)]
             elif sys.platform.startswith('linux') and os.path.isfile(BWRAP):
                 command = _linux_command(agent, run_dir, entry)
             else:
                 return 'FAILED', None, 'no sandbox on this system: nothing runs unsandboxed'
-            done = subprocess.run(command,
-                                  input=json.dumps(given), capture_output=True, text=True, timeout=seconds, cwd=run_dir,
-                                  env={'PATH': '/usr/bin:/bin', 'HOME': run_dir, 'TMPDIR': run_dir, 'LC_CTYPE': 'UTF-8'})
+            linux = sys.platform.startswith('linux')
+            out_path, err_path = os.path.join(out_dir, 'out'), os.path.join(out_dir, 'err')
+            with open(out_path, 'w') as out, open(err_path, 'w') as err:
+                child = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=out, stderr=err, text=True, cwd=agent if internal else run_dir,
+                                         preexec_fn=(lambda: limits(most_bytes + 1)) if linux and not internal else None, start_new_session=True,
+                                         env=dict(os.environ) if internal else {'PATH': '/usr/bin:/bin', 'HOME': run_dir, 'TMPDIR': run_dir, 'LC_CTYPE': 'UTF-8'})
+                try:
+                    if on_start:
+                        on_start(child.pid)
+                    child.communicate(json.dumps(given), timeout=seconds)
+                except subprocess.TimeoutExpired:
+                    _kill_group(child.pid)
+                    child.wait()
+                    return 'FAILED', None, f'over the time limit ({seconds} s)'
+                except BaseException:
+                    _kill_group(child.pid)
+                    child.wait()
+                    raise
+                finally:
+                    if on_start:
+                        on_start(None)   # the run's process is gone: the slot holds no process any more
+            with open(out_path) as f:
+                stdout = f.read(most_bytes + 2)
+            with open(err_path) as f:
+                stderr = f.read(MOST_BYTES)
         except subprocess.TimeoutExpired:
             return 'FAILED', None, f'over the time limit ({seconds} s)'
-        if done.returncode != 0:
-            return 'FAILED', None, _kind(done.stderr, done.returncode)
-        if len(done.stdout) > MOST_BYTES:
+        if len(stdout) > most_bytes:
             return 'FAILED', None, 'the answer is too long'
+        if child.returncode != 0:
+            return 'FAILED', None, _kind(stderr, child.returncode)
         try:
-            answer = json.loads(done.stdout)
+            answer = json.loads(stdout)
         except ValueError:
             answer = None
         if not isinstance(answer, dict):
             return 'FAILED', None, 'the answer is not one JSON object'
         return 'DONE', answer, ''
-    finally:
+    finally:   # every exit: done, failed, timed out, killed
         shutil.rmtree(run_dir, ignore_errors=True)
+        shutil.rmtree(out_dir, ignore_errors=True)
+
+
+def sweep(older_than=120):
+    """At an instance's start: any run's folders left by a run cut off before its own finally. A folder younger than
+    older_than seconds is a run in flight (another instance's, or a thread's, on the same computer) and is left alone."""
+    now = time.time()
+    for p in pathlib.Path(tempfile.gettempdir()).glob('runtime_[ro][ua][nt]_*'):
+        try:
+            if now - p.stat().st_mtime < older_than:
+                continue
+        except OSError:
+            continue
+        shutil.rmtree(p, ignore_errors=True)

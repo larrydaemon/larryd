@@ -1,0 +1,170 @@
+/* CLARITY (the owner, 2026-10-08): THE ORIGINAL CONTROL TOWER'S LOOK, FOR A CONTAINER. He picked it in the lab
+   ("you finally got it ... this is the look"): the original tower's own page (ui/inc_control_tower.html inside LARRYD's
+   report panel) as it looked on the off-white theme in light mode: an off-white ground, near-black words, big heavy
+   headings, white square buttons with a black line. "its for the container only ... not the outside that keeps its
+   own theme."
+
+   EVERY VALUE HERE IS THE ORIGINAL'S, read from that page as the browser drew it (the lab:
+   ~/spine_scratch/tower_lab, original_68FE9F6C7C02_light.html), and its own rules (the CLARITY RULE: "this console
+   is deliberately plain so no mistakes get made"). Nothing is designed here.
+
+   NOT A THEME: one container (class clarity) inside a page. It stands on its own: its own values, its own three
+   faces (the same three files every theme of the platform already carries, asked for at the sheet's own address).
+   Dark and light do not change it; the look's switch does not turn it off. A page links this file only when it
+   draws a container, after its other sheets.
+
+   Used by (the owner's list, in his order): 1 the Control Tower, 2 create account, 3 member, 4 authorize app,
+   5 authorize agents; and every ADD form (the owner 2026-10-10: "i want the clarity css to be used for the add pages.
+   these forms are no different then the create account or other add pages so we want to standardize all the add forms"). */
+
+/* 1. THE THREE FACES of the original page: its headings, its small capitals, its notes */
+@font-face { font-family: "Clarity Heading"; src: url("clarity/font_02.otf") format("opentype"); font-display: swap; }
+@font-face { font-family: "Clarity Caption"; src: url("clarity/font_01.otf") format("opentype"); font-display: swap; }
+@font-face { font-family: "Clarity Notes"; src: url("clarity/font_05.otf") format("opentype"); font-display: swap; }
+
+/* 2. THE VALUES, each once, by purpose. The second block gives the look's own names the original's values INSIDE the
+      container, so a rule of the look that reads one of them draws as the original did */
+.clarity {
+  --clarity-ground: #EFF0EA;
+  --clarity-ink: #0F0F10;
+  --clarity-ink-notes: #1B0404;
+  --clarity-control: #FFFFFF;
+  --clarity-control-ink: #111111;
+  --clarity-field-line: #444444;
+  --clarity-ink-form-note: #333333;
+  --clarity-placeholder: #999999;
+  --clarity-dot-line: #BBBBBB;
+  --clarity-dot-full: #1F9D55;
+  --clarity-dot-own: #E0A516;
+  --clarity-dot-own-line: #B6830C;
+  --clarity-dot-system-line: #000000;
+  --clarity-ok: #157A3F;
+  --clarity-warn: #8A5A00;
+  --clarity-bad: #B3261E;
+  --clarity-screen: #0D0D0D;
+  --clarity-screen-bar: #1A1A1A;
+  --clarity-screen-ink: #D4D4D4;
+  --clarity-screen-title: #888888;
+  --clarity-screen-ok: #4EC9B0;
+  --clarity-screen-warn: #CE9178;
+  --clarity-screen-bad: #F44747;
+  --clarity-face: Helvetica, "Helvetica Neue", Arial, sans-serif;
+  --clarity-face-heading: "Clarity Heading", Helvetica, "Helvetica Neue", Arial, sans-serif;
+  --clarity-face-caption: "Clarity Caption", Helvetica, "Helvetica Neue", Arial, sans-serif;
+  --clarity-face-notes: "Clarity Notes", ui-monospace, Menlo, monospace;
+
+}
+
+/* 2b. THE LOOK'S OWN NAMES, given the original's values inside the container, and given AGAIN inside a technology's own
+       place (a place sets these names for itself: inside the container it reads the container's) */
+.clarity, .clarity [data-place] {
+  --active-color-01: var(--clarity-ink); --active-color-02: var(--clarity-screen-ink); --active-color-06: var(--clarity-screen-ink);
+  --active-color-08: var(--clarity-ink-notes); --active-color-11: var(--clarity-screen);
+  --ui-card-border: var(--clarity-ink); --ui-card-bg: var(--clarity-ground); --ui-row-divider: var(--clarity-ink); --ui-section-divider: var(--clarity-ink);
+  --ui-input-bg: var(--clarity-control); --ui-input-border: var(--clarity-field-line); --ui-input-focus: var(--clarity-control-ink); --ui-focus-ring: var(--clarity-control-ink); --ui-placeholder: var(--clarity-field-line);
+  --ui-progress-track: var(--clarity-control); --ui-progress-fill: var(--clarity-ink);
+  --ui-success-text: var(--clarity-ok); --ui-warn-text: var(--clarity-warn); --ui-error-text: var(--clarity-bad);
+  --ui-tag-text: var(--clarity-ink); --ui-tag-bg: var(--clarity-ground); --ui-tag-border: var(--clarity-ink);
+  --toggle-off: var(--clarity-field-line); --toggle-on: var(--clarity-ok); --toggle-knob-off: var(--clarity-control); --toggle-knob-on: var(--clarity-control);
+  --font-heading: var(--clarity-face-heading); --font-body: var(--clarity-face); --font-caption: var(--clarity-face);
+  --font-size-s: 0.9rem; --font-body-sz: 0.9rem; --font-body-lh: 1.4; --font-caption-sz: 0.9rem; --font-caption-lh: 1.4; --font-label-sz: 0.9rem; --font-annotation-tt: uppercase;
+  --active-color-03: var(--clarity-ink); --active-color-04: var(--clarity-ink); --active-color-05: var(--clarity-ink); --active-color-07: var(--clarity-ink-notes); --active-color-09: var(--clarity-ground);
+  --ui-error-bg: var(--clarity-ground); --ui-success-bg: var(--clarity-ground); --ui-warn-bg: var(--clarity-ground); --image-background: none; --background-fx: none;
+  --font-subtitle: var(--clarity-face-heading); --font-label: var(--clarity-face-caption); --font-body-wt: 300; --font-caption-wt: 600; --font-caption-ls: 1.5px; --font-caption-tt: uppercase; --font-body-tt: uppercase; --font-label-wt: 600; --font-label-ls: 1.5px; --font-label-tt: uppercase;
+}
+.clarity [data-place] { color: var(--clarity-ink); background-color: transparent; background-image: none; border-color: var(--clarity-ink); }
+/* a place's own page picture is handed to it after the page is up (on the place itself): nothing inside the container draws it */
+.clarity [data-place] * { --image-background: none; }
+/* in a FORM's sheet a place's quiet words are the ink too (the terminal's pale ink is for the dark screen alone): every word of an add form can be read */
+.clarity.clarity--form [data-place] { --active-color-02: var(--clarity-ink); --active-color-06: var(--clarity-ink); }
+
+/* 3. THE CONTAINER: the original's flat panel (one plain surface, square corners). Its room is layout: each office's own core.css gives it */
+.clarity { border: 0; border-radius: 0; background-color: var(--clarity-ground); background-image: none; box-shadow: none;
+  color: var(--clarity-ink); font-family: var(--clarity-face); font-size: 1rem; font-weight: 300; font-style: normal; line-height: normal; letter-spacing: normal; text-transform: uppercase; text-align: left; }
+
+/* 4. THE WORDS, each role as the original page drew it (uppercase everywhere, as the original's page was) */
+html .clarity, html .clarity * { text-shadow: none; }
+.clarity h1, .clarity .title { font-family: var(--clarity-face-heading); font-size: 2rem; font-weight: 900; font-style: normal; line-height: 1.4; letter-spacing: 1.5px; text-transform: uppercase; color: var(--clarity-ink); }
+.clarity h2, .clarity h3, .clarity .subtitle { font-family: var(--clarity-face-heading); font-size: 0.9rem; font-weight: 900; font-style: normal; line-height: 2.2; letter-spacing: 1.5px; text-transform: uppercase; color: var(--clarity-ink); }
+.clarity .body { font-family: var(--clarity-face); font-size: 0.9rem; font-weight: 300; font-style: normal; line-height: 1.4; letter-spacing: normal; text-transform: uppercase; color: var(--clarity-ink); }
+.clarity .notes { font-family: var(--clarity-face-notes); font-size: 1.1rem; font-weight: 500; font-style: normal; line-height: 1.4; letter-spacing: normal; text-transform: uppercase; color: var(--clarity-ink-notes); }
+/* the original's small line was 0.6rem; its own tower wrote most of them at the body's size (fs-95rem), which is the one kept here: every line of the container can be read */
+.clarity .annotation { font-family: var(--clarity-face); font-size: 0.9rem; font-weight: 300; font-style: normal; line-height: 1.4; letter-spacing: normal; text-transform: uppercase; color: var(--clarity-ink-notes); }
+.clarity .caption { font-family: var(--clarity-face-caption); font-size: 0.7rem; font-weight: 600; font-style: normal; line-height: 1.5; letter-spacing: 1.5px; text-transform: uppercase; color: var(--clarity-ink); }
+.clarity .ct-big { font-family: var(--clarity-face-heading); font-size: 0.9rem; font-weight: 900; line-height: 1.1; letter-spacing: normal; text-transform: uppercase; color: var(--clarity-ink); }
+.clarity strong, .clarity b { font-weight: 700; }
+.clarity a { color: var(--clarity-ink); }
+
+/* 4b. A FORM in the container WEARS THE ORIGINAL CREATE ACCOUNT'S LOOK (the owner 2026-10-08, of production's own page:
+       "this is the page"; "the form boxes as round and big and the style": the FROST VAULT sheet, fs members/register.html,
+       value for value): a white sheet with a 2px line and round corners, headings on a 3px rule, big round fields, a black
+       round button and its white ghost */
+.clarity.clarity--form { border: 2px solid var(--clarity-control-ink); border-radius: 10px; background-color: var(--clarity-control); color: var(--clarity-control-ink); text-transform: none; }
+.clarity.clarity--form h1 { font-family: var(--clarity-face); font-size: 1.5rem; font-weight: 700; line-height: 1.3; letter-spacing: 1.5px; text-transform: uppercase; text-align: left; color: var(--clarity-control-ink); }
+.clarity.clarity--form h2 { font-family: var(--clarity-face); font-size: 1.5rem; font-weight: 700; line-height: 1.3; letter-spacing: normal; text-transform: uppercase; color: var(--clarity-control-ink); border-bottom: 3px solid var(--clarity-control-ink); padding-bottom: 6px; }
+.clarity.clarity--form .body { font-size: 1.1rem; text-transform: none; color: var(--clarity-ink-form-note); }
+.clarity label, .clarity legend, .clarity label.caption, .clarity legend.caption { font-family: var(--clarity-face); font-size: 1.1rem; font-weight: 500; line-height: 1.5; letter-spacing: normal; text-transform: uppercase; color: var(--clarity-control-ink); }
+.clarity input:not([type]), .clarity input[type="text"], .clarity input[type="password"], .clarity input[type="email"], .clarity input[type="tel"], .clarity input[type="number"], .clarity input[type="date"], .clarity input[type="url"], .clarity input[type="search"], .clarity input[type="file"], .clarity select, .clarity textarea { box-sizing: border-box; padding: 13px 14px; border: 2px solid var(--clarity-control-ink); border-radius: 8px; background-color: var(--clarity-control); color: var(--clarity-control-ink); font-family: var(--clarity-face); font-size: 1.1rem; text-transform: none; }
+.clarity input::placeholder, .clarity textarea::placeholder { color: var(--clarity-placeholder); }
+.clarity.clarity--form .btn { padding: 16px 34px; border: 2px solid var(--clarity-control-ink); border-radius: 8px; background-color: var(--clarity-control-ink); color: var(--clarity-control); font-family: var(--clarity-face); font-size: 1.1rem; font-weight: 500; line-height: 1.2; letter-spacing: normal; text-transform: uppercase; }
+.clarity.clarity--form .btn:hover { background-color: var(--clarity-control-ink); color: var(--clarity-control); opacity: 0.85; }
+.clarity.clarity--form a { color: var(--clarity-control-ink); }
+.clarity.clarity--form pre, .clarity.clarity--form pre.caption { border: 2px solid var(--clarity-control-ink); border-radius: 8px; }
+/* a record's ADD and EDIT form (the owner 2026-10-10): a tick box and its word, a message the page says (saved, not saved and why,
+   a refusal) and a small note under a field are the form's own words: ink on the sheet, never the theme's glass */
+.clarity input[type="checkbox"], .clarity input[type="radio"] { accent-color: var(--clarity-control-ink); }
+.clarity [role="status"], .clarity [role="alert"] { border: 2px solid var(--clarity-control-ink); border-radius: 8px; background: var(--clarity-ground); color: var(--clarity-control-ink); -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: none; }
+.clarity [role="status"] > *, .clarity [role="alert"] > * { border: 0; background: none; color: var(--clarity-control-ink); }
+.clarity .callout { font-family: var(--clarity-face); font-size: 1.1rem; font-weight: 700; line-height: 1.5; letter-spacing: normal; text-transform: uppercase; color: var(--clarity-control-ink); }
+.clarity.clarity--form p, .clarity.clarity--form li { font-family: var(--clarity-face); font-size: 1.1rem; font-weight: 300; line-height: 1.5; letter-spacing: normal; text-transform: none; color: var(--clarity-ink-form-note); }
+
+/* 5. THE CONTROLS: the original's CLARITY RULE. A white button, black words, a black line; black with white words under
+      the pointer; dimmed when it cannot be pressed. The fields are the form's (4b): round and big */
+.clarity .btn, .clarity button, .clarity input[type="submit"], .clarity input[type="button"] { padding: 12px 20px; border: 1.5px solid var(--clarity-control-ink); border-radius: 0; background-color: var(--clarity-control); background-image: none; color: var(--clarity-control-ink);
+  font-family: var(--clarity-face-heading); font-size: 0.9rem; font-weight: 900; line-height: 2.2; letter-spacing: 1.5px; text-transform: uppercase; text-decoration: none; white-space: normal; max-width: 100%; box-shadow: none; opacity: 1; cursor: pointer; }
+.clarity .btn:hover, .clarity button:hover, .clarity input[type="submit"]:hover, .clarity input[type="button"]:hover { background-color: var(--clarity-control-ink); color: var(--clarity-control); border-color: var(--clarity-control-ink); box-shadow: none; }
+.clarity .btn[disabled], .clarity .btn[disabled]:hover, .clarity button:disabled, .clarity button:disabled:hover { background-color: var(--clarity-control); color: var(--clarity-control-ink); opacity: 0.45; cursor: not-allowed; }
+.clarity .btn[aria-pressed="true"] { background-color: var(--clarity-control-ink); color: var(--clarity-control); }
+
+/* 6. THE SWITCH keeps its own shape (never a button's): grey off, green on, a white knob */
+.clarity .toggle, .clarity .toggle:hover, .clarity .toggle:disabled, .clarity .toggle:disabled:hover { padding: 0; border: 1px solid var(--clarity-field-line); border-radius: 22px; background-color: var(--clarity-field-line); opacity: 1; }
+.clarity .toggle[aria-pressed="true"], .clarity .toggle[aria-pressed="true"]:hover { border-color: var(--clarity-ok); background-color: var(--clarity-ok); }
+.clarity .toggle .toggle__knob { border-color: var(--clarity-control); background-color: var(--clarity-control); }
+
+/* 6b. THE ONE DOT of the authorization grids keeps its own round shape and its four states, as the original drew them
+       (fs members/inc_onboarding_style.html): empty · solid green · half yellow · solid black. Never a button's look */
+.clarity .gcell, .clarity .gcell:hover, .clarity .gcell:disabled, .clarity .gcell:disabled:hover { width: 20px; height: 20px; padding: 0; border: 2px solid var(--clarity-dot-line); border-radius: 50%; background-color: var(--clarity-control); background-image: none; font-size: 0; line-height: 0; opacity: 1; box-sizing: border-box; vertical-align: middle; }
+.clarity .gcell[data-v="1"], .clarity .gcell[data-v="1"]:hover { background-color: var(--clarity-dot-full); border-color: var(--clarity-ok); }
+.clarity .gcell[data-v="2"], .clarity .gcell[data-v="2"]:hover { background-color: var(--clarity-control); background-image: linear-gradient(90deg, var(--clarity-dot-own) 50%, var(--clarity-control) 50%); border-color: var(--clarity-dot-own-line); }
+.clarity .gcell[data-v="3"], .clarity .gcell[data-v="3"]:hover { background-color: var(--clarity-control-ink); border-color: var(--clarity-dot-system-line); }
+
+/* 6d. A RECORD'S KEY in the container keeps its own small shape (never a field's, never a button's): a white chip with the
+       ink's line, the key in the notes' face, its hash turned over (white on ink); the tiny copy button is only its mark */
+.clarity .key-badge__box { border: 1.5px solid var(--clarity-control-ink); border-image: none; background-color: var(--clarity-control); background-image: none; -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: none; }
+.clarity .key-badge__box::after { background: none; }
+.clarity .key-badge__label { font-family: var(--clarity-face-caption); font-size: 0.7rem; font-weight: 600; line-height: 1.5; letter-spacing: 1.5px; text-transform: uppercase; color: var(--clarity-control-ink); }
+.clarity .key-badge__value { font-family: var(--clarity-face-notes); font-size: 0.9rem; font-weight: 500; letter-spacing: normal; text-transform: none; text-decoration: none; color: var(--clarity-control-ink); }
+.clarity .key-badge__hash { color: var(--clarity-control); background-color: var(--clarity-control-ink); box-shadow: none; }
+.clarity .key-badge__copy, .clarity .key-badge__copy:hover { padding: 0; border: 0; border-radius: 0; background-color: transparent; color: var(--clarity-control-ink); line-height: normal; opacity: 1; }
+
+/* 6c. A SMALL WINDOW OF WORDS (the terms a person signs, shown where they sign): white, ruled, its words tiny and as typed */
+.clarity pre, .clarity pre.caption { padding: 10px 12px; border: 1px solid var(--clarity-field-line); background-color: var(--clarity-control); color: var(--clarity-control-ink); font-family: var(--clarity-face); font-size: 0.7rem; font-weight: 300; line-height: 1.5; letter-spacing: normal; text-transform: none; }
+
+/* 7. THE TABLES: the original's log table, ruled in the ink */
+.clarity table { border-collapse: collapse; color: var(--clarity-ink); }
+.clarity th { font-family: var(--clarity-face); font-weight: 700; text-align: left; }
+.clarity td { font-family: var(--clarity-face); font-weight: 300; }
+.clarity .ct-log-table th, .clarity .ct-log-table td { font-size: 1rem; }
+/* a card inside the container is as wide as the container lets it be (the grid of dots needs the room) */
+.clarity .console-auth { max-width: none; }
+/* the grid's column heads keep the original's small capitals size, so every column fits without a sideways scroll */
+.clarity .dvm-vth .vlabel, .clarity .dvm-grouphead th { font-size: 0.7rem; }
+.clarity .dvm-table .dvm-vth { padding-left: 4px; padding-right: 4px; }
+
+/* 8. THE TERMINAL stays the original's dark screen */
+.clarity .clarity-screen { --ui-success-text: var(--clarity-screen-ok); --ui-warn-text: var(--clarity-screen-warn); --ui-error-text: var(--clarity-screen-bad); background-color: var(--clarity-screen); color: var(--clarity-screen-ink); font-family: var(--clarity-face-notes); font-size: 0.8rem; line-height: 1.5; text-transform: none; }
+.clarity .clarity-screen * { text-transform: none; }
+.clarity .clarity-screen.clarity-screen-bar { background-color: var(--clarity-screen-bar); color: var(--clarity-screen-title); }
+
+/* 9. A NARROW SCREEN: the heading steps down, the rest stays */
+@media (max-width: 768px) { .clarity h1, .clarity .title { font-size: 1.5rem; } }

@@ -115,7 +115,7 @@ def test_the_entry_never_runs(agent):
     assert _failed(agent) == {'the entry'}
 
 
-# ---------------------------------------------------------------- the air gap
+# ---------------------------------------------------------------- no network
 AIR_GAP_PLANTS = {
     'socket': '\nimport socket\n',
     'urllib': '\nfrom urllib.request import urlopen\n',
@@ -140,7 +140,7 @@ AIR_GAP_PLANTS = {
 @pytest.mark.parametrize('name', AIR_GAP_PLANTS)
 def test_the_air_gap_catches(agent, name):
     _code(agent, AIR_GAP_PLANTS[name])
-    problems = [p for p in doctor.check(agent) if p.check == 'the air gap']
+    problems = [p for p in doctor.check(agent) if p.check == 'no network']
     assert problems, name
     assert problems[0].line > 0 and problems[0].todo
 
@@ -173,7 +173,7 @@ DISGUISED_PLANTS = {
 @pytest.mark.parametrize('name', DISGUISED_PLANTS)
 def test_the_air_gap_sees_through(agent, name):
     _code(agent, DISGUISED_PLANTS[name])
-    problems = [p for p in doctor.check(agent) if p.check == 'the air gap']
+    problems = [p for p in doctor.check(agent) if p.check == 'no network']
     assert problems, name
     assert problems[0].file == 'agent/agent.py' and problems[0].line > 0 and problems[0].todo
 
@@ -188,7 +188,7 @@ def test_plain_code_the_disguise_rules_leave_alone(agent):
 
 def test_a_plant_in_another_file_of_the_agent(agent):
     (agent / 'agent' / 'helper.py').write_text('import socket\n')
-    problems = [p for p in doctor.check(agent) if p.check == 'the air gap']
+    problems = [p for p in doctor.check(agent) if p.check == 'no network']
     assert problems and problems[0].file == 'agent/helper.py'
 
 
@@ -296,7 +296,222 @@ def test_the_command(agent, capsys):
     assert cli.main(['doctor', str(agent), '--json']) == 1
     out = json.loads(capsys.readouterr().out)
     assert out['ok'] is False
-    gap = next(c for c in out['checks'] if c['check'] == 'the air gap')
+    gap = next(c for c in out['checks'] if c['check'] == 'no network')
     assert gap['ok'] is False and gap['problems'][0]['line'] > 0 and 'What to do' not in gap['problems'][0]['todo']
     assert cli.main(['doctor', str(agent)]) == 1
-    assert 'FAIL the air gap · agent/agent.py line' in capsys.readouterr().out
+    assert 'FAIL no network · agent/agent.py line' in capsys.readouterr().out
+
+
+# AN AGENT SHIPS NO CSS: its look is a record of names in agent.json; a sheet written while designing is turned into
+# that record by --fix (and by place and submit first), so CSS is never a reason to refuse, but a shipped sheet fails.
+SHEET = """/* written normally */
+.mk-card { display: flex; gap: 10px; padding: 14px; border: 2px solid #ff0000; border-radius: 20px; position: fixed }
+.mk-name { font-size: 40px; font-weight: 900 }
+body { display: none }
+@import "x.css";
+"""
+
+
+def test_the_marketplace_example_is_doctor_clean_and_ships_no_css(tmp_path):
+    from larryd import new as larryd_new
+    root = larryd_new.make('marketplace', tmp_path, example='marketplace')
+    assert not list((root / 'agent').glob('*.css')) and not (root / 'design').exists()
+    assert doctor.check(root) == [] and doctor.fix(root) == []
+
+
+def test_a_shipped_sheet_fails_and_says_what_to_do(tmp_path):
+    from larryd import new as larryd_new
+    root = larryd_new.make('m', tmp_path, example='marketplace')
+    (root / 'agent' / 'card.css').write_text(SHEET)
+    problems = doctor.check(root)
+    assert [p.check for p in problems] == ['the shape'] and 'agents ship no CSS' in problems[0].wrong and '--fix' in problems[0].todo
+
+
+def test_fix_moves_the_sheet_and_is_deterministic(tmp_path):
+    from larryd import new as larryd_new
+    root = larryd_new.make('m', tmp_path, example='marketplace')
+    (root / 'agent' / 'card.css').write_text(SHEET)
+    manifest = json.loads((root / 'agent' / 'agent.json').read_text())
+    del manifest['card']['price']
+    (root / 'agent' / 'agent.json').write_text(json.dumps(manifest))
+    changed = doctor.fix(root)
+    assert any('moved to design/card.css' in c for c in changed) and any("price = '0'" in c for c in changed), changed
+    assert 'look' not in json.loads((root / 'agent' / 'agent.json').read_text())
+    assert (root / 'design' / 'card.css').read_text() == SHEET and not (root / 'agent' / 'card.css').exists()
+    assert (root / '.larryd' / 'doctor_backup' / 'agent.json').is_file()
+    assert doctor.check(root) == [] and doctor.fix(root) == []   # nothing left; the same files give the same result
+
+
+def test_an_old_style_field_goes(tmp_path):
+    from larryd import new as larryd_new
+    root = larryd_new.make('m', tmp_path, example='marketplace')
+    manifest = json.loads((root / 'agent' / 'agent.json').read_text())
+    manifest['style'] = 'card.css'
+    (root / 'agent' / 'agent.json').write_text(json.dumps(manifest))
+    assert any('"style" is not a manifest field' in p.wrong for p in doctor.check(root))
+    doctor.fix(root)
+    assert 'style' not in json.loads((root / 'agent' / 'agent.json').read_text()) and doctor.check(root) == []
+
+
+def test_submit_converts_first_and_never_refuses_on_css(tmp_path, monkeypatch):
+    from larryd import new as larryd_new, submit
+    root = larryd_new.make('m', tmp_path, example='marketplace')
+    (root / 'agent' / 'card.css').write_text(SHEET)
+    sent = []
+    monkeypatch.setattr(submit, 'send', lambda data: (sent.append(data), (201, {'claim': 'https://scratch.example/claim', 'minutes': 10}))[1])
+    out = submit.submit(root, open_browser=False)
+    assert out['ok'] and any('card.css' in c for c in out['sheets'])
+    assert not (root / 'agent' / 'card.css').exists()   # what was sent holds no CSS
+    assert len(sent) == 1
+
+
+# THE FIXER NEVER WRITES THROUGH A LINK (the security review, 2026-10-06).
+def test_fix_never_writes_through_a_linked_sheet(tmp_path):
+    from larryd import new as larryd_new
+    root = larryd_new.make('m', tmp_path, example='marketplace')
+    outside = tmp_path / 'precious.css'
+    outside.write_text('h1 { font-size: 40px }\n')
+    (root / 'agent' / 'card.css').symlink_to(outside)
+    changed = doctor.fix(root)
+    assert outside.read_text() == 'h1 { font-size: 40px }\n'
+    assert any('a link, left as it is' in c for c in changed), changed
+
+
+def test_fix_never_writes_through_a_linked_backup_folder(tmp_path):
+    from larryd import new as larryd_new
+    root = larryd_new.make('m', tmp_path, example='marketplace')
+    elsewhere = tmp_path / 'elsewhere'
+    elsewhere.mkdir()
+    (root / '.larryd').mkdir()
+    (root / '.larryd' / 'doctor_backup').symlink_to(elsewhere)
+    (root / 'design').mkdir()
+    (root / 'design' / 'card.css').write_text('h1 { font-size: 20px }\n')   # a previous sheet to keep: a backup is needed
+    (root / 'agent' / 'card.css').write_text('h1 { font-size: 40px }\n')
+    with pytest.raises(PermissionError):
+        doctor.fix(root)
+    assert list(elsewhere.iterdir()) == []
+    assert (root / 'agent' / 'card.css').read_text() == 'h1 { font-size: 40px }\n'   # nothing changed when the backup cannot be made
+
+
+def test_fix_never_moves_a_sheet_into_a_linked_design_folder(tmp_path):
+    from larryd import new as larryd_new
+    root = larryd_new.make('m', tmp_path, example='marketplace')
+    elsewhere = tmp_path / 'elsewhere'
+    elsewhere.mkdir()
+    (root / 'design').symlink_to(elsewhere)
+    (root / 'agent' / 'card.css').write_text('.mk-card { border-radius: 4px }\n')
+    with pytest.raises(PermissionError):
+        doctor.fix(root)
+    assert list(elsewhere.iterdir()) == []
+
+
+def test_fix_never_follows_a_linked_manifest(tmp_path):
+    from larryd import new as larryd_new
+    root = larryd_new.make('m', tmp_path, example='marketplace')
+    outside = tmp_path / 'other.json'
+    outside.write_text(json.dumps({'name': 'x'}))
+    (root / 'agent' / 'agent.json').unlink()
+    (root / 'agent' / 'agent.json').symlink_to(outside)
+    doctor.fix(root)
+    assert json.loads(outside.read_text()) == {'name': 'x'}
+
+
+def test_the_backup_folder_is_private(tmp_path):
+    from larryd import new as larryd_new
+    root = larryd_new.make('m', tmp_path, example='marketplace')
+    manifest = json.loads((root / 'agent' / 'agent.json').read_text())
+    manifest['look'] = {'accent': 'active-color-01'}   # an old look: the manifest is kept before it goes
+    (root / 'agent' / 'agent.json').write_text(json.dumps(manifest))
+    doctor.fix(root)
+    assert oct((root / '.larryd' / 'doctor_backup').stat().st_mode & 0o777) == '0o700'
+
+
+# ---------------------------------------------------------------- the member's records
+def _records(agent, records, calls=('answer',)):
+    card = _card(agent)
+    card['records'] = records
+    card['calls'] = list(calls)
+    _write_card(agent, card)
+
+
+def test_a_declared_records_field_passes(agent):
+    _records(agent, {'opns': ['read', 'add', 'edit', 'remove']})
+    assert doctor.check(agent) == []
+
+
+@pytest.mark.parametrize('records, said', [
+    ('opns', 'not {species: [verbs]}'),
+    ({}, 'not {species: [verbs]}'),
+    ({'larry': ['read']}, 'not a module of the platform'),
+    ({'OPNS': ['read']}, 'not a module of the platform'),
+    ({'opns': []}, 'not a list of verbs'),
+    ({'opns': ['delete']}, 'not a list of verbs'),
+    ({'opns': 'read'}, 'not a list of verbs'),
+])
+def test_records_catches(agent, records, said):
+    _records(agent, records)
+    problems = [p for p in doctor.check(agent) if p.check == 'the manifest']
+    assert problems and any(said in p.wrong for p in problems), [p.wrong for p in problems]
+    assert all(p.todo for p in problems)
+
+
+def test_the_counts_declaration_passes_alone_beside_species_and_without_a_call(agent):
+    for records, calls in (({'*': ['count']}, ('answer',)), ({'*': ['count'], 'opns': ['read']}, ('answer',)), ({'*': ['count']}, ())):
+        _records(agent, records, calls=calls)
+        assert doctor.check(agent) == [], (records, calls)
+
+
+@pytest.mark.parametrize('records, said', [
+    ({'*': ['read']}, 'records "*" is not ["count"]'),
+    ({'*': ['count', 'read']}, 'records "*" is not ["count"]'),
+    ({'*': 'count'}, 'records "*" is not ["count"]'),
+    ({'*': True}, 'records "*" is not ["count"]'),
+    ({'opns': ['count']}, 'not a list of verbs'),
+])
+def test_the_counts_declaration_catches(agent, records, said):
+    _records(agent, records)
+    problems = [p for p in doctor.check(agent) if p.check == 'the manifest']
+    assert problems and any(said in p.wrong for p in problems), [p.wrong for p in problems]
+    assert all(p.todo for p in problems)
+
+
+def test_the_counts_beside_species_still_need_a_call(agent):
+    _records(agent, {'*': ['count'], 'opns': ['read']}, calls=())
+    assert [p.wrong for p in doctor.check(agent) if p.check == 'the manifest'] == ['"records" is declared, but "calls" is empty']
+
+
+def test_records_need_a_call(agent):
+    _records(agent, {'opns': ['read']}, calls=())
+    problems = [p.wrong for p in doctor.check(agent) if p.check == 'the manifest']
+    assert problems == ['"records" is declared, but "calls" is empty']
+
+
+# ---------------------------------------------------------------- THE DATA FABRIC (the owner, 2026-10-25)
+def _fabric(agent, fabric, records=None, gives=None):
+    card = _card(agent)
+    card['fabric'] = fabric
+    card['records'] = records if records is not None else {'invc': ['read', 'edit']}
+    card['calls'] = card['does'][:1]
+    card['gives'] = gives if gives is not None else sorted(set(card['gives']) | {'fabric'})
+    _write_card(agent, card)
+
+
+def test_a_declared_fabric_passes(agent):
+    _fabric(agent, {'modules': ['invc']})
+    assert doctor.check(agent) == []
+
+
+@pytest.mark.parametrize('fabric, records, gives, said', [
+    ('invc', None, None, 'not {"modules": [module codes]}'),
+    ({'modules': []}, None, None, 'not {"modules": [module codes]}'),
+    ({'modules': ['zzzz']}, None, None, 'not {"modules": [module codes]}'),
+    ({'modules': ['invc'], 'more': 1}, None, None, 'not {"modules": [module codes]}'),
+    ({'modules': ['invc', 'cont']}, None, None, 'names cont, which "records" does not declare with read, edit'),
+    ({'modules': ['invc']}, {'invc': ['read']}, None, 'names invc, which "records" does not declare'),
+    ({'modules': ['invc']}, None, ['view', 'delivery'], '"gives" does not name "fabric"'),
+])
+def test_fabric_catches(agent, fabric, records, gives, said):
+    _fabric(agent, fabric, records, gives)
+    problems = [p for p in doctor.check(agent) if p.check == 'the manifest']
+    assert problems and any(said in p.wrong for p in problems), [p.wrong for p in problems]
+    assert all(p.todo for p in problems)

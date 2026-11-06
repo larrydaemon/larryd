@@ -1,0 +1,16 @@
+{
+  "do": "report",
+  "cards": [
+    {
+      "key": "MAGT_000000000001_0001",
+      "number": "1",
+      "class": "MARK I AGENT (NORMAL)",
+      "name": "PF AGENT MARKETPLACE",
+      "product": "LARRYD",
+      "module": "Agents",
+      "price": "0",
+      "hired": true,
+      "hireable": true
+    }
+  ]
+}

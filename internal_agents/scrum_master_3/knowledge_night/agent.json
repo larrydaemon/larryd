@@ -1,0 +1,106 @@
+{
+  "key": "MAGT_245152619843_1735",
+  "name": "Knowledge night",
+  "office": "scrum_master_3",
+  "workflow": "Scrum Master 3",
+  "group": "RELEASE",
+  "entry": "agent.py",
+  "libs": [
+    "night",
+    "look"
+  ],
+  "about": "KNOWLEDGE NIGHT: the knowledge store's night step (the day's inbox taken in, uses counted, pointers made and checked), then every skills index. Dry: the step is there and the command it would run.",
+  "does": [
+    "canvas",
+    "run"
+  ],
+  "calls": [
+    "canvas"
+  ],
+  "records": {
+    "agnt": [
+      "read"
+    ],
+    "jobs": [
+      "read"
+    ]
+  },
+  "run": {
+    "do": "run",
+    "hands": []
+  },
+  "gives": [
+    "view",
+    "delivery",
+    "light"
+  ],
+  "skills": [],
+  "knowledge": [],
+  "facts": {
+    "dry": true,
+    "chain": "RELEASE",
+    "lock": "~/scratch/tests/release/.release.lock",
+    "waits_for": {
+      "the NIGHT": "~/scratch/tests/night/.night.lock",
+      "a DAY run": "~/scratch/tests/day/.day.lock",
+      "the tower": "~/spine_scratch/tower_auto/auto.lock"
+    },
+    "utility_pid": "~/spine_scratch/hotfix_runs/running.lock",
+    "python": "~/virtual_workspace/.venv/bin/python",
+    "tower_app": "~/virtual_workspace/lryllm/lryllm/app",
+    "reruns": "~/spine_scratch/tower_auto/reruns",
+    "targets": {
+      "here": "localhost_pf",
+      "rnd": "frost-b.rnd",
+      "native": "this laptop"
+    },
+    "native_prefixes": [
+      "native_",
+      "hot_fix"
+    ],
+    "native_steps": [
+      "native_generate",
+      "native_iphone",
+      "native_test_iphone",
+      "native_macos",
+      "native_test_macos"
+    ],
+    "plan": [
+      {
+        "say": "knowledge · the night step",
+        "argv": [
+          "python3",
+          "-m",
+          "knowledge.night",
+          "run"
+        ],
+        "cwd": "~/virtual_sanity/knowledge/app",
+        "needs": [
+          "~/virtual_sanity/knowledge/app/knowledge/night.py"
+        ],
+        "seconds": 1800
+      }
+    ],
+    "next": "The swap",
+    "took": "about 10 min",
+    "heals": false,
+    "heal_most": 2
+  },
+  "card": {
+    "class": "MARK I AGENT (NORMAL)",
+    "pitch": "The knowledge store night step and every skills index",
+    "price": "0",
+    "type": "DEVELOPER",
+    "residency": "INTERNAL",
+    "authorization": "PRIVATE",
+    "screen": "larryd/jobs/home",
+    "product": "LARRYD",
+    "module": "Jobs",
+    "developer": "LARRYD",
+    "sends_to": "",
+    "data_sent": ""
+  },
+  "internal": {
+    "seconds": 1800
+  }
+}

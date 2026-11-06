@@ -11,6 +11,10 @@ import secrets
 import shutil
 import socket
 import sys
+import threading
+import time
+import urllib.error
+import urllib.request
 
 PORT = 5010   # the runtime's own port (its schemas' runtime.json); LARRYD_PORT names another
 
@@ -63,6 +67,29 @@ def taken(port):
     return False
 
 
+def ready(port, timeout=0.5):
+    """Does the runtime on this port answer its own /ready with ready (200)?"""
+    try:
+        with urllib.request.urlopen(f'http://127.0.0.1:{port}/ready', timeout=timeout) as r:
+            return r.status == 200
+    except (urllib.error.URLError, OSError, ValueError):
+        return False
+
+
+def say_when_ready(port, line, most=60.0, every=0.1, out=None):
+    """The listen line, printed only once the runtime answers /ready (never before: `larryd card` would find no one);
+    after `most` seconds without an answer, says so instead."""
+    out = out or sys.stdout
+    end = time.monotonic() + most
+    while time.monotonic() < end:
+        if ready(port):
+            print(line, file=out, flush=True)
+            return True
+        time.sleep(every)
+    print(f'larryd: the runtime on 127.0.0.1:{port} has not answered /ready after {most:g} seconds; see its log above', file=sys.stderr, flush=True)
+    return False
+
+
 def run():
     runtime = runtime_dir()
     instance = instance_dir()
@@ -79,7 +106,10 @@ def run():
         print('larryd: agents need bubblewrap on Linux (sudo apt install bubblewrap); until then nothing runs unsandboxed', file=sys.stderr)
     os.environ['LARRYD_INSTANCE'] = str(instance)
     os.environ['LARRYD_PORT'] = str(port)
-    print(f"LARRYD's runtime listens on http://127.0.0.1:{port} (pid {os.getpid()}) · its instance: {instance} · stop it: Ctrl-C (or kill {os.getpid()})", flush=True)
+    os.environ['LARRYD_DEVELOPER'] = '1'   # your own runtime: the marketplace page, and the platform's answers from the instance until one is declared
+    line = (f"LARRYD's runtime listens on http://127.0.0.1:{port} (pid {os.getpid()}) · its instance: {instance} · the marketplace: "
+            f"http://127.0.0.1:{port}/marketplace · stop it: Ctrl-C (or kill {os.getpid()})")
+    threading.Thread(target=say_when_ready, args=(port, line), daemon=True).start()   # said only once it answers its own /ready
     import flask.cli
     flask.cli.show_server_banner = lambda *a, **k: None   # the one line above says it all
     sys.argv = ['larryd']

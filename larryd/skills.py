@@ -1,5 +1,5 @@
 """THE SKILLS a developer's agent may declare in its manifest, each by its hash. A skill is a definition (its name, its
-technology, the the LARRYD runtime door it goes through, what it does, what the agent does with it); its hash is the sha256 of
+technology, the LARRYD runtime door it goes through, what it does, what the agent does with it); its hash is the sha256 of
 that definition, so a changed skill is a new skill. Only doors the LARRYD runtime really has are skills (larryd/skills.json)."""
 import json
 from importlib import resources

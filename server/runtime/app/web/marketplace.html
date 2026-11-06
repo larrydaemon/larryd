@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LARRYD · the marketplace</title>
+<link rel="stylesheet" href="/marketplace/reference_theme.css">
+<link rel="stylesheet" href="/marketplace/page.css">
+</head>
+<body>
+<div class="wrap">
+{% if refused %}
+<div class="refused">
+ <div>The marketplace cannot answer: {{ refused }}</div>
+ <form method="post" action="/marketplace/hire" class="mk-form"><input type="hidden" name="token" value="{{ token }}"><input type="hidden" name="key" value="{{ marketplace_key }}"><input type="hidden" name="value" value="on"><button class="button">Hire the marketplace again</button></form>
+</div>
+{% else %}
+<div class="mk-view" data-answer="{{ A.agent_key }}">{% if A.view %}<template shadowrootmode="open"><link rel="stylesheet" href="/marketplace/view.css">{{ A.view.html|safe }}</template>{% else %}<div class="caption mk-verdict">The marketplace's view was not shown (it answered none, or the runtime's check refused it).</div>{% endif %}</div>
+{# THE AGENT'S OWN VIEW: its panel, its controller, where each card stands; the runtime checked it; this page only holds it in one
+   shadow root. The cards themselves are the platform's (themes/embedded/agent_cards), put there by the platform's host alone: this
+   shelf shows where they stand (the owner 2026-11-03: the card "100% fully encapsulated in our themes folder with zero outside"). #}
+{% if no %}<div class="caption mk-verdict">{{ no }}</div>{% endif %}
+<form method="post" action="/marketplace/hire" class="mk-form" id="mk-hire" hidden><input type="hidden" name="token" value="{{ token }}"><input type="hidden" name="key" value=""><input type="hidden" name="value" value=""></form>
+<section class="mk-shelf">
+ {% if hidden %}
+ <div class="hidden-list">
+  <div class="caption">Not on the shelf</div>
+  <ul>{% for name, why in hidden %}<li>{{ name }}: {{ why }}</li>{% endfor %}</ul>
+ </div>
+ {% endif %}
+ <p class="shelf-note">This is your own LARRYD's marketplace, on this computer: every agent it holds, in order. The cards are drawn by the platform alone, in its own look and in the member's language; the number and the art are given at approval.</p>
+</section>
+{% endif %}
+</div>
+<script src="/marketplace/view.js"></script>
+</body>
+</html>

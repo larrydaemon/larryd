@@ -51,7 +51,7 @@ def client(tmp_path):
 
 def test_the_tools_are_listed(client):
     tools = client.ask('tools/list')['result']['tools']
-    assert [t['name'] for t in tools] == ['larryd_new', 'larryd_doctor', 'larryd_run', 'larryd_submit', 'larryd_skills', 'larryd_pack']
+    assert [t['name'] for t in tools] == ['larryd_new', 'larryd_doctor', 'larryd_run', 'larryd_submit', 'larryd_skills', 'larryd_pack', 'larryd_card']
     assert all(t['description'] and t['inputSchema']['type'] == 'object' for t in tools)
 
 
@@ -71,7 +71,7 @@ def test_a_planted_problem_comes_back_to_the_ai(client, tmp_path):
     path = tmp_path / 'planted' / 'agent' / 'agent.py'
     path.write_text(path.read_text() + '\nimport socket\n')
     checked = client.call('larryd_doctor', path='planted')['structuredContent']
-    gap = next(c for c in checked['checks'] if c['check'] == 'the air gap')
+    gap = next(c for c in checked['checks'] if c['check'] == 'no network')
     assert checked['ok'] is False and gap['problems'][0]['file'] == 'agent/agent.py' and gap['problems'][0]['todo']
     ran = client.call('larryd_run', path='planted')['structuredContent']
     assert ran['state'] == 'REFUSED' and ran['problems']
@@ -114,7 +114,13 @@ def test_the_plugin_skill_is_the_projects_skill():
 
 def test_the_plugin_and_the_project_start_the_same_server(tmp_path):
     assert json.loads((REPO / 'plugin' / '.mcp.json').read_text()) == new.MCP
-    assert json.loads((new.make('p', tmp_path) / '.mcp.json').read_text()) == new.MCP
+    made = json.loads((new.make('p', tmp_path) / '.mcp.json').read_text())['mcpServers']['larryd']
+    # the project's names THIS larryd by its full path (frost-92, rc9: "larryd not on PATH" outside the venv): the same server
+    assert pathlib.Path(made['command']).is_absolute() and pathlib.Path(made['command']).is_file()
+    assert made['args'] == ['mcp'] if pathlib.Path(made['command']).name == 'larryd' else made['args'] == ['-m', 'larryd', 'mcp']
+    reply = subprocess.run([made['command'], *made['args']], input='{"jsonrpc": "2.0", "id": 1, "method": "tools/list"}\n',
+                           capture_output=True, text=True, timeout=30, env={'PATH': '/nonexistent'})
+    assert 'larryd_doctor' in reply.stdout, reply.stderr
 
 
 def test_the_marketplace_points_at_the_plugin():
@@ -150,3 +156,32 @@ def test_the_guide_and_the_readme_name_only_what_exists():
         named = set(re.findall(r'larryd ([a-z]+)', text)) - {'repository', 'tools', 'skill', 'the'}
         assert named <= real, (doc, named - real)
         assert set(re.findall(r'\blarryd_[a-z]+', text)) <= set(mcp.TOOLS), doc
+
+
+# frost-92's MCP-only path on rc17 (Z1, Z4, Z6)
+def test_larryd_doctor_fixes_with_fix_true(tmp_path):
+    root = new.make('mfix', tmp_path, example='marketplace')
+    (root / 'agent' / 'card.css').write_text('.mk-card { border-radius: 4px }\n')
+    out, failed = mcp.TOOLS['larryd_doctor'][0]({'path': str(root)})
+    todos = [p['todo'] for c in out['checks'] for p in c['problems']]
+    assert not failed and not out['ok'] and any('`larryd doctor --fix`, or larryd_doctor with "fix": true' in t for t in todos)
+    out, failed = mcp.TOOLS['larryd_doctor'][0]({'path': str(root), 'fix': True})
+    assert not failed and out['ok'] and any('moved to design/card.css' in c for c in out['fixed'])
+
+
+def test_larryd_new_takes_from(tmp_path):
+    out, failed = mcp.TOOLS['larryd_new'][0]({'name': 'fromx', 'where': str(tmp_path), 'from': 'marketplace'})
+    assert not failed and json.loads((tmp_path / 'fromx' / 'agent' / 'agent.json').read_text())['name'] == 'PF AGENT MARKETPLACE'
+    out, failed = mcp.TOOLS['larryd_new'][0]({'name': 'nope', 'where': str(tmp_path), 'from': 'nothing'})
+    assert failed and 'no example' in out['wrong']
+    assert mcp.TOOLS['larryd_new'][2]['properties']['from']['enum'] == list(new.EXAMPLES)
+
+
+def test_larryd_doctor_with_no_project_is_an_error_not_eight_passes(tmp_path):
+    out, failed = mcp.TOOLS['larryd_doctor'][0]({'path': str(tmp_path)})
+    assert failed and out['ok'] is False and 'checks' not in out and 'no agent project' in out['wrong']
+
+
+def test_larryd_doctor_warns_of_the_blank_s_placeholders(tmp_path):
+    out, failed = mcp.TOOLS['larryd_doctor'][0]({'path': str(new.make('ph', tmp_path))})
+    assert out['ok'] and len(out['warnings']) == 2 and all('larryd_submit refuses it' in w for w in out['warnings'])

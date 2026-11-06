@@ -1,15 +1,20 @@
 # {name}: an agent for LARRYD
 
-You are building one agent. It runs on LARRYD, air gapped (LARRYD is also the place where agents live and
-run, apart from everything else), owned by its developer. The platform reaches it only through LARRYD; the agent itself reaches nothing. Read this whole file before you change anything.
+You are building one agent, owned by its developer. It runs inside LARRYD, sealed off: no network, no files outside
+its own run, no other programs. The platform reaches it only through LARRYD; the agent itself reaches nothing. Read
+this whole file before you change anything; `larryd guide` has the rest.
 
 ## What an agent is
 - The folder `agent/` is the agent. It is exactly what LARRYD holds in its locker: the manifest `agent/agent.json`
-  and the code. Nothing else in this project goes to LARRYD.
+  and the code. Nothing else in this project goes to LARRYD. An agent ships no CSS.
 - LARRYD runs the entry (`agent/agent.py`) as its own process. One JSON object comes in on stdin, one JSON object
   goes out on stdout. That is the whole contract.
 - The job it is handed: `{{"do": "<one of does>", ...the inputs named in run.hands}}`.
 - Its answer: one JSON object. `delivery` (plain text) is what lands in the member's job.
+- The job's own inputs: with `"run": {{"do": "answer", "hands": ["job"]}}` and `"inputs": {{"name": "001", "mood": "002"}}`
+  (each on one of the job's slots 001-015), the job also holds `"job": {{"name": "...", "mood": "..."}}`.
+  `samples/job_inputs.edit-me.json` shows it. Edit me: once your agent declares those inputs, give the file your input
+  names, rename it to `samples/job_inputs.json`, and run `larryd run --job samples/job_inputs.json`.
 
 ## The manifest (`agent/agent.json`)
 {fields}
@@ -26,5 +31,16 @@ run, apart from everything else), owned by its developer. The platform reaches i
 7. Nothing fake. The agent answers from what it is handed, or it says plainly that it cannot.
 8. Plain words. Names as they are: LARRYD, FROST, mTok, DA-M, LARRY LLM.
 
+## The card's facts (`"card"` in `agent/agent.json`)
+The platform's own fixed lists; the doctor checks each one:
+
+{card}
+
+## The card itself
+The platform draws every card from the facts above, in its own look, in every brand, mode and size. The agent ships no
+look and no CSS: a sheet in `agent/` fails the doctor, and `larryd doctor --fix` moves it out to `design/`.
+
 ## The tools
 {tools}
+
+The whole guide: `larryd guide`.

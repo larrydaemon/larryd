@@ -17,6 +17,10 @@ def open_store(instance):
         for name, table in SCHEMA['tables'].items():
             con.execute(f'CREATE TABLE IF NOT EXISTS "{name}" (' + ', '.join(f'"{c}" {kind}' for c, kind in table['columns']) + ')')
             have = [r[1] for r in con.execute(f'PRAGMA table_info("{name}")')]
+            for c, kind in table['columns'][len(have):]:   # a table made before a column the schema added at its end: the column added, empty
+                if have == [c0 for c0, _k in table['columns'][:len(have)]]:
+                    con.execute(f'ALTER TABLE "{name}" ADD COLUMN "{c}" {kind}')
+            have = [r[1] for r in con.execute(f'PRAGMA table_info("{name}")')]
             if have != [c for c, _kind in table['columns']]:
                 raise SystemExit(f'runtime.db: {name} is not the schema\'s ({have}); the runtime refuses to keep it')
         con.commit()

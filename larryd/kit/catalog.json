@@ -1,0 +1,240 @@
+{
+ "about": "The platform's fixed lists for an agent's card: its class, type, residency, authorization, product and screen. The card is drawn by the platform from these values; an agent ships no look.",
+ "card": {
+  "about": "The card's allowed values, the platform's own fixed lists (its agent class, type and residency lists; its screens: each module's home, list and card, and each product's dashboard larry/home, at app/<species>/<page>). Who may hire (\"authorization\": PUBLIC or PRIVATE) is the developer's starting setting; the platform's authorize panel can change it at any time after, and a PRIVATE agent's owning account is entered there.",
+  "class": [
+   "MARK I AGENT (NORMAL)",
+   "MARK II SUPER AGENT (HARNESS)",
+   "MARK III QUANTUM AI (AGENTIC CODE)",
+   "MARK IV REPLICA (FULL-HUMAN REPLACEMENT)"
+  ],
+  "type": [
+   "OFF-THE-SHELF",
+   "DEVELOPER"
+  ],
+  "residency": [
+   "INTERNAL",
+   "EXTERNAL",
+   "BOTH"
+  ],
+  "products": [
+   "INVOICE MAPS",
+   "AGENCY MGMT",
+   "PACE SHIFT",
+   "LARRYD"
+  ],
+  "screens": {
+   "cont/home": {
+    "product": "INVOICE MAPS",
+    "module": "Contacts"
+   },
+   "cont/list": {
+    "product": "INVOICE MAPS",
+    "module": "Contacts"
+   },
+   "cont/card": {
+    "product": "INVOICE MAPS",
+    "module": "Contacts"
+   },
+   "invc/home": {
+    "product": "INVOICE MAPS",
+    "module": "Invoices"
+   },
+   "invc/list": {
+    "product": "INVOICE MAPS",
+    "module": "Invoices"
+   },
+   "invc/card": {
+    "product": "INVOICE MAPS",
+    "module": "Invoices"
+   },
+   "locn/home": {
+    "product": "INVOICE MAPS",
+    "module": "Locations"
+   },
+   "locn/list": {
+    "product": "INVOICE MAPS",
+    "module": "Locations"
+   },
+   "locn/card": {
+    "product": "INVOICE MAPS",
+    "module": "Locations"
+   },
+   "opns/home": {
+    "product": "INVOICE MAPS",
+    "module": "Operations"
+   },
+   "opns/list": {
+    "product": "INVOICE MAPS",
+    "module": "Operations"
+   },
+   "opns/card": {
+    "product": "INVOICE MAPS",
+    "module": "Operations"
+   },
+   "hrcy/home": {
+    "product": "AGENCY MGMT",
+    "module": "Hierarchies"
+   },
+   "hrcy/list": {
+    "product": "AGENCY MGMT",
+    "module": "Hierarchies"
+   },
+   "hrcy/card": {
+    "product": "AGENCY MGMT",
+    "module": "Hierarchies"
+   },
+   "mdia/home": {
+    "product": "AGENCY MGMT",
+    "module": "Media"
+   },
+   "mdia/list": {
+    "product": "AGENCY MGMT",
+    "module": "Media"
+   },
+   "mdia/card": {
+    "product": "AGENCY MGMT",
+    "module": "Media"
+   },
+   "brnd/home": {
+    "product": "AGENCY MGMT",
+    "module": "Brand"
+   },
+   "brnd/list": {
+    "product": "AGENCY MGMT",
+    "module": "Brand"
+   },
+   "brnd/card": {
+    "product": "AGENCY MGMT",
+    "module": "Brand"
+   },
+   "sprt/home": {
+    "product": "AGENCY MGMT",
+    "module": "Sprint"
+   },
+   "sprt/list": {
+    "product": "AGENCY MGMT",
+    "module": "Sprint"
+   },
+   "sprt/card": {
+    "product": "AGENCY MGMT",
+    "module": "Sprint"
+   },
+   "imgs/home": {
+    "product": "PACE SHIFT",
+    "module": "Images"
+   },
+   "imgs/list": {
+    "product": "PACE SHIFT",
+    "module": "Images"
+   },
+   "imgs/card": {
+    "product": "PACE SHIFT",
+    "module": "Images"
+   },
+   "vdeo/home": {
+    "product": "PACE SHIFT",
+    "module": "Videos"
+   },
+   "vdeo/list": {
+    "product": "PACE SHIFT",
+    "module": "Videos"
+   },
+   "vdeo/card": {
+    "product": "PACE SHIFT",
+    "module": "Videos"
+   },
+   "audo/home": {
+    "product": "PACE SHIFT",
+    "module": "Audio"
+   },
+   "audo/list": {
+    "product": "PACE SHIFT",
+    "module": "Audio"
+   },
+   "audo/card": {
+    "product": "PACE SHIFT",
+    "module": "Audio"
+   },
+   "prdn/home": {
+    "product": "PACE SHIFT",
+    "module": "Production"
+   },
+   "prdn/list": {
+    "product": "PACE SHIFT",
+    "module": "Production"
+   },
+   "prdn/card": {
+    "product": "PACE SHIFT",
+    "module": "Production"
+   },
+   "agnt/home": {
+    "product": "LARRYD",
+    "module": "Agents"
+   },
+   "agnt/list": {
+    "product": "LARRYD",
+    "module": "Agents"
+   },
+   "agnt/card": {
+    "product": "LARRYD",
+    "module": "Agents"
+   },
+   "mdls/home": {
+    "product": "LARRYD",
+    "module": "Models"
+   },
+   "mdls/list": {
+    "product": "LARRYD",
+    "module": "Models"
+   },
+   "mdls/card": {
+    "product": "LARRYD",
+    "module": "Models"
+   },
+   "logs/home": {
+    "product": "LARRYD",
+    "module": "Logs"
+   },
+   "logs/list": {
+    "product": "LARRYD",
+    "module": "Logs"
+   },
+   "logs/card": {
+    "product": "LARRYD",
+    "module": "Logs"
+   },
+   "jobs/home": {
+    "product": "LARRYD",
+    "module": "Jobs"
+   },
+   "jobs/list": {
+    "product": "LARRYD",
+    "module": "Jobs"
+   },
+   "jobs/card": {
+    "product": "LARRYD",
+    "module": "Jobs"
+   },
+   "larry/home": {
+    "product": "any",
+    "module": "the product's dashboard"
+   }
+  },
+  "authorization": [
+   "PUBLIC",
+   "PRIVATE"
+  ],
+  "class_means": {
+   "MARK I AGENT (NORMAL)": "simple",
+   "MARK II SUPER AGENT (HARNESS)": "complex",
+   "MARK III QUANTUM AI (AGENTIC CODE)": "extremely complex",
+   "MARK IV REPLICA (FULL-HUMAN REPLACEMENT)": "a full human replacement"
+  },
+  "residency_means": {
+   "INTERNAL": "Positive Feedback's own agent marketplace only",
+   "EXTERNAL": "other marketplaces only (e.g. the Microsoft marketplace), not Positive Feedback",
+   "BOTH": "Positive Feedback and at least one other marketplace"
+  }
+ }
+}

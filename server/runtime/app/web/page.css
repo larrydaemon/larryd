@@ -1,0 +1,21 @@
+/* THE DEVELOPER'S SHELF, in LARRYD's own ink on this computer: its page alone. No card is drawn here or styled here: the agent card is the
+   platform's one embedded widget (themes/embedded/agent_cards, the owner 2026-11-03: "100% fully encapsulated in our themes folder with zero outside"). */
+:root { --ink: #e8f5ea; --dim: #8fa392; --ground: #0a0d0a; --panel: #111611; --line: #263126; --hot: #4dff6b; --hot-ink: #06120a; --warn: #ffb84d; }
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--ground); color: var(--ink); font: 14px/1.45 "DejaVu Sans Mono", ui-monospace, Menlo, monospace; }
+a { color: var(--hot); }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 28px 16px 60px; }
+.mk-controller { display: flex; flex-direction: column; gap: 6px; margin: 0 0 22px; }
+.subtitle { font-size: 22px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+.caption { color: var(--dim); font-size: 12px; letter-spacing: .04em; text-transform: uppercase; }
+.annotation { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--dim); }
+.mk-verdict { color: var(--warn); }
+.shelf-note { margin-top: 26px; color: var(--dim); font-size: 12px; }
+.hidden-list { margin: 22px 0 0; padding: 14px; border: 1px dashed var(--line); border-radius: 10px; }
+.hidden-list ul { margin: 8px 0 0; padding-left: 18px; }
+.hidden-list li { margin: 4px 0; }
+.refused { padding: 16px; border: 1px solid var(--warn); border-radius: 10px; color: var(--warn); display: flex; flex-direction: column; gap: 12px; }
+.button { display: inline-block; padding: 8px 14px; border: 1px solid var(--hot); border-radius: 8px; background: transparent; color: var(--hot); font: inherit; cursor: pointer; }
+.title { font-size: 20px; font-weight: 700; line-height: 1.15; text-transform: uppercase; }
+.body { color: var(--ink); font-size: 13px; }
+.callout { font-size: 15px; font-weight: 700; }

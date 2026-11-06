@@ -5,18 +5,23 @@ import json
 import pathlib
 import sys
 
-from . import __version__, doctor, knowledge, mcp, new, runner, skills, submit
+from . import __version__, doctor, guide, knowledge, mcp, new, place, runner, skills, submit
+
+START = 'Start: larryd new <name> --from marketplace, then read <name>/CLAUDE.md (or larryd guide)'
 
 
 def parser():
-    p = argparse.ArgumentParser(prog='larryd', description='LARRYD. Your server has a daemon. Your agents should have one too. Build, test and ship AI agents with Claude Code.')
+    p = argparse.ArgumentParser(prog='larryd', description='LARRYD. Your server has a daemon. Your agents should have one too. Build, test and ship AI agents with Claude Code.',
+                                epilog=f'The guide: {guide.path()} (larryd guide prints it).\n{START}', formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument('--version', action='version', version=f'larryd {__version__}')
     sub = p.add_subparsers(dest='command', required=True)
     n = sub.add_parser('new', help='make a new agent project')
     n.add_argument('name', help='the agent\'s name, also its folder')
+    n.add_argument('--from', dest='example', choices=['marketplace'], help='start from a LARRYD example agent (marketplace: the PF agent marketplace)')
     d = sub.add_parser('doctor', help='check the agent before submission')
     d.add_argument('path', nargs='?', default='.', help='the agent project (default: here)')
     d.add_argument('--json', action='store_true', help='the result as JSON')
+    d.add_argument('--fix', action='store_true', help='move a design sheet out of agent/ to design/, fill the card\'s missing facts (originals kept in .larryd/doctor_backup/), then check again')
     d.add_argument('--badge', action='store_true', help=f'also write {doctor.BADGE} beside agent/: PASS or FAIL, the day, the checks\' version, for your README')
     r = sub.add_parser('run', help='run the agent here, the way LARRYD runs it, with a sample job')
     r.add_argument('path', nargs='?', default='.', help='the agent project (default: here)')
@@ -26,7 +31,15 @@ def parser():
     s.add_argument('path', nargs='?', default='.', help='the agent project (default: here)')
     s.add_argument('--json', action='store_true', help='the result as JSON')
     s.add_argument('--no-browser', action='store_true', help='print the claim page instead of opening it')
+    pl = sub.add_parser('place', help='put the agent on your own LARRYD\'s shelf (the runtime on this computer): the doctor, one file, held in its locker')
+    pl.add_argument('path', nargs='?', default='.', help='the agent project (default: here)')
+    pl.add_argument('--json', action='store_true', help='the result as JSON')
+    c = sub.add_parser('card', help='place the agent and open the marketplace page: every agent on this computer as a card with its hire toggle')
+    c.add_argument('path', nargs='?', default='.', help='the agent project (default: here)')
+    c.add_argument('--json', action='store_true', help='the result as JSON')
+    c.add_argument('--no-browser', action='store_true', help='print the page\'s address instead of opening it')
     sub.add_parser('mcp', help='serve the tools to Claude Code (a local tool server on stdin/stdout)')
+    sub.add_parser('guide', help='print the whole guide (it ships in the package as GUIDE.md)')
     sub.add_parser('help', help='these commands; `larryd` alone starts the daemon (LARRYD\'s runtime on 127.0.0.1)')
     sub.add_parser('skills', help='list the skills an agent may declare, by hash')
     k = sub.add_parser('pack', help='check a knowledge pack and give its hash')
@@ -43,17 +56,26 @@ def main(argv=None):
         parser().print_help()
         return 0
     args = parser().parse_args(argv)
+    if args.command == 'guide':
+        print(guide.text(), end='')
+        return 0
     if args.command == 'new':
         try:
-            root = new.make(args.name)
+            root = new.make(args.name, example=args.example)
         except ValueError as no:
             print(f'larryd new: {no}', file=sys.stderr)
             return 1
-        print(f'made {root}/ · open it with Claude Code: cd {root} && claude')
+        print(f'made {root}/ · read {root}/CLAUDE.md first, then open it with Claude Code: cd {root} && claude')
         return 0
     if args.command == 'doctor':
+        if args.fix:
+            for change in doctor.fix(args.path):
+                print(f'FIXED {change}')
         problems = doctor.check(args.path)
         print(json.dumps(doctor.as_json(problems), indent=2) if args.json else doctor.report(args.path, problems))
+        if not args.json:
+            for warn in doctor.placeholders(args.path):
+                print(f'WARN {warn} (larryd submit refuses it until then)')
         if args.badge:
             root = pathlib.Path(args.path).resolve()
             if root.is_dir():
@@ -79,10 +101,25 @@ def main(argv=None):
             out = no.as_json()
         print(json.dumps(out, indent=2) if args.json else _said(out))
         return 0 if out['ok'] else 1
+    if args.command in ('place', 'card'):
+        try:
+            out = place.place(args.path) if args.command == 'place' else place.card(args.path, open_browser=not args.no_browser)
+        except place.Refused as no:
+            out = no.as_json()
+        print(json.dumps(out, indent=2) if args.json else _placed(args.command, out))
+        return 0 if out['ok'] else 1
     if args.command == 'mcp':
         mcp.serve()
         return 0
     return 2
+
+
+def _placed(command, out):
+    if not out['ok']:
+        lines = [f'larryd {command}: {out["wrong"]}. What to do: {out["todo"]}']
+        return '\n'.join(lines + [doctor.Problem(**p).text() for p in out.get('problems', [])])
+    where = ' (opened in your browser)' if out.get('opened') else ''
+    return f'larryd {command}: held {out["held"].get("name", "the agent")} as {out["agent_key"]}. The marketplace: {out["marketplace"]}{where}'
 
 
 def _said(out):
@@ -90,7 +127,7 @@ def _said(out):
         lines = [f'larryd submit: {out["wrong"]}. What to do: {out["todo"]}']
         return '\n'.join(lines + [doctor.Problem(**p).text() for p in out.get('problems', [])])
     where = 'opened in your browser' if out['opened'] else 'open it in your browser'
-    return (f'larryd submit: sent ({out["sha256"][:16]}). Sign in with Google or Apple to submit it, within {out["minutes"]} minutes:\n'
+    return ''.join(f'FIXED {c}\n' for c in out.get('sheets', [])) + (f'larryd submit: sent ({out["sha256"][:16]}). Sign in with Google or Apple to submit it, within {out["minutes"]} minutes:\n'
             f'{out["claim"]}   ({where})')
 
 
