@@ -30,7 +30,7 @@ class Platform:
     """The platform as the runtime hears it: wid's record doors, DA-M's Fabric files, FROST's Fabric state, mTok."""
     def __init__(self, rows=None, state=None, files=None, refuse=()):
         self.rows = rows if rows is not None else [dict(ROW)]
-        self.state = state or {'apis': [{'api_name': 'VIRTUAL WIRE API', 'api_state': 'live', 'synced_at': ''}], 'databases': [{'db_office': 'FS', 'db_name': 'fs.db', 'db_state': 'UP'}]}
+        self.state = state or {'apis': [{'api_name': 'VIRTUAL WIRE API', 'api_state': 'live', 'synced_at': ''}], 'databases': [{'db_office': 'FS', 'db_name': 'one.db', 'db_state': 'UP'}]}
         self.files = files if files is not None else [dict(FILE)]
         self.refuse, self.said = refuse, []
 
