@@ -528,9 +528,12 @@ class Harness:
         return {'placed': placed, 'skipped': skipped}
 
     # ---------------------------------------------------------------- the JOB lane: a RUN, pushed by the platform
-    def _result(self, account, scope, job_key, run, state, log, delivery=''):
-        return self._ask('wid', 'POST', '/jobs/result', {'account': account, 'scope': scope, 'job_key': job_key, 'run': str(run),
-                                                        'state': state, 'log': log, 'delivery': delivery})
+    def _result(self, account, scope, job_key, run, state, log, delivery='', job=None):
+        """job: the agent's own answer for its job's slots (wid keeps only the slots an agent fills, larryd_runtime.AGENT_FILLS); sent only when given."""
+        said = {'account': account, 'scope': scope, 'job_key': job_key, 'run': str(run), 'state': state, 'log': log, 'delivery': delivery}
+        if job:
+            said['job'] = job
+        return self._ask('wid', 'POST', '/jobs/result', said)
 
     def run_job(self, account, scope, member, job_key, run):
         """-> the state it ended in. Refused and failed runs are written back and recorded like done ones."""
@@ -575,6 +578,9 @@ class Harness:
         outside = _outside_gives(manifest, answer)
         if outside:
             return self._end(account, scope, member, key, job_key, run, 'FAILED', f'{outside}; the delivery is withheld')
+        slots = answer.get('job') if isinstance(answer.get('job'), dict) else None   # THE JOB'S SLOTS (the owner 2026-11-05: "all of the agents need to be updated to use all the new slots we added in the ai atom jobs view"): the agent's `job`, named in its "gives", passed on to wid as it is; wid keeps only the slots an agent fills
+        if 'job' in answer and slots is None:
+            return self._end(account, scope, member, key, job_key, run, 'FAILED', 'the answer\'s job is not an object of slots; the delivery is withheld')
         try:
             files = self._files(manifest, answer)
             asks = self._asks(manifest, answer, key, member)
@@ -624,10 +630,10 @@ class Harness:
                 return self._end(account, scope, member, key, job_key, run, 'FAILED',
                                  f"{paid}{kept_note}, but DA-M did not store the files{left}: {stored.get('refused') or stored.get('error') or f'wid answered {status}'}", charged=charged)
             stored_keys[f['name']] = str(stored.get('dam_key') or '')
-        kept = {k: v for k, v in answer.items() if k not in ('files', 'makes', 'keeps')}
+        kept = {k: v for k, v in answer.items() if k not in ('files', 'makes', 'keeps', 'job')}   # job: its own slots, never the delivery
         delivery = answer.get('delivery') if isinstance(answer.get('delivery'), str) else json.dumps(kept, sort_keys=True)
         stored_note = f" · {len(files)} file{'' if len(files) == 1 else 's'} in DA-M" if files else ''
-        return self._end(account, scope, member, key, job_key, run, 'DONE', f'RUN {run} DONE · {paid}{stored_note}{kept_note}', charged=charged, delivery=delivery)
+        return self._end(account, scope, member, key, job_key, run, 'DONE', f'RUN {run} DONE · {paid}{stored_note}{kept_note}', charged=charged, delivery=delivery, job=slots)
 
     def started(self, agent_key, job_key, run, account, member):
         """A RUN the runtime took is written down as STARTED, once (at the door when the platform names the agent, else here as it
@@ -860,13 +866,13 @@ class Harness:
                 raise _Stop('REFUSED', f'input {slot} is larger than {MOST_INPUT} characters')
         return {name: held[slot] for name, slot in declared.items() if slot in held}
 
-    def _end(self, account, scope, member, key, job_key, run, state, log, charged=0, delivery=''):
+    def _end(self, account, scope, member, key, job_key, run, state, log, charged=0, delivery='', job=None):
         """-> the state the run ended in. Its result goes back to the platform; when it never reaches it (after the
         client's retries) the record says so: state CALLBACK_FAILED, the error code the run's own (RUN_DONE for a done
         run), and a log line with the ids; never silent."""
         recorded, reason = state, ('' if state == 'DONE' else log)
         try:
-            self._result(account, scope, job_key, run, state, log, delivery)
+            self._result(account, scope, job_key, run, state, log, delivery, job)
         except Refused:
             recorded, reason = 'CALLBACK_FAILED', (reason or 'RUN DONE')
             LOG.error('callback failed: job %s run %s ended %s, its result did not reach the platform', job_key, int(run), state)

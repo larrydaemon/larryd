@@ -33,7 +33,7 @@ asks its office AS wid (wid's `core_engine/offices.py`), only while that member'
 | wid | GET /agnt/approved | nothing | approved: [{agent_key, code_sha256, manifest_sha256, card_key}] (FROST's review, as wid reads it) |
 | wid | GET /agnt/review_state | agent_key, code_sha256, manifest_sha256 | {state, note}: approved only for exactly approved hashes, else the card's word (waiting, rejected, revoked, not submitted) |
 | wid | GET /jobs/inputs | account, scope, job_key, run | inputs: {slot: value} |
-| wid | POST /jobs/result | account, scope, job_key, run, state, log, delivery | {saved} |
+| wid | POST /jobs/result | account, scope, job_key, run, state, log, delivery, job (the agent's answer's `job`, its job's slots, when it gives one) | {saved} |
 | wid | GET /jobs/balance | account | subscriptions: [{agent_group}] (wid asks mTok) |
 | wid | POST /jobs/charge | account, scope, member, job_key, run | {charged, free, paid_from}: the job's bill, from the RUN's own card (wid asks mTok) |
 | wid | GET /jobs/file | account, scope, member, job_key, run, dam_key | {dam_key, content_b64, ...} (wid asks DA-M) |
