@@ -485,10 +485,10 @@ def _records(card, c, where, f):
     every, count = shape.RECORD_COUNTS
     words = shape.RECORD_EVERY[1]
     for name, verbs in asked.items():
-        if name == every:   # THE COUNTS and THE ROSTER: "*" takes "count" and/or "roster", each once
+        if name == every:   # THE COUNTS, THE ROSTER and THE REVIEWS WAITING: "*" takes "count", "roster", "reviews", each once
             if not (isinstance(verbs, list) and verbs and all(isinstance(v, str) and v in words for v in verbs) and len(set(verbs)) == len(verbs)):
-                f.add(c, where, f'records "{every}" is not a list of {" and ".join(json.dumps(w) for w in words)}',
-                      f'"{every}" asks for the counts and/or the roster: set it to ["count"], ["roster"] or ["count", "roster"], or take it out')
+                f.add(c, where, f'records "{every}" is not a list of {", ".join(json.dumps(w) for w in words[:-1])} and {json.dumps(words[-1])}',
+                      f'"{every}" asks for the counts, the roster and/or the reviews waiting (an internal agent only): list any of "count", "roster", "reviews", each once, or take it out')
             continue
         if not (isinstance(name, str) and name in species):
             f.add(c, where, f'records names "{name}", not a module of the platform', f'use a module\'s code: {", ".join(species)}')

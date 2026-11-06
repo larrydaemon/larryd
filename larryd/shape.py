@@ -90,7 +90,7 @@ MAKES = {   # THE OUTSIDE HAND'S LIST (the same as the runtime's core_engine/out
 }
 RECORD_VERBS = ('read', 'add', 'edit', 'remove')   # what an agent may declare on a species' records
 RECORD_COUNTS = ('*', ['count'])   # THE COUNTS: "records": {"*": ["count"]}, of no one species: how many, never which
-RECORD_EVERY = ('*', ('count', 'roster'))   # what "*" may hold, each once: the counts (CALL and RUN) and the roster (CORE_CLEANUP_IV 37: the account's members, key, name, type, active, read only, on a CALL)
+RECORD_EVERY = ('*', ('count', 'roster', 'reviews'))   # what "*" may hold, each once: the counts (CALL and RUN) and the roster (CORE_CLEANUP_IV 37: the account's members, key, name, type, active, read only, on a CALL; the reviews waiting, CORE_CLEANUP_IV 23: an internal agent only, on a CALL)
 PACK = 'pack.json'   # a knowledge pack: a folder of plain text files with pack.json {"name", "about"}
 PACK_FIELDS = ('name', 'about')
 PACK_KINDS = {'.json', '.txt', '.md', '.csv'}
