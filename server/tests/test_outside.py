@@ -627,3 +627,63 @@ class TheMadeCompanion(World):
         p, f = self.platform(self.VIDEO), FileDoor(output={'transcription': SUBS})
         self.assertEqual(TheRun.run_with(self, p, f, a_day=dict(harness.A_DAY)), 'FAILED')
         self.assertEqual(f.asked, [])
+
+
+class TheMembersOwnKey(World):
+    """ROW 92 b (LARRY 5's PF External, frost-05 2026-11-06): an ask may say "key": "mine"; the errand is then made with the RUN's own
+    member's key for that provider, asked of wid (whose="member": their own, from FROST's vault, after their Allow), and NEVER the
+    platform's in its place: no key of theirs, nothing is sent, in the runtime's own words. Without it, the platform's key as before.
+    The agent's own run is stood in for (harness._run), so this proves the same on every machine."""
+    MINE, PLATFORM = 'r8_member_own_key_0001', 'r8_platform_key_0001'
+
+    class Keys(Platform):
+        def __init__(self, member_key):
+            super().__init__(vault='r8_platform_key_0001')
+            self.member_key = member_key
+
+        def post(self, office, route, data):
+            if route == '/jobs/provider_key' and data.get('whose') == 'member':
+                self.said.append((office, route, data))
+                return (200, {'key': self.member_key}) if self.member_key else (404, {'refused': 'nothing by that key'})
+            return super().post(office, route, data)
+
+    def placed(self, ask):
+        answer = {'delivery': 'made', 'makes': [ask]}
+        TheRun.placed(self, answer, {'makes': ['nano-banana-2'], 'records': {'imgs': ['read', 'add']}}, ('makes', 'keeps', 'delivery'))
+        real = harness.Harness._run
+        harness.Harness._run = lambda h, folder, manifest, given: ('DONE', dict(answer), '')
+        self.addCleanup(setattr, harness.Harness, '_run', real)
+
+    def keys_asked(self, p):
+        return [d.get('whose', 'platform') for _o, r, d in p.said if r == '/jobs/provider_key']
+
+    def test_the_grammar_takes_mine_and_nothing_else(self):
+        self.assertEqual(outside.check([{**ASK, 'key': 'mine'}], ('nano-banana-2',))[0][0]['key'], 'mine')
+        for wrong in ('platform', 'r8_typed_key', '', ['mine'], True):
+            self.assertEqual(outside.check([{**ASK, 'key': wrong}], ('nano-banana-2',))[0], [], wrong)
+        self.assertNotIn('key', outside.goes_out(outside.check([{**ASK, 'key': 'mine'}], ('nano-banana-2',))[0][0]))   # never sent to the provider
+        box = next(m for m in outside.MODELS if m.startswith('exxact/'))
+        self.assertIn('more than', outside.check([{'model': box, 'name': 'X', 'key': 'mine'}], (box,))[1])   # the box takes no key of anyone's
+
+    def test_mine_is_made_with_the_members_own_key(self):
+        self.placed({**ASK, 'key': 'mine'})
+        p, f = self.Keys(self.MINE), Provider()
+        self.assertEqual(TheRun.run_with(self, p, f, a_day={'image': 25}), 'DONE')
+        self.assertEqual(self.keys_asked(p), ['member'])   # theirs alone was asked
+        self.assertEqual({h.get('Authorization') for _m, u, h, _d in f.asked if 'api.replicate.com' in u}, {f'Bearer {self.MINE}'})
+
+    def test_no_key_of_their_own_sends_nothing_and_never_falls_back(self):
+        self.placed({**ASK, 'key': 'mine'})
+        p, f = self.Keys(''), Provider()
+        self.assertEqual(TheRun.run_with(self, p, f, a_day={'image': 25}), 'FAILED')
+        self.assertEqual(self.keys_asked(p), ['member'])   # the platform's key never asked in its place
+        self.assertEqual(f.asked, [])                       # nothing sent
+        self.assertIn('key of your own', self.results(p)[-1]['log'])
+        self.assertNotIn('/jobs/charge', [r for _o, r, _d in p.said])
+
+    def test_without_mine_the_platforms_key_as_before(self):
+        self.placed(dict(ASK))
+        p, f = self.Keys(self.MINE), Provider()
+        self.assertEqual(TheRun.run_with(self, p, f, a_day={'image': 25}), 'DONE')
+        self.assertEqual(self.keys_asked(p), ['platform'])
+        self.assertEqual({h.get('Authorization') for _m, u, h, _d in f.asked if 'api.replicate.com' in u}, {f'Bearer {self.PLATFORM}'})

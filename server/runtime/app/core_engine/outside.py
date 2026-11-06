@@ -31,6 +31,7 @@ PROVIDERS = {
     # missions bucket and collects the box's answer from the returns bucket, with the runtime's own token (the buckets and keys: S4, later)
     'exxact': {'name': 'Exxact', 'api': '', 'delivery': ()},
 }
+KEY_OF_THEIR_OWN = ('replicate',)   # the providers a member may make with their own key instead of the platform's (row 92 b)
 MODELS = {
     'nano-banana-2': {
         'provider': 'replicate', 'path': 'google/nano-banana-2', 'kind': 'image', 'name': 'Nano Banana 2', 'prompt': True,
@@ -195,7 +196,7 @@ def check(makes, allowed):
     spec = MODELS[model]
     numbers = spec.get('numbers') or {}
     checks = spec.get('checks') or {}
-    if set(ask) - {'model', 'prompt', 'name', *spec['choices'], *numbers, *checks, *(('reference', 'companion_of') if spec.get('reference') else ())}:
+    if set(ask) - {'model', 'prompt', 'name', *spec['choices'], *numbers, *checks, *(('reference', 'companion_of') if spec.get('reference') else ()), *(('key',) if spec['provider'] in KEY_OF_THEIR_OWN else ())}:
         return [], f'the ask holds more than {spec["name"]} takes'
     prompt = ask.get('prompt')
     if (spec.get('prompt') or 'prompt' in ask) and not (isinstance(prompt, str) and prompt.strip() and len(prompt) <= MOST_PROMPT):
@@ -246,6 +247,10 @@ def check(makes, allowed):
             return [], 'the ask\'s clips name a source it does not send'
     if 'reference' not in ask and spec.get('reference_required'):
         return [], f'the ask names no reference {spec["name"]} needs'
+    if 'key' in ask:   # THE MEMBER'S OWN KEY (row 92 b, LARRY 5's PF External): "mine", and nothing else; without it, the platform's (as before)
+        if ask['key'] != 'mine':
+            return [], 'the ask\'s key is not "mine"'
+        out['key'] = 'mine'
     if 'companion_of' in ask:   # THE MADE FILE STORED BESIDE THE MEMBER'S OWN (CORE_CLEANUP_IV 94 b, for a made file): "reference", its first reference's record, and nothing else
         if ask['companion_of'] != 'reference' or 'reference' not in out:
             return [], 'the ask\'s companion_of is not "reference", or it names no reference'

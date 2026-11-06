@@ -770,15 +770,17 @@ class Harness:
             raise _Stop('FAILED', f'not made, bad ask: {why}; nothing was sent')
         return asks
 
-    def _provider_key(self, provider, agent_key, job_key, run, account, scope, member):
+    def _provider_key(self, provider, agent_key, job_key, run, account, scope, member, whose='platform'):
         """THE KEY FOR ONE ERRAND, FROM ITS ONE HOME (the owner, 2026-10-08: "the replicate token is on production and should point
         to that directly always its a single source setup"): asked of wid for this open RUN of this member; wid reads the
         platform's vault at that moment, for the agent the RUN's own job holds, and decides. -> the key, or '' when wid hands
         none. It lives in this call's memory only: never kept, never written, never in a reason or a log."""
         if locker.held(self.db, agent_key) is None:
             return ''
-        status, body = self.client.post('wid', '/jobs/provider_key', {'account': account, 'scope': scope, 'member': member, 'job_key': job_key,
-                                                                     'run': str(run), 'provider': provider})
+        asked = {'account': account, 'scope': scope, 'member': member, 'job_key': job_key, 'run': str(run), 'provider': provider}
+        if whose == 'member':   # the RUN's own member's key (row 92 b); the platform's is asked exactly as before
+            asked['whose'] = 'member'
+        status, body = self.client.post('wid', '/jobs/provider_key', asked)
         held = body.get('key') if status == 200 and isinstance(body, dict) else ''
         return held if isinstance(held, str) else ''
 
@@ -797,7 +799,10 @@ class Harness:
             if provider == 'exxact':   # NO VAULT KEY: the box is reached through the buckets with the runtime's own token; wid is not asked for a key
                 provider_key, more = '', {'asker': {'card': agent_key, 'job_key': job_key, 'member': member}}
             else:
-                provider_key = self._provider_key(provider, agent_key, job_key, run, account, scope, member)
+                mine = ask.get('key') == 'mine'   # THE MEMBER'S OWN KEY (row 92 b): theirs or nothing, never the platform's in its place
+                provider_key = self._provider_key(provider, agent_key, job_key, run, account, scope, member, **({'whose': 'member'} if mine else {}))   # the platform's: asked exactly as before
+                if not provider_key and mine:
+                    raise _Stop('FAILED', f'not made, no {outside.PROVIDERS[provider]["name"]} key of your own: keep one on your member card (YOUR KEYS), or make it with the platform\'s; nothing was sent')
                 if not provider_key:
                     raise _Stop('FAILED', f'not made, no {outside.PROVIDERS[provider]["name"]} key: the platform\'s vault handed none; nothing was sent')
             records = []
