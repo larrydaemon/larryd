@@ -5,7 +5,7 @@ import json
 import pathlib
 import sys
 
-from . import __version__, doctor, guide, knowledge, mcp, new, place, runner, skills, submit
+from . import __version__, doctor, guide, internal, knowledge, mcp, new, place, runner, skills, submit
 
 START = 'Start: larryd new <name> --from marketplace, then read <name>/CLAUDE.md (or larryd guide)'
 
@@ -23,6 +23,7 @@ def parser():
     d.add_argument('--json', action='store_true', help='the result as JSON')
     d.add_argument('--fix', action='store_true', help='move a design sheet out of agent/ to design/, fill the card\'s missing facts (originals kept in .larryd/doctor_backup/), then check again')
     d.add_argument('--badge', action='store_true', help=f'also write {doctor.BADGE} beside agent/: PASS or FAIL, the day, the checks\' version, for your README')
+    d.add_argument('--internal', action='store_true', help='an INTERNAL agent (sanity_agents, scrum_master_3, pf_loot): the same checks, by the internal contract (larryd/internal.py)')
     r = sub.add_parser('run', help='run the agent here, the way LARRYD runs it, with a sample job')
     r.add_argument('path', nargs='?', default='.', help='the agent project (default: here)')
     r.add_argument('--job', help='the sample job (default: samples/job.json)')
@@ -71,6 +72,10 @@ def main(argv=None):
         if args.fix:
             for change in doctor.fix(args.path):
                 print(f'FIXED {change}')
+        if args.internal:   # THE INTERNAL MODE (CORE_CLEANUP_IV 55): the same checks, the internal contract's three rules
+            problems = internal.check(args.path)
+            print(json.dumps(doctor.as_json(problems), indent=2) if args.json else internal.report(args.path, problems))
+            return 1 if problems else 0
         problems = doctor.check(args.path)
         print(json.dumps(doctor.as_json(problems), indent=2) if args.json else doctor.report(args.path, problems))
         if not args.json:
