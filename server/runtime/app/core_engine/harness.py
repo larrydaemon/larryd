@@ -333,6 +333,29 @@ class Harness:
             LOG.warning('roster not read for %s: %s', agent_key, no)
         return 'roster not read'
 
+    def _hand_of(self, word, declared, read, manifest, given, account, scope, member, agent_key):
+        """ONE MORE HAND OF THE ROSTER'S KIND: when the APPROVED manifest declares "*": [... word], given[word] is what wid's door hands
+        for that member, checked to be exactly its shape; not handed (refused, away, any other shape): none, and the runtime says so in
+        its own fixed words -> '<word> not read', else ''."""
+        if not declared(manifest):
+            return ''
+        try:
+            given[word] = read(self._ask, account, scope, member, agent_key)
+            return ''
+        except Refused as no:
+            LOG.warning('%s not read for %s: %s', word, agent_key, no.reason)
+        except ValueError as no:
+            LOG.warning('%s not read for %s: %s', word, agent_key, no)
+        return f'{word} not read'
+
+    def _joins(self, manifest, given, account, scope, member, agent_key):
+        """THE JOIN REQUESTS (CORE_CLEANUP_IV row 142, pf Alerts): given['joins'] = [{name, asked_at}] on a CALL."""
+        return self._hand_of('joins', member_records.joins_declared, member_records.joins, manifest, given, account, scope, member, agent_key)
+
+    def _payments(self, manifest, given, account, scope, member, agent_key):
+        """THE PAYMENTS (CORE_CLEANUP_IV row 142, pf Alerts): given['payments'] = [{kind, amount_cents, landed_at}] on a CALL."""
+        return self._hand_of('payments', member_records.payments_declared, member_records.payments, manifest, given, account, scope, member, agent_key)
+
     # ---------------------------------------------------------------- the CALL lane: an agent answers now
     def answer(self, account, scope, member, agent_key, beside=None, act=False, handed=None):
         """An agent's answer for the member's screen: only an agent that answers calls, passing the gate itself. handed: the
@@ -389,7 +412,9 @@ class Harness:
             not_read = 'records not read'   # and says so on its page; nothing is guessed, nothing is written without them. THE RECORD KEEPS THE RUNTIME'S OWN WORDS ONLY:
             LOG.warning('records not read for %s: %s', agent_key, no.reason)   # the platform's refusal text goes to the log, never into the audit row (fixed words, never cut, nothing written by another)
         not_read = '; '.join(r for r in (not_read, self._counts(manifest, given, account, scope, member, agent_key),
-                                         self._roster(manifest, given, account, scope, member, agent_key)) if r)   # THE COUNTS and THE ROSTER, when the approved manifest declares them
+                                         self._roster(manifest, given, account, scope, member, agent_key),
+                                         self._joins(manifest, given, account, scope, member, agent_key),
+                                         self._payments(manifest, given, account, scope, member, agent_key)) if r)   # THE COUNTS and THE ROSTER, when the approved manifest declares them
         if fabric.declared(manifest):   # THE DATA FABRIC'S ONE SNAPSHOT (the owner 2026-11-04: "no connections / just 1 updated snapshot per day"): one read through wid (FROST's store)
             try:
                 state, who = fabric.viewer(self._ask, account, scope, member)

@@ -40,7 +40,11 @@ def declared(manifest):
 
 EVERY, COUNT = '*', 'count'                     # THE COUNTS: "records": {"*": ["count"]}, of no one species
 ROSTER = 'roster'                               # THE ROSTER (CORE_CLEANUP_IV 37): "records": {"*": ["roster"]} or {"*": ["count", "roster"]}: the account's members, read only, on a CALL
-EVERY_WORDS = (COUNT, ROSTER)                   # what "*" may hold, each once; anything else under "*" counts for nothing (fail closed)
+JOINS, PAYMENTS = 'joins', 'payments'            # THE JOIN REQUESTS and THE PAYMENTS (CORE_CLEANUP_IV row 142, pf Alerts): on a CALL, read only
+JOINS_DOOR = ('GET', '/agnt/records/joins')        # wid's (frost-8f, e8e0e77d): {"requests": [{name, asked_at}]}, the roster's refusals
+PAYMENTS_DOOR = ('GET', '/agnt/records/payments')  # wid's (frost-8f, e8e0e77d): {"payments": [{kind, amount_cents, landed_at}]}, the same
+MOST_HANDED = 1000                                  # the join requests or payments handed at most; more refuses the answer whole
+EVERY_WORDS = (COUNT, ROSTER, JOINS, PAYMENTS)                   # what "*" may hold, each once; anything else under "*" counts for nothing (fail closed)
 COUNTS_DOOR = ('GET', '/agnt/records/counts')
 ROSTER_DOOR = ('GET', '/agnt/records/roster')   # wid's (frost-8f, 22203d5a): {"members": [{key, name, type, active}]}, the same refusals as the counts door
 MEMBER_KEY = re.compile(r'^MCON_[0-9A-F]{12}_[0-9A-F]{4}$')
@@ -90,6 +94,63 @@ def roster(ask, account, scope, member, agent_key=''):
     """THE ROSTER of the account the platform named, through wid's roster door for this member: -> [{key, name, type, active}].
     A refusal propagates; an answer of any other shape is ValueError (nothing is handed)."""
     return rostered(ask('wid', ROSTER_DOOR[0], ROSTER_DOOR[1], {'account': account, 'scope': scope, 'member': member, 'agent_key': agent_key}))
+
+
+def joins_declared(manifest):
+    """Does the manifest declare THE JOIN REQUESTS: "*" holds "joins"? No right on any species either."""
+    return JOINS in _every(manifest)
+
+
+def payments_declared(manifest):
+    """Does the manifest declare THE PAYMENTS: "*" holds "payments"? No right on any species either."""
+    return PAYMENTS in _every(manifest)
+
+
+def _plain(v, most):
+    return isinstance(v, str) and len(v) <= most and v == v.strip() and '\n' not in v
+
+
+def joined(body):
+    """The joins door's answer as the agent is handed it, or ValueError: [{name, asked_at}], a plain name and a plain time; anything
+    else (another field, more than MOST_HANDED) refuses it whole."""
+    got = body.get('requests') if isinstance(body, dict) and set(body) == {'requests'} else None
+    if not (isinstance(got, list) and len(got) <= MOST_HANDED):
+        raise ValueError('the join requests are not {requests: [...]}')
+    out = []
+    for r in got:
+        if not (isinstance(r, dict) and set(r) == {'name', 'asked_at'} and _plain(r['name'], 200) and _plain(r['asked_at'], 40)):
+            raise ValueError('a join request is not {name, asked_at}')
+        out.append({'name': r['name'], 'asked_at': r['asked_at']})
+    return out
+
+
+def paid(body):
+    """The payments door's answer as the agent is handed it, or ValueError: [{kind, amount_cents, landed_at}], a plain kind word, a
+    whole number of cents and a plain time; anything else (another field, a number that is not whole, more than MOST_HANDED)
+    refuses it whole."""
+    got = body.get('payments') if isinstance(body, dict) and set(body) == {'payments'} else None
+    if not (isinstance(got, list) and len(got) <= MOST_HANDED):
+        raise ValueError('the payments are not {payments: [...]}')
+    out = []
+    for r in got:
+        if not (isinstance(r, dict) and set(r) == {'kind', 'amount_cents', 'landed_at'} and _plain(r['kind'], 40)
+                and isinstance(r['amount_cents'], int) and not isinstance(r['amount_cents'], bool) and abs(r['amount_cents']) < 10 ** 12
+                and _plain(r['landed_at'], 40)):
+            raise ValueError('a payment is not {kind, amount_cents, landed_at}')
+        out.append({'kind': r['kind'], 'amount_cents': r['amount_cents'], 'landed_at': r['landed_at']})
+    return out
+
+
+def joins(ask, account, scope, member, agent_key=''):
+    """THE JOIN REQUESTS through wid's joins door for this member: -> [{name, asked_at}]. A refusal propagates; any other shape is
+    ValueError (nothing is handed)."""
+    return joined(ask('wid', JOINS_DOOR[0], JOINS_DOOR[1], {'account': account, 'scope': scope, 'member': member, 'agent_key': agent_key}))
+
+
+def payments(ask, account, scope, member, agent_key=''):
+    """THE PAYMENTS through wid's payments door for this member: -> [{kind, amount_cents, landed_at}]. A refusal propagates; any
+    other shape is ValueError (nothing is handed)."""
+    return paid(ask('wid', PAYMENTS_DOOR[0], PAYMENTS_DOOR[1], {'account': account, 'scope': scope, 'member': member, 'agent_key': agent_key}))
 
 
 def _whole(n):

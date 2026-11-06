@@ -34,3 +34,13 @@ def test_the_same_number_fields_and_the_same_models_without_words():
     models = _runtime_models()
     assert {m: spec['numbers'] for m, spec in models.items() if spec['numbers']} == shape.MAKES_NUMBERS
     assert sorted(m for m, spec in models.items() if not spec['prompt']) == sorted(shape.MAKES_NO_WORDS)
+
+
+def test_the_doctors_star_words_are_the_runtimes_reviews_aside():
+    """THE "*" WORDS ARE ONE LIST too: the doctor's (shape.RECORD_EVERY) are the external runtime's member_records.EVERY_WORDS, "reviews"
+    aside (an internal agent's, handed by LARRYD RUNTIME INTERNAL only): a word on one list only is a doctor that passes what the runtime
+    hands nothing for (CORE_CLEANUP_IV row 142)."""
+    spec = importlib.util.spec_from_file_location('runtime_member_records', OUTSIDE.parent / 'member_records.py')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)   # stdlib only
+    assert set(shape.RECORD_EVERY[1]) - {'reviews'} == set(module.EVERY_WORDS)
