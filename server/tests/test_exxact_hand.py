@@ -22,7 +22,7 @@ from test_skills import ACCOUNT, JOB, KEY, MEMBER, World
 
 LOOT = pathlib.Path.home() / 'virtual_sanity' / 'exxact_loot'
 ORIGINALS = {   # THE PINS: Exxact_Loot's two files as copied (a change on either side is seen here first)
-    'exxact.py': '4216e5b5ea55506e51d9df12569f54abbf9a936486d73ad8b6cd92d2250614d1',   # Exxact_Loot 2bfc275: the mix type (row 55)
+    'exxact.py': '79d52caf8afbbc31ca70a5390fb52a484f426b5866ef4ffc02c2f9a810cc134c',   # Exxact_Loot b657a03: collect takes most_bytes
     'locker.py': '3674a52f362c85ff165fe2c19085c236844c94e80739a4f072bce7cadd65a026',
 }
 COPIES = {'exxact.py': 'exxact.py', 'locker.py': 'exxact_locker.py'}
@@ -227,7 +227,7 @@ class TheMix(unittest.TestCase):
             hand = exxact_hand.ExxactHand(lanes=object(), keys_dir='k')
             with mock.patch.object(hand, 'set_up', lambda: True), mock.patch.object(hand, '_sweep', lambda: None), \
                     mock.patch.object(exxact, 'ask', lambda *a: 'JOB1') as _a, mock.patch.dict(spec, {'most_bytes': size}), \
-                    mock.patch.object(exxact, 'collect', lambda *a: ({'type': 'mix', 'state': 'DONE'}, {'mix': WAV + b'\x00' * 999})):
+                    mock.patch.object(exxact, 'collect', lambda *a, **k: ({'type': 'mix', 'state': 'DONE'}, {'mix': WAV + b'\x00' * 999})):   # collect takes most_bytes since b657a03
                 self.assertEqual(hand.make(ask, '', [WAV, MP3], asker=ASKER), want, size)
 
 
@@ -366,6 +366,11 @@ class TheRoad(unittest.TestCase):
         self.assertEqual(json.loads(put['mix.json']), {'tracks': MIX['tracks'], 'clips': MIX['clips']})   # the checked fields, as the kit reads them
         label = self.runner.label(next(iter(sorted((self.root / 'state' / 'labels').iterdir()))).stem)
         self.assertEqual(label['status'], 'DONE')
+
+    def test_a_return_bigger_than_the_run_holds_is_refused_before_a_file_is_read(self):   # exxact_loot b657a03: collect(most_bytes)
+        with mock.patch.object(outside, 'MOST_ASK_REFERENCES', len(PNG) - 1):   # the box's listed size passes what this RUN takes
+            made, why = self.hand({}).make(self.swap(), '', [JPEG, PNG], asker=ASKER)
+        self.assertEqual((made, why), (None, exxact_hand.TOO_LARGE))
 
     def test_red_comes_back_in_fixed_words(self):
         self.assertEqual(self.hand({'engine_makes_nothing': True}).make(self.swap(), '', [JPEG, PNG], asker=ASKER), (None, 'NOT_MADE_EXXACT_RUN'))

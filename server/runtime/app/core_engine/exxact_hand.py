@@ -33,6 +33,7 @@ TIME_UP = 'NOT_MADE_EXXACT_TIME_UP'
 NOT_TRUSTED = 'NOT_MADE_EXXACT_RETURN_NOT_TRUSTED'
 NOTHING_MADE = 'NOT_MADE_EXXACT_NOTHING_MADE'
 TOO_LARGE = 'NOT_MADE_EXXACT_TOO_LARGE'   # a made file over the model's most_bytes (outside.MOST_ASK_REFERENCES at most): never handed on
+TOO_BIG_SAID = 'the files are bigger than the asker takes'   # exxact.collect's own words when the box's listed sizes pass most_bytes
 RED = 'NOT_MADE_EXXACT_RED'   # a RED whose step is not one of exxact.STEPS
 
 
@@ -64,7 +65,7 @@ class ExxactHand:
         keep = []
         for job in late:
             try:
-                if exxact.collect(self.lanes, self.keys, job) is None:
+                if exxact.collect(self.lanes, self.keys, job, most_bytes=outside.MOST_ASK_REFERENCES) is None:
                     keep.append(job)
             except (ValueError, KeyError, TypeError, OSError):
                 continue   # a return not trusted, or one that cannot be read: let go
@@ -132,8 +133,10 @@ class ExxactHand:
         until = self.clock() + spec['most_seconds']
         while True:
             try:
-                back = exxact.collect(self.lanes, self.keys, job)
-            except (ValueError, KeyError, TypeError):   # a return whose signature, job or files are off: never opened further
+                back = exxact.collect(self.lanes, self.keys, job, most_bytes=outside.MOST_ASK_REFERENCES)   # the box's listed sizes judged before a blob is read (exxact_loot b657a03)
+            except ValueError as no:   # a return whose signature, job or files are off: never opened further; one too big for this RUN's memory: said so
+                return None, (TOO_LARGE if str(no) == TOO_BIG_SAID else NOT_TRUSTED)
+            except (KeyError, TypeError):
                 return None, NOT_TRUSTED
             except OSError:
                 back = None   # a blip: asked again until the type's time is up

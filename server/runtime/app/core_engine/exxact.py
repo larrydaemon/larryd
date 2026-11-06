@@ -430,8 +430,9 @@ def _pack(payload, files, keys_dir, kind, sender):
     return job, away.seal(raw, job, kind, sender, keys_dir), blobs
 
 
-def _unpack(lanes, lane, job, keys_dir, kind):
-    """-> (payload, {slot: bytes}); ValueError on anything off: a locker not the trusted peer's, a file missing or changed"""
+def _unpack(lanes, lane, job, keys_dir, kind, most_bytes=None):
+    """-> (payload, {slot: bytes}); ValueError on anything off: a locker not the trusted peer's, a file missing or changed, or (most_bytes)
+    files whose signed sizes add up past it, refused before one of them is read"""
     away = _away()
     locker = lanes.locker(lane, job)
     if locker.get('job') != job:
@@ -443,6 +444,12 @@ def _unpack(lanes, lane, job, keys_dir, kind):
         f = _fernet(str(body.get('file_key') or '').encode())
     except Exception as no:   # noqa: BLE001
         raise ValueError('the job carries no file key') from no
+    listed = body.get('files') or []
+    if not isinstance(listed, list) or not all(isinstance(i, dict) and isinstance(i.get('bytes'), int) and not isinstance(i.get('bytes'), bool)
+                                               and i['bytes'] >= 0 for i in listed):
+        raise ValueError('the job lists its files wrong')
+    if most_bytes is not None and sum(i['bytes'] for i in listed) > most_bytes:
+        raise ValueError('the files are bigger than the asker takes')
     files = {}
     for item in body.get('files') or []:
         sealed = lanes.blob(lane, job, str(item.get('sha256') or ''))
@@ -473,11 +480,13 @@ def ask(lanes, keys_dir, kind, fields, files, asker):
     return job
 
 
-def collect(lanes, keys_dir, job):
-    """the asker takes its return home -> (return, {slot: bytes}) or None while it is not back; the return is removed from the lane"""
+def collect(lanes, keys_dir, job, most_bytes=None):
+    """the asker takes its return home -> (return, {slot: bytes}) or None while it is not back; the return is removed from the lane.
+    most_bytes: the most the asker can hold of the return's files together (LARRYD's runtime: its memory per RUN); past it, ValueError
+    before a file is read"""
     if job not in lanes.names('returns'):
         return None
-    body, files = _unpack(lanes, 'returns', job, keys_dir, LOCKER_KIND_RETURN)
+    body, files = _unpack(lanes, 'returns', job, keys_dir, LOCKER_KIND_RETURN, most_bytes)
     for item in body.get('files') or []:
         rule = TYPES.get(body.get('type'), {}).get('outputs', {}).get(item['slot'])
         data = files[item['slot']]
