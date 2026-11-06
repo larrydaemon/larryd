@@ -311,6 +311,22 @@ class Harness:
             LOG.warning('counts not read for %s: %s', agent_key, no)
         return 'counts not read'
 
+    def _roster(self, manifest, given, account, scope, member, agent_key):
+        """THE ROSTER (CORE_CLEANUP_IV 37): an agent whose APPROVED manifest declares "records": {"*": [... "roster"]} is handed
+        given['roster'] on a CALL, the account's members (key, name, type, active) as wid's roster door hands them for that member,
+        checked to be exactly that shape. Not handed (refused, away, any other shape): the agent is handed none and the runtime says
+        so in its own fixed words -> 'roster not read', else ''."""
+        if not member_records.roster_declared(manifest):
+            return ''
+        try:
+            given['roster'] = member_records.roster(self._ask, account, scope, member, agent_key)
+            return ''
+        except Refused as no:
+            LOG.warning('roster not read for %s: %s', agent_key, no.reason)
+        except ValueError as no:
+            LOG.warning('roster not read for %s: %s', agent_key, no)
+        return 'roster not read'
+
     # ---------------------------------------------------------------- the CALL lane: an agent answers now
     def answer(self, account, scope, member, agent_key, beside=None, act=False, handed=None):
         """An agent's answer for the member's screen: only an agent that answers calls, passing the gate itself. handed: the
@@ -366,7 +382,8 @@ class Harness:
         except Refused as no:   # THE PLATFORM DID NOT HAND THEM (a slot without the record doors yet, a member not allowed, wid away): the agent is handed none
             not_read = 'records not read'   # and says so on its page; nothing is guessed, nothing is written without them. THE RECORD KEEPS THE RUNTIME'S OWN WORDS ONLY:
             LOG.warning('records not read for %s: %s', agent_key, no.reason)   # the platform's refusal text goes to the log, never into the audit row (fixed words, never cut, nothing written by another)
-        not_read = '; '.join(r for r in (not_read, self._counts(manifest, given, account, scope, member, agent_key)) if r)   # THE COUNTS, when the approved manifest declares them
+        not_read = '; '.join(r for r in (not_read, self._counts(manifest, given, account, scope, member, agent_key),
+                                         self._roster(manifest, given, account, scope, member, agent_key)) if r)   # THE COUNTS and THE ROSTER, when the approved manifest declares them
         if fabric.declared(manifest):   # THE DATA FABRIC'S ONE SNAPSHOT (the owner 2026-11-04: "no connections / just 1 updated snapshot per day"): one read through wid (FROST's store)
             try:
                 state, who = fabric.viewer(self._ask, account, scope, member)
@@ -759,28 +776,29 @@ class Harness:
         return out
 
     def _reference(self, ask, account, scope, member, job_key, run):
-        """THE REFERENCE PICTURE (R-0040 / R-0041, the owner 2026-10-24): when the ask names one (a DA-M key the member typed on the
-        agent's page, checked by outside.check), its bytes are read through wid's job file door FOR THIS MEMBER, while their RUN is
-        open (wid decides and asks DA-M as itself).
-        -> the bytes, b'' when the ask names none. They live in this call's memory only and go to the provider's file door and
-        nowhere else: never to the agent, never kept. A key that cannot be read stops the errand before anything is sent."""
-        dam_key = ask.get('reference')
-        if not dam_key:
-            return b''
-        status, body = self.client.get('wid', '/jobs/file', {'account': account, 'scope': scope, 'member': member, 'job_key': job_key, 'run': str(run), 'dam_key': dam_key})
-        raw = body.get('content_b64') if status == 200 and isinstance(body, dict) else None
-        try:
-            picture = base64.b64decode(raw, validate=True) if isinstance(raw, str) else b''
-        except (binascii.Error, ValueError):
-            picture = b''
-        if not picture:
-            said = (body.get('refused') or body.get('error')) if isinstance(body, dict) else ''
-            raise _Stop('FAILED', f"not made, reference unreadable: DA-M did not hand {dam_key} ({said if isinstance(said, str) and said else f'wid answered {status}'}); nothing was sent")
-        if outside.kind_of(picture) not in outside.REFERENCE_KINDS:
-            raise _Stop('FAILED', f'not made, reference not a picture: {dam_key}; nothing was sent')
-        if len(picture) > outside.MOST_REFERENCE:
-            raise _Stop('FAILED', f'not made, reference too large: {dam_key} is over {outside.MOST_REFERENCE // (1024 * 1024)} MB; nothing was sent')
-        return picture
+        """THE REFERENCE PICTURES (R-0040 / R-0041, the owner 2026-10-24; up to two: CORE_CLEANUP_IV 18): when the ask names them (DA-M
+        keys the member typed or picked on the agent's page, checked by outside.check), each one's bytes are read through wid's job
+        file door FOR THIS MEMBER, while their RUN is open (wid decides and asks DA-M as itself).
+        -> [bytes, ...] in the ask's order, [] when the ask names none. They live in this call's memory only and go to the provider's
+        file door and nowhere else: never to the agent, never kept. Any key that cannot be read stops the errand before anything is sent."""
+        wanted = ask.get('reference') or []
+        out = []
+        for dam_key in ([wanted] if isinstance(wanted, str) else wanted):
+            status, body = self.client.get('wid', '/jobs/file', {'account': account, 'scope': scope, 'member': member, 'job_key': job_key, 'run': str(run), 'dam_key': dam_key})
+            raw = body.get('content_b64') if status == 200 and isinstance(body, dict) else None
+            try:
+                picture = base64.b64decode(raw, validate=True) if isinstance(raw, str) else b''
+            except (binascii.Error, ValueError):
+                picture = b''
+            if not picture:
+                said = (body.get('refused') or body.get('error')) if isinstance(body, dict) else ''
+                raise _Stop('FAILED', f"not made, reference unreadable: DA-M did not hand {dam_key} ({said if isinstance(said, str) and said else f'wid answered {status}'}); nothing was sent")
+            if outside.kind_of(picture) not in outside.REFERENCE_KINDS:
+                raise _Stop('FAILED', f'not made, reference not a picture: {dam_key}; nothing was sent')
+            if len(picture) > outside.MOST_REFERENCE:
+                raise _Stop('FAILED', f'not made, reference too large: {dam_key} is over {outside.MOST_REFERENCE // (1024 * 1024)} MB; nothing was sent')
+            out.append(picture)
+        return out
 
     def _keeps(self, manifest, answer, files, asks, custom=False):
         """The records the answer asks for, one per stored file: keeps = [{species, values, file}], each an ADD the manifest

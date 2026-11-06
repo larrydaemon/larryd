@@ -26,9 +26,12 @@ PROVIDERS = {
 MODELS = {
     'nano-banana-2': {
         'provider': 'replicate', 'path': 'google/nano-banana-2', 'kind': 'image', 'name': 'Nano Banana 2',
-        'choices': {'aspect': ('1:1', '3:4', '4:3', '16:9', '9:16')},
-        'first': {'aspect': '1:1'},
-        'reference': 'image_input',   # THE REFERENCE (R-0040, the owner 2026-10-24: "the reference toggle and enter input box to add a key"): the member's own picture, by its DA-M key
+        # THE SIZE (CORE_CLEANUP_IV 19, the owner's blanket approval 2026-11-06): Replicate's own model text says resolution is a string and the
+        # model makes 512px, 1K, 2K and 4K; 1K stays the first (as before), 2K is the larger the rows asked for (row 217 Upscale); 4K is not offered
+        'choices': {'aspect': ('1:1', '3:4', '4:3', '16:9', '9:16'), 'size': ('1K', '2K')},
+        'first': {'aspect': '1:1', 'size': '1K'},
+        'reference': 'image_input',
+        'most_references': 2,   # UP TO TWO REFERENCE PICTURES (CORE_CLEANUP_IV 18: rows 182 Face Swap, 193 Nose: "the second image is only a shape reference"); Replicate's image_input is a list (up to 14)   # THE REFERENCE (R-0040, the owner 2026-10-24: "the reference toggle and enter input box to add a key"): the member's own picture, by its DA-M key
         'most_bytes': 20 * 1024 * 1024, 'most_seconds': 180,
     },
     'seedance-2.5': {
@@ -37,7 +40,8 @@ MODELS = {
         # for bytedance/seedance-2.5 says duration is an integer, 4 to 30 seconds (-1, the model's own pick, is not offered: the member picks)
         'choices': {'aspect': ('16:9', '9:16', '1:1'), 'seconds': tuple(str(n) for n in range(4, 31)), 'size': ('480p', '720p')},
         'first': {'aspect': '16:9', 'seconds': '5', 'size': '720p'},
-        'reference': 'reference_images',   # THE REFERENCE (R-0041): the member's own picture, by its DA-M key, as the model's reference image (style, character, scene)
+        'reference': 'reference_images',
+        'most_references': 1,   # THE REFERENCE (R-0041): the member's own picture, by its DA-M key, as the model's reference image (style, character, scene)
         'most_bytes': 24 * 1024 * 1024, 'most_seconds': 1800,   # DA-M takes 25 MB with no zone named; a 30 second render takes longer than a 5 second one
     },
 }
@@ -83,25 +87,32 @@ def check(makes, allowed):
         if not (isinstance(value, str) and value in values):
             return [], f'the ask\'s {choice} is not one of {", ".join(values)}'
         out[choice] = value
-    if 'reference' in ask:   # optional: a DA-M key and nothing else (never an address: law 1); the harness reads the file for this member
-        if not (isinstance(ask['reference'], str) and DAM_KEY.fullmatch(ask['reference'])):
+    if 'reference' in ask:   # optional: a DA-M key, or a list of them up to the model's most, and nothing else (never an address: law 1); the harness reads each file for this member
+        refs = [ask['reference']] if isinstance(ask['reference'], str) else ask['reference']
+        most = spec.get('most_references', 1)
+        if not (isinstance(refs, list) and refs and all(isinstance(r, str) and DAM_KEY.fullmatch(r) for r in refs)):
             return [], 'the ask\'s reference is not a DA-M key'
-        out['reference'] = ask['reference']
+        if len(refs) > most or len(set(refs)) != len(refs):
+            return [], f'the ask names more than {most} reference{"" if most == 1 else "s"} {spec["name"]} takes, or one twice'
+        out['reference'] = list(refs)
     return [out], ''
 
 
-def goes_out(ask, reference=''):
-    """What leaves for the provider, field by field (law 2): the words and the model's own choices, and the reference picture's
-    address at the provider when the ask names one (reference: the address the provider's own file door gave it), nothing else."""
+def goes_out(ask, reference=()):
+    """What leaves for the provider, field by field (law 2): the words and the model's own choices, and the reference pictures'
+    addresses at the provider when the ask names them (reference: the addresses the provider's own file door gave, in the ask's
+    order; one address alone is taken as a list of one), nothing else."""
     if ask['model'] == 'nano-banana-2':
-        out = {'prompt': ask['prompt'], 'aspect_ratio': ask['aspect'], 'resolution': '1K', 'output_format': 'png'}
+        out = {'prompt': ask['prompt'], 'aspect_ratio': ask['aspect'], 'resolution': ask.get('size', '1K'), 'output_format': 'png'}
     elif ask['model'] == 'seedance-2.5':
         out = {'prompt': ask['prompt'], 'duration': int(ask['seconds']), 'resolution': ask['size'], 'aspect_ratio': ask['aspect'],
                'generate_audio': False}   # never a sound track nobody asked for
     else:
         raise KeyError(ask['model'])
-    if reference:
-        out[MODELS[ask['model']]['reference']] = [reference]
+    refs = [reference] if isinstance(reference, str) else list(reference or ())
+    refs = [r for r in refs if r]
+    if refs:
+        out[MODELS[ask['model']]['reference']] = refs
     return out
 
 
@@ -194,7 +205,7 @@ class Hand:
             return '', f'{name} kept no reference'
         return address, ''
 
-    def submit(self, ask, key, reference=''):
+    def submit(self, ask, key, reference=()):
         """-> (request id, '') or ('', why)."""
         spec = MODELS[ask['model']]
         place, name = self.places[spec['provider']], PROVIDERS[spec['provider']]['name']
@@ -255,17 +266,24 @@ class Hand:
         return data, kind, ''
 
     def make(self, ask, key, picture=b''):
-        """The whole errand: -> ({'name', 'kind', 'data'}, '') or (None, why). picture: the reference's bytes when the ask names one
-        (the harness read them from the member's DA-M); an ask that names a reference and has none makes nothing."""
+        """The whole errand: -> ({'name', 'kind', 'data'}, '') or (None, why). picture: the references' bytes when the ask names
+        them (the harness read them from the member's DA-M), one per reference in the ask's order (bytes alone: a list of one); an
+        ask whose references were not all read makes nothing."""
         spec = MODELS[ask['model']]
         name = PROVIDERS[spec['provider']]['name']
-        reference = ''
-        if ask.get('reference'):
-            if not picture:
+        pictures = [picture] if isinstance(picture, (bytes, bytearray)) else list(picture or ())
+        pictures = [p for p in pictures if p]
+        wanted = ask.get('reference') or []
+        wanted = [wanted] if isinstance(wanted, str) else wanted
+        reference = []
+        if wanted:
+            if len(pictures) != len(wanted):
                 return None, 'reference not read'
-            reference, why = self.lend(ask, picture, key)
-            if why:
-                return None, why
+            for one in pictures:
+                address, why = self.lend(ask, one, key)
+                if why:
+                    return None, why
+                reference.append(address)
         rid, why = self.submit(ask, key, reference)
         if why:
             return None, why

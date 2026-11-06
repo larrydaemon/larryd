@@ -462,10 +462,11 @@ def test_the_counts_declaration_passes_alone_beside_species_and_without_a_call(a
 
 
 @pytest.mark.parametrize('records, said', [
-    ({'*': ['read']}, 'records "*" is not ["count"]'),
-    ({'*': ['count', 'read']}, 'records "*" is not ["count"]'),
-    ({'*': 'count'}, 'records "*" is not ["count"]'),
-    ({'*': True}, 'records "*" is not ["count"]'),
+    ({'*': ['read']}, 'records "*" is not a list of "count" and "roster"'),
+    ({'*': ['count', 'read']}, 'records "*" is not a list of "count" and "roster"'),
+    ({'*': 'count'}, 'records "*" is not a list of "count" and "roster"'),
+    ({'*': True}, 'records "*" is not a list of "count" and "roster"'),
+    ({'*': ['roster', 'roster']}, 'records "*" is not a list of "count" and "roster"'),
     ({'opns': ['count']}, 'not a list of verbs'),
 ])
 def test_the_counts_declaration_catches(agent, records, said):
@@ -473,6 +474,18 @@ def test_the_counts_declaration_catches(agent, records, said):
     problems = [p for p in doctor.check(agent) if p.check == 'the manifest']
     assert problems and any(said in p.wrong for p in problems), [p.wrong for p in problems]
     assert all(p.todo for p in problems)
+
+
+def test_the_roster_passes_with_a_call_alone_or_with_the_counts(agent):   # CORE_CLEANUP_IV 37
+    for records in ({'*': ['roster']}, {'*': ['count', 'roster']}, {'*': ['roster'], 'opns': ['read']}):
+        _records(agent, records, calls=('answer',))
+        assert doctor.check(agent) == [], records
+
+
+def test_the_roster_is_handed_on_a_call_so_it_needs_one(agent):
+    for records in ({'*': ['roster']}, {'*': ['count', 'roster']}):
+        _records(agent, records, calls=())
+        assert [p.wrong for p in doctor.check(agent) if p.check == 'the manifest'] == ['"records" is declared, but "calls" is empty'], records
 
 
 def test_the_counts_beside_species_still_need_a_call(agent):

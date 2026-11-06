@@ -479,16 +479,18 @@ def _records(card, c, where, f):
         f.add(c, where, '"records" is not {species: [verbs]}', shape_todo)
         return
     every, count = shape.RECORD_COUNTS
+    words = shape.RECORD_EVERY[1]
     for name, verbs in asked.items():
-        if name == every:   # THE COUNTS: "*" takes ["count"] alone
-            if verbs != count:
-                f.add(c, where, f'records "{every}" is not {json.dumps(count)}', f'"{every}" asks for the counts alone: set it to {json.dumps(count)}, or take it out')
+        if name == every:   # THE COUNTS and THE ROSTER: "*" takes "count" and/or "roster", each once
+            if not (isinstance(verbs, list) and verbs and all(isinstance(v, str) and v in words for v in verbs) and len(set(verbs)) == len(verbs)):
+                f.add(c, where, f'records "{every}" is not a list of {" and ".join(json.dumps(w) for w in words)}',
+                      f'"{every}" asks for the counts and/or the roster: set it to ["count"], ["roster"] or ["count", "roster"], or take it out')
             continue
         if not (isinstance(name, str) and name in species):
             f.add(c, where, f'records names "{name}", not a module of the platform', f'use a module\'s code: {", ".join(species)}')
         if not (isinstance(verbs, list) and verbs and all(isinstance(v, str) and v in shape.RECORD_VERBS for v in verbs)):
             f.add(c, where, f'records "{name}" is not a list of verbs', f'list what the agent does with them, from: {", ".join(shape.RECORD_VERBS)}')
-    if not card.get('calls') and set(asked) != {every}:   # the counts alone are handed on a RUN too
+    if not card.get('calls') and asked != {every: count}:   # the counts alone are handed on a RUN too; the roster only on a CALL
         f.add(c, where, '"records" is declared, but "calls" is empty', 'records are handed on a CALL (the member\'s screen): name the call in "calls", or take "records" out')
 
 

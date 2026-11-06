@@ -138,6 +138,56 @@ class TheCounts(unittest.TestCase):
         self.assertEqual((h._counts({'records': {'*': ['count']}}, given, *who), given), ('counts not read', {}))
 
 
+GOOD_ROSTER = {'members': [{'key': 'MCON_000000000001_0001', 'name': 'Ana Scratch', 'type': 'owner', 'active': True},
+                           {'key': 'MCON_000000000002_0002', 'name': 'Bo Scratch', 'type': 'vendor', 'active': False}]}
+
+
+class TheRoster(unittest.TestCase):
+    """THE ROSTER (CORE_CLEANUP_IV 37): "records": {"*": ["roster"]} (alone or with "count") hands the account's members on a CALL,
+    key, name, type and active alone, read through wid's roster door for this member; any other shape hands nothing."""
+    def test_star_holds_count_and_roster_each_once_and_nothing_else(self):
+        for words, counts, roster in ((['count'], True, False), (['roster'], False, True), (['count', 'roster'], True, True), (['roster', 'count'], True, True)):
+            self.assertEqual((member_records.counts_declared({'records': {'*': words}}), member_records.roster_declared({'records': {'*': words}})), (counts, roster), words)
+        for bad in (['roster', 'roster'], ['count', 'count'], ['roster', 'read'], [], 'roster', ['ROSTER'], True):
+            self.assertFalse(member_records.roster_declared({'records': {'*': bad}}), bad)
+            self.assertFalse(member_records.counts_declared({'records': {'*': bad}}), bad)   # one wrong word: the counts are not declared either (fail closed)
+        self.assertEqual(member_records.declared({'records': {'*': ['count', 'roster'], 'opns': ['read']}}), {'opns': ('read',)})   # no right on any species
+
+    def test_the_answer_is_exactly_the_four_fields_or_nothing(self):
+        self.assertEqual(member_records.rostered(GOOD_ROSTER), GOOD_ROSTER['members'])
+        self.assertEqual(member_records.rostered({'members': []}), [])
+        one = GOOD_ROSTER['members'][0]
+        for bad in ({**one, 'email': 'a@b.c'}, {k: v for k, v in one.items() if k != 'active'}, {**one, 'active': 'yes'}, {**one, 'key': 'ACCT_000000000001_0001'},
+                    {**one, 'type': 'Owner Admin'}, {**one, 'name': 'x' * 201}, {**one, 'name': 7}, 'MCON_000000000001_0001'):
+            with self.assertRaises(ValueError, msg=bad):
+                member_records.rostered({'members': [bad]})
+        for bad in ({'members': [one], 'pins': []}, {'rows': []}, {'members': 'all'}, {'members': [one] * (member_records.MOST_MEMBERS + 1)}, [], None):
+            with self.assertRaises(ValueError, msg=bad):
+                member_records.rostered(bad)
+
+    def test_the_door_is_asked_for_the_member_the_platform_named(self):
+        asked = []
+        self.assertEqual(member_records.roster(lambda *a: asked.append(a) or GOOD_ROSTER, 'ACCT_A', 'SCRATCH', 'MCON_M', 'MAGT_K'), GOOD_ROSTER['members'])
+        self.assertEqual(asked, [('wid', 'GET', '/agnt/records/roster', {'account': 'ACCT_A', 'scope': 'SCRATCH', 'member': 'MCON_M', 'agent_key': 'MAGT_K'})])
+
+    def test_the_harness_hands_it_or_says_it_did_not(self):
+        h = harness.Harness.__new__(harness.Harness)
+        who = ('ACCT_A', 'SCRATCH', 'MCON_M', 'MAGT_K')
+        given = {}
+        h._ask = lambda *a: GOOD_ROSTER
+        self.assertEqual((h._roster({'records': {'*': ['count', 'roster']}}, given, *who), given), ('', {'roster': GOOD_ROSTER['members']}))
+        given, asked = {}, []
+        h._ask = lambda *a: asked.append(a) or GOOD_ROSTER
+        self.assertEqual((h._roster({'records': {'*': ['count']}}, given, *who), given, asked), ('', {}, []))   # not declared: the door is never asked
+        h._ask = lambda *a: {'members': [{**GOOD_ROSTER['members'][0], 'pin_hash': 'x'}]}
+        self.assertEqual((h._roster({'records': {'*': ['roster']}}, given, *who), given), ('roster not read', {}))   # more than the four fields: nothing handed
+
+        def refuse(*a):
+            raise harness.Refused(403, 'refused by FROST: not in the records that agent declares')
+        h._ask = refuse
+        self.assertEqual((h._roster({'records': {'*': ['roster']}}, given, *who), given), ('roster not read', {}))
+
+
 class OnTheDevelopersRuntime(unittest.TestCase):
     """The whole lane through the developer's runtime: the stand-in's doors, the harness, the sandbox, the second run."""
     def setUp(self):

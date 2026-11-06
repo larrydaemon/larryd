@@ -75,11 +75,11 @@ class Platform:
 class TheList(World):
     def test_an_ask_is_one_declared_model_in_its_own_grammar(self):
         ok = lambda makes, allowed=('nano-banana-2',): outside.check(makes, allowed)
-        self.assertEqual(ok([ASK]), ([ASK], ''))
+        self.assertEqual(ok([ASK]), ([{**ASK, 'size': '1K'}], ''))   # the size's first choice (CORE_CLEANUP_IV 19)
         self.assertEqual(ok([{k: v for k, v in ASK.items() if k != 'aspect'}])[0][0]['aspect'], '1:1')   # the model's first choice
         for wrong in ([], [ASK, ASK], 'x', [{**ASK, 'model': 'seedance-2.5'}], [{**ASK, 'model': 'anything'}], [{**ASK, 'aspect': '2:1'}],
                       [{**ASK, 'url': 'https://example.com'}], [{**ASK, 'prompt': ''}], [{**ASK, 'prompt': 'x' * 4001}], [{**ASK, 'name': '../x'}],
-                      [{**ASK, 'seconds': '5'}]):
+                      [{**ASK, 'seconds': '5'}], [{**ASK, 'size': '4K'}], [{**ASK, 'size': '720p'}]):
             self.assertEqual(ok(wrong)[0], [], wrong)
 
     def test_only_the_models_own_fields_leave(self):
@@ -350,6 +350,8 @@ class TheRunAskedFromThePage(World):
 
 # ---------------------------------------------------------------- R-0040 / R-0041 (the owner 2026-10-24): the reference picture and every length
 REF = 'DA-M_0123456789AB_00CD'
+REF2 = 'DA-M_0123456789AB_00CE'
+REF3 = 'DA-M_0123456789AB_00CF'
 JPG = b'\xff\xd8\xff\xe0' + b'1' * 64
 
 
@@ -393,8 +395,9 @@ class TheReference(World):
             self.assertEqual(outside.check([{**ask, 'seconds': wrong}], ('seedance-2.5',))[0], [], wrong)
 
     def test_a_reference_is_a_dam_key_and_nothing_else(self):
-        self.assertEqual(outside.check([{**ASK, 'reference': REF}], ('nano-banana-2',))[0][0]['reference'], REF)
-        for wrong in ('https://evil.example/x.png', 'DA-M_0123456789ab_00cd', 'MIMG_0123456789AB_0002', '', REF + 'X', ['x']):
+        self.assertEqual(outside.check([{**ASK, 'reference': REF}], ('nano-banana-2',))[0][0]['reference'], [REF])   # one key: a list of one
+        self.assertEqual(outside.check([{**ASK, 'reference': [REF, REF2]}], ('nano-banana-2',))[0][0]['reference'], [REF, REF2])   # up to two (CORE_CLEANUP_IV 18)
+        for wrong in ('https://evil.example/x.png', 'DA-M_0123456789ab_00cd', 'MIMG_0123456789AB_0002', '', REF + 'X', ['x'], [], [REF, REF], [REF, REF2, REF3], [REF, 'https://evil.example/x.png']):
             self.assertEqual(outside.check([{**ASK, 'reference': wrong}], ('nano-banana-2',))[0], [], wrong)
         self.assertNotIn('image_input', outside.goes_out(ASK))   # no reference: the words alone, as before
 
@@ -409,6 +412,23 @@ class TheReference(World):
             sent = json.loads(p.asked[1][3])['input']
             self.assertEqual(sent[field], ['https://api.replicate.com/v1/files/f1'])
             self.assertNotIn(REF, json.dumps(sent))   # the member's key never leaves
+
+    def test_two_references_are_each_lent_and_sent_in_the_asks_order(self):
+        p = FileDoor()
+        made, why = hand(p).make({**ASK, 'reference': [REF, REF2]}, SECRET_KEY, [JPG, PNG])
+        self.assertEqual(why, '')
+        self.assertEqual([u for _m, u, _h, _d in p.asked][:3], ['https://api.replicate.com/v1/files', 'https://api.replicate.com/v1/files',
+                                                                 f"https://api.replicate.com/v1/models/{outside.MODELS['nano-banana-2']['path']}/predictions"])
+        self.assertIn(JPG, p.asked[0][3])
+        self.assertIn(PNG, p.asked[1][3])
+        self.assertEqual(json.loads(p.asked[2][3])['input']['image_input'], ['https://api.replicate.com/v1/files/f1'] * 2)
+        self.assertEqual(hand(FileDoor()).make({**ASK, 'reference': [REF, REF2]}, SECRET_KEY, [JPG]), (None, 'reference not read'))   # one of two not read: nothing goes
+        self.assertEqual(outside.check([{'model': 'seedance-2.5', 'prompt': 'a boat', 'name': 'A boat', 'reference': [REF, REF2]}], ('seedance-2.5',))[0], [])   # Seedance takes one
+
+    def test_the_size_goes_out_as_the_models_resolution(self):
+        two_k = outside.check([{**ASK, 'size': '2K'}], ('nano-banana-2',))[0][0]
+        self.assertEqual(outside.goes_out(two_k)['resolution'], '2K')
+        self.assertEqual(outside.goes_out(outside.check([ASK], ('nano-banana-2',))[0][0])['resolution'], '1K')
 
     def test_a_reference_that_is_not_a_picture_or_comes_back_elsewhere_makes_nothing(self):
         self.assertEqual(hand(FileDoor()).make({**ASK, 'reference': REF}, SECRET_KEY, b''), (None, 'reference not read'))

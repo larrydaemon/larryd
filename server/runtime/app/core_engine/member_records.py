@@ -39,16 +39,57 @@ def declared(manifest):
 
 
 EVERY, COUNT = '*', 'count'                     # THE COUNTS: "records": {"*": ["count"]}, of no one species
+ROSTER = 'roster'                               # THE ROSTER (CORE_CLEANUP_IV 37): "records": {"*": ["roster"]} or {"*": ["count", "roster"]}: the account's members, read only, on a CALL
+EVERY_WORDS = (COUNT, ROSTER)                   # what "*" may hold, each once; anything else under "*" counts for nothing (fail closed)
 COUNTS_DOOR = ('GET', '/agnt/records/counts')
+ROSTER_DOOR = ('GET', '/agnt/records/roster')   # wid's (frost-8f, 22203d5a): {"members": [{key, name, type, active}]}, the same refusals as the counts door
+MEMBER_KEY = re.compile(r'^MCON_[0-9A-F]{12}_[0-9A-F]{4}$')
+MEMBER_TYPE = re.compile(r'^[a-z][a-z_]{0,39}$')   # owner, user, vendor, partner, system_owner ...
+MOST_MEMBERS = 1000
 SCOPE = re.compile(r'^[A-Za-z0-9]{1,40}$')      # an account's scope name, as the page shows it to the member (letters and digits alone)
 PRODUCT = re.compile(r'^[a-z]{1,24}$')          # a product's slug
 
 
-def counts_declared(manifest):
-    """Does the manifest declare THE COUNTS: "records": {"*": ["count"]}, written exactly so (anything else under "*"
-    counts for nothing, fail closed)? It is no right on any species: declared() never sees it."""
+def _every(manifest):
+    """What "*" declares, well formed: a list of EVERY_WORDS, each once -> their set; anything else -> empty (fail closed)."""
     asked = manifest.get('records') if isinstance(manifest, dict) else None
-    return isinstance(asked, dict) and asked.get(EVERY) == [COUNT]
+    words = asked.get(EVERY) if isinstance(asked, dict) else None
+    if not (isinstance(words, list) and words and all(isinstance(w, str) and w in EVERY_WORDS for w in words) and len(set(words)) == len(words)):
+        return set()
+    return set(words)
+
+
+def counts_declared(manifest):
+    """Does the manifest declare THE COUNTS: "records": {"*": ["count"]}, or with the roster ["count", "roster"] (anything else
+    under "*" counts for nothing, fail closed)? It is no right on any species: declared() never sees it."""
+    return COUNT in _every(manifest)
+
+
+def roster_declared(manifest):
+    """Does the manifest declare THE ROSTER: "*" holds "roster" (alone or with "count")? No right on any species either."""
+    return ROSTER in _every(manifest)
+
+
+def rostered(body):
+    """The roster door's answer as the agent is handed it, or ValueError: [{key, name, type, active}], each a member's own key,
+    a plain name, a type word and a yes or no; anything else (another field, another type, more than MOST_MEMBERS) refuses it whole."""
+    members = body.get('members') if isinstance(body, dict) and set(body) == {'members'} else None
+    if not (isinstance(members, list) and len(members) <= MOST_MEMBERS):
+        raise ValueError('the roster is not {members: [...]}')
+    out = []
+    for m in members:
+        if not (isinstance(m, dict) and set(m) == {'key', 'name', 'type', 'active'} and isinstance(m['key'], str) and MEMBER_KEY.fullmatch(m['key'])
+                and isinstance(m['name'], str) and len(m['name']) <= 200 and isinstance(m['type'], str) and MEMBER_TYPE.fullmatch(m['type'])
+                and isinstance(m['active'], bool)):
+            raise ValueError('a roster member is not {key, name, type, active}')
+        out.append({'key': m['key'], 'name': m['name'], 'type': m['type'], 'active': m['active']})
+    return out
+
+
+def roster(ask, account, scope, member, agent_key=''):
+    """THE ROSTER of the account the platform named, through wid's roster door for this member: -> [{key, name, type, active}].
+    A refusal propagates; an answer of any other shape is ValueError (nothing is handed)."""
+    return rostered(ask('wid', ROSTER_DOOR[0], ROSTER_DOOR[1], {'account': account, 'scope': scope, 'member': member, 'agent_key': agent_key}))
 
 
 def _whole(n):
