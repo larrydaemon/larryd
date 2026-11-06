@@ -76,7 +76,9 @@ class CollectionTest(unittest.TestCase):
 
 class ReportTest(unittest.TestCase):
     def test_the_run_delivers_the_collection_report(self):
-        self.assertEqual(run({'do': 'report', 'cards': [card(hired=True), card(key='MAGT_KEY2')]}), {'delivery': '2 agents in the collection · 1 hired', 'total': 2, 'hired': 1})
+        self.assertEqual(run({'do': 'report', 'cards': [card(hired=True), card(key='MAGT_KEY2')]}),
+                         {'delivery': '2 agents in the collection · 1 hired', 'total': 2, 'hired': 1,
+                          'job': {'data_job_payload': '2 agents in the collection · 1 hired', 'data_job_lineage': 'LARRYD > PF AGENT MARKETPLACE > report'}})   # THE JOB'S SLOTS (ea3bec6; the owner 2026-11-05: only the slots true for it, "yes")
         self.assertEqual(run({'do': 'report', 'cards': [card()]})['delivery'], '1 agent in the collection · 0 hired')
 
 
