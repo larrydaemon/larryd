@@ -5,7 +5,7 @@ import json
 import pathlib
 import sys
 
-from . import __version__, doctor, guide, internal, knowledge, mcp, new, place, runner, skills, submit
+from . import __version__, doctor, guide, internal, knowledge, mcp, new, place, runner, ship, skills, submit
 
 START = 'Start: larryd new <name> --from marketplace, then read <name>/CLAUDE.md (or larryd guide)'
 
@@ -43,6 +43,10 @@ def parser():
     sub.add_parser('guide', help='print the whole guide (it ships in the package as GUIDE.md)')
     sub.add_parser('help', help='these commands; `larryd` alone starts the daemon (LARRYD\'s runtime on 127.0.0.1)')
     sub.add_parser('skills', help='list the skills an agent may declare, by hash')
+    sh = sub.add_parser('ship', help='place and approve an agent, internal or external, the same steps (the plan alone without --go)')
+    sh.add_argument('path', nargs='?', default='.', help='the agent\'s folder (default: here)')
+    sh.add_argument('--go', action='store_true', help='do it: place in its runtime and approve its exact hashes in localhost FROST (the ship lane)')
+    sh.add_argument('--note', default='', help='the approval\'s note')
     k = sub.add_parser('pack', help='check a knowledge pack and give its hash')
     k.add_argument('folder', help='the pack\'s folder')
     return p
@@ -87,6 +91,8 @@ def main(argv=None):
                 (root / doctor.BADGE).write_text(doctor.badge(problems, datetime.date.today().isoformat()))
                 print(f'wrote {root / doctor.BADGE}: paste ![LARRYD checks]({doctor.BADGE}) into your README', file=sys.stderr if args.json else sys.stdout)
         return 1 if problems else 0
+    if args.command == 'ship':   # ONE place-and-approve command for both runtimes (CORE_CLEANUP_IV 55)
+        return ship.ship(args.path, go=args.go, note=args.note)
     if args.command == 'run':
         result = runner.run(args.path, args.job)
         print(json.dumps(runner.as_json(result), indent=2) if args.json else runner.report(result))
