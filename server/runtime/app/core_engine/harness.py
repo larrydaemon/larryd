@@ -979,7 +979,10 @@ class Harness:
                 continue
             if not outside.DAM_KEY.fullmatch(dam_key):
                 raise _Stop('REFUSED', f'input {declared[name]} is not a DA-M key')
-            status, body = self.client.get('wid', '/jobs/file', {'account': account, 'scope': scope, 'member': member, 'job_key': job_key, 'run': str(run), 'dam_key': dam_key})
+            status, body = self.client.get('wid', '/jobs/file', {'account': account, 'scope': scope, 'member': member, 'job_key': job_key, 'run': str(run), 'dam_key': dam_key},
+                                           most=-(-MOST_RUN_FILE // 3) * 4 + ANSWER_ROOM)   # THE SIZE FIRST (as _reference, 44830a7): never read past MOST_RUN_FILE as base64 and the answer's few words
+            if status == 413:
+                raise _Stop('FAILED', f'the file of input {declared[name]} is over {MOST_RUN_FILE // (1024 * 1024)} MB: {dam_key}')
             raw = body.get('content_b64') if status == 200 and isinstance(body, dict) else None
             try:
                 data = base64.b64decode(raw, validate=True) if isinstance(raw, str) else b''

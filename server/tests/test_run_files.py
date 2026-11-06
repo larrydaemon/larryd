@@ -22,14 +22,19 @@ class Wid:
     def __init__(self, inputs, files, status=200):
         self.inputs, self.files, self.status, self.said = inputs, files, status, []
 
-    def get(self, office, route, data=None):
+    def get(self, office, route, data=None, most=None):
         self.said.append((office, route, data))
+        if route == '/jobs/file':
+            self.most = most
         if route == '/jobs/inputs':
             return 200, {'inputs': self.inputs}
         if route == '/jobs/file':
             if self.status != 200 or data['dam_key'] not in self.files:
                 return 404, {'refused': 'not a file of this member'}
-            return 200, {'content_b64': base64.b64encode(self.files[data['dam_key']]).decode()}
+            b64 = base64.b64encode(self.files[data['dam_key']]).decode()
+            if most is not None and len(b64) > most:   # as platform.Client: over its most, refused before it is read whole
+                return 413, {'refused': 'the answer is larger than asked'}
+            return 200, {'content_b64': b64}
         return 200, {}
 
     def post(self, office, route, data):
@@ -98,6 +103,7 @@ class RunFiles(Echo):
         big = PNG + b'0' * harness.MOST_RUN_FILE
         wid = Wid({'001': PIC}, {PIC: big})
         self.assertEqual(self.run_with(wid), 'FAILED')
+        self.assertEqual(wid.most, -(-harness.MOST_RUN_FILE // 3) * 4 + harness.ANSWER_ROOM)   # the size asked first: never read whole
         self.assertEqual(self.results(wid)[-1]['log'], f'the file of input 001 is over {harness.MOST_RUN_FILE // (1024 * 1024)} MB: {PIC}')
 
     def test_files_not_declared_right_fail_before_wid_is_asked_for_a_file(self):
@@ -137,8 +143,8 @@ class Companion(Echo):
         wid = Wid({'001': PIC}, {PIC: PNG})
         got = wid.get
 
-        def get(office, route, data=None):
-            status, body = got(office, route, data)
+        def get(office, route, data=None, most=None):
+            status, body = got(office, route, data, most)
             if route == '/jobs/file' and status == 200 and source_key:
                 body = {**body, 'source_key': source_key}   # wid naming the record the file belongs to
             return status, body
