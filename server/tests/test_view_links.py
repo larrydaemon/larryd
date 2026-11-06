@@ -58,6 +58,27 @@ class Markers(unittest.TestCase):
         self.assertEqual((why, 'http://127.0.0.1:5006/so/rnd/en/app/files/add?zone=imgs' in out['view']['html']), ('', True))
 
 
+class TheLinkAloneGoes(unittest.TestCase):
+    """frost-d7's finding (frost-05's order, 2026-11-06): an unbuildable marker link made the gate drop the agent's WHOLE view. Now the link
+    alone goes: it becomes a <span> with its own words and class, and the rest of the view is drawn."""
+    def test_no_origins_the_view_stays_and_the_link_becomes_words(self):
+        page = {'view': {'html': '<p>Step 31</p><a class="pfb" href="larryd:upload/" target="_blank" rel="noopener noreferrer">Add files to DA-M</a>', 'css': ''}}
+        out, why = view.checked(page, '/wid/pf/en/app/prdn/home')   # frost-d7's repro: no origins handed
+        self.assertEqual(why, '')
+        self.assertEqual(out['view']['html'], '<p>Step 31</p><span class="pfb">Add files to DA-M</span>')
+
+    def test_a_box_that_may_not_take_http_keeps_the_view_too(self):
+        out, why = view.checked(view_of('larryd:upload/imgs'), PATH, LOCAL, local=False)   # localhost origins, but not the localhost box
+        self.assertEqual((why, 'href' in out['view']['html'], 'Add files' in out['view']['html']), ('', False, True))
+
+    def test_one_link_built_and_one_dropped_side_by_side(self):
+        html = f'<a href="larryd:upload/imgs" {OUT}>A</a><a href="larryd:upload/a/b" {OUT}>B</a>'
+        out, why = view.checked({'view': {'html': html, 'css': ''}}, PATH, B)
+        self.assertEqual(why, '')
+        self.assertIn('href="https://frost-b.positivefeedback.ai/so/rnd/en/app/files/add?zone=imgs"', out['view']['html'])
+        self.assertIn('<span>B</span>', out['view']['html'])
+
+
 class TheGate(unittest.TestCase):
     def test_http_only_for_the_handed_origins_on_a_localhost_box(self):
         local = tuple(LOCAL.values())

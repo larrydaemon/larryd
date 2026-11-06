@@ -124,10 +124,16 @@ def frost_of(path, name, origin='', local=()):
     return _built(origin, address, local) if _FROST_PAGE.fullmatch(address) else ''
 
 
+MARKER_LINK = re.compile(r'<a\b([^>]*?)\shref="larryd:(upload|download|frost)/([^"<>\s]{0,80})"([^>]*)>(.*?)</a>', re.S)   # a whole link that carries a marker
+_LINK_ONLY = re.compile(r'\s(?:target|rel)="[^"]*"')   # what makes an <a> a link out: taken off when the link goes and its words stay
+
+
 def resolve(markup, path, origins, local=False):
     """THE MARKERS (CORE_CLEANUP_IV 20/96, ruling b): an agent never writes an address of the platform's. It writes href="larryd:upload/<zone>",
     href="larryd:download/<DA-M key>" or href="larryd:frost/<page>"; this builds each address on the origin of the office that serves it
-    (origins: the platform's own word for this page, {wid, so, fs}), or drops the href when none can be built (the link is then inert).
+    (origins: the platform's own word for this page, {wid, so, fs}). When none can be built (no origins handed, a box that may not take
+    http, a word that is not plain), THE LINK ALONE GOES: the <a> becomes a <span> with its own words and class, never a bare <a> the gate
+    would refuse (frost-d7's finding, frost-05's order 2026-11-06: an unbuildable marker dropped the agent's WHOLE view).
     local: a localhost box, where the handed origins are plain http (each office its own port)."""
     if not isinstance(markup, str) or 'larryd:' not in markup:
         return markup
@@ -135,12 +141,15 @@ def resolve(markup, path, origins, local=False):
     allowed = tuple(v for v in origins.values() if isinstance(v, str)) if local else ()
 
     def one(m):
-        kind, word = m.group(1), m.group(2)
+        before, kind, word, after, words = m.groups()
         origin = origins[SERVES[kind]] if isinstance(origins.get(SERVES[kind]), str) else ''   # the origin wid handed for the office that serves this page (a lookup in wid's own word; no office is called)
         build = {'upload': upload_of, 'frost': frost_of, 'download': download_of}[kind]
         address = build(path, word, origin, allowed)
-        return f'href="{address}"' if address else ''
-    return MARKER.sub(one, markup)
+        if address:
+            return f'<a{before} href="{address}"{after}>{words}</a>'
+        return f'<span{_LINK_ONLY.sub("", before + after)}>{words}</span>'   # the link goes, its words and class stay
+    out = MARKER_LINK.sub(one, markup)
+    return MARKER.sub('', out)   # a marker outside a plain <a>...</a> (an odd shape): its href goes, as before
 
 
 def package_address(address):
