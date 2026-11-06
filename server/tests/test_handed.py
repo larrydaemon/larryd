@@ -80,7 +80,7 @@ class TheHandedCall(unittest.TestCase):
         self.approved = [{'agent_key': row['agent_key'], 'code_sha256': row['code_sha256'], 'manifest_sha256': row['manifest_sha256'], 'card_key': ''}]
         self.given, self.answers = [], []
 
-        def run(folder, entry, given, seconds=20, on_start=None, most_bytes=harness.sandbox.MOST_BYTES, internal=False):
+        def run(folder, entry, given, seconds=20, on_start=None, most_bytes=harness.sandbox.MOST_BYTES):
             self.given.append(json.loads(json.dumps(given)))
             return 'DONE', (self.answers.pop(0) if self.answers else {'view': {'html': '<section>ok</section>', 'css': ''}}), ''
         p = mock.patch.object(harness.sandbox, 'run', run)
