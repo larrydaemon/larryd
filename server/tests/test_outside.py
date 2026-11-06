@@ -9,7 +9,7 @@ import urllib.error
 
 from _here import APP  # noqa: F401
 from core_engine import harness, locker, outside
-from test_skills import ACCOUNT, CARD, HIRED, JOB, KEY, MEMBER, SCOPE, STORE, World
+from test_skills import ACCOUNT, CARD, HIRED, JOB, KEY, MEMBER, PLANNED, SCOPE, STORE, World
 
 PNG = b'\x89PNG\r\n\x1a\n' + b'0' * 64
 MP4 = b'\x00\x00\x00\x18ftypmp42' + b'0' * 64
@@ -134,9 +134,9 @@ class TheRun(World):
         con.close()
         locker.add(self.db, self.agents, KEY, 'echo')
 
-    def run_with(self, client, provider=None, a_day=None):
+    def run_with(self, client, provider=None, a_day=None, card=CARD):
         h = harness.Harness(self.db, self.agents, client, hand=hand(provider or Provider()), a_day=a_day)
-        h.facts = lambda account, scope, member: ([CARD], HIRED, [], lambda k: (True, ''))
+        h.facts = lambda account, scope, member: ([card], HIRED, [card['agent_group']] if card.get('agent_group') else [], lambda k: (True, ''))
         self.h = h
         return h.run_job(ACCOUNT, SCOPE, MEMBER, JOB, 1)
 
@@ -146,7 +146,7 @@ class TheRun(World):
     def test_a_made_picture_goes_to_dam_and_becomes_the_members_record(self):
         self.placed(self.ANSWER, self.DECLARED, ('makes', 'keeps', 'delivery'))
         p = Platform()
-        self.assertEqual(self.run_with(p), 'DONE')
+        self.assertEqual(self.run_with(p, card=PLANNED), 'DONE')
         asked = next(d for o, r, d in p.said if (o, r) == ('wid', '/jobs/provider_key'))   # THE KEY'S ONE HOME: asked of wid for this open RUN of this member (wid reads the vault for the RUN's own agent)
         self.assertEqual(asked, {'account': ACCOUNT, 'scope': SCOPE, 'member': MEMBER, 'job_key': JOB, 'run': '1', 'provider': 'replicate'})
         upload = next(d for _o, r, d in p.said if r == '/jobs/upload')

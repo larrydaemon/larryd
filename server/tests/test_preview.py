@@ -66,7 +66,7 @@ class DeveloperMarketplace(unittest.TestCase):
 
     def test_the_first_visit_places_the_marketplace_and_the_page_is_it_never_a_card_inside_itself(self):
         html = self.page()   # the marketplace is the page (the owner, 2026-10-06): never a card inside itself
-        self.assertIn('<div class="mk-grid"></div>', html)   # the marketplace: its grid, empty (no controller without the platform's links)
+        self.assertIn('<div class="pf-card-grid"></div>', html)   # the marketplace: its grid, empty (no controller without the platform's links)
         self.assertNotIn(f'data-agent="{preview.MARKETPLACE_KEY}"', html)
         self.assertNotIn('No. 000', html)
         j = self.client.get('/marketplace.json').get_json()

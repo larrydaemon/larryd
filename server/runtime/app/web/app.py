@@ -414,6 +414,7 @@ def _marketplace_pages(app, h, instance, token):
             row = intake.receive(h.db, h.agents, conf['folder'], key, files)
         except intake.Refused as no:
             return jsonify({'refused': no.reason}), no.status
+        h.forget_approved()   # the developer's runtime approves what it holds: the placed agent shows on the next call
         return jsonify({'held': {'agent_key': key, 'name': row['name'], 'code_sha256': row['code_sha256'], 'manifest_sha256': row['manifest_sha256']},
                         'marketplace': '/marketplace'}), 201
 

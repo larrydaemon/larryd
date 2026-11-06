@@ -79,7 +79,7 @@ class TheAnswerDoor(unittest.TestCase):
     def test_a_wrong_shape_is_left_out_never_a_crash(self):
         r = self.post(self.body(find='junk', themes=['junk'], page='junk'))
         self.assertEqual(r.status_code, 200, r.get_data(as_text=True)[:300])
-        self.assertNotIn('mk-ctl', r.get_json()['view']['html'])
+        self.assertNotIn('pf-card-grid-ctl', r.get_json()['view']['html'])
         r = self.post({**self.who, 'page': {'path': PATH, 'wears': 'junk', 'arts': 5, 'links': 'junk', 'search': 5, 'products': 'x', 'modules': []}})
         self.assertEqual(r.status_code, 200, r.get_data(as_text=True)[:300])
 
@@ -91,7 +91,7 @@ class TheAnswerDoor(unittest.TestCase):
         body = self.body()
         body['find'] = {'orgchart': True}
         h = self.post(body).get_json()['view']['html']
-        self.assertIn('<div class="mk-grid mk-orgchart">', h)
+        self.assertIn('<div class="pf-card-grid pf-card-grid--mini">', h)
         self.assertEqual(h.count('data-size="mini"'), 2)
 
 

@@ -10,7 +10,6 @@ from _here import APP
 from core_engine import sandbox
 
 FOLDER = APP / 'agents' / 'marketplace'
-SHEET = FOLDER / 'marketplace.css'
 
 
 def card(**over):
@@ -50,7 +49,7 @@ class CollectionTest(unittest.TestCase):
 
     def test_an_empty_collection_is_empty(self):
         out = run({'do': 'collection', 'cards': []})
-        self.assertEqual(out.pop('view'), {'html': '<div class="mk-grid"></div>', 'css': SHEET.read_text()})
+        self.assertEqual(out.pop('view'), {'html': '<div class="pf-card-grid"></div>', 'css': ''})
         self.assertEqual(out, {'cards': [], 'total': 0, 'hired': 0, 'shown': 0, 'filters': {'product': [], 'module': [], 'type': [], 'residency': [], 'class': []}})
 
     def test_only_a_true_from_the_platform_is_offline(self):
@@ -101,36 +100,35 @@ class TheGrid(unittest.TestCase):
     def test_one_placeholder_per_card_in_order(self):
         cards = [card(key='MAGT_KEY2', number='2', name='Weekly <Summary>'), card(key='MAGT_KEY1', number='1')]
         v = run({'do': 'collection', 'cards': cards})['view']
-        self.assertEqual(v, {'html': '<div class="mk-grid"><div data-inject="agent_card" data-agent="MAGT_KEY1" data-size="full"></div>'
-                                     '<div data-inject="agent_card" data-agent="MAGT_KEY2" data-size="full"></div></div>', 'css': SHEET.read_text()})
+        self.assertEqual(v, {'html': '<div class="pf-card-grid"><div data-inject="agent_card" data-agent="MAGT_KEY1" data-size="full"></div>'
+                                     '<div data-inject="agent_card" data-agent="MAGT_KEY2" data-size="full"></div></div>', 'css': ''})
         self.assertNotIn('Summary', v['html'])   # no value of a card in the markup: the platform draws it
 
     def test_the_org_chart_view_is_mini_cards(self):   # the owner 2026-11-03: "the org chart for now will just be the mini cards"; the old Simple view is gone
         h = run({'do': 'collection', 'cards': [card()], 'find': {'orgchart': True}})['view']['html']
-        self.assertEqual(h, '<div class="mk-grid mk-orgchart"><div data-inject="agent_card" data-agent="MAGT_AAAAAAAAAAAA_0001" data-size="mini"></div></div>')
+        self.assertEqual(h, '<div class="pf-card-grid pf-card-grid--mini"><div data-inject="agent_card" data-agent="MAGT_AAAAAAAAAAAA_0001" data-size="mini"></div></div>')
 
     def test_a_key_that_is_not_plainly_a_key_stands_nowhere(self):
         h = run({'do': 'collection', 'cards': [card(key='K"><script>x</script>'), card(key='MAGT_OK_0001')]})['view']['html']
         self.assertNotIn('<script', h)
         self.assertEqual(re.findall(r'data-agent="([^"]+)"', h), ['MAGT_OK_0001'])
 
-    def test_the_sheet_lays_out_and_draws_no_card(self):
-        sheet = SHEET.read_text()
-        for never in ('agent-card', 'mk-frame', 'pf-card', '@keyframes', 'url('):
-            self.assertNotIn(never, sheet)
+    def test_no_sheet_of_its_own_and_the_view_passes(self):   # the owner 2026-11-05: an agent's view uses the standard sheets and buttons, nothing of its own
+        self.assertEqual(sorted(p.name for p in FOLDER.glob('*.css')), [])
+        v = run({'do': 'collection', 'cards': [card(), card(key='MAGT_KEY2')]})['view']
+        self.assertEqual(v['css'], '')
         from core_engine import view
-        self.assertEqual(view.refused(run({'do': 'collection', 'cards': [card(), card(key='MAGT_KEY2')]})['view']), '')
+        self.assertEqual(view.refused(v), '')
 
-    def test_the_sheet_is_in_the_agents_code_hash(self):   # FROST approves the sheet with the agent: a changed sheet is a changed agent
+    def test_the_agents_code_is_in_its_code_hash(self):   # FROST approves the code: a changed agent.py is a changed agent
         import shutil, tempfile, pathlib
         from core_engine import locker
         with tempfile.TemporaryDirectory() as tmp:
             copy = pathlib.Path(tmp) / 'marketplace'
             shutil.copytree(FOLDER, copy, ignore=shutil.ignore_patterns('__pycache__'))
             before = locker._code_sha256(copy)
-            (copy / 'marketplace.css').write_text((copy / 'marketplace.css').read_text() + '\n.x { }\n')
+            (copy / 'agent.py').write_text((copy / 'agent.py').read_text() + '\n')
             self.assertNotEqual(before, locker._code_sha256(copy))
-
 
 P = '/larryd/int/en/app/agnt/home'
 K = 'site=9b7c7c13&mode=dark'   # the page's other words, kept on every link (the page builds its links; the agent never does)
@@ -162,19 +160,19 @@ class TheController(unittest.TestCase):
 
     def test_no_links_no_controller(self):
         for given in ({}, {'path': P}, {'path': P, 'links': 'junk'}, {'path': P, 'links': {}}, {'path': P, 'links': {'search': ''}}, {'links': {'mine_on': P}}):
-            self.assertNotIn('mk-ctl', self.html(given=given), given)
+            self.assertNotIn('pf-card-grid-ctl', self.html(given=given), given)
 
     def test_the_controller_then_the_grid_nothing_more(self):
         h = self.html()
-        for part in ('<div class="sub-controller-box wl-glass mk-ctl"><div class="wl-panel"><div class="sub-contacts-header"><div class="sub-controller-box"><div class="sub-controller">',
+        for part in ('<div class="sub-controller-box wl-glass pf-card-grid-ctl"><div class="wl-panel"><div class="sub-contacts-header"><div class="sub-controller-box"><div class="sub-controller">',
                      '<div class="emphasis">Controller</div>', '<div class="wl-cols"><div class="wl-col--1"><div class="subtitle">Agents</div><div class="emphasis">1 hired · 4 total in network</div>',
                      '<div class="label wl-label">Hired agents</div>', '<div class="wl-divider"></div><div class="wl-col--3"><div class="subtitle">Quick search</div>',
                      f'<form method="get" action="{P}" class="sub-search-form"><input type="hidden" name="site" value="9b7c7c13"><input type="hidden" name="mode" value="dark">',
-                     '<input type="text" name="q" class="sub-search-input" placeholder="Find…" value="">', '<button class="btn btn--small" type="submit">Search</button>',
+                     '<input type="text" name="q" class="sub-search-input" placeholder="Find…" value="">', '<button class="pfb pfb--micro" type="submit">Search</button>',
                      '<div class="label wl-label">Sort by</div><div class="annotation">'):
             self.assertIn(part, h)
-        self.assertTrue(h.startswith('<div class="sub-controller-box wl-glass mk-ctl">'))
-        self.assertTrue(h.endswith('</div></div></div></div></div></div><div class="mk-grid">' + ''.join(
+        self.assertTrue(h.startswith('<div class="sub-controller-box wl-glass pf-card-grid-ctl">'))
+        self.assertTrue(h.endswith('</div></div></div></div></div></div><div class="pf-card-grid">' + ''.join(
             f'<div data-inject="agent_card" data-agent="MAGT_KEY{n}" data-size="full"></div>' for n in (1, 2, 3, 4)) + '</div>'))   # the grid right after, nothing else
         for never in (' style=', 'Reset', 'mk-title', 'mk-caption', 'mk-panel', 'Rating', 'Simple', 'Animated'):
             self.assertNotIn(never, h)
@@ -182,9 +180,9 @@ class TheController(unittest.TestCase):
     def test_every_group_shows_its_selected_one_and_every_link_is_the_pages_own(self):
         h = self.html()
         base = (P + '?' + K).replace('&', '&amp;')
-        self.assertIn(f'<a class="btn btn--small" href="{base}" aria-current="true">All agents</a><a class="btn btn--small" href="{base}&amp;mine=1">Hired agents</a>', h)
-        self.assertIn(f'<a class="btn btn--small" href="{base}" aria-current="true">Card</a><a class="btn btn--small" href="{base}&amp;view=orgchart">Org chart</a>', h)
-        self.assertIn(f'<a class="btn btn--small" href="{base}" aria-current="true">Off</a><a class="btn btn--small" href="{base}&amp;product=invoicemaps">Invoice Maps</a>', h)
+        self.assertIn(f'<a class="pfb pfb--micro" href="{base}" aria-current="true">All agents</a><a class="pfb pfb--micro" href="{base}&amp;mine=1">Hired agents</a>', h)
+        self.assertIn(f'<a class="pfb pfb--micro" href="{base}" aria-current="true">Card</a><a class="pfb pfb--micro" href="{base}&amp;view=orgchart">Org chart</a>', h)
+        self.assertIn(f'<a class="pfb pfb--micro" href="{base}" aria-current="true">Off</a><a class="pfb pfb--micro" href="{base}&amp;product=invoicemaps">Invoice Maps</a>', h)
         self.assertEqual(re.findall(r'>([^<]+)</a>', h[h.index('Product level'):h.index('wl-divider')]), ['Off', 'Invoice Maps', 'Agency Mgmt', 'Pace Shift', 'LARRYD'])
         self.assertNotIn('Module level', h)
         self.assertEqual(h.count('aria-current="true"'), 4)   # all/mine, view, product level, the sort
@@ -203,7 +201,7 @@ class TheController(unittest.TestCase):
     def test_the_sort_is_little_links_the_picked_one_marked(self):
         base = (P + '?' + K).replace('&', '&amp;')
         h = self.html(find={'sort': 'price'}, sort='price')
-        self.assertIn(f'<a class="emphasis mk-sorted" href="{base}&amp;sort=price" aria-current="true">Price</a>', h)
+        self.assertIn(f'<a class="emphasis pf-card-grid-sorted" href="{base}&amp;sort=price" aria-current="true">Price</a>', h)
         self.assertIn(f'<a class="annotation" href="{base}">Number</a>', h)
         self.assertIn('aria-current="true">Number</a>', self.html())
 
@@ -214,7 +212,7 @@ class TheController(unittest.TestCase):
         h = self.html(find={'q': '"><script>x</script>'}, given=given)
         self.assertNotIn('<script', h)
         self.assertIn('value="&quot;&gt;&lt;script&gt;x&lt;/script&gt;"', h)
-        self.assertIn(f'<a class="btn btn--small" href="{P}?ok=1">Reset</a>', h)
+        self.assertIn(f'<a class="pfb pfb--micro" href="{P}?ok=1">Reset</a>', h)
         self.assertIn('<input type="hidden" name="ok" value="&lt;b&gt;">', h)
         self.assertNotIn('Bad', h)
         self.assertEqual(h.count('name="q"'), 1)

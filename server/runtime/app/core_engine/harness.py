@@ -161,6 +161,11 @@ class Harness:
         groups = lanes.groups(self._ask('wid', 'GET', '/jobs/balance', {'account': account}))
         return cards, hired, groups, self._verifier(self._approved_now(fresh=not kept), refetch=kept)
 
+    def forget_approved(self):
+        """The kept approved list dropped: the next call asks again (the developer's own runtime, after `larryd place`: there the
+        locker IS the approval, so a placed agent shows at once, never after APPROVED_KEEP)."""
+        self._approved = (0.0, None)
+
     def _approved_now(self, fresh=False):
         """The platform's approved list (FROST's review, through wid), the runtime's own word: kept APPROVED_KEEP seconds (fresh:
         asked again now)."""

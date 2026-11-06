@@ -20,6 +20,7 @@ KEY, JOB = 'MAGT_00000000D0B2_0001', 'MJOB_00000000D0B2_0001'
 ACCOUNT, SCOPE, MEMBER = 'ACCT_' + 'A' * 12 + '_0001', 'SCRATCH', 'MCON_' + 'B' * 12 + '_0002'
 CARD = {'key': KEY, 'name': 'Echo', 'screen': 'larryd/agnt/home', 'product': 'LARRYD', 'product_slug': 'larryd', 'module': 'Agents',
         'price': '0', 'status': 'APPROVED'}
+PLANNED = {**CARD, 'agent_group': 'organize'}   # free, but of a plan: charged through wid (a free agent of NO plan is never sent to the charge: the owner 2026-10-25)
 HIRED = [{'agent_key': KEY, 'board': CARD['screen'], 'shell_id': 1, 'on': True, 'job_key': JOB}]
 RUN_OF = {'account': ACCOUNT, 'scope': SCOPE, 'member': MEMBER, 'job_key': JOB, 'run': '1'}
 SAID = {'date': '2026-09-30', 'lang': 'en', 'greetings': {'morning': 'Up with the sun', 'afternoon': 'Good afternoon', 'evening': 'Good evening', 'night': 'Good night'}}
@@ -79,9 +80,9 @@ class World(unittest.TestCase):
         con.close()
         locker.add(self.db, self.agents, KEY, 'echo')
 
-    def run_with(self, client):
+    def run_with(self, client, card=CARD):
         h = harness.Harness(self.db, self.agents, client)
-        h.facts = lambda account, scope, member: ([CARD], HIRED, [], lambda key: (True, ''))
+        h.facts = lambda account, scope, member: ([card], HIRED, [card['agent_group']] if card.get('agent_group') else [], lambda key: (True, ''))
         return h.run_job(ACCOUNT, SCOPE, MEMBER, JOB, 1)
 
     @staticmethod
@@ -154,7 +155,7 @@ class Store(World):
     def test_the_files_are_stored_after_the_charge_for_the_runs_member(self):
         self.agent([STORE], {'delivery': 'one theme', 'files': [self.FILE]})
         p = Platform()
-        self.assertEqual(self.run_with(p), 'DONE')
+        self.assertEqual(self.run_with(p, PLANNED), 'DONE')
         routes = [r for _o, r, _d in p.said if r in ('/jobs/charge', '/jobs/upload')]
         self.assertEqual(routes, ['/jobs/charge', '/jobs/upload'])   # paid first: files are part of the delivery
         stored = next(d for o, r, d in p.said if r == '/jobs/upload')

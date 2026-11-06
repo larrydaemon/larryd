@@ -67,6 +67,8 @@ class SandboxTest(unittest.TestCase):
                     c, _ = server.accept()
                     seen.append(1)
                     c.close()
+                except socket.timeout:
+                    continue   # nobody yet: keep listening until the test closes the listener (a slow machine's run outlasts one wait)
                 except OSError:
                     return
         t = threading.Thread(target=accept)

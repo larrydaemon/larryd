@@ -44,6 +44,7 @@ def limits(most_file=MOST_FILE_BYTES):
 _BOOT = r'''
 import ctypes, os, platform, runpy, struct, sys
 os.environ.pop("PWD", None)   # bwrap's --chdir sets it; the environment is only what the runtime gives
+os.environ.pop("LD_LIBRARY_PATH", None)   # the loader's alone (a shared libpython's folder, _linux_command): read before this line, never the agent's
 if platform.machine() != "x86_64":
     raise SystemExit("the Linux sandbox knows x86_64 only")
 def f(code, jt, jf, k):
@@ -94,10 +95,22 @@ def _linux_libs():
     return out
 
 
+def _shared_libdir():
+    """The folder of a shared libpython the loader would not find by itself (glibc's defaults are /lib and /usr/lib; inside the
+    sandbox there is no /etc/ld.so.cache to name any other), else ''."""
+    import sysconfig
+    if not sysconfig.get_config_var('Py_ENABLE_SHARED'):
+        return ''
+    libdir = os.path.realpath(sysconfig.get_config_var('LIBDIR') or '')
+    return '' if not libdir or libdir in ('/lib', '/lib64', '/usr/lib', '/usr/lib64') else libdir
+
+
 def _linux_command(agent, run, entry):
     cmd = [BWRAP, '--unshare-all', '--die-with-parent', '--new-session', '--clearenv',
            '--setenv', 'PATH', '/usr/bin:/bin', '--setenv', 'HOME', run, '--setenv', 'TMPDIR', run, '--setenv', 'LC_CTYPE', 'C.UTF-8',
            '--dev', '/dev'] + _linux_libs()
+    if _shared_libdir():   # a Python built with a shared libpython outside the loader's own folders (/usr/local/lib: python.org's
+        cmd += ['--setenv', 'LD_LIBRARY_PATH', _shared_libdir()]   # builds, the official images) finds it with no /etc/ld.so.cache inside
     for path in _linux_runtime():
         if os.path.exists(path) and not any(path == lib or path.startswith(lib + '/') for lib in _SYSTEM_LIBS if os.path.isdir(lib) and not os.path.islink(lib)):
             cmd += ['--ro-bind', path, path]
