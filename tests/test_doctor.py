@@ -462,11 +462,11 @@ def test_the_counts_declaration_passes_alone_beside_species_and_without_a_call(a
 
 
 @pytest.mark.parametrize('records, said', [
-    ({'*': ['read']}, 'records "*" is not a list of "count", "roster", "reviews", "joins" and "payments"'),
-    ({'*': ['count', 'read']}, 'records "*" is not a list of "count", "roster", "reviews", "joins" and "payments"'),
-    ({'*': 'count'}, 'records "*" is not a list of "count", "roster", "reviews", "joins" and "payments"'),
-    ({'*': True}, 'records "*" is not a list of "count", "roster", "reviews", "joins" and "payments"'),
-    ({'*': ['roster', 'roster']}, 'records "*" is not a list of "count", "roster", "reviews", "joins" and "payments"'),
+    ({'*': ['read']}, 'records "*" is not a list of "count", "roster", "reviews", "joins", "payments" and "history"'),
+    ({'*': ['count', 'read']}, 'records "*" is not a list of "count", "roster", "reviews", "joins", "payments" and "history"'),
+    ({'*': 'count'}, 'records "*" is not a list of "count", "roster", "reviews", "joins", "payments" and "history"'),
+    ({'*': True}, 'records "*" is not a list of "count", "roster", "reviews", "joins", "payments" and "history"'),
+    ({'*': ['roster', 'roster']}, 'records "*" is not a list of "count", "roster", "reviews", "joins", "payments" and "history"'),
     ({'opns': ['count']}, 'not a list of verbs'),
 ])
 def test_the_counts_declaration_catches(agent, records, said):
@@ -498,6 +498,14 @@ def test_the_joins_and_payments_pass_with_a_call_and_need_one(agent):   # CORE_C
     for records in ({'*': ['joins', 'payments']}, {'*': ['joins', 'joins']}):
         _records(agent, records, calls=())
         assert doctor.check(agent) != [], records
+
+
+def test_the_review_history_passes_with_a_call_and_needs_one(agent):   # row 78 (handed by LARRYD RUNTIME INTERNAL only)
+    for records in ({'*': ['history']}, {'*': ['reviews', 'history']}):
+        _records(agent, records, calls=('answer',))
+        assert doctor.check(agent) == [], records
+    _records(agent, {'*': ['history']}, calls=())
+    assert doctor.check(agent) != []
 
 
 def test_the_roster_is_handed_on_a_call_so_it_needs_one(agent):
