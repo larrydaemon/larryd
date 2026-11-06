@@ -430,6 +430,19 @@ class TheReference(World):
         self.assertEqual(outside.goes_out(two_k)['resolution'], '2K')
         self.assertEqual(outside.goes_out(outside.check([ASK], ('nano-banana-2',))[0][0])['resolution'], '1K')
 
+    def test_flux_krea_and_kling_take_their_own_fields(self):   # CORE_CLEANUP_IV 44
+        krea = outside.check([{'model': 'flux-krea', 'prompt': 'a red fox', 'name': 'A red fox', 'aspect': '16:9', 'reference': REF}], ('flux-krea',))[0][0]
+        self.assertEqual(outside.goes_out(krea, ['https://api.replicate.com/v1/files/f1']),
+                         {'prompt': 'a red fox', 'aspect_ratio': '16:9', 'num_outputs': 1, 'megapixels': '1', 'output_format': 'png', 'image': 'https://api.replicate.com/v1/files/f1'})   # one picture, a plain address
+        kling = outside.check([{'model': 'kling-2.5', 'prompt': 'a boat', 'name': 'A boat', 'seconds': '10'}], ('kling-2.5',))[0][0]
+        self.assertEqual(outside.goes_out(kling), {'prompt': 'a boat', 'duration': 10, 'aspect_ratio': '16:9'})
+        self.assertEqual(outside.goes_out(kling, ['https://api.replicate.com/v1/files/f1'])['start_image'], 'https://api.replicate.com/v1/files/f1')
+        for model, wrong in (('flux-krea', {'aspect': '21:9'}), ('flux-krea', {'reference': [REF, REF2]}), ('flux-krea', {'size': '2K'}),
+                             ('kling-2.5', {'seconds': '7'}), ('kling-2.5', {'reference': [REF, REF2]}), ('kling-2.5', {'size': '720p'})):
+            ask = {'model': model, 'prompt': 'x', 'name': 'X', **wrong}
+            self.assertEqual(outside.check([ask], (model,))[0], [], (model, wrong))
+        self.assertEqual(outside.check([{'model': 'kling-2.5', 'prompt': 'x', 'name': 'X'}], ('nano-banana-2',))[0], [])   # not declared: refused
+
     def test_a_reference_that_is_not_a_picture_or_comes_back_elsewhere_makes_nothing(self):
         self.assertEqual(hand(FileDoor()).make({**ASK, 'reference': REF}, SECRET_KEY, b''), (None, 'reference not read'))
         self.assertEqual(hand(FileDoor()).make({**ASK, 'reference': REF}, SECRET_KEY, b'<html>'), (None, 'reference not a picture'))

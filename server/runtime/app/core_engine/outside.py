@@ -44,6 +44,25 @@ MODELS = {
         'most_references': 1,   # THE REFERENCE (R-0041): the member's own picture, by its DA-M key, as the model's reference image (style, character, scene)
         'most_bytes': 24 * 1024 * 1024, 'most_seconds': 1800,   # DA-M takes 25 MB with no zone named; a 30 second render takes longer than a 5 second one
     },
+    # CORE_CLEANUP_IV 44 (frost-05 under the owner's blanket approval; the owner 12:45: model vendors go through this list, one Replicate key):
+    # the fields as Replicate's own model text names them (replicate.com/<path>/llms.txt, read 2026-11-06); the choices are the conservative
+    # values of its own examples and the vendor's documented ones, each proven by one real make before an agent ships on it
+    'flux-krea': {
+        'provider': 'replicate', 'path': 'black-forest-labs/flux-krea-dev', 'kind': 'image', 'name': 'FLUX Krea',
+        'choices': {'aspect': ('1:1', '16:9', '9:16', '4:3', '3:4')},
+        'first': {'aspect': '1:1'},
+        'reference': 'image', 'reference_one': True,   # image to image: ONE picture, sent as a plain address (the model's "image" is a string)
+        'most_references': 1,
+        'most_bytes': 20 * 1024 * 1024, 'most_seconds': 180,
+    },
+    'kling-2.5': {
+        'provider': 'replicate', 'path': 'kwaivgi/kling-v2.5-turbo-pro', 'kind': 'video', 'name': 'Kling 2.5',
+        'choices': {'aspect': ('16:9', '9:16', '1:1'), 'seconds': ('5', '10')},
+        'first': {'aspect': '16:9', 'seconds': '5'},
+        'reference': 'start_image', 'reference_one': True,   # the first frame: ONE picture (the model then ignores the aspect, its own text says)
+        'most_references': 1,
+        'most_bytes': 24 * 1024 * 1024, 'most_seconds': 900,
+    },
 }
 KINDS = {'image': ('png', 'jpg', 'webp'), 'video': ('mp4',)}
 MOST_PROMPT = 4000
@@ -104,6 +123,10 @@ def goes_out(ask, reference=()):
     order; one address alone is taken as a list of one), nothing else."""
     if ask['model'] == 'nano-banana-2':
         out = {'prompt': ask['prompt'], 'aspect_ratio': ask['aspect'], 'resolution': ask.get('size', '1K'), 'output_format': 'png'}
+    elif ask['model'] == 'flux-krea':
+        out = {'prompt': ask['prompt'], 'aspect_ratio': ask['aspect'], 'num_outputs': 1, 'megapixels': '1', 'output_format': 'png'}
+    elif ask['model'] == 'kling-2.5':
+        out = {'prompt': ask['prompt'], 'duration': int(ask['seconds']), 'aspect_ratio': ask['aspect']}
     elif ask['model'] == 'seedance-2.5':
         out = {'prompt': ask['prompt'], 'duration': int(ask['seconds']), 'resolution': ask['size'], 'aspect_ratio': ask['aspect'],
                'generate_audio': False}   # never a sound track nobody asked for
@@ -112,7 +135,8 @@ def goes_out(ask, reference=()):
     refs = [reference] if isinstance(reference, str) else list(reference or ())
     refs = [r for r in refs if r]
     if refs:
-        out[MODELS[ask['model']]['reference']] = refs
+        spec = MODELS[ask['model']]
+        out[spec['reference']] = refs[0] if spec.get('reference_one') else refs   # a model whose field takes one address gets it plain
     return out
 
 

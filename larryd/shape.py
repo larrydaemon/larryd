@@ -78,7 +78,9 @@ LIVE_FILES = ('live.json', 'page.html', 'page.js', 'room.py')   # all of it, and
 LIVE_MAY = ('rain.js',)   # and, if the page needs it, a second script. The page's own rules are written IN the page (one <style> block), as every agent's are
 LIVE_SEATS = (1, 4)
 MAKES = {   # THE OUTSIDE HAND'S LIST (the same as the runtime's core_engine/outside.py): the model, what it makes, who runs it, the choices an ask may name
-    'nano-banana-2': ('a picture', 'Replicate', {'aspect': ('1:1', '3:4', '4:3', '16:9', '9:16')}),
+    'nano-banana-2': ('a picture', 'Replicate', {'aspect': ('1:1', '3:4', '4:3', '16:9', '9:16'), 'size': ('1K', '2K')}),   # size: 1K first, 2K (CORE_CLEANUP_IV 19); "reference": up to 2 DA-M keys (18)
+    'flux-krea': ('a picture', 'Replicate', {'aspect': ('1:1', '16:9', '9:16', '4:3', '3:4')}),   # FLUX Krea (CORE_CLEANUP_IV 44); "reference": one DA-M key, image to image
+    'kling-2.5': ('a video', 'Replicate', {'aspect': ('16:9', '9:16', '1:1'), 'seconds': ('5', '10')}),   # Kling 2.5 Turbo Pro (44); "reference": one DA-M key, the first frame
     'seedance-2.5': ('a video', 'Replicate', {'aspect': ('16:9', '9:16', '1:1'), 'seconds': tuple(str(n) for n in range(4, 31)), 'size': ('480p', '720p')}),   # 4 to 30 seconds, the model's own range (R-0041)
 }
 RECORD_VERBS = ('read', 'add', 'edit', 'remove')   # what an agent may declare on a species' records
