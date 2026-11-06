@@ -27,8 +27,7 @@
     "filters",
     "shown",
     "view",
-    "delivery"
-  ],
+    "delivery", "job"],
   "card": {
     "class": "MARK II SUPER AGENT (HARNESS)",
     "pitch": "Every agent of the platform as a card: hire one with its toggle.",

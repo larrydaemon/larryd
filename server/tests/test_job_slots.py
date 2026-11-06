@@ -33,7 +33,7 @@ class JobSlots(unittest.TestCase):
         shutil.copytree(APP / 'agents' / 'marketplace', self.agents / 'marketplace')
         manifest = self.agents / 'marketplace' / 'agent.json'
         card = json.loads(manifest.read_text())
-        card['gives'] = card['gives'] + ['job']
+        card['gives'] = [g for g in card['gives'] if g != 'job'] + ['job']   # the marketplace names it itself since item 8 layer 3
         manifest.write_text(json.dumps(card))
         self.db = store.open_store(root / 'instance')
         locker.add(self.db, self.agents, KEY, 'marketplace')
@@ -81,7 +81,7 @@ class JobSlots(unittest.TestCase):
     def test_a_job_its_gives_does_not_name_is_refused(self):
         manifest = self.agents / 'marketplace' / 'agent.json'
         card = json.loads(manifest.read_text())
-        card['gives'].remove('job')
+        card['gives'] = [g for g in card['gives'] if g != 'job']
         manifest.write_text(json.dumps(card))   # the run reads the locker's manifest as it stands
         state, said = self.run_with({'delivery': 'one card', 'job': {'data_job_payload': 'p'}})
         self.assertEqual(state, 'FAILED')

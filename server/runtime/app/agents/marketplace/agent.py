@@ -139,7 +139,10 @@ def main():
     if do is None:
         raise SystemExit('the marketplace does: collection, report')
     cards = given.get('cards') or []
-    print(json.dumps(collection(cards, given.get('themes'), given.get('find'), given.get('page')) if do is collection else do(cards)))
+    answer = collection(cards, given.get('themes'), given.get('find'), given.get('page')) if do is collection else do(cards)
+    if do is report and isinstance(answer.get('delivery'), str):   # THE JOB'S SLOTS (the owner 2026-11-05: only the slots true for it): what its RUN said, and where it comes from
+        answer['job'] = {'data_job_payload': answer['delivery'][:4000], 'data_job_lineage': 'LARRYD > PF AGENT MARKETPLACE > report'}
+    print(json.dumps(answer))
 
 
 if __name__ == '__main__':
