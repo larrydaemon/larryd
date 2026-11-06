@@ -72,12 +72,22 @@ def target_of(root):
 
 
 def clean(root, run=_run):
-    """1 CLEAN -> the commit it is placed from"""
+    """1 CLEAN -> the commit it is placed from. Its own folder AND, for an office agent, the kits it is packed with (its repository's
+    _office): what is placed is what is committed, all of it."""
     code, out, err = run(['git', '-C', str(root), 'status', '--short', '--', '.'])
     if code != 0:
         raise Stop(f'not in a git repository: {err.strip()[-200:]}')
     if out.strip():
         raise Stop('it holds uncommitted changes: commit them first (what is placed is what is committed)')
+    try:
+        card = json.loads((root / shape.AGENT / shape.MANIFEST).read_text())
+    except (OSError, ValueError):
+        card = {}
+    if isinstance(card, dict) and card.get('office'):
+        kits = ['office.py'] + [f'{lib}.py' for lib in card.get('libs') or []]
+        code, out, _ = run(['git', '-C', str(root.parent), 'status', '--short', '--', *[f'_office/{k}' for k in kits]])
+        if out.strip():
+            raise Stop(f'a kit it is packed with holds uncommitted changes ({out.strip().splitlines()[0].strip()}): commit it first')
     code, out, _ = run(['git', '-C', str(root), 'log', '-1', '--format=%h', '--', '.'])
     return out.strip()
 

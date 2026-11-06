@@ -121,3 +121,10 @@ def test_without_a_lane_it_says_so_and_places_nothing(repo, tmp_path, monkeypatc
     monkeypatch.setattr(ship, 'CONFIG', tmp_path / 'none.json')
     code, said = lines(lambda say: ship.ship(repo / 'scratch-agent', go=True, run=Outside(), say=say, scratch=tmp_path))
     assert code == 1 and 'not a ship lane' in said[-1]
+
+
+def test_an_uncommitted_kit_is_never_placed_either(repo):
+    (repo / '_office' / 'look.py').write_text('# changed\n')
+    code, said = lines(lambda say: ship.ship(repo / 'scratch-agent', go=True, run=Outside(), say=say))
+    assert code == 1 and 'a kit it is packed with holds uncommitted changes' in said[-1]
+
