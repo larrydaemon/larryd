@@ -21,7 +21,7 @@ import sqlite3
 import threading
 import time
 
-from . import fabric, gate, lanes, live, locker, member_records, outside, records as run_records, sandbox, view
+from . import exxact_hand, fabric, gate, lanes, live, locker, member_records, outside, records as run_records, sandbox, view
 
 MARKETPLACE = 'marketplace'   # the one agent's locker folder: it answers the collection, hires, and places defaults
 BESIDE = ('find', 'themes', 'page')   # what an ANSWER call may hand the agent beside its cards (the page's own: its controller's asks, the themes a card may wear, its loaded logos); each a JSON object
@@ -32,7 +32,7 @@ MOST_KEEPS = 10               # records one RUN may add for the files it stored
 MOST_RUN_FILES = 3            # files one RUN may be handed (hands ["files"], CORE_CLEANUP_IV 21): the member's own DA-M files, named by the job's inputs the manifest declares as files
 MOST_RUN_FILE = 20 * 1024 * 1024   # bytes of one handed file (a picture or a short video: the sandbox's 512 MB holds three, base64 and parsed)
 RECORD_KEY = re.compile(r'^M[A-Z]{2,4}_[0-9A-F]{12}_[0-9A-F]{4}$')   # a member's record, as wid names the record a DA-M file belongs to (its source_key)
-A_DAY = {'image': 25, 'video': 5}   # THE OUTSIDE HAND'S DAILY LIMIT, per member and agent (the provider is paid per file made; the runtime's own config may set others)
+A_DAY = {'image': 25, 'video': 5, 'data': 25}   # THE OUTSIDE HAND'S DAILY LIMIT, per member and agent (the provider is paid per file made; the runtime's own config may set others). data: an Exxact type that makes numbers, no file (outside.MODELS)
 PLATFORM_HANDED = {('wid', 'GET', '/agnt/cards'), ('wid', 'GET', '/agnt/hired'), ('wid', 'GET', '/jobs/balance'), ('wid', 'GET', '/agnt/records/list')}
 # THE PLATFORM'S ANSWERS HANDED WITH THE CALL (the owner 2026-11-04, "the goal is extremely fast"): what the platform would answer these
 # asks of a CALL, its own doors' answers made at the platform with the same checks, handed in its signed call; nothing else is taken
@@ -148,17 +148,20 @@ def _now():
 
 
 class Harness:
-    def __init__(self, db, agents, client, seconds=20, records=None, caller='', on_start=None, hand=None, a_day=None):
+    def __init__(self, db, agents, client, seconds=20, records=None, caller='', on_start=None, hand=None, a_day=None, exxact=None):
         """records: where every call and run is recorded (runtime.db by default; Firestore on Cloud Run). caller: the key id
         of the office that called (a run record names it). on_start(pid): told each sandboxed run's process (the slot).
         hand: THE OUTSIDE HAND (core_engine/outside.py). a_day: {kind: files a member may have made in a day}.
         THE RUNTIME HOLDS NO PROVIDER KEY (the owner, 2026-10-08: "a single source setup"): the key's one home is the platform's
         vault (FROST's); each errand asks wid for it (_provider_key), wid reads the vault at that moment and hands it on the
-        signed answer; the runtime uses it once and forgets it."""
+        signed answer; the runtime uses it once and forgets it.
+        exxact: THE EXXACT HAND (core_engine/exxact_hand.py), for an 'exxact/<type>' ask; none given, it is one NOT SET UP (the buckets
+        and its keys are S4, later), so such an ask fails in fixed words. THE HAND IS CHOSEN BY THE MODEL'S PROVIDER (self.hands)."""
         self.db, self.agents, self.client, self.seconds = db, agents, client, seconds
         self.records = records if records is not None else run_records.SqliteRecords(db)
         self.caller, self.on_start = caller, on_start
         self.hand = hand if hand is not None else outside.Hand()
+        self.hands = {'replicate': self.hand, 'exxact': exxact if exxact is not None else exxact_hand.ExxactHand()}
         self.a_day = {**A_DAY, **(a_day or {})}
         self._handed = threading.local()   # this request's handed answers (a call's own thread: pages answered at once never mix)
         self._approved = (0.0, None)       # the platform's approved list as last asked (monotonic time, the list)
@@ -760,9 +763,13 @@ class Harness:
         out = []
         for ask in asks:
             provider = outside.MODELS[ask['model']]['provider']
-            provider_key = self._provider_key(provider, agent_key, job_key, run, account, scope, member)
-            if not provider_key:
-                raise _Stop('FAILED', f'not made, no {outside.PROVIDERS[provider]["name"]} key: the platform\'s vault handed none; nothing was sent')
+            hand, more = self.hands[provider], {}
+            if provider == 'exxact':   # NO VAULT KEY: the box is reached through the buckets with the runtime's own token; wid is not asked for a key
+                provider_key, more = '', {'asker': {'card': agent_key, 'job_key': job_key, 'member': member}}
+            else:
+                provider_key = self._provider_key(provider, agent_key, job_key, run, account, scope, member)
+                if not provider_key:
+                    raise _Stop('FAILED', f'not made, no {outside.PROVIDERS[provider]["name"]} key: the platform\'s vault handed none; nothing was sent')
             picture = self._reference(ask, account, scope, member, job_key, run)   # read before the day is counted: a reference that cannot be read sends nothing and costs nothing
             most = self.a_day.get(outside.MODELS[ask['model']]['kind'])
             if not (isinstance(most, int) and not isinstance(most, bool) and most >= 0 and member and agent_key):
@@ -775,7 +782,7 @@ class Harness:
                 raise _Stop('REFUSED', 'the day is not counted: LARRYD could not write or read its own record; nothing was sent')
             if sent > most:
                 raise _Stop('REFUSED', f'the day is full: {most} a day; nothing was sent')
-            made, why = self.hand.make(ask, provider_key, picture)
+            made, why = hand.make(ask, provider_key, picture, **more)
             if why:
                 raise _Stop('FAILED', f'not made, {why}')
             out.append({'name': made['name'], 'content_b64': base64.b64encode(made['data']).decode('ascii'), 'asked_as': ask['name']})

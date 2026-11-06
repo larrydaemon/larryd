@@ -20,8 +20,13 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+from . import exxact
+
 PROVIDERS = {
     'replicate': {'name': 'Replicate', 'api': 'https://api.replicate.com/v1', 'delivery': ('.replicate.delivery',)},
+    # THE EXXACT BOX (CORE_CLEANUP_IV 97, Exxact_Loot's spec): no address and no vault key; its own hand (exxact_hand.py) drops a job into the
+    # missions bucket and collects the box's answer from the returns bucket, with the runtime's own token (the buckets and keys: S4, later)
+    'exxact': {'name': 'Exxact', 'api': '', 'delivery': ()},
 }
 MODELS = {
     'nano-banana-2': {
@@ -64,6 +69,31 @@ MODELS = {
         'most_bytes': 24 * 1024 * 1024, 'most_seconds': 900,
     },
 }
+MOST_SAID = 1024 * 1024   # bytes of what an Exxact type that makes no file says (its numbers, as JSON)
+
+
+def _exxact_models():
+    """THE EXXACT BOX'S TYPES ON THE LIST (CORE_CLEANUP_IV 97): one model per type, named 'exxact/<type>', read from exxact.TYPES (never
+    copied by hand), so a type added on Exxact_Loot's side is on the list here. The ask's grammar (check) is the same for every model:
+    a field with choices of words becomes a choice (its first one first); a field of numbers (face-swap's target_box, lips' slots) has no
+    choices to name and is not asked, so a type that NEEDS one (lips) is refused by the hand before anything leaves (NOT_MADE_EXXACT_TAKEN).
+    The references are the type's input slots, in the type's order; kind: what its outputs are ('data' when it makes no file: its numbers)."""
+    out = {}
+    for name, t in exxact.TYPES.items():
+        made = {k for o in t['outputs'].values() for k in o['kinds']}
+        choices = {f: tuple(r['choices']) for f, r in t['fields'].items()
+                   if 'choices' in r and r['choices'] and all(isinstance(v, str) for v in r['choices'])}
+        slots = tuple(t['inputs'])
+        out[f'exxact/{name}'] = {
+            'provider': 'exxact', 'path': name, 'kind': 'video' if 'mp4' in made else 'image' if made else 'data', 'name': f'Exxact {name}',
+            'choices': choices, 'first': {f: v[0] for f, v in choices.items()},
+            'reference': 'inputs' if slots else '', 'references': slots, 'most_references': len(slots),
+            'most_bytes': max([o['most'] for o in t['outputs'].values()] or [MOST_SAID]), 'most_seconds': t['most_seconds'],
+        }
+    return out
+
+
+MODELS.update(_exxact_models())
 KINDS = {'image': ('png', 'jpg', 'webp'), 'video': ('mp4',)}
 MOST_PROMPT = 4000
 NAME = re.compile(r'^[A-Za-z0-9][A-Za-z0-9 _-]{0,79}$')   # the file's plain name, without its ending (the hand adds the kind's own)

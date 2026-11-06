@@ -82,6 +82,11 @@ MAKES = {   # THE OUTSIDE HAND'S LIST (the same as the runtime's core_engine/out
     'flux-krea': ('a picture', 'Replicate', {'aspect': ('1:1', '16:9', '9:16', '4:3', '3:4')}),   # FLUX Krea (CORE_CLEANUP_IV 44); "reference": one DA-M key, image to image
     'kling-2.5': ('a video', 'Replicate', {'aspect': ('16:9', '9:16', '1:1'), 'seconds': ('5', '10')}),   # Kling 2.5 Turbo Pro (44); "reference": one DA-M key, the first frame
     'seedance-2.5': ('a video', 'Replicate', {'aspect': ('16:9', '9:16', '1:1'), 'seconds': tuple(str(n) for n in range(4, 31)), 'size': ('480p', '720p')}),   # 4 to 30 seconds, the model's own range (R-0041)
+    # THE EXXACT BOX (CORE_CLEANUP_IV 97): the runtime builds these from Exxact_Loot's own list of types; "reference": the type's input slots, in order
+    'exxact/gpu-status': ('numbers', 'Exxact', {}),                           # the two GPUs' memory, as a JSON file
+    'exxact/face-swap': ('a picture', 'Exxact', {'enhance': ('natural',)}),   # references: source, target
+    'exxact/face-landmarks': ('numbers', 'Exxact', {}),                       # references: image; every face's box and five points, as a JSON file
+    'exxact/lips': ('a video', 'Exxact', {}),                                 # references: minute_vocals, minute_voice, move_1 to move_8 (its slots field is not on the grammar yet)
 }
 RECORD_VERBS = ('read', 'add', 'edit', 'remove')   # what an agent may declare on a species' records
 RECORD_COUNTS = ('*', ['count'])   # THE COUNTS: "records": {"*": ["count"]}, of no one species: how many, never which
