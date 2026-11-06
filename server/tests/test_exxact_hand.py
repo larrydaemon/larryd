@@ -3,6 +3,7 @@ buckets, never a real bucket, never the network, never the real box. Exxact_Loot
 the end to end runs this runtime's hand against BucketLanes on Exxact_Loot's own FakeStore, with Exxact_Loot's own Runner on its own
 FakeBox (~/virtual_sanity/exxact_loot/tests, read only) answering. The sealing needs `cryptography`: without it those tests are skipped
 (run them with ~/larryd/.venv/bin/python)."""
+import base64
 import hashlib
 import importlib.util
 import pathlib
@@ -10,6 +11,7 @@ import re
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 from _here import APP
 from core_engine import exxact, exxact_hand, exxact_locker, harness, outside
@@ -33,6 +35,9 @@ except ImportError:
 
 PNG = b'\x89PNG\r\n\x1a\n' + b'\x00' * 64
 JPEG = b'\xff\xd8\xff\xe0' + b'\x00' * 64
+WAV = b'RIFF\x24\x00\x00\x00WAVEfmt ' + b'\x00' * 64
+MP4 = b'\x00\x00\x00\x18ftypmp42' + b'\x00' * 64
+LIPS = {'model': 'exxact/lips', 'name': 'Lips', 'slots': [1, 2], 'reference': ['DA-M_AAAAAAAAAAAA_0001', 'DA-M_AAAAAAAAAAAA_0002', 'DA-M_AAAAAAAAAAAA_0003']}
 SWAP = {'model': 'exxact/face-swap', 'prompt': 'swap the face', 'name': 'Swapped',
         'reference': ['DA-M_AAAAAAAAAAAA_0001', 'DA-M_AAAAAAAAAAAA_0002']}
 ASKER = {'card': KEY, 'job_key': JOB, 'member': MEMBER}
@@ -98,11 +103,108 @@ class TheList(unittest.TestCase):
     def test_the_grammar_takes_a_good_ask_and_refuses_one_off_its_choices(self):
         ok = lambda ask: outside.check([ask], ('exxact/face-swap',))   # noqa: E731
         self.assertEqual(ok(SWAP), ([{**SWAP, 'enhance': 'natural'}], ''))
-        for wrong in ({**SWAP, 'enhance': 'vivid'}, {**SWAP, 'target_box': [1, 2, 3, 4]}, {**SWAP, 'reference': SWAP['reference'] * 2},
+        for wrong in ({**SWAP, 'enhance': 'vivid'}, {**SWAP, 'target_box': [1, 2, 3, 4, 5]}, {**SWAP, 'reference': SWAP['reference'] * 2},
                       {**SWAP, 'reference': ['https://example.com/a.png']}, {**SWAP, 'model': 'exxact/lips'}):
             self.assertEqual(ok(wrong)[0], [], wrong)
         self.assertEqual(outside.check([{'model': 'exxact/gpu-status', 'prompt': 'read', 'name': 'Cards', 'reference': 'DA-M_AAAAAAAAAAAA_0001'}],
                                        ('exxact/gpu-status',))[0], [])   # a type with no input slot takes no reference
+
+
+class TheNumbersAndTheWords(unittest.TestCase):
+    """THE LIPS GAPS (2026-11-06): a number field is on the grammar within its range, as exxact.check_fields takes it; an Exxact ask needs
+    no words; a refusal never carries the member's value."""
+    def test_the_number_fields_are_copied_from_the_types_list(self):
+        self.assertEqual(outside.MODELS['exxact/lips']['numbers'], {'slots': {'list_ints': (1, 8), 'most': 8}})
+        self.assertEqual(outside.MODELS['exxact/face-swap']['numbers'], {'target_box': {'list_numbers': (0, 20000), 'most': 4, 'optional': True}})
+        for name, t in exxact.TYPES.items():
+            for field in outside.MODELS[f'exxact/{name}']['numbers']:
+                self.assertIn(field, t['fields'])
+        self.assertEqual([m for m in ('nano-banana-2', 'seedance-2.5', 'flux-krea', 'kling-2.5') if outside.MODELS[m]['numbers']], [])
+
+    def test_lips_slots_in_range_is_taken_and_off_its_range_refused(self):
+        ok = lambda ask: outside.check([ask], ('exxact/lips',))   # noqa: E731
+        self.assertEqual(ok(LIPS), ([LIPS], ''))
+        self.assertEqual(ok({**LIPS, 'slots': list(range(1, 9))})[1], '')
+        for wrong in ([0], [9], [], list(range(1, 9)) + [1], [1.0], [True], ['1'], 1, '1', None, [-1], [10 ** 9], [1, None]):
+            asks, why = ok({**LIPS, 'slots': wrong})
+            self.assertEqual(asks, [], wrong)
+            self.assertEqual(why, "the ask's slots is not a list of at most 8 whole numbers from 1 to 8")   # fixed words, never the value
+        self.assertEqual(ok({k: v for k, v in LIPS.items() if k != 'slots'}), ([], 'the ask names no slots'))   # lips needs its slots
+        for good in (LIPS, {**LIPS, 'slots': [8, 3]}):   # what the grammar takes, the box's own check takes
+            self.assertEqual(exxact.check_fields('lips', {'slots': ok(good)[0][0]['slots']}), {'slots': good['slots']})
+
+    def test_face_swap_target_box_in_range_is_taken_and_off_its_range_refused(self):
+        ok = lambda ask: outside.check([ask], ('exxact/face-swap',))   # noqa: E731
+        for good in ([0, 0, 20000, 20000], [10.5, 20, 300, 400.25], [1]):
+            asks, why = ok({**SWAP, 'target_box': good})
+            self.assertEqual((why, asks[0]['target_box']), ('', good))
+            self.assertEqual(exxact.check_fields('face-swap', {'enhance': 'natural', 'target_box': good})['target_box'], good)
+        self.assertNotIn('target_box', ok(SWAP)[0][0])   # optional: left out, left out
+        for wrong in ([1, 2, 3, 4, 5], [], [-1, 0, 0, 0], [0, 0, 0, 20001], ['1', 2, 3, 4], [True, 2, 3, 4], [float('nan')], [float('inf')], (1, 2, 3, 4), '1,2,3,4', {'x': 1}):
+            asks, why = ok({**SWAP, 'target_box': wrong})
+            self.assertEqual((asks, why), ([], "the ask's target_box is not a list of at most 4 numbers from 0 to 20000"), wrong)
+
+    def test_an_exxact_ask_needs_no_words_and_a_replicate_ask_still_does(self):
+        no_words = {k: v for k, v in SWAP.items() if k != 'prompt'}
+        asks, why = outside.check([no_words], ('exxact/face-swap',))
+        self.assertEqual((why, 'prompt' in asks[0]), ('', False))
+        self.assertEqual(outside.check([{'model': 'exxact/gpu-status', 'name': 'Cards'}], ('exxact/gpu-status',))[1], '')
+        self.assertEqual(outside.check([{**SWAP, 'prompt': ''}], ('exxact/face-swap',))[0], [])   # words carried are checked the same
+        self.assertEqual(outside.check([{'model': 'nano-banana-2', 'name': 'Fox'}], ('nano-banana-2',)), ([], 'the ask carries no words, or more than 4000 characters'))
+        self.assertEqual(outside.check([{'model': 'seedance-2.5', 'name': 'Boat'}], ('seedance-2.5',))[0], [])
+        self.assertEqual(outside.check([{'model': 'exxact/gpu-status'}], ('exxact/gpu-status',))[0], [])   # the made file's name: every model
+
+    def test_a_number_field_is_a_field_of_its_own_model_only(self):
+        self.assertEqual(outside.check([{**LIPS, 'target_box': [1, 2, 3, 4]}], ('exxact/lips',))[0], [])
+        self.assertEqual(outside.check([{'model': 'nano-banana-2', 'prompt': 'x', 'name': 'X', 'slots': [1]}], ('nano-banana-2',))[0], [])
+
+
+class TheReferenceKinds(World):
+    """THE REFERENCES BY KIND, PER MODEL (2026-11-06): the harness reads each DA-M reference and holds it to its slot's kinds (from its
+    first bytes) and most bytes; Replicate's models keep png, jpg, webp within outside.MOST_REFERENCE."""
+    def read(self, ask, contents):
+        class Dam(Platform):
+            def get(self, office, route, data=None, most=None):
+                self.said.append((office, route, data))
+                return 200, {'dam_key': data['dam_key'], 'content_b64': base64.b64encode(contents[data['dam_key']]).decode()}
+        h = harness.Harness(self.db, self.agents, Dam())
+        return h._reference(ask, ACCOUNT, '', MEMBER, JOB, 1)
+
+    def refused(self, ask, contents):
+        with self.assertRaises(harness._Stop) as stop:
+            self.read(ask, contents)
+        return stop.exception.reason
+
+    def test_lips_takes_a_wav_and_an_mp4_on_its_slots(self):
+        lips = outside.check([LIPS], ('exxact/lips',))[0][0]
+        keys = LIPS['reference']
+        self.assertEqual(self.read(lips, dict(zip(keys, (WAV, WAV, MP4)))), [WAV, WAV, MP4])
+        self.assertIn('reference not a kind its slot takes', self.refused(lips, dict(zip(keys, (WAV, MP4, MP4)))))   # an mp4 on the second wav slot
+        self.assertIn('reference not a kind its slot takes', self.refused(lips, dict(zip(keys, (PNG, WAV, MP4)))))
+        self.assertEqual(outside.reference_kind(WAV, ('wav',)), 'wav')
+        self.assertEqual(outside.reference_kind(WAV, ('png', 'jpg', 'webp')), '')   # wav sniffed only where its slot takes it
+        self.assertEqual(outside.kind_of(WAV), '')
+
+    def test_nano_banana_2_refuses_a_wav_and_an_mp4_as_before(self):
+        key = 'DA-M_AAAAAAAAAAAA_0001'
+        nano = outside.check([{'model': 'nano-banana-2', 'prompt': 'x', 'name': 'X', 'reference': key}], ('nano-banana-2',))[0][0]
+        self.assertEqual(self.read(nano, {key: JPEG}), [JPEG])
+        for data in (WAV, MP4):
+            reason = self.refused(nano, {key: data})
+            self.assertEqual(reason, f'not made, reference not a picture: {key}; nothing was sent')
+
+    def test_a_reference_over_its_slots_most_bytes_is_refused(self):
+        key = 'DA-M_AAAAAAAAAAAA_0001'
+        nano = outside.check([{'model': 'nano-banana-2', 'prompt': 'x', 'name': 'X', 'reference': key}], ('nano-banana-2',))[0][0]
+        big = JPEG + b'\x00' * outside.MOST_REFERENCE
+        self.assertEqual(self.refused(nano, {key: big}), f'not made, reference too large: {key} is over 10 MB; nothing was sent')
+        swap = outside.check([SWAP], ('exxact/face-swap',))[0][0]
+        a, b = SWAP['reference']
+        fits = JPEG + b'\x00' * (outside.MOST_REFERENCE + 1)   # over Replicate's 10 MB, within face-swap's 20 MB slot
+        self.assertEqual(self.read(swap, {a: fits, b: PNG}), [fits, PNG])
+        over = JPEG + b'\x00' * (exxact.TYPES['face-swap']['inputs']['source']['most'])
+        self.assertIn('reference too large', self.refused(swap, {a: over, b: PNG}))
+        self.assertEqual([r for r in outside.MODELS['exxact/face-landmarks']['reference_rules']], [(('png', 'jpg'), 40 * 1024 * 1024)])
 
 
 class NotSetUp(unittest.TestCase):
@@ -157,6 +259,12 @@ class TheRoad(unittest.TestCase):
         self.assertEqual({k: v for k, v in self.store.lanes['returns'].items() if k != 'heartbeat.json'}, {})   # taken home
         self.assertEqual(self.store.lanes['missions'], {})
 
+    def test_lips_its_slots_and_its_wav_and_mp4_reach_the_box_and_a_video_comes_back(self):   # the lips gaps closed (2026-11-06)
+        lips = outside.check([LIPS], ('exxact/lips',))[0][0]
+        made, why = self.hand({}).make(lips, '', [WAV, WAV, MP4], asker=ASKER)
+        self.assertEqual((why, made['name'], made['kind']), ('', 'Lips.mp4', 'mp4'))
+        self.assertEqual(made['data'][4:8], b'ftyp')
+
     def test_red_comes_back_in_fixed_words(self):
         self.assertEqual(self.hand({'engine_makes_nothing': True}).make(self.swap(), '', [JPEG, PNG], asker=ASKER), (None, 'NOT_MADE_EXXACT_RUN'))
         self.assertEqual(self.hand({'gpus_unreadable': True}).make(self.swap(), '', [JPEG, PNG], asker=ASKER), (None, 'NOT_MADE_EXXACT_ROOM'))
@@ -179,8 +287,8 @@ class TheRoad(unittest.TestCase):
         for picture, said in (([JPEG], 'NOT_MADE_EXXACT_REFERENCE_NOT_READ'),        # the ask names two, one was read
                               ([JPEG, b'<html>'], 'NOT_MADE_EXXACT_TAKEN')):         # not a kind the slot takes
             self.assertEqual(h.make(self.swap(), '', picture, asker=ASKER), (None, said))
-        lips = outside.check([{'model': 'exxact/lips', 'prompt': 'lips', 'name': 'Lips', 'reference': 'DA-M_AAAAAAAAAAAA_0001'}], ('exxact/lips',))[0][0]
-        self.assertEqual(h.make(lips, '', [b'RIFF\x24\x00\x00\x00WAVEfmt ' + b'\x00' * 64], asker=ASKER), (None, 'NOT_MADE_EXXACT_TAKEN'))   # its slots field is not on the grammar
+        lips = outside.check([{'model': 'exxact/lips', 'name': 'Lips', 'slots': [1], 'reference': 'DA-M_AAAAAAAAAAAA_0001'}], ('exxact/lips',))[0][0]
+        self.assertEqual(h.make(lips, '', [MP4], asker=ASKER), (None, 'NOT_MADE_EXXACT_TAKEN'))   # an mp4 on the vocals' wav slot
         self.assertEqual(self.store.lanes['missions'], {})
 
 
@@ -197,7 +305,7 @@ class Platform:
     def __init__(self):
         self.said = []
 
-    def get(self, office, route, data=None):
+    def get(self, office, route, data=None, most=None):
         self.said.append((office, route, data))
         return 404, {'refused': 'no'}
 
@@ -234,3 +342,90 @@ class TheDispatch(World):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class TheSizeFirst(unittest.TestCase):
+    """THE SIZE FIRST (frost-05's ruling with the lips gaps, 2026-11-06): a reference file is never read whole before its size is
+    known: wid's answer whose length says it is over the slot's most bytes is refused before a byte of it is read, and one that turns
+    out over is refused at most + 1 bytes; the reference reader asks with exactly its slot's most (as base64, and the answer's words)."""
+    class Answer:
+        def __init__(self, body, length=None):
+            self.status, self.body, self.reads = 200, body, []
+            self.headers = {'Content-Length': str(length)} if length is not None else {}
+
+        def read(self, n=-1):
+            self.reads.append(n)
+            return self.body if n < 0 else self.body[:n]
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    def client_answering(self, answer):
+        from core_engine import platform
+        c = platform.Client({'wid': 'http://wid.scratch'}, b'scratch-secret' * 3)
+        c._headers = lambda route, data, at: {}
+        return c, mock.patch('urllib.request.urlopen', lambda *a, **k: answer)
+
+    def test_a_length_over_most_is_refused_before_a_byte_is_read(self):
+        from core_engine import platform
+        answer = self.Answer(b'{"content_b64": "' + b'A' * 4000 + b'"}', length=4020)
+        c, patched = self.client_answering(answer)
+        with patched:
+            self.assertEqual(c.get('wid', '/jobs/file', {'dam_key': 'DA-M_000000000001_0001'}, most=1000), (413, {'refused': platform.TOO_LARGE}))
+        self.assertEqual(answer.reads, [])   # not one byte read
+
+    def test_an_answer_with_no_length_stops_at_most_plus_one(self):
+        from core_engine import platform
+        answer = self.Answer(b'{"content_b64": "' + b'A' * 4000 + b'"}')
+        c, patched = self.client_answering(answer)
+        with patched:
+            self.assertEqual(c.get('wid', '/jobs/file', {}, most=1000), (413, {'refused': platform.TOO_LARGE}))
+        self.assertEqual(answer.reads, [1001])   # never held whole
+        small = self.Answer(b'{"content_b64": "QUJD"}', length=23)
+        c, patched = self.client_answering(small)
+        with patched:
+            self.assertEqual(c.get('wid', '/jobs/file', {}, most=1000), (200, {'content_b64': 'QUJD'}))
+
+    def test_the_reader_asks_with_its_slots_most_and_refuses_on_413(self):
+        rules = outside.MODELS['exxact/lips']['reference_rules']
+        asked = []
+
+        class Client:
+            def get(self, office, route, data=None, most=None):
+                asked.append(most)
+                return 413, {'refused': 'the answer is larger than this call may hold'}
+        h = harness.Harness.__new__(harness.Harness)
+        h.client = Client()
+        with self.assertRaises(harness._Stop) as stopped:
+            h._reference({'model': 'exxact/lips', 'reference': ['DA-M_000000000001_0001']}, 'ACCT_A', 'SCRATCH', 'MCON_M', 'MJOB_J', 1)
+        self.assertIn('reference too large', str(stopped.exception.args))
+        self.assertEqual(asked, [-(-rules[0][1] // 3) * 4 + harness.ANSWER_ROOM])
+
+
+class TheAsksOwnMost(unittest.TestCase):
+    """ONE ASK HOLDS AT MOST outside.MOST_ASK_REFERENCES of references together (a quarter of the RUN's 1 GiB, read as base64 and
+    decoded): every Exxact slot is capped to it, and each next reference is asked only for what is left of it."""
+    def test_every_exxact_slot_is_within_the_asks_most(self):
+        for name, spec in outside.MODELS.items():
+            for _kinds, most in spec['reference_rules']:
+                self.assertLessEqual(most, max(outside.MOST_ASK_REFERENCES, outside.MOST_REFERENCE), name)
+
+    def test_the_next_reference_is_asked_only_for_what_is_left(self):
+        import base64 as b64
+        asked = []
+        first = b'RIFF' + b'\0' * 4 + b'WAVE' + b'\0' * 100   # a wav, 112 bytes
+
+        class Client:
+            def get(self, office, route, data=None, most=None):
+                asked.append(most)
+                return (200, {'content_b64': b64.b64encode(first).decode()}) if len(asked) == 1 else (413, {'refused': 'too large'})
+        h = harness.Harness.__new__(harness.Harness)
+        h.client = Client()
+        with mock.patch.object(outside, 'MOST_ASK_REFERENCES', 1000):
+            with self.assertRaises(harness._Stop):
+                h._reference({'model': 'exxact/lips', 'reference': ['DA-M_000000000001_0001', 'DA-M_000000000002_0002']}, 'ACCT_A', 'SCRATCH', 'MCON_M', 'MJOB_J', 1)
+        left = 1000 - len(first)
+        self.assertEqual(asked[1], -(-left // 3) * 4 + harness.ANSWER_ROOM)   # only what is left of the ask

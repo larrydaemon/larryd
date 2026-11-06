@@ -20,6 +20,8 @@ def addresses(config, side, instance):
     return {office: sides[side] for office, sides in config['platform'].items() if isinstance(sides, dict)}
 
 
+TOO_LARGE = 'the answer is larger than this call may hold'   # a size-capped GET's own fixed words (get(most=...))
+
 class Client:
     """outbound + slot: the hardened scheme (Cloud Run): the call to that slot signed with the runtime's own key for it,
     a key id, a nonce and the moment (the same 60-second window the platform checks). Without them, the laptop's shared
@@ -46,18 +48,20 @@ class Client:
                     'X-Office': signing.sign_hardened(key, route, data, at, nonce)}
         return {'X-Office': signing.sign(self.secret, route, data, at), 'X-Office-At': at}
 
-    def _send(self, office, method, route, data):
+    def _send(self, office, method, route, data, most=None):
         if not self.addresses.get(office):
             return 0, {'refused': f'{office} has no address here'}   # an undeclared office is never called: a plain refusal
         until = self.clock() + self.retry_seconds
         for pause in self.BACKOFF + (None,):
-            status, body, again = self._once(office, method, route, data)
+            status, body, again = self._once(office, method, route, data, most)
             if not again or pause is None or self.clock() + pause >= until:
                 return status, body
             self.sleep(pause)
 
-    def _once(self, office, method, route, data):
-        """-> status, body, and whether a retry is safe and useful (no answer came; for a POST, nothing left)."""
+    def _once(self, office, method, route, data, most=None):
+        """-> status, body, and whether a retry is safe and useful (no answer came; for a POST, nothing left). most: THE ANSWER'S
+        MOST BYTES (a reference file read whole, the lips gaps 2026-11-06): an answer whose length says it is over is refused before a
+        byte of it is read, one that turns out over is refused at most + 1 bytes, never held whole; refused in fixed words, never retried."""
         base = self.addresses[office]
         at = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='seconds')
         try:
@@ -73,7 +77,15 @@ class Client:
             headers['Content-Type'] = 'application/json'
         try:
             with urllib.request.urlopen(urllib.request.Request(url, data=body, headers=headers, method=method), timeout=self.timeout) as r:
-                return r.status, json.load(r), False
+                if most is None:
+                    return r.status, json.load(r), False
+                said = r.headers.get('Content-Length')
+                if said is not None and said.isdigit() and int(said) > most:
+                    return 413, {'refused': TOO_LARGE}, False   # its length says it is over: not one byte of it is read
+                raw = r.read(most + 1)
+                if len(raw) > most:
+                    return 413, {'refused': TOO_LARGE}, False   # over, found while reading: never held whole
+                return r.status, json.loads(raw), False
         except urllib.error.HTTPError as e:
             with e:
                 try:
@@ -85,8 +97,8 @@ class Client:
         except OSError:   # sent, then no answer: a GET may ask again, a POST may have been taken
             return 0, {'refused': f'{office} does not answer'}, method == 'GET'
 
-    def get(self, office, route, data=None):
-        return self._send(office, 'GET', route, {k: str(v) for k, v in (data or {}).items()})
+    def get(self, office, route, data=None, most=None):
+        return self._send(office, 'GET', route, {k: str(v) for k, v in (data or {}).items()}, most)
 
     def post(self, office, route, data):
         return self._send(office, 'POST', route, data)

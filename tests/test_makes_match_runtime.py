@@ -28,3 +28,9 @@ def test_the_same_models_with_the_same_choices():
     for name, (_what, provider, choices) in shape.MAKES.items():
         assert {k: tuple(v) for k, v in choices.items()} == {k: tuple(v) for k, v in models[name]['choices'].items()}, name
         assert provider == {'replicate': 'Replicate', 'exxact': 'Exxact'}[models[name]['provider']], name
+
+
+def test_the_same_number_fields_and_the_same_models_without_words():
+    models = _runtime_models()
+    assert {m: spec['numbers'] for m, spec in models.items() if spec['numbers']} == shape.MAKES_NUMBERS
+    assert sorted(m for m, spec in models.items() if not spec['prompt']) == sorted(shape.MAKES_NO_WORDS)

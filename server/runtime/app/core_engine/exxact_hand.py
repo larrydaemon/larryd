@@ -113,7 +113,7 @@ class ExxactHand:
         if why:
             return None, why
         try:
-            fields = exxact.check_fields(kind, {f: ask[f] for f in spec['choices'] if f in ask})
+            fields = exxact.check_fields(kind, {f: ask[f] for f in (*spec['choices'], *spec.get('numbers', {})) if f in ask})
         except exxact.Red:
             return None, TAKEN
         who = asker if isinstance(asker, dict) else {}

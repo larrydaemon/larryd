@@ -3,11 +3,14 @@ with larryd developer like the other agents"): an agent never reaches out; it on
 made by a model on THE LIST below, and LARRYD's own hand does the errand. The laws, kept from the platform's first external
 lane and the owner's errand standard:
 1. THE LIST ONLY. Every address is built here from the list; nothing an agent or a member writes is ever an address.
-2. A FIXED GRAMMAR. What goes out is the model's own few fields, each checked against its choices; nothing else is sent.
+2. A FIXED GRAMMAR. What goes out is the model's own few fields, each checked against its choices (a word) or its range (a short list
+   of numbers); nothing else is sent. Words (the prompt) are asked only of a model that takes them.
 3. THE KEY NEVER TRAVELS. The harness reads it for one errand, passes it into the calls below, and forgets it: it is never
    handed to an agent, stored, logged or put in a reason.
 4. POLL, NEVER LISTEN. The hand asks the provider until the work is done or the model's time is up; nothing waits for a call in.
-5. WHAT COMES BACK IS NOT TRUSTED. It is fetched only from the provider's own delivery hosts over https, cut at the model's
+5. WHAT GOES OUT AS A REFERENCE IS THE MODEL'S OWN KIND: each reference is read from its first bytes and must be a kind its slot takes
+   (a picture for Replicate's models; an Exxact type's own input slot kinds, wav and mp4 among them), within that slot's most bytes.
+6. WHAT COMES BACK IS NOT TRUSTED. It is fetched only from the provider's own delivery hosts over https, cut at the model's
    size, and it must BE the kind the model makes (read from its first bytes, never from a name or a header). It goes to the
    member's DA-M and nowhere else: never into an agent's run.
 Every refusal is LARRYD's own fixed words (never the provider's text, which is outside text: data, never orders), short
@@ -30,7 +33,7 @@ PROVIDERS = {
 }
 MODELS = {
     'nano-banana-2': {
-        'provider': 'replicate', 'path': 'google/nano-banana-2', 'kind': 'image', 'name': 'Nano Banana 2',
+        'provider': 'replicate', 'path': 'google/nano-banana-2', 'kind': 'image', 'name': 'Nano Banana 2', 'prompt': True,
         # THE SIZE (CORE_CLEANUP_IV 19, the owner's blanket approval 2026-11-06): Replicate's own model text says resolution is a string and the
         # model makes 512px, 1K, 2K and 4K; 1K stays the first (as before), 2K is the larger the rows asked for (row 217 Upscale); 4K is not offered
         'choices': {'aspect': ('1:1', '3:4', '4:3', '16:9', '9:16'), 'size': ('1K', '2K')},
@@ -40,7 +43,7 @@ MODELS = {
         'most_bytes': 20 * 1024 * 1024, 'most_seconds': 180,
     },
     'seedance-2.5': {
-        'provider': 'replicate', 'path': 'bytedance/seedance-2.5', 'kind': 'video', 'name': 'Seedance 2.5',
+        'provider': 'replicate', 'path': 'bytedance/seedance-2.5', 'kind': 'video', 'name': 'Seedance 2.5', 'prompt': True,
         # EVERY LENGTH THE MODEL TAKES (R-0041, the owner 2026-10-24: "give it all duration options ... doe the most we can"): Replicate's own schema
         # for bytedance/seedance-2.5 says duration is an integer, 4 to 30 seconds (-1, the model's own pick, is not offered: the member picks)
         'choices': {'aspect': ('16:9', '9:16', '1:1'), 'seconds': tuple(str(n) for n in range(4, 31)), 'size': ('480p', '720p')},
@@ -53,7 +56,7 @@ MODELS = {
     # the fields as Replicate's own model text names them (replicate.com/<path>/llms.txt, read 2026-11-06); the choices are the conservative
     # values of its own examples and the vendor's documented ones, each proven by one real make before an agent ships on it
     'flux-krea': {
-        'provider': 'replicate', 'path': 'black-forest-labs/flux-krea-dev', 'kind': 'image', 'name': 'FLUX Krea',
+        'provider': 'replicate', 'path': 'black-forest-labs/flux-krea-dev', 'kind': 'image', 'name': 'FLUX Krea', 'prompt': True,
         'choices': {'aspect': ('1:1', '16:9', '9:16', '4:3', '3:4')},
         'first': {'aspect': '1:1'},
         'reference': 'image', 'reference_one': True,   # image to image: ONE picture, sent as a plain address (the model's "image" is a string)
@@ -61,7 +64,7 @@ MODELS = {
         'most_bytes': 20 * 1024 * 1024, 'most_seconds': 180,
     },
     'kling-2.5': {
-        'provider': 'replicate', 'path': 'kwaivgi/kling-v2.5-turbo-pro', 'kind': 'video', 'name': 'Kling 2.5',
+        'provider': 'replicate', 'path': 'kwaivgi/kling-v2.5-turbo-pro', 'kind': 'video', 'name': 'Kling 2.5', 'prompt': True,
         'choices': {'aspect': ('16:9', '9:16', '1:1'), 'seconds': ('5', '10')},
         'first': {'aspect': '16:9', 'seconds': '5'},
         'reference': 'start_image', 'reference_one': True,   # the first frame: ONE picture (the model then ignores the aspect, its own text says)
@@ -70,29 +73,46 @@ MODELS = {
     },
 }
 MOST_SAID = 1024 * 1024   # bytes of what an Exxact type that makes no file says (its numbers, as JSON)
+NUMBER_RULES = ('list_numbers', 'list_ints')   # the number rules exxact.check_fields reads (a short list of numbers, of whole numbers), and no other
+NUMBER_KEYS = NUMBER_RULES + ('most', 'optional')
+_KIND_NAMES = {'jpeg': 'jpg'}   # exxact.kind_of says jpeg where kind_of here says jpg
 
 
 def _exxact_models():
     """THE EXXACT BOX'S TYPES ON THE LIST (CORE_CLEANUP_IV 97): one model per type, named 'exxact/<type>', read from exxact.TYPES (never
     copied by hand), so a type added on Exxact_Loot's side is on the list here. The ask's grammar (check) is the same for every model:
-    a field with choices of words becomes a choice (its first one first); a field of numbers (face-swap's target_box, lips' slots) has no
-    choices to name and is not asked, so a type that NEEDS one (lips) is refused by the hand before anything leaves (NOT_MADE_EXXACT_TAKEN).
-    The references are the type's input slots, in the type's order; kind: what its outputs are ('data' when it makes no file: its numbers)."""
+    a field with choices of words becomes a choice (its first one first); a field of numbers is a number field (below).
+    The references are the type's input slots, in the type's order; kind: what its outputs are ('data' when it makes no file: its numbers).
+    THE NUMBERS (the lips gaps closed, 2026-11-06): a field whose rule is a short list of numbers ('list_numbers': face-swap's target_box) or
+    of whole numbers ('list_ints': lips' slots) is on the grammar as a number field, its rule copied from TYPES as exxact.check_fields reads it
+    (the range, the most, optional); a field of any other rule is not on the grammar. A type takes no words (prompt: False): TYPES has no
+    prompt. Each reference slot's kinds and most bytes are the type's own input slot's (reference_rules), jpeg named jpg as kind_of names it."""
     out = {}
     for name, t in exxact.TYPES.items():
         made = {k for o in t['outputs'].values() for k in o['kinds']}
         choices = {f: tuple(r['choices']) for f, r in t['fields'].items()
                    if 'choices' in r and r['choices'] and all(isinstance(v, str) for v in r['choices'])}
+        numbers = {f: {k: (tuple(v) if isinstance(v, (list, tuple)) else v) for k, v in r.items() if k in NUMBER_KEYS}
+                   for f, r in t['fields'].items() if f not in choices and sum(k in r for k in NUMBER_RULES) == 1}
         slots = tuple(t['inputs'])
         out[f'exxact/{name}'] = {
             'provider': 'exxact', 'path': name, 'kind': 'video' if 'mp4' in made else 'image' if made else 'data', 'name': f'Exxact {name}',
-            'choices': choices, 'first': {f: v[0] for f, v in choices.items()},
+            'prompt': False, 'choices': choices, 'first': {f: v[0] for f, v in choices.items()}, 'numbers': numbers,
             'reference': 'inputs' if slots else '', 'references': slots, 'most_references': len(slots),
+            'reference_rules': tuple((tuple(dict.fromkeys(_KIND_NAMES.get(k, k) for k in t['inputs'][s]['kinds'])), min(t['inputs'][s]['most'], MOST_ASK_REFERENCES))
+                                     for s in slots),   # each slot within what one ask may hold, whatever the box takes
             'most_bytes': max([o['most'] for o in t['outputs'].values()] or [MOST_SAID]), 'most_seconds': t['most_seconds'],
         }
     return out
 
 
+REFERENCE_KINDS = ('png', 'jpg', 'webp')                 # a Replicate model's reference is a picture, read from its first bytes
+MOST_REFERENCE = 10 * 1024 * 1024                        # bytes of one reference picture (a Replicate model's)
+MOST_ASK_REFERENCES = 100 * 1000 * 1000                  # bytes of ALL of one ask's references together (frost-05 2026-11-06: a quarter of the RUN's
+                                                         # 1 GiB at most; a file read as base64 in JSON, then decoded, holds about 2.4 times its size)
+for _spec in MODELS.values():   # Replicate's models: every reference a picture within MOST_REFERENCE, no number field (as before)
+    _spec.setdefault('numbers', {})
+    _spec.setdefault('reference_rules', ((REFERENCE_KINDS, MOST_REFERENCE),) * _spec['most_references'])
 MODELS.update(_exxact_models())
 KINDS = {'image': ('png', 'jpg', 'webp'), 'video': ('mp4',)}
 MOST_PROMPT = 4000
@@ -100,8 +120,6 @@ NAME = re.compile(r'^[A-Za-z0-9][A-Za-z0-9 _-]{0,79}$')   # the file's plain nam
 _ID = re.compile(r'^[A-Za-z0-9]{1,64}$')                  # a provider's request id, before it is put in an address
 EVERY_SECONDS = 3
 DAM_KEY = re.compile(r'DA-M_[0-9A-F]{12}_[0-9A-F]{4}')   # a member's file in DA-M, by DA-M's own key (so files.KEY): the only way a reference is named
-REFERENCE_KINDS = ('png', 'jpg', 'webp')                 # a reference is a picture, read from its first bytes
-MOST_REFERENCE = 10 * 1024 * 1024                        # bytes of one reference picture
 
 
 def declared(manifest):
@@ -113,8 +131,11 @@ def declared(manifest):
 
 
 def check(makes, allowed):
-    """-> (asks as the hand takes them, '') or ([], why): ONE ask in an answer, a declared model, words to make it from, each choice
-    one of the model's own, a plain name. Anything else refuses the answer; nothing goes out."""
+    """-> (asks as the hand takes them, '') or ([], why): ONE ask in an answer, a declared model, a plain name (the made file's name,
+    every model), each choice one of the model's own, each number field a short list of numbers within its range, and words to make
+    it from when the model takes words (spec 'prompt': Replicate's models do; an Exxact type does not, and an ask for one may carry
+    words or not: checked the same when carried, and never sent). A number field the model needs and the ask leaves out refuses it;
+    an optional one left out is left out. Anything else refuses the answer; nothing goes out. A refusal never carries the member's value."""
     if not (isinstance(makes, list) and len(makes) == 1 and isinstance(makes[0], dict)):
         return [], 'the answer\'s makes is not a list of one ask'
     ask = makes[0]
@@ -122,20 +143,34 @@ def check(makes, allowed):
     if not (isinstance(model, str) and model in allowed):
         return [], 'the ask names a model the agent does not declare'
     spec = MODELS[model]
-    if set(ask) - {'model', 'prompt', 'name', *spec['choices'], *(('reference',) if spec.get('reference') else ())}:
+    numbers = spec.get('numbers') or {}
+    if set(ask) - {'model', 'prompt', 'name', *spec['choices'], *numbers, *(('reference',) if spec.get('reference') else ())}:
         return [], f'the ask holds more than {spec["name"]} takes'
     prompt = ask.get('prompt')
-    if not (isinstance(prompt, str) and prompt.strip() and len(prompt) <= MOST_PROMPT):
+    if (spec.get('prompt') or 'prompt' in ask) and not (isinstance(prompt, str) and prompt.strip() and len(prompt) <= MOST_PROMPT):
         return [], f'the ask carries no words, or more than {MOST_PROMPT} characters'
     name = ask.get('name')
     if not (isinstance(name, str) and NAME.fullmatch(name)):
         return [], 'the ask names no plain file name'
-    out = {'model': model, 'prompt': prompt.strip(), 'name': name}
+    out = {'model': model, 'name': name}
+    if 'prompt' in ask:
+        out['prompt'] = prompt.strip()
     for choice, values in spec['choices'].items():
         value = ask.get(choice, spec['first'][choice])
         if not (isinstance(value, str) and value in values):
             return [], f'the ask\'s {choice} is not one of {", ".join(values)}'
         out[choice] = value
+    for field, rule in numbers.items():
+        if field not in ask:
+            if rule.get('optional'):
+                continue
+            return [], f'the ask names no {field}'
+        value, whole = ask[field], 'list_ints' in rule
+        lo, hi = rule['list_ints'] if whole else rule['list_numbers']
+        if not (isinstance(value, list) and 0 < len(value) <= rule['most']
+                and all(isinstance(x, int if whole else (int, float)) and not isinstance(x, bool) and lo <= x <= hi for x in value)):
+            return [], f'the ask\'s {field} is not a list of at most {rule["most"]} {"whole numbers" if whole else "numbers"} from {lo} to {hi}'
+        out[field] = list(value)
     if 'reference' in ask:   # optional: a DA-M key, or a list of them up to the model's most, and nothing else (never an address: law 1); the harness reads each file for this member
         refs = [ask['reference']] if isinstance(ask['reference'], str) else ask['reference']
         most = spec.get('most_references', 1)
@@ -168,6 +203,15 @@ def goes_out(ask, reference=()):
         spec = MODELS[ask['model']]
         out[spec['reference']] = refs[0] if spec.get('reference_one') else refs   # a model whose field takes one address gets it plain
     return out
+
+
+def reference_kind(data, kinds):
+    """What a reference IS, from its first bytes (never a name or a header), when it is one of kinds (its slot's): kind_of's, and wav
+    (RIFF....WAVE) only when the slot takes wav; '' otherwise."""
+    kind = kind_of(data)
+    if not kind and 'wav' in kinds and data[:4] == b'RIFF' and data[8:12] == b'WAVE':
+        kind = 'wav'
+    return kind if kind in kinds else ''
 
 
 def kind_of(data):

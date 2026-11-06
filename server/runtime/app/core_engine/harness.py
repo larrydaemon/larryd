@@ -141,6 +141,7 @@ class Refused(Exception):
 
 
 LOG = logging.getLogger('runtime')
+ANSWER_ROOM = 64 * 1024   # the words around a file's base64 in wid's /jobs/file answer (its key, name and kind), at most
 
 
 def _now():
@@ -793,11 +794,21 @@ class Harness:
         keys the member typed or picked on the agent's page, checked by outside.check), each one's bytes are read through wid's job
         file door FOR THIS MEMBER, while their RUN is open (wid decides and asks DA-M as itself).
         -> [bytes, ...] in the ask's order, [] when the ask names none. They live in this call's memory only and go to the provider's
-        file door and nowhere else: never to the agent, never kept. Any key that cannot be read stops the errand before anything is sent."""
+        file door and nowhere else: never to the agent, never kept. Any key that cannot be read stops the errand before anything is sent.
+        BY KIND, PER MODEL (the lips gaps closed, 2026-11-06): the n-th reference must be a kind the model's n-th reference slot takes,
+        read from its first bytes (outside.reference_kind), within that slot's most bytes (outside.MODELS[model]['reference_rules']: a
+        picture within MOST_REFERENCE for Replicate's models, as before; an Exxact type's own input slots, its wav and mp4 among them)."""
         wanted = ask.get('reference') or []
+        rules = outside.MODELS[ask['model']]['reference_rules']
+        pictures_only = all(set(kinds) <= set(outside.REFERENCE_KINDS) for kinds, _most in rules)
         out = []
-        for dam_key in ([wanted] if isinstance(wanted, str) else wanted):
-            status, body = self.client.get('wid', '/jobs/file', {'account': account, 'scope': scope, 'member': member, 'job_key': job_key, 'run': str(run), 'dam_key': dam_key})
+        for n, dam_key in enumerate([wanted] if isinstance(wanted, str) else wanted):
+            _kinds, slot_most = rules[n] if n < len(rules) else ((), 0)
+            slot_most = min(slot_most, outside.MOST_ASK_REFERENCES - sum(len(x) for x in out))   # THE ASK'S OWN MOST: what is left of it for this reference
+            status, body = self.client.get('wid', '/jobs/file', {'account': account, 'scope': scope, 'member': member, 'job_key': job_key, 'run': str(run), 'dam_key': dam_key},
+                                           most=-(-slot_most // 3) * 4 + ANSWER_ROOM)   # THE SIZE FIRST: never read past this slot's most bytes (as base64) and the answer's few words (the lips gaps, 2026-11-06)
+            if status == 413:
+                raise _Stop('FAILED', f'not made, reference too large: {dam_key} is over {slot_most // (1024 * 1024)} MB; nothing was sent')
             raw = body.get('content_b64') if status == 200 and isinstance(body, dict) else None
             try:
                 picture = base64.b64decode(raw, validate=True) if isinstance(raw, str) else b''
@@ -806,10 +817,11 @@ class Harness:
             if not picture:
                 said = (body.get('refused') or body.get('error')) if isinstance(body, dict) else ''
                 raise _Stop('FAILED', f"not made, reference unreadable: DA-M did not hand {dam_key} ({said if isinstance(said, str) and said else f'wid answered {status}'}); nothing was sent")
-            if outside.kind_of(picture) not in outside.REFERENCE_KINDS:
-                raise _Stop('FAILED', f'not made, reference not a picture: {dam_key}; nothing was sent')
-            if len(picture) > outside.MOST_REFERENCE:
-                raise _Stop('FAILED', f'not made, reference too large: {dam_key} is over {outside.MOST_REFERENCE // (1024 * 1024)} MB; nothing was sent')
+            kinds, most = rules[n] if n < len(rules) else ((), 0)   # outside.check keeps the count within the model's most: no slot, no kind
+            if not outside.reference_kind(picture, kinds):
+                raise _Stop('FAILED', f'not made, reference not {"a picture" if pictures_only else "a kind its slot takes"}: {dam_key}; nothing was sent')
+            if len(picture) > slot_most:   # its slot within what is left of the ask
+                raise _Stop('FAILED', f'not made, reference too large: {dam_key} is over {slot_most // (1024 * 1024)} MB; nothing was sent')
             out.append(picture)
         return out
 

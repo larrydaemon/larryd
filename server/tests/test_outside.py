@@ -57,7 +57,7 @@ class Platform:
     def __init__(self, add=200, vault=SECRET_KEY):
         self.add, self.vault, self.said = add, vault, []   # vault: the platform's own key as FROST's vault hands it for one errand ('' = it hands none)
 
-    def get(self, office, route, data=None):
+    def get(self, office, route, data=None, most=None):
         self.said.append((office, route, data))
         return 200, {'inputs': {}}
 
@@ -376,7 +376,7 @@ class RefPlatform(Platform):
         super().__init__(**k)
         self.content, self.status = content, status
 
-    def get(self, office, route, data=None):
+    def get(self, office, route, data=None, most=None):
         if route == '/jobs/file':
             self.said.append((office, route, data))
             if self.status != 200:
