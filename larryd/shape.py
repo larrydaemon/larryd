@@ -26,7 +26,8 @@ FIELDS = {
     'skills': 'the list of skill hashes the agent uses (empty when none; `larryd skills` lists the skills that exist)',
     'knowledge': 'the list of knowledge pack hashes the agent needs (empty when none; `larryd pack` gives a pack its hash)',
     'inputs': 'only with "job" in run.hands: the job\'s inputs by name, each on one of the job\'s slots 001-015, e.g. {"mood": "001"}',
-    'records': 'the member\'s records the agent reads and writes on a CALL (optional): {"<species>": ["read", "add", "edit", "remove"]}, '
+    'files': 'only with "files" (and "job") in run.hands: which of the "inputs" carry a DA-M key the member picks; on a RUN each is handed as files = {name: {dam_key, kind, bytes, content_b64}}, at most 3, each up to 20 MB, e.g. ["picture"]',
+    'records': 'the member\'s records the agent reads and writes on a CALL, and reads on a RUN whose run.hands names "records" (optional): {"<species>": ["read", "add", "edit", "remove"]}, '
                'e.g. {"opns": ["read", "add", "edit", "remove"]}; LARRYD hands them as records = {species: [rows]} and carries the '
                'answer\'s "writes" to the platform\'s own record doors, only what is declared. THE COUNTS: {"*": ["count"]} (alone or beside '
                'species) hands counts = {scope, modules: {species: how many}, products, ties: [[from, to, how many]]} on a CALL and on a RUN: '
@@ -69,7 +70,7 @@ CARD_OPTIONAL = {   # a card fact an agent may leave out
 SITE = r'https://(?=[^/?#]{1,253}(?:[/?#]|$))(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}(?:[/?#][^\s"\'<>\\`]*)?'   # https to a named host: no user, no port, no number for a host
 SCREEN = r'[a-z][a-z0-9]{1,15}/[a-z][a-z0-9]{1,15}'   # <species>/<page>
 MOST_PITCH = 140                                      # characters on the card
-OPTIONAL = ('inputs', 'records', 'live', 'makes', 'fabric')
+OPTIONAL = ('inputs', 'records', 'live', 'makes', 'fabric', 'files')
 FABRIC_MODULES = ('cont', 'invc', 'locn', 'opns', 'hrcy', 'mdia', 'brnd', 'sprt', 'imgs', 'vdeo', 'audo', 'prdn', 'agnt', 'mdls', 'logs', 'jobs')   # one pf_<module>.csv each (the runtime's core_engine/fabric.py)
 FABRIC_NEEDS = ('read', 'edit')   # what "records" must declare on each Fabric module: read, and edit their custom fields
 LIVE = 'live'   # the live half's folder, beside agent/
@@ -88,6 +89,6 @@ PACK_KINDS = {'.json', '.txt', '.md', '.csv'}
 NEEDED = tuple(k for k in FIELDS if k not in OPTIONAL)
 
 # what the LARRYD runtime hands a RUN today: the cards the member sees; the job's own inputs (by the names in "inputs")
-HANDS = ('cards', 'job')
+HANDS = ('cards', 'job', 'records', 'files')   # what LARRYD hands a RUN (the runtime's harness.HANDS): records = the member's records the manifest declares with read, as a CALL gets them
 SLOT = r'0(0[1-9]|1[0-5])'   # the job's input slots, 001-015
 MOST_INPUT = 10_000          # characters in one input (the LARRYD runtime refuses more)

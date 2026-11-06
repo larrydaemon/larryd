@@ -35,7 +35,25 @@ def _manifest_problems(root):
 
 
 def test_runtime_hands_the_job_today():
-    assert shape.HANDS == ('cards', 'job')
+    assert shape.HANDS == ('cards', 'job', 'records', 'files')   # records and files on a RUN: CORE_CLEANUP_IV 30 and 21
+
+
+def test_files_need_the_hand_the_job_and_their_own_inputs(agent):
+    _set(agent, files=['name'])
+    assert any('"files" is declared, but run "hands" has no "files"' in w for w in _manifest_problems(agent))
+    _set(agent, run={'do': 'answer', 'hands': ['files']}, inputs=None)
+    assert any('has "files" but not "job"' in w for w in _manifest_problems(agent))
+    _set(agent, run={'do': 'answer', 'hands': ['job', 'files']}, inputs={'name': '001', 'mood': '002'}, files=['picture'])
+    assert any('"files" is not a list of at most 3' in w for w in _manifest_problems(agent))
+    _set(agent, files=['name', 'mood', 'name'])
+    assert any('"files" is not a list of at most 3' in w for w in _manifest_problems(agent))
+    _set(agent, files=['name'])
+    assert not [w for w in _manifest_problems(agent) if 'files' in w]
+
+
+def test_records_is_a_hand_the_doctor_takes(agent):
+    _set(agent, run={'do': 'answer', 'hands': ['job', 'records']}, records={'cont': ['read']})
+    assert not [w for w in _manifest_problems(agent) if 'hands' in w]
 
 
 def test_a_job_agent_passes_and_runs_with_its_inputs(agent):

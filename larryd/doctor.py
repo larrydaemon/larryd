@@ -152,6 +152,14 @@ def _manifest(root, f):
             f.add(c, where, '"inputs" puts two names on one slot', 'give each name its own slot, 001-015')
     elif 'inputs' in card:
         f.add(c, where, '"inputs" is declared, but run "hands" has no "job"', 'add "job" to run "hands", or take "inputs" out')
+    files = card.get('files')
+    if 'files' in hands or 'files' in card:
+        if 'files' not in hands:
+            f.add(c, where, '"files" is declared, but run "hands" has no "files"', 'add "files" to run "hands", or take "files" out')
+        elif 'job' not in hands:
+            f.add(c, where, 'run "hands" has "files" but not "job": a file is named by a job input', 'add "job" to run "hands" and the file\'s name to "inputs"')
+        elif not (isinstance(files, list) and files and len(files) <= 3 and len(set(files)) == len(files) and all(isinstance(n, str) and isinstance(inputs, dict) and n in inputs for n in files)):
+            f.add(c, where, '"files" is not a list of at most 3 of the agent\'s own "inputs"', 'set "files" to the input names that carry a DA-M key, e.g. ["picture"]')
     if 'records' in card:
         _records(card, c, where, f)
     if 'live' in card:

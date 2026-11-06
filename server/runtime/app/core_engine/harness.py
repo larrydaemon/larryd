@@ -25,10 +25,12 @@ from . import fabric, gate, lanes, live, locker, member_records, outside, record
 
 MARKETPLACE = 'marketplace'   # the one agent's locker folder: it answers the collection, hires, and places defaults
 BESIDE = ('find', 'themes', 'page')   # what an ANSWER call may hand the agent beside its cards (the page's own: its controller's asks, the themes a card may wear, its loaded logos); each a JSON object
-HANDS = ('cards', 'job')      # what a RUN can be handed: the cards the member sees; the job's own inputs (read from wid, kept nowhere)
+HANDS = ('cards', 'job', 'records', 'files')   # what a RUN can be handed: the cards the member sees; the job's own inputs (read from wid, kept nowhere); the member's records its approved manifest declares (CORE_CLEANUP_IV 30, the owner's blanket approval 2026-11-06: read as a CALL reads them, through wid's own list door, kept nowhere)
 SLOT = re.compile(r'^0(0[1-9]|1[0-5])$')   # a job's agent input slots, as wid's jobs species holds them: data_job_001 .. data_job_015
 MOST_INPUT = 10_000           # characters in one input
 MOST_KEEPS = 10               # records one RUN may add for the files it stored
+MOST_RUN_FILES = 3            # files one RUN may be handed (hands ["files"], CORE_CLEANUP_IV 21): the member's own DA-M files, named by the job's inputs the manifest declares as files
+MOST_RUN_FILE = 20 * 1024 * 1024   # bytes of one handed file (a picture or a short video: the sandbox's 512 MB holds three, base64 and parsed)
 A_DAY = {'image': 25, 'video': 5}   # THE OUTSIDE HAND'S DAILY LIMIT, per member and agent (the provider is paid per file made; the runtime's own config may set others)
 PLATFORM_HANDED = {('wid', 'GET', '/agnt/cards'), ('wid', 'GET', '/agnt/hired'), ('wid', 'GET', '/jobs/balance'), ('wid', 'GET', '/agnt/records/list')}
 # THE PLATFORM'S ANSWERS HANDED WITH THE CALL (the owner 2026-11-04, "the goal is extremely fast"): what the platform would answer these
@@ -606,6 +608,18 @@ class Harness:
                 given['job'] = self._job_inputs(manifest, account, scope, job_key, run)
             except _Stop as stop:
                 return self._end(account, scope, member, key, job_key, run, stop.state, stop.reason)
+        if 'files' in hands:   # THE MEMBER'S FILES ON A RUN (CORE_CLEANUP_IV 21, the owner's blanket approval 2026-11-06): the files the member named in this RUN's own inputs, each read through wid's job file door for this member while the RUN is open (wid decides and asks DA-M as itself, as a reference picture is read), handed as bytes, kept nowhere
+            try:
+                given['files'] = self._run_files(manifest, given.get('job'), account, scope, member, job_key, run)
+            except _Stop as stop:
+                return self._end(account, scope, member, key, job_key, run, stop.state, stop.reason)
+        if 'records' in hands:   # THE MEMBER'S RECORDS ON A RUN (CORE_CLEANUP_IV 30): exactly what a CALL of this agent is handed (answer): only the species its approved manifest declares with read, through wid's list door for this member (wid's own permission checks), custom fields only for a custom agent, and who they are for; wid silent or refusing: the RUN fails before it starts, nothing is guessed
+            wanted = member_records.declared(manifest)
+            try:
+                given['records'] = member_records.read(self._ask, wanted, account, scope, member, key, custom=fabric.custom(card, manifest, account)) if wanted else {}
+            except Refused as no:
+                return self._end(account, scope, member, key, job_key, run, 'FAILED', f'LARRYD could not read the records: {no.reason}')
+            given['who'] = {'member': member}
         self.started(key, job_key, run, account, member)
         self._result(account, scope, job_key, run, 'RUNNING', f'RUN {run} RUNNING')
         if 'cards' in hands:
@@ -883,6 +897,39 @@ class Harness:
         except Exception:   # the platform away: the pass goes without them
             return {}
         return body if status == 200 and isinstance(body, dict) else {}
+
+    def _run_files(self, manifest, job, account, scope, member, job_key, run):
+        """THE MEMBER'S FILES ON A RUN: the manifest's "files" names which of its job inputs carry a DA-M key ([name, ...], each a
+        name in "inputs", at most MOST_RUN_FILES; the hand "files" needs the hand "job"). Each such input the member filled is read
+        through wid's /jobs/file for THIS member while the RUN is open: -> {name: {dam_key, kind, bytes, content_b64}}; an input left
+        empty is not handed. Held in this RUN's memory only, never kept. Stops before the agent runs: files not declared right
+        (FAILED), an input that is not a DA-M key (REFUSED), a file wid or DA-M does not hand, or one over MOST_RUN_FILE (FAILED)."""
+        names, declared = manifest.get('files'), manifest.get('inputs')
+        if not isinstance(job, dict):
+            raise _Stop('FAILED', 'the agent hands "files" but not "job": its files are named by its job inputs')
+        if not (isinstance(names, list) and names and len(names) <= MOST_RUN_FILES and len(set(names)) == len(names)
+                and all(isinstance(n, str) and isinstance(declared, dict) and n in declared for n in names)):
+            raise _Stop('FAILED', f'the agent hands "files" but its "files" is not a list of at most {MOST_RUN_FILES} of its own inputs')
+        out = {}
+        for name in names:
+            dam_key = job.get(name) or ''
+            if not dam_key:
+                continue
+            if not outside.DAM_KEY.fullmatch(dam_key):
+                raise _Stop('REFUSED', f'input {declared[name]} is not a DA-M key')
+            status, body = self.client.get('wid', '/jobs/file', {'account': account, 'scope': scope, 'member': member, 'job_key': job_key, 'run': str(run), 'dam_key': dam_key})
+            raw = body.get('content_b64') if status == 200 and isinstance(body, dict) else None
+            try:
+                data = base64.b64decode(raw, validate=True) if isinstance(raw, str) else b''
+            except (binascii.Error, ValueError):
+                data = b''
+            if not data:
+                said = (body.get('refused') or body.get('error')) if isinstance(body, dict) else ''
+                raise _Stop('FAILED', f"LARRYD could not read the file of input {declared[name]}: DA-M did not hand {dam_key} ({said if isinstance(said, str) and said else f'wid answered {status}'})")
+            if len(data) > MOST_RUN_FILE:
+                raise _Stop('FAILED', f'the file of input {declared[name]} is over {MOST_RUN_FILE // (1024 * 1024)} MB: {dam_key}')
+            out[name] = {'dam_key': dam_key, 'kind': outside.kind_of(data), 'bytes': len(data), 'content_b64': base64.b64encode(data).decode('ascii')}
+        return out
 
     def _job_inputs(self, manifest, account, scope, job_key, run):
         """The job's own inputs, as the agent declares them ({name: slot}), read from wid for this RUN only: -> {name: value}.
