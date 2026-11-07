@@ -42,14 +42,19 @@ def red_words(step):
     return f'NOT_MADE_EXXACT_{step}' if step in exxact.STEPS else RED
 
 
+LANES = {'missions': 'larryd-runtime-lockers/exxact/missions', 'returns': 'larryd-runtime-lockers/exxact/returns'}   # Exxact_Loot's two lanes inside
+# LARRYD's own bucket (the owner 2026-11-06, frost-88 2538e2b: larryd-runtime-sa holds roles/storage.objectUser under exxact/ alone; noncurrent
+# versions there are deleted after a day); the hand's buckets unless a test hands its own
+
+
 class ExxactHand:
-    """buckets: {'missions': name, 'returns': name}; token: a function giving the runtime's bearer token for them; keys_dir: this hand's
+    """buckets: {'missions': where, 'returns': where}, each a bucket or 'bucket/prefix' (LANES unless given); token: a function giving the runtime's bearer token for them; keys_dir: this hand's
     locker keys (exxact_locker.keys / trust, the key ceremony with the box side). lanes replaces the buckets (a test: BucketLanes on a fake
     store). Without lanes or keys the hand is not set up. runtime: 'external' (Cloud Run) or 'internal' (the internal runtime)."""
 
     def __init__(self, buckets=None, token=None, keys_dir='', lanes=None, runtime='external', sleep=time.sleep, clock=time.monotonic):
-        if lanes is None and buckets and token:
-            lanes = exxact.BucketLanes(exxact.GcsStore(buckets, token))
+        if lanes is None and token:
+            lanes = exxact.BucketLanes(exxact.GcsStore(buckets or LANES, token))
         self.lanes, self.keys, self.runtime = lanes, keys_dir, runtime
         self.sleep, self.clock = sleep, clock
         self._dropped, self._lock = [], threading.Lock()

@@ -22,7 +22,7 @@ from test_skills import ACCOUNT, JOB, KEY, MEMBER, World
 
 LOOT = pathlib.Path.home() / 'virtual_sanity' / 'exxact_loot'
 ORIGINALS = {   # THE PINS: Exxact_Loot's two files as copied (a change on either side is seen here first)
-    'exxact.py': '79d52caf8afbbc31ca70a5390fb52a484f426b5866ef4ffc02c2f9a810cc134c',   # Exxact_Loot b657a03: collect takes most_bytes
+    'exxact.py': 'a631933909fb9e65ee8de914f47781c7c5978de81acbe084ee429472f79f511a',   # Exxact_Loot 1c55069: lanes as bucket/prefix (2538e2b), an unreachable box said (ssh 255)
     'locker.py': '3674a52f362c85ff165fe2c19085c236844c94e80739a4f072bce7cadd65a026',
 }
 COPIES = {'exxact.py': 'exxact.py', 'locker.py': 'exxact_locker.py'}
@@ -301,6 +301,31 @@ class NotSetUp(unittest.TestCase):
 
 
 @unittest.skipUnless(SEALS, 'no `cryptography` in this python: the lockers cannot be sealed')
+class TheLanes(unittest.TestCase):
+    """EXXACT_LOOT'S LANES INSIDE LARRYD'S OWN BUCKET (the owner 2026-11-06; frost-88 2538e2b): the hand's buckets are LANES, each
+    'bucket/prefix'; every object it names is under its lane's prefix, and a name listed back comes without it. With no token the hand is
+    still not set up (nothing reaches the cloud without the runtime's own token and the key ceremony)."""
+    def test_the_lanes_are_larryds_bucket_under_exxact(self):
+        self.assertEqual(exxact_hand.LANES, {'missions': 'larryd-runtime-lockers/exxact/missions', 'returns': 'larryd-runtime-lockers/exxact/returns'})
+        store = exxact.GcsStore(exxact_hand.LANES, lambda: 'scratch-token')
+        self.assertEqual(store._o('missions', 'J1/mission.json'),
+                         exxact.GcsStore.API + 'larryd-runtime-lockers/o/' + 'exxact%2Fmissions%2FJ1%2Fmission.json')
+        self.assertEqual(store._o('returns', 'J1/return.json'),
+                         exxact.GcsStore.API + 'larryd-runtime-lockers/o/' + 'exxact%2Freturns%2FJ1%2Freturn.json')
+        hand = exxact_hand.ExxactHand(token=lambda: 'scratch-token')
+        self.assertEqual((hand.lanes.store.buckets, hand.lanes.store.prefix),
+                         ({'missions': 'larryd-runtime-lockers', 'returns': 'larryd-runtime-lockers'}, {'missions': 'exxact/missions/', 'returns': 'exxact/returns/'}))
+        self.assertFalse(hand.set_up())   # no keys: not set up, whatever the lanes
+        self.assertIsNone(exxact_hand.ExxactHand().lanes)   # no token: no lanes at all
+        for bad in ({'missions': '/', 'returns': 'b'}, {'missions': 'b/../x', 'returns': 'b'}):
+            with self.assertRaises(ValueError):
+                exxact.GcsStore(bad, lambda: 'scratch-token')
+
+    def test_an_unreachable_box_is_a_red_of_its_own_step(self):
+        self.assertEqual((exxact.UNREACHABLE, exxact.SSH_UNREACHABLE), ('the box could not be reached', 255))
+        self.assertEqual((exxact_hand.red_words('ROOM'), exxact_hand.red_words('RUN')), ('NOT_MADE_EXXACT_ROOM', 'NOT_MADE_EXXACT_RUN'))   # the member's words stay by step
+
+
 class TheRoad(unittest.TestCase):
     """the hand on BucketLanes(FakeStore()), Exxact_Loot's Runner on a FakeBox answering between two polls"""
     def setUp(self):

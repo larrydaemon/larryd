@@ -341,13 +341,21 @@ class BucketLanes:
 
 
 class GcsStore:
-    """Cloud Storage over its JSON API, stdlib only. buckets: {'missions': name, 'returns': name}. token: a function giving a bearer token
-    (S4, at the end: the box runner's own service account, one right per lane). Every call names its bucket and object only."""
+    """Cloud Storage over its JSON API, stdlib only. buckets: {'missions': where, 'returns': where}, each a bucket or 'bucket/prefix' (the
+    owner 2026-11-06: Exxact_Loot lives inside LARRYD's existing bucket, larryd-runtime-lockers/exxact/missions and .../exxact/returns, never
+    beside the code lockers). token: a function giving a bearer token. Every call names its bucket and an object under its lane's prefix only;
+    the names it lists come back without the prefix."""
     API = 'https://storage.googleapis.com/storage/v1/b/'
     UPLOAD = 'https://storage.googleapis.com/upload/storage/v1/b/'
 
     def __init__(self, buckets, token, urlopen=None):
-        self.buckets, self.token = buckets, token
+        self.token = token
+        self.buckets, self.prefix = {}, {}
+        for lane, where in buckets.items():
+            bucket, _, prefix = where.strip('/').partition('/')
+            if not bucket or '..' in prefix.split('/'):
+                raise ValueError('a lane is a bucket or bucket/prefix')
+            self.buckets[lane], self.prefix[lane] = bucket, (prefix.strip('/') + '/' if prefix.strip('/') else '')
         self.urlopen = urlopen or urllib.request.urlopen
 
     def _ask(self, method, url, data=None, ok=(200,), missing=(404,)):
@@ -362,17 +370,17 @@ class GcsStore:
             raise
 
     def _o(self, lane, name):
-        return self.API + urllib.parse.quote(self.buckets[lane], safe='') + '/o/' + urllib.parse.quote(name, safe='')
+        return self.API + urllib.parse.quote(self.buckets[lane], safe='') + '/o/' + urllib.parse.quote(self.prefix[lane] + name, safe='')
 
     def list(self, lane, prefix):
         out, page = [], ''
         while True:
-            q = {'prefix': prefix, 'fields': 'items(name,generation,timeCreated),nextPageToken'}
+            q = {'prefix': self.prefix[lane] + prefix, 'fields': 'items(name,generation,timeCreated),nextPageToken'}
             if page:
                 q['pageToken'] = page
             _s, body, _h = self._ask('GET', self.API + urllib.parse.quote(self.buckets[lane], safe='') + '/o?' + urllib.parse.urlencode(q))
             got = json.loads(body or b'{}')
-            out += [{'name': i['name'], 'generation': i.get('generation'), 'created': i.get('timeCreated', '')} for i in got.get('items', [])]
+            out += [{'name': i['name'][len(self.prefix[lane]):], 'generation': i.get('generation'), 'created': i.get('timeCreated', '')} for i in got.get('items', [])]
             page = got.get('nextPageToken')
             if not page:
                 return out
@@ -384,7 +392,7 @@ class GcsStore:
         return body, headers.get('x-goog-generation') or headers.get('X-Goog-Generation')
 
     def write(self, lane, name, data):
-        self._ask('POST', self.UPLOAD + urllib.parse.quote(self.buckets[lane], safe='') + '/o?' + urllib.parse.urlencode({'uploadType': 'media', 'name': name}), data)
+        self._ask('POST', self.UPLOAD + urllib.parse.quote(self.buckets[lane], safe='') + '/o?' + urllib.parse.urlencode({'uploadType': 'media', 'name': self.prefix[lane] + name}), data)
 
     def delete(self, lane, name, generation=None):
         url = self._o(lane, name) + (f'?ifGenerationMatch={generation}' if generation else '')
@@ -503,6 +511,8 @@ def collect(lanes, keys_dir, job, most_bytes=None):
 # given, e.g. ~/virtual_sanity/runtime_internal/instance/data/exxact_loot/box.json, never committed, never copied):
 #   {"address": "<the box's address on the home network>", "user": "<the box's user>", "home": "<that user's home on the box>"}
 
+SSH_UNREACHABLE = 255                              # ssh's own exit when it never reached the box (down, asleep, off the network)
+UNREACHABLE = 'the box could not be reached'
 BOX_ROOT = 'frost/virtual_workspace/exxact_loot'   # its own folder under the box user's home, beside amLLM, never inside it
 ENGINES_ROOT = 'frost/virtual_workspace'           # the engines' folder under the box user's home
 
@@ -536,7 +546,7 @@ class Box:
     def free_mib(self):
         code, out, _ = self.command('', TYPES['gpu-status']['run']['command'], 30)
         if code != 0:
-            raise Red('ROOM', 'the GPUs could not be read')
+            raise Red('ROOM', UNREACHABLE if code == SSH_UNREACHABLE else 'the GPUs could not be read')
         cards = {}
         for line in out.strip().splitlines():
             idx, used, total = (int(x.strip()) for x in line.split(','))
@@ -868,7 +878,7 @@ class Runner:
             if 'command' in r:
                 code, out, _err = self.box.command(job, r['command'], t['most_seconds'])
                 if code != 0:
-                    raise Red('RUN', 'the command did not finish well')
+                    raise Red('RUN', UNREACHABLE if code == SSH_UNREACHABLE else 'the command did not finish well')
                 said = {'out': out.strip()[:4000]}
             elif 'http' in r:
                 said = self._run_http(job, j, t)
