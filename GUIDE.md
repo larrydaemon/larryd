@@ -339,6 +339,10 @@ are not there yet: nothing here promises a money value or a share.
   Offline where its price stands, and it cannot be hired. Leave the field out for an agent that can be hired.
 - `developer_site` (optional): your website, a plain https address such as `https://example.com`. The card links your
   name to it, in a new tab. Leave the field out for no link.
+- `environment` (optional): where the agent runs, the one tag between internal and external. `"POSITIVE FEEDBACK"`
+  (the same as leaving it out) is an EXTERNAL agent, run by the LARRYD runtime; `"POSITIVE FEEDBACK (INTERNAL-ONLY)"` is an
+  INTERNAL agent, run by Positive Feedback's own internal runtime. Both go the same road: `larryd doctor` and `larryd ship`
+  pick their mode from it.
 - `sends_to` and `data_sent`: the agent itself never reaches out. When LARRYD sends a member's words to an outside
   AI service for the agent (`"makes"`), `sends_to` names that service and `data_sent` says what is sent; it goes out
   only on the member's own act. An agent that sends nothing leaves both `""`.

@@ -138,3 +138,87 @@ def test_the_service_key_hand_needs_a_service_named_first(repo):
     bad = make(repo, 'connector-unnamed', {'run': {'do': 'run', 'hands': ['job', 'service_key']}, 'inputs': {'boards': '001'}})
     assert any('names no service' in w for _, w in failed(bad))
 
+
+
+def test_kits_inside_its_own_agent_folder_need_no_office_beside_it(tmp_path):
+    """the locker made agents self-contained (<repo>/<name>/agent/office.py ...): no _office in the repository at all"""
+    root = make(tmp_path, 'self-contained')
+    (root / 'agent' / 'office.py').write_text('def main(canvas, run=None):\n    pass\n')
+    (root / 'agent' / 'look.py').write_text('')
+    assert internal.check(root) == []
+    (root / 'agent' / 'look.py').unlink()
+    assert any('"libs" names look, but look.py is neither in its agent/ nor' in w for _, w in failed(root))
+    (root / 'agent' / 'office.py').unlink()
+    assert any('it has no office.py' in w for _, w in failed(root))
+
+
+def test_a_kit_inside_agent_is_checked_as_its_own_code(tmp_path):
+    root = make(tmp_path, 'kit-reaches')
+    (root / 'agent' / 'office.py').write_text('def main(canvas, run=None):\n    import numpy\n')
+    (root / 'agent' / 'look.py').write_text('')
+    assert any('it imports numpy' in w for _, w in failed(root))
+
+
+SELF_PATH = 'import os, sys; sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))\n'
+
+
+def test_an_entry_importing_a_sibling_is_told_the_one_line_production_needs(repo):
+    """production runs every agent with python -I: its own folder is not on sys.path, so `import office` fails there"""
+    root = make(repo, 'no-path-line')
+    (root / 'agent' / 'office.py').write_text('def main(canvas, run=None):\n    pass\n')
+    warns = internal.warnings(root)
+    assert len(warns) == 1 and warns[0].line == 2 and 'it imports office, a file beside it' in warns[0].wrong
+    assert warns[0].todo.endswith(SELF_PATH.strip())
+    assert internal.check(root) == []   # said, not failed, for now
+
+
+@pytest.mark.parametrize('top, ok', [
+    (SELF_PATH, True),
+    ('import pathlib, sys\nsys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))\n', True),
+    ('import os, sys\nHERE = os.path.dirname(os.path.abspath(__file__))\nif HERE not in sys.path:\n    sys.path.insert(0, HERE)\n', True),
+    ('import sys\nsys.path.insert(0, "lib")\n', False),          # not its own folder
+    ('import os, sys\nsys.path.append(os.path.dirname(__file__))\n', False),   # last, not first
+])
+def test_the_line_before_its_first_sibling_import(repo, top, ok):
+    root = make(repo, 'p' + str(abs(hash(top)))[:8], code='"""doc"""\n' + top + CODE.split('"""\n', 1)[1])
+    assert (internal.warnings(root) == []) is ok, internal.warnings(root)
+
+
+def test_the_line_after_the_import_is_too_late_and_no_sibling_needs_none(repo):
+    late = make(repo, 'late', code=CODE.replace('import office\n', 'import office\n' + SELF_PATH))
+    assert 'its line comes after' in internal.warnings(late)[0].wrong
+    alone = make(repo, 'alone', {'office': None, 'libs': None, 'facts': None, 'key': None, 'workflow': None, 'group': None, 'reads': ['nothing'], 'records': {}},
+                 code='"""a clean project"""\nimport json\n\n\ndef canvas(job):\n    return {}\n\n\ndef run(job):\n    return {}\n\n\nif __name__ == "__main__":\n    print(json.dumps({}))\n')
+    assert internal.warnings(alone) == []
+
+
+def test_the_external_doctor_takes_the_line_too(tmp_path, monkeypatch):
+    from larryd import doctor, new
+    monkeypatch.chdir(tmp_path)
+    root = new.make('pathline')
+    entry = root / 'agent' / 'agent.py'
+    entry.write_text('"""doc"""\n' + SELF_PATH + entry.read_text().split('"""', 2)[2])
+    assert doctor.check(root) == [], [p.text() for p in doctor.check(root)]
+
+
+@pytest.mark.parametrize('value, ok', [('POSITIVE FEEDBACK (INTERNAL-ONLY)', True), ('POSITIVE FEEDBACK', True), ('somewhere', False), (3, False)])
+def test_the_tag_is_one_the_platform_knows(repo, value, ok):
+    root = make(repo, 'env-' + str(abs(hash(str(value))))[:8], {'card': {**CARD, 'environment': value}})
+    assert (not any('card "environment" is' in w for _, w in failed(root))) is ok
+
+
+def test_the_cli_picks_the_mode_from_the_tag(repo, capsys):
+    tagged = make(repo, 'tagged-internal', {'card': {**CARD, 'environment': 'POSITIVE FEEDBACK (INTERNAL-ONLY)'}})
+    assert cli.main(['doctor', str(tagged)]) == 0 and 'larryd doctor --internal:' in capsys.readouterr().out   # no --internal needed
+    external = make(repo, 'tagged-external', {'card': {**CARD, 'environment': 'POSITIVE FEEDBACK'}})
+    assert cli.main(['doctor', '--internal', str(external)]) == 2 and 'EXTERNAL' in capsys.readouterr().err
+    assert cli.main(['doctor', str(external)]) == 1 and 'larryd doctor:' in capsys.readouterr().out   # the external contract refuses an office agent
+    assert cli.main(['doctor', str(repo / 'scratch-agent')]) == 0   # no tag: the folder's shape (an office agent) says internal
+
+
+def test_the_cli_says_the_warning_and_its_json_carries_it(repo, capsys):
+    assert cli.main(['doctor', '--internal', str(repo / 'scratch-agent')]) == 0
+    assert 'WARN its own folder first on sys.path' in capsys.readouterr().out
+    assert cli.main(['doctor', '--internal', '--json', str(repo / 'scratch-agent')]) == 0
+    got = json.loads(capsys.readouterr().out)
+    assert got['ok'] and got['warnings'][0]['check'] == 'its own folder first on sys.path'

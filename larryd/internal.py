@@ -5,7 +5,7 @@ card, the entry, no secret, the shape, the skills, the knowledge. Three rules ar
 
 1. Its own fields and hand: the "service_key" hand (the member's key for the service its card names first, CORE_CLEANUP_IV 53),
    checked here, never handed to an external agent. An OFFICE agent (agent.json names "office") carries "key" (its runtime key, MAGT_<12>_<4>), "office" (one of the
-   offices), "libs" (kits of its repository's _office, each there) and may carry "workflow", "group", "facts", "internal"
+   offices), "libs" (kits, each in its own agent/ or its repository's _office) and may carry "workflow", "group", "facts", "internal"
    ({"seconds": its own time limit}). They are checked here, then set aside so the shared checks see the rest. "reads" is not asked of
    an office agent: what it reads is its "facts".
 2. Its records may be any module's, LARRYD's own activity too (jobs, logs, agnt, mdls: the internal runtime hands them), and its card
@@ -42,14 +42,44 @@ REACH = [
 C_MANIFEST, C_REACH = 'the manifest', 'no reach outside this Mac'
 
 
-def is_internal(root):
-    """Does the agent at `root` speak the internal contract (an office agent, or a project of an internal repository)?"""
-    root = pathlib.Path(root).resolve()
+def _manifest_of(root):
     try:
-        card = json.loads((root / shape.AGENT / shape.MANIFEST).read_text())
+        card = json.loads((pathlib.Path(root) / shape.AGENT / shape.MANIFEST).read_text())
     except (OSError, ValueError):
-        return False
-    return isinstance(card, dict) and ('office' in card or (root.parent / 'reach.json').is_file())
+        return None
+    return card if isinstance(card, dict) else None
+
+
+def tag(root):
+    """THE TAG (ONE SYSTEM, the owner 2026-11-07: "it just tags as internal or external"): its card's "environment", the platform's
+    data_agent_environment -> 'internal' (POSITIVE FEEDBACK (INTERNAL-ONLY)), 'external' (POSITIVE FEEDBACK), or None when the card
+    names none (or a value the platform does not know: the doctor says so)."""
+    card = _manifest_of(root)
+    env = (card.get('card') or {}).get('environment') if card and isinstance(card.get('card'), dict) else None
+    if not isinstance(env, str):
+        return None
+    return {shape.INTERNAL_ONLY: 'internal', shape.ENVIRONMENT: 'external'}.get(env.strip().upper())
+
+
+def is_internal(root):
+    """Is the agent at `root` an INTERNAL one? Its tag when its card carries one; else the old folder-shape rule (an office agent, or a
+    project of an internal repository: a reach.json beside it), until every agent carries its tag."""
+    root = pathlib.Path(root).resolve()
+    tagged = tag(root)
+    if tagged:
+        return tagged == 'internal'
+    card = _manifest_of(root)
+    return card is not None and ('office' in card or (root.parent / 'reach.json').is_file())
+
+
+def kit(root, name):
+    """where a kit (office.py, look.py, day.py ...) is: inside the agent's own folder (self-contained, production's shape: the locker
+    in place writes them there) first, else its repository's _office (the old packing). -> its path, or None."""
+    root = pathlib.Path(root)
+    for path in (root / shape.AGENT / f'{name}.py', root.parent / '_office' / f'{name}.py'):
+        if path.is_file() and not path.is_symlink():
+            return path
+    return None
 
 
 def allowed(root):
@@ -83,17 +113,17 @@ def _fields(root, card, f):
         f.add(C_MANIFEST, where, '"key" is not its runtime key (MAGT_ and 12 and 4 capital hex)', 'set "key" to the key it is placed under')
     if card.get('office') not in OFFICES:
         f.add(C_MANIFEST, where, f'"office" is {card.get("office")!r}, not one of the offices', f'set "office" to one of: {", ".join(OFFICES)}')
-    kits = root.parent / '_office'
-    if not (kits / 'office.py').is_file():
-        f.add(C_MANIFEST, where, "its repository has no _office/office.py (the office library every office agent is packed with)",
-              'keep the office library in <the repository>/_office/office.py')
+    if kit(root, 'office') is None:
+        f.add(C_MANIFEST, where, "it has no office.py, neither in its agent/ nor in its repository's _office (the office library every office agent runs with)",
+              'keep the office library in its agent/office.py (self-contained, as the locker holds it), or in <the repository>/_office/office.py')
     libs = card.get('libs', [])
     if not (isinstance(libs, list) and all(isinstance(x, str) and re.fullmatch(r'[a-z_][a-z0-9_]*', x) for x in libs)):
-        f.add(C_MANIFEST, where, '"libs" is not a list of kit names', 'set "libs" to [] or to names of files in <the repository>/_office, e.g. ["look"]')
+        f.add(C_MANIFEST, where, '"libs" is not a list of kit names', 'set "libs" to [] or to names of kits in its agent/ (or <the repository>/_office), e.g. ["look"]')
         libs = []
     for lib in libs:
-        if not (kits / f'{lib}.py').is_file():
-            f.add(C_MANIFEST, where, f'"libs" names {lib}, but _office/{lib}.py is not in its repository', f'add _office/{lib}.py, or take "{lib}" out of "libs"')
+        if kit(root, lib) is None:
+            f.add(C_MANIFEST, where, f'"libs" names {lib}, but {lib}.py is neither in its agent/ nor in its repository\'s _office',
+                  f'put {lib}.py in its agent/ (or <the repository>/_office), or take "{lib}" out of "libs"')
     for k, kind in (('workflow', str), ('group', str), ('facts', dict), ('internal', dict)):
         if k in card and not isinstance(card[k], kind):
             f.add(C_MANIFEST, where, f'"{k}" is not {"text" if kind is str else "an object"}', f'set "{k}" right, or take it out')
@@ -241,6 +271,21 @@ def check(root):
     doctor._skills(root, card, f)
     doctor._knowledge(root, card, f)
     return f.problems
+
+
+def warnings(root):
+    """-> [doctor.Problem] said, not failed (for now: every office agent imports office.py beside it, and failing them all would stop
+    the whole internal suite at once): THE SAME RUN BOTH SIDES, doctor.own_folder_first."""
+    root = pathlib.Path(root).resolve()
+    card = _manifest_of(root)
+    if card is None:
+        return []
+    entry = card.get('entry') if isinstance(card.get('entry'), str) else 'agent.py'
+    path = root / shape.AGENT / entry
+    f = doctor._Found()
+    tree = doctor._tree(root, path, f) if path.is_file() and not path.is_symlink() else None
+    kits = ({'office'} | {k for k in card.get('libs') or [] if isinstance(k, str)}) if 'office' in card else set()
+    return doctor.own_folder_first(root, entry, {path: tree} if tree is not None else {}, kits)
 
 
 def report(root, problems):

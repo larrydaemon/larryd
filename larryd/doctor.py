@@ -213,6 +213,60 @@ def _local(agent):
     return {p.stem for p in agent.glob('*.py')} | {p.name for p in agent.iterdir() if p.is_dir() and (p / '__init__.py').is_file()}
 
 
+OWN_FOLDER_LINE = 'import os, sys; sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))'
+OWN_FOLDER = 'its own folder first on sys.path'
+
+
+def _module_level(tree):
+    """every node of the module's own top level (into its if/try/with, never into a function or class body)"""
+    todo = list(tree.body)
+    while todo:
+        n = todo.pop(0)
+        if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Lambda)):
+            continue
+        yield n
+        todo.extend(ast.iter_child_nodes(n))
+
+
+def _names_file(node, made):
+    """does the expression come from __file__ (itself, or a module-level name made from it)?"""
+    return any((isinstance(x, ast.Name) and (x.id == '__file__' or x.id in made)) for x in ast.walk(node))
+
+
+def own_folder_first(root, entry, trees, kits=()):
+    """THE SAME RUN BOTH SIDES (ONE SYSTEM, 2026-11-07): production starts every agent with `python -I -B` (the runtime's
+    core_engine/sandbox.py), and -I keeps the agent's own folder OFF sys.path, so `import office` (any file beside the entry) fails
+    there. An entry that imports a file of its own agent/ must put its own folder first on sys.path itself, at its module level and
+    before that import: OWN_FOLDER_LINE. kits: the names packed beside it (an internal office agent's office.py and its "libs"),
+    siblings too wherever they sit now. -> [Problem] (empty: it imports no sibling, or it puts its folder there first)."""
+    agent = root / shape.AGENT
+    path = agent / entry if isinstance(entry, str) else None
+    tree = trees.get(path) if path else None
+    if tree is None or not agent.is_dir():
+        return []
+    siblings = ({p.stem for p in agent.glob('*.py')} | {p.name for p in agent.iterdir() if p.is_dir() and p.name != '__pycache__'} | set(kits)) - {path.stem}
+    top = list(_module_level(tree))
+    def sibling(n):
+        names = [a.name for a in n.names] if isinstance(n, ast.Import) else [n.module] if isinstance(n, ast.ImportFrom) and n.module and not n.level else []
+        return next((x.split('.')[0] for x in names if x.split('.')[0] in siblings), None)
+    anywhere = [n for n in ast.walk(tree) if isinstance(n, (ast.Import, ast.ImportFrom)) and sibling(n)]
+    if not anywhere:
+        return []
+    first = min((n.lineno for n in top if isinstance(n, (ast.Import, ast.ImportFrom)) and sibling(n)), default=None)
+    made = {t.id for n in top if isinstance(n, ast.Assign) and _names_file(n.value, set()) for t in n.targets if isinstance(t, ast.Name)}
+    puts = [n.lineno for n in top if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute) and n.func.attr == 'insert'
+            and isinstance(n.func.value, ast.Attribute) and n.func.value.attr == 'path' and isinstance(n.func.value.value, ast.Name)
+            and n.func.value.value.id == 'sys' and len(n.args) == 2 and isinstance(n.args[0], ast.Constant) and n.args[0].value == 0
+            and _names_file(n.args[1], made)]
+    if puts and (first is None or min(puts) < first):
+        return []
+    n = min(anywhere, key=lambda x: x.lineno) if first is None else next(x for x in top if getattr(x, 'lineno', 0) == first and isinstance(x, (ast.Import, ast.ImportFrom)))
+    why = 'its line comes after' if puts else 'it never puts its own folder on sys.path before'
+    return [Problem(OWN_FOLDER, _rel(root, path), n.lineno,
+                    f'it imports {sibling(n)}, a file beside it, but {why} that import: production runs it with python -I, where its own folder is not on sys.path',
+                    f'put this one line at the top of {entry}, before its first import of its own files: {OWN_FOLDER_LINE}')]
+
+
 def _air_gap(root, trees, f):
     agent = root / shape.AGENT
     local = _local(agent)
@@ -398,6 +452,9 @@ def _card(root, card, f):
     if 'developer_site' in facts and not (isinstance(facts['developer_site'], str) and re.fullmatch(shape.SITE, facts['developer_site'])):
         f.add(c, where, f'card "developer_site" is {json.dumps(facts["developer_site"])}, not a plain https address',
               f'set card "developer_site" to {shape.CARD_OPTIONAL["developer_site"]}')
+
+    if 'environment' in facts and not (isinstance(facts['environment'], str) and facts['environment'].strip().upper() in (shape.ENVIRONMENT, shape.INTERNAL_ONLY)):
+        f.add(c, where, f'card "environment" is {json.dumps(facts["environment"])}, not one the platform knows', f'set card "environment" to {shape.CARD_OPTIONAL["environment"]}')
 
     def text(k):
         return isinstance(facts.get(k), str)

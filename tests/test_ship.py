@@ -15,25 +15,35 @@ def git_repo(path):
     subprocess.run(['git', '-C', str(path), '-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-q', '-m', 'scratch'], check=True)
 
 
-LANE = {'internal': {'place': {'argv': ['python', '-B', 'runtime/app/web/app.py', 'place', '{key}', '{pkg}', '--slot', 'proof'], 'cwd': '/scratch/runtime'}},
+LANE = {'internal': {'locker': '{locker}',
+                     'place_in_place': {'argv': ['python', '-B', 'runtime/app/web/app.py', 'place', '{key}', '{folder}', '--kits', '{folder}', '--slot', 'proof'],
+                                        'cwd': '/scratch/runtime', 'env': {'LARRYD_INTERNAL': '1', 'LARRYD_LOCKER': '{locker}'}}},
         'frost': {'python': 'python', 'cwd': '/scratch/fs', 'env': {'WID_ENV': 'localhost.rnd'}}}
+KEY = 'MAGT_0123456789AB_CDEF'
+
+
+@pytest.fixture
+def locker(tmp_path):
+    return (tmp_path / 'locker').resolve()
 
 
 @pytest.fixture(autouse=True)
-def scratch_lane(tmp_path, monkeypatch):
+def scratch_lane(tmp_path, locker, monkeypatch):
+    locker.mkdir()
     conf = tmp_path / 'ship.json'
-    conf.write_text(json.dumps(LANE))
+    conf.write_text(json.dumps(LANE).replace('{locker}', str(locker)))
     monkeypatch.setattr(ship, 'CONFIG', conf)
 
 
 @pytest.fixture
 def repo(tmp_path):
-    (tmp_path / '_office').mkdir()
-    (tmp_path / '_office' / 'office.py').write_text('def main(canvas, run=None):\n    pass\n')
-    (tmp_path / '_office' / 'look.py').write_text('')
-    make(tmp_path, 'scratch-agent')
-    git_repo(tmp_path)
-    return tmp_path
+    work = tmp_path / 'work'   # the working folder (scrum_master_3/<name>), apart from the locker
+    (work / '_office').mkdir(parents=True)
+    (work / '_office' / 'office.py').write_text('def main(canvas, run=None):\n    pass\n')
+    (work / '_office' / 'look.py').write_text('')
+    make(work, 'scratch-agent')
+    git_repo(work)
+    return work
 
 
 class Outside:
@@ -65,25 +75,99 @@ def test_the_plan_places_nothing(repo):
     assert code == 0
     assert [s.split()[0] for s in said[1:]] == ['1', '2', '3', '4', '5', '6']
     assert 'INTERNAL' in said[0] and 'MAGT_0123456789AB_CDEF' in said[4]
+    assert 'in place: into' in said[5] and 'scratch-agent/agent' in said[5]
     assert all(c[0] == 'git' for c in out.calls)   # the plan reaches nothing
 
 
-def test_go_places_in_the_internal_runtime_and_approves_the_exact_hashes(repo, tmp_path):
+def test_go_places_in_the_locker_in_place_and_approves_the_exact_hashes(repo, locker, tmp_path):
     out = Outside()
     code, said = lines(lambda say: ship.ship(repo / 'scratch-agent', go=True, run=out, say=say, scratch=tmp_path))
     assert code == 0, said
+    home = locker / 'scratch-agent' / 'agent'
     place = next(c for c in out.calls if 'place' in c and 'runtime/app/web/app.py' in c)
-    assert place[3:5] == ['place', 'MAGT_0123456789AB_CDEF'] and place[-2:] == ['--slot', 'proof'] and place[5].endswith('MAGT_0123456789AB_CDEF.larryd')
+    assert place[3:] == ['place', KEY, str(home), '--kits', str(home), '--slot', 'proof']   # the folder itself: no .larryd file
+    assert sorted(p.name for p in home.iterdir()) == ['agent.json', 'agent.py', 'look.py', 'office.py']   # self-contained: its kits inside
+    assert (home / 'office.py').read_text() == (repo / '_office' / 'office.py').read_text()
+    assert not list(tmp_path.rglob('*.larryd'))
     approve = next(c for c in out.calls if ship.APPROVE in c)
-    assert approve[-4:-1] == ['MAGT_0123456789AB_CDEF', 'c' * 64, 'm' * 64]
-    assert 'FROST review 7 approved' in said[-1]
+    assert approve[-4:-1] == [KEY, 'c' * 64, 'm' * 64]
+    assert f'held in {home}' in said[-2] and 'FROST review 7 approved' in said[-1]
 
 
-def test_the_pack_is_what_place_sh_packed(repo):
-    import io
-    import zipfile
-    data, _ = ship.pack(repo / 'scratch-agent')
-    assert sorted(zipfile.ZipFile(io.BytesIO(data)).namelist()) == ['agent.json', 'agent.py', 'look.py', 'office.py']
+def test_the_runtime_is_told_the_locker(repo, tmp_path):
+    seen = []
+
+    class Watch(Outside):
+        def __call__(self, argv, cwd=None, env=None, timeout=900):
+            if 'runtime/app/web/app.py' in argv:
+                seen.append(env)
+            return super().__call__(argv, cwd, env, timeout)
+    assert ship.ship(repo / 'scratch-agent', go=True, run=Watch(), say=lambda s: None, scratch=tmp_path) == 0
+    assert seen[0]['LARRYD_INTERNAL'] == '1' and seen[0]['LARRYD_LOCKER'] == str((tmp_path / 'locker').resolve())
+
+
+def test_the_pack_is_the_agent_whole_with_its_kits(repo):
+    files, _ = ship.pack(repo / 'scratch-agent', 'internal')
+    assert sorted(files) == ['agent.json', 'agent.py', 'look.py', 'office.py']
+    (repo / 'scratch-agent' / 'agent' / 'look.py').write_text('# its own look, inside agent/\n')   # a kit inside agent/ wins over _office's
+    (repo / 'scratch-agent' / 'agent' / 'helper.py').write_text('x = 1\n')
+    files, _ = ship.pack(repo / 'scratch-agent', 'internal')
+    assert files['look.py'] == b'# its own look, inside agent/\n' and 'helper.py' in files
+
+
+def test_shipped_again_the_locker_holds_exactly_the_new_pack(repo, locker, tmp_path):
+    assert ship.ship(repo / 'scratch-agent', go=True, run=Outside(), say=lambda s: None, scratch=tmp_path) == 0
+    home = locker / 'scratch-agent' / 'agent'
+    (home / 'stale.py').write_text('# left from an older version\n')
+    assert ship.ship(repo / 'scratch-agent', go=True, run=Outside(), say=lambda s: None, scratch=tmp_path) == 0
+    assert not (home / 'stale.py').exists() and (home / 'agent.json').is_file()
+    assert sorted(p.name for p in home.parent.iterdir()) == ['agent']   # no staging or old copy left beside it
+
+
+def test_an_agent_worked_on_in_the_locker_only_gains_its_kits(tmp_path, locker):
+    (locker / '_office').mkdir()
+    (locker / '_office' / 'office.py').write_text('def main(canvas, run=None):\n    pass\n')
+    (locker / '_office' / 'look.py').write_text('')
+    root = make(locker, 'in-locker')
+    git_repo(locker)
+    out = Outside()
+    assert ship.ship(root, go=True, run=out, say=lambda s: None, scratch=tmp_path) == 0
+    assert sorted(p.name for p in (root / 'agent').iterdir()) == ['agent.json', 'agent.py', 'look.py', 'office.py']
+
+
+def test_the_runtime_held_it_but_wid_did_not_take_it(repo, tmp_path):
+    out = Outside(place={'code_sha256': 'c' * 64, 'manifest_sha256': 'm' * 64, 'refused': 'held in the locker, but wid did not take it: down'})
+    code, said = lines(lambda say: ship.ship(repo / 'scratch-agent', go=True, run=out, say=say, scratch=tmp_path))
+    assert code == 1 and 'wid did not take it' in said[-1]
+    assert not any(ship.APPROVE in c for c in out.calls)
+
+
+def test_a_lane_with_no_internal_locker_says_so(repo, tmp_path, monkeypatch):
+    conf = tmp_path / 'old_lane.json'
+    conf.write_text(json.dumps({'internal': {'place': {'argv': ['x', '{pkg}']}}, 'frost': LANE['frost']}))
+    monkeypatch.setattr(ship, 'CONFIG', conf)
+    out = Outside()
+    code, said = lines(lambda say: ship.ship(repo / 'scratch-agent', go=True, run=out, say=say, scratch=tmp_path))
+    assert code == 1 and 'names no internal locker' in said[-1]
+    assert all(c[0] == 'git' for c in out.calls)
+
+
+@pytest.mark.parametrize('environment, where', [('POSITIVE FEEDBACK (INTERNAL-ONLY)', 'internal'), ('POSITIVE FEEDBACK', 'external'), (None, 'internal')])
+def test_the_tag_picks_the_road(repo, environment, where):
+    from test_internal import CARD
+    root = make(repo, 'tagged', {'card': {**CARD, **({'environment': environment} if environment else {})}})
+    assert ship.target_of(root) == where   # an office agent with no tag: the old folder-shape rule, internal
+
+
+def test_a_clean_project_tagged_internal_is_internal_without_a_reach_json(tmp_path):
+    from test_internal import CARD
+    plain = tmp_path / 'plain'
+    plain.mkdir()
+    root = make(plain, 'clean', {'office': None, 'libs': None, 'facts': None, 'key': None, 'workflow': None, 'group': None, 'reads': ['nothing'], 'records': {}})
+    assert ship.target_of(root) == 'external'
+    root = make(plain, 'clean-tagged', {'office': None, 'libs': None, 'facts': None, 'key': None, 'workflow': None, 'group': None, 'reads': ['nothing'], 'records': {},
+                                        'card': {**CARD, 'environment': 'POSITIVE FEEDBACK (INTERNAL-ONLY)'}})
+    assert ship.target_of(root) == 'internal'
 
 
 def test_uncommitted_work_is_never_placed(repo):

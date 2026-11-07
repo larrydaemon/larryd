@@ -3,13 +3,15 @@ same internal and external"). The same steps for every agent; only the target di
 
   1 CLEAN    the agent's folder holds no uncommitted change (what is placed is what is committed)
   2 DOCTOR   larryd doctor (external) or larryd doctor --internal (internal): no problem
-  3 PACK     the files the runtime holds: an office agent's agent.json, agent.py, its repository's _office/office.py and the kits its
-             "libs" name (as place.sh packed them); any other agent: its agent/ whole (larryd's own bundle)
+  3 PACK     the files the runtime holds. Internal: its agent/ whole, with office.py and the kits its "libs" name (from its agent/,
+             else its repository's _office: self-contained, production's shape); external: its agent/ whole (larryd's own bundle)
   4 KEY      the runtime key it is placed under: an office agent's agent.json "key", an internal clean project's place.json "key",
              an external agent's key in the ship lane's keys file (made once)
-  5 PLACE    internal: the internal runtime's own place (~/virtual_sanity/runtime_internal, slot proof: held, then sent to wid,
-             which writes its card and FROST's review); external: its locker in the lockers bucket (hashed by the runtime's own
-             intake), then submitted to wid through the runtime's job
+  5 PLACE    internal: THE LOCKER IN PLACE (ONE SYSTEM, 2026-11-07): the pack written into <the lane's locker>/<name>/agent (the
+             one internal locker, ~/virtual_sanity/sanity_agents), then the internal runtime's in-place place of that folder
+             (LARRYD_INTERNAL=1 and LARRYD_LOCKER: held where it is, its hashes, then sent to wid, which writes its card and FROST's
+             review); no .larryd file. External: its locker in the lockers bucket (hashed by the runtime's own intake), then
+             submitted to wid through the runtime's job
   6 APPROVE  in localhost FROST, the ONE waiting review of exactly this key and these two hashes, whatever card key wid minted
              (a first placement's card key is never the runtime key)
   7 CARD     external: card.json (FROST's card key) beside the locker when it is missing; then ONE runtime restart per batch, said
@@ -19,13 +21,12 @@ same internal and external"). The same steps for every agent; only the target di
     larryd ship <the agent's folder> --go       do it (the ship lane: frost-cb)
 
 Every outside step is a command it prints before it runs it; a step that fails stops the rest and says why."""
-import io
 import json
 import os
 import pathlib
+import shutil
 import tempfile
 import subprocess
-import zipfile
 
 from . import bundle, doctor, internal, shape
 
@@ -33,10 +34,12 @@ HOME = pathlib.Path.home()
 CONFIG = pathlib.Path(os.environ.get('LARRYD_SHIP') or HOME / '.larryd' / 'ship.json')
 # THE SHIP LANE'S OWN COMMANDS live in that file, never in this tool (a developer's larryd names no runtime): each is an argv with
 # {key}, {pkg}, {root} filled in, and where it runs:
-#   {"internal": {"place": {"argv": [...], "cwd": "...", "env": {...}}},
+#   {"internal": {"locker": "<the one internal locker>", "place_in_place": {"argv": [..., "place", "{key}", "{folder}", "--kits", "{folder}"],
+#                 "cwd": "...", "env": {"LARRYD_INTERNAL": "1", "LARRYD_LOCKER": "<the locker>", ...}}},
 #    "external": {"keys": "<the lane's keys file>", "place": {"argv": [...]}, "submit": {"argv": [...], "cwd": "..."},
 #                 "card": {"argv": [...]}, "card_there": {"argv": [...]}},
 #    "frost": {"python": "...", "cwd": "...", "env": {...}}}
+# ({folder} is <locker>/<name>/agent; --kits names the folder itself, so the runtime writes no other office.py over the agent's own.)
 # internal place answers one JSON line with code_sha256 and manifest_sha256; external place answers "<key> <locker JSON>".
 
 
@@ -68,6 +71,7 @@ def _run(argv, cwd=None, env=None, timeout=900):
 
 
 def target_of(root):
+    """THE TAG picks the road: its card's "environment" when it carries one, else the old folder-shape rule (internal.is_internal)"""
     return 'internal' if internal.is_internal(root) else 'external'
 
 
@@ -84,8 +88,8 @@ def clean(root, run=_run):
     except (OSError, ValueError):
         card = {}
     if isinstance(card, dict) and card.get('office'):
-        kits = ['office.py'] + [f'{lib}.py' for lib in card.get('libs') or []]
-        code, out, _ = run(['git', '-C', str(root.parent), 'status', '--short', '--', *[f'_office/{k}' for k in kits]])
+        kits = [k for k in ['office'] + list(card.get('libs') or []) if not (root / shape.AGENT / f'{k}.py').is_file()]   # a kit inside agent/ is its own folder's
+        code, out, _ = run(['git', '-C', str(root.parent), 'status', '--short', '--', *[f'_office/{k}.py' for k in kits]]) if kits else (0, '', '')
         if out.strip():
             raise Stop(f'a kit it is packed with holds uncommitted changes ({out.strip().splitlines()[0].strip()}): commit it first')
     code, out, _ = run(['git', '-C', str(root), 'log', '-1', '--format=%h', '--', '.'])
@@ -99,20 +103,74 @@ def check(root, where):
         raise Stop(f'the doctor{" --internal" if where == "internal" else ""} found {len(problems)} problem(s): ' + '; '.join(p.text() for p in problems[:3]))
 
 
-def pack(root):
-    """3 PACK -> (the .larryd bytes, the manifest)"""
+def files_of(root):
+    """3 PACK, internal -> {path inside agent/: bytes}: its agent/ whole (no __pycache__), and office.py and each kit its "libs" name
+    that is not inside it yet, from its repository's _office (internal.kit): what the locker holds, self-contained"""
     agent = root / shape.AGENT
     card = json.loads((agent / shape.MANIFEST).read_text())
-    if 'office' not in card:
-        return bundle.make(root)[0], card
-    kits = root.parent / '_office'
-    files = {'agent.json': agent / 'agent.json', card.get('entry', 'agent.py'): agent / card.get('entry', 'agent.py'), 'office.py': kits / 'office.py'}
-    files.update({f'{lib}.py': kits / f'{lib}.py' for lib in card.get('libs') or []})
-    out = io.BytesIO()
-    with zipfile.ZipFile(out, 'w') as z:
-        for name, path in files.items():
-            z.writestr(name, path.read_bytes())
-    return out.getvalue(), card
+    files = {}
+    for p in sorted(agent.rglob('*')):
+        rel = p.relative_to(agent)
+        if '__pycache__' in rel.parts or p.is_dir():
+            continue
+        if p.is_symlink() or not p.is_file():
+            raise Stop(f'agent/{rel.as_posix()} is a link or not a plain file: an agent is only its own files')
+        files[rel.as_posix()] = p.read_bytes()
+    if card.get('office'):
+        for name in ['office'] + list(card.get('libs') or []):
+            if f'{name}.py' not in files:
+                path = internal.kit(root, name)
+                if path is None:
+                    raise Stop(f'the kit {name}.py is neither in its agent/ nor in its repository\'s _office')
+                files[f'{name}.py'] = path.read_bytes()
+    return files
+
+
+def pack(root, where='external'):
+    """3 PACK -> (the bytes: the .larryd file (external), or the files the locker holds (internal: {path: bytes}), the manifest)"""
+    agent = root / shape.AGENT
+    card = json.loads((agent / shape.MANIFEST).read_text())
+    if where == 'internal':
+        return files_of(root), card
+    return bundle.make(root)[0], card
+
+
+def locker_of(root):
+    """the internal agent's home in the one internal locker: <the lane's locker>/<name>/agent"""
+    conf = lane().get('internal') or {}
+    if not conf.get('locker') or not isinstance(conf.get('place_in_place'), dict):
+        raise Stop(f'the ship lane names no internal locker: {CONFIG} needs "internal": {{"locker": ..., "place_in_place": ...}}')
+    return pathlib.Path(conf['locker']).expanduser().resolve() / root.name / shape.AGENT
+
+
+def into_locker(root, files):
+    """5 PLACE, internal, its first half: the pack written into <locker>/<name>/agent, exactly (a file the pack lacks is gone). An agent
+    worked on in the locker itself (sanity_agents/<name>) only gains the kits it lacked. -> that folder"""
+    dest = locker_of(root)
+    if dest.parent.is_symlink() or dest.is_symlink():
+        raise Stop(f'{dest} is a link: the locker holds only plain folders')
+    try:
+        if dest.resolve() != (root / shape.AGENT).resolve():
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            staged = pathlib.Path(tempfile.mkdtemp(prefix='.larryd_ship_', dir=dest.parent))
+            for rel, data in files.items():
+                (staged / rel).parent.mkdir(parents=True, exist_ok=True)
+                (staged / rel).write_bytes(data)
+            old = dest.parent / f'.{dest.name}.old'
+            if old.exists():
+                shutil.rmtree(old)
+            if dest.exists():
+                dest.rename(old)
+            staged.rename(dest)
+            if old.exists():
+                shutil.rmtree(old)
+        else:
+            for rel, data in files.items():
+                if not (dest / rel).is_file():
+                    (dest / rel).write_bytes(data)
+    except OSError as e:
+        raise Stop(f'the locker could not be written ({type(e).__name__}: is it locked? the owner unlocks it first): {dest}')
+    return dest
 
 
 def key_of(root, card, where):
@@ -135,20 +193,26 @@ def key_of(root, card, where):
 
 def place(root, key, data, where, run=_run, scratch=None):
     """5 PLACE -> {key, code_sha256, manifest_sha256}"""
-    pkg = pathlib.Path(scratch or tempfile.mkdtemp(prefix='larryd_ship_')) / f'{key or root.name}.larryd'
-    pkg.write_bytes(data)
     conf = lane().get(where) or {}
-    argv, cwd, env = _cmd(conf.get('place'), key=key, pkg=pkg, root=root)
-    code, out, err = run(argv, cwd=cwd, env=env)
-    last = (out.strip().splitlines() or [''])[-1]
-    if where == 'internal':
+    if where == 'internal':   # THE LOCKER IN PLACE: into <locker>/<name>/agent, then the runtime holds that folder where it is
+        folder = into_locker(root, data)
+        argv, cwd, env = _cmd(conf.get('place_in_place'), key=key, pkg='', root=root, folder=folder, name=root.name)
+        code, out, err = run(argv, cwd=cwd, env=env)
+        last = (out.strip().splitlines() or [''])[-1]
         try:
             got = json.loads(last)
         except ValueError:
             raise Stop(f'the internal runtime did not place it: {(err or out).strip()[-300:]}')
-        if not (got.get('code_sha256') and got.get('manifest_sha256')):
+        if not (isinstance(got, dict) and got.get('code_sha256') and got.get('manifest_sha256')):
             raise Stop(f'the internal runtime held nothing: {last[-300:]}')
-        return {'key': key, 'code_sha256': got['code_sha256'], 'manifest_sha256': got['manifest_sha256']}
+        if got.get('refused'):
+            raise Stop(got['refused'])
+        return {'key': key, 'code_sha256': got['code_sha256'], 'manifest_sha256': got['manifest_sha256'], 'folder': str(folder)}
+    pkg = pathlib.Path(scratch or tempfile.mkdtemp(prefix='larryd_ship_')) / f'{key or root.name}.larryd'
+    pkg.write_bytes(data)
+    argv, cwd, env = _cmd(conf.get('place'), key=key, pkg=pkg, root=root)
+    code, out, err = run(argv, cwd=cwd, env=env)
+    last = (out.strip().splitlines() or [''])[-1]
     if code != 0:
         raise Stop(f'the locker was not written: {err.strip()[-300:]}')
     placed_key, _, locker = last.partition(' ')
@@ -224,19 +288,19 @@ def ship(path, go=False, note='', run=_run, say=print, scratch=None):
         say(f'1 CLEAN    committed at {commit}')
         check(root, where)
         say(f'2 DOCTOR   larryd doctor{" --internal" if where == "internal" else ""}: every check passes')
-        data, manifest = pack(root)
-        say(f'3 PACK     {len(data)} bytes')
+        data, manifest = pack(root, where)
+        say(f'3 PACK     {len(data)} files, {sum(len(b) for b in data.values())} bytes' if where == 'internal' else f'3 PACK     {len(data)} bytes')
         key = key_of(root, manifest, where)
         say(f'4 KEY      {key or "none yet: the ship lane mints it at its first placement"}')
         if not go:
-            say(f'5 PLACE    would place it in the {where} runtime' + (' (the lockers bucket, then the submit through the runtime job)' if where == 'external' else ''))
+            say(f'5 PLACE    would place it in the {where} runtime' + (' (the lockers bucket, then the submit through the runtime job)' if where == 'external' else f' in place: into {locker_of(root)}, then held there'))
             say('6 APPROVE  would approve the one waiting review of exactly this key and its hashes in localhost FROST')
             if where == 'external':
                 say('7 CARD     would write card.json when missing; then ONE runtime restart for the batch (the ship lane)')
             return 0
         hashes = place(root, key, data, where, run, scratch)
         key = hashes['key']
-        say(f"5 PLACE    {key} held: code {hashes['code_sha256'][:12]}, manifest {hashes['manifest_sha256'][:12]}")
+        say(f"5 PLACE    {key} held{' in ' + hashes['folder'] if hashes.get('folder') else ''}: code {hashes['code_sha256'][:12]}, manifest {hashes['manifest_sha256'][:12]}")
         got = approve(key, hashes, note or f'approved by larryd ship (CORE_CLEANUP_IV 55): {root.name} at {commit}', run)
         say(f"6 APPROVE  FROST review {got['review']} {got['state']}, card {got['card_key']}")
         if where == 'external':

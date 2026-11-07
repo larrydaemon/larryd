@@ -1,5 +1,6 @@
 """The one command: `larryd`."""
 import argparse
+import dataclasses
 import datetime
 import json
 import pathlib
@@ -76,9 +77,19 @@ def main(argv=None):
         if args.fix:
             for change in doctor.fix(args.path):
                 print(f'FIXED {change}')
-        if args.internal:   # THE INTERNAL MODE (CORE_CLEANUP_IV 55): the same checks, the internal contract's three rules
-            problems = internal.check(args.path)
-            print(json.dumps(doctor.as_json(problems), indent=2) if args.json else internal.report(args.path, problems))
+        tagged = internal.tag(args.path)   # THE TAG picks the mode (ONE SYSTEM): its card's "environment", else --internal, else the folder's shape
+        if args.internal and tagged == 'external':
+            print('larryd doctor --internal: its card\'s "environment" says POSITIVE FEEDBACK (an EXTERNAL agent): run larryd doctor without --internal, or tag it '
+                  'POSITIVE FEEDBACK (INTERNAL-ONLY)', file=sys.stderr)
+            return 2
+        if tagged == 'internal' or (tagged is None and (args.internal or internal.is_internal(args.path))):   # THE INTERNAL MODE (CORE_CLEANUP_IV 55)
+            problems, warns = internal.check(args.path), internal.warnings(args.path)
+            if args.json:
+                print(json.dumps({**doctor.as_json(problems), 'warnings': [dataclasses.asdict(w) for w in warns]}, indent=2))
+            else:
+                print(internal.report(args.path, problems))
+                for w in warns:
+                    print('WARN ' + w.text()[len('FAIL '):] + ' (said, not failed, for now)')
             return 1 if problems else 0
         problems = doctor.check(args.path)
         print(json.dumps(doctor.as_json(problems), indent=2) if args.json else doctor.report(args.path, problems))
