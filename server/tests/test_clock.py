@@ -250,6 +250,9 @@ class WidDoors(unittest.TestCase):
                 return 200, {'ok': True, 'text': 'RUN 2 QUEUED'}
         clock.WidJobs(Client()).press({'account': 'A', 'scope': 'S', 'member': 'M', 'job_key': 'J', 'data_job_time': '06:50', 'agent_key': 'K'})
         self.assertEqual(sent, [('wid', '/jobs/press', {'account': 'A', 'scope': 'S', 'member': 'M', 'job_key': 'J'})])
+        sent.clear()
+        clock.WidJobs(Client(), internal=True).press({'account': 'A', 'scope': 'S', 'member': 'M', 'job_key': 'J'})
+        self.assertEqual(sent, [('wid', '/jobs/press', {'account': 'A', 'scope': 'S', 'member': 'M', 'job_key': 'J', 'runtime': 'internal'})])
 
 
 SECRET = 'scratch-secret-for-the-clock-test'

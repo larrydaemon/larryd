@@ -163,7 +163,10 @@ class WidJobs:
         return [j for j in body.get('jobs') or [] if isinstance(j, dict)]
 
     def press(self, job):
-        return self.client.post('wid', '/jobs/press', {k: str(job.get(k) or '') for k in ('account', 'scope', 'member', 'job_key')})
+        body = {k: str(job.get(k) or '') for k in ('account', 'scope', 'member', 'job_key')}
+        if self.internal:   # wid has one callback key for both runtimes: the internal one says so, as on /jobs/queued (else 403 "the other runtime's job")
+            body['runtime'] = 'internal'
+        return self.client.post('wid', '/jobs/press', body)
 
 
 class Memory:
