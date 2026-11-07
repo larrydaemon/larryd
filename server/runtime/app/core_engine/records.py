@@ -10,11 +10,15 @@ import sqlite3
 
 KEEP_DAYS = 396   # 13 months: past a year of billing disputes
 KEY = re.compile(r'^[A-Z]{4}_[0-9A-F]{12}_[0-9A-F]{4}$')   # a platform key, as the platform mints it
-LANES = ('call', 'hire', 'job', 'selftest', 'make')   # make: one errand of the outside hand, written BEFORE anything is sent (the daily limit counts these)
+LANES = ('call', 'hire', 'job', 'selftest', 'make', 'made')   # make: one errand of the outside hand, written BEFORE anything is sent (the daily limit counts these)
 STATES = ('DONE', 'FAILED', 'REFUSED', 'ON', 'OFF', 'INTERRUPTED', 'CALLBACK_FAILED', 'SENT', 'STARTED')   # STARTED: a RUN the runtime took and has not ended yet (an agent's page shows it in flight)
 IN_FLIGHT_SECONDS = 20 * 60   # a RUN that started and never ended is no longer said to be in flight after this (the longest errand is fifteen minutes)   # CALLBACK_FAILED: the run ended, its result never reached the platform
 CALLERS = ('', 'slot-a', 'slot-b', 'proof', 'selftest')
 DOMAIN = re.compile(r'^[a-z0-9.-]{1,253}$')
+
+
+PROVIDER_REF = re.compile(r'^[A-Za-z0-9]{1,64}$')   # a provider's own id for one make (Replicate's prediction id): traced on its side, never a key
+ERROR_CLASSES = ('', 'input', 'fetch', 'refused', 'credit', 'timed_out', 'content', 'model', 'unreachable', 'other')   # OUR OWN WORDS for why a make failed (frost-05 2026-11-07): one of these, never the provider's text
 
 
 def error_code(reason):
@@ -26,11 +30,16 @@ def error_code(reason):
     return '_'.join(words)[:64].upper()
 
 
-def _checked(lane, agent_key, state, job_key, run, charged, caller, account, member, egress_refused):
+def _checked(lane, agent_key, state, job_key, run, charged, caller, account, member, egress_refused, provider_ref='', error_class=''):
     """THE ALLOW LIST (the security review, 2026-10-06): a run record holds the design's fields only, each in its own
-    form; anything else is refused before it is written."""
+    form; anything else is refused before it is written. provider_ref: the provider's id of one make (its own word, checked to
+    plain letters and digits); error_class: one of ERROR_CLASSES (frost-05 2026-11-07: a make can always be traced on the provider's side)."""
     if lane not in LANES or state not in STATES or caller not in CALLERS:
         raise ValueError('not a run record: lane, state or caller')
+    if provider_ref and not PROVIDER_REF.fullmatch(str(provider_ref)):
+        raise ValueError('not a run record: a provider reference is letters and digits')
+    if error_class not in ERROR_CLASSES:
+        raise ValueError('not a run record: an error class is one of the runtime\'s own words')
     for key in (agent_key, job_key, account, member):
         if key and not KEY.fullmatch(str(key)):
             raise ValueError('not a run record: a key is not a platform key')
@@ -52,15 +61,17 @@ class SqliteRecords:
         self.db = db
 
     def record(self, lane, agent_key, state, reason='', job_key='', run=0, charged=0, caller='', account='', member='',
-               egress_refused=(), **extra):
+               egress_refused=(), provider_ref='', error_class='', **extra):
         if extra:
             raise ValueError(f'not a run record field: {sorted(extra)}')
+        if (provider_ref and not PROVIDER_REF.fullmatch(str(provider_ref))) or error_class not in ERROR_CLASSES or (lane == 'made' and lane not in LANES):
+            raise ValueError('not a run record: a provider reference is letters and digits, an error class one of the runtime\'s own words')
         at = _now().isoformat(timespec='seconds')
         con = sqlite3.connect(self.db)
         try:
-            con.execute('INSERT INTO runtime_runs (lane, agent_key, job_key, run, state, reason, started_at, finished_at, charged, account, member) '
-                        'VALUES (?,?,?,?,?,?,?,?,?,?,?)',
-                        (lane, agent_key, job_key, int(run), state, error_code(reason), at, at, int(charged), account or '', member or ''))
+            con.execute('INSERT INTO runtime_runs (lane, agent_key, job_key, run, state, reason, started_at, finished_at, charged, account, member, provider_ref, error_class) '
+                        'VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',
+                        (lane, agent_key, job_key, int(run), state, error_code(reason), at, at, int(charged), account or '', member or '', provider_ref or '', error_class or ''))
             con.commit()
         finally:
             con.close()
@@ -145,19 +156,20 @@ class FirestoreRecords:
         self.col = col
 
     FIELDS = ('lane', 'agent_key', 'job_key', 'run', 'state', 'error_code', 'caller', 'account', 'member', 'started_at',
-              'finished_at', 'charged', 'egress_refused', 'expire_at')
+              'finished_at', 'charged', 'egress_refused', 'expire_at', 'provider_ref', 'error_class')
 
     def record(self, lane, agent_key, state, reason='', job_key='', run=0, charged=0, caller='', account='', member='',
-               egress_refused=(), **extra):
+               egress_refused=(), provider_ref='', error_class='', **extra):
         """The design's fields only, checked (an unknown field, or a value not in its form, is refused before anything is
         written); an error is kept as its code, never its text."""
         if extra:
             raise ValueError(f'not a run record field: {sorted(extra)}')
-        domains = _checked(lane, agent_key, state, job_key, int(run), int(charged), caller, account, member, egress_refused)
+        domains = _checked(lane, agent_key, state, job_key, int(run), int(charged), caller, account, member, egress_refused, provider_ref, error_class)
         at = _now()
         doc = {'lane': lane, 'agent_key': agent_key, 'job_key': job_key, 'run': int(run), 'state': state, 'error_code': error_code(reason),
                'caller': caller, 'account': account, 'member': member, 'started_at': at, 'finished_at': at, 'charged': int(charged),
-               'egress_refused': domains, 'expire_at': at + datetime.timedelta(days=KEEP_DAYS)}
+               'egress_refused': domains, 'expire_at': at + datetime.timedelta(days=KEEP_DAYS),
+               'provider_ref': provider_ref or '', 'error_class': error_class or ''}
         assert tuple(doc) == self.FIELDS
         self.col.document(secrets.token_hex(16)).create(doc)
 

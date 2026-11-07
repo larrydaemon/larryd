@@ -13,7 +13,7 @@ from _here import APP
 from core_engine import harness, locker, sandbox, store
 
 ALLOWED = {'runtime_locker': ['agent_key', 'name', 'folder', 'code_sha256', 'manifest_sha256', 'registered_at', 'card_key'],   # card_key: the platform's card for it, linked at approval (a key, no data)
-           'runtime_runs': ['id', 'lane', 'agent_key', 'job_key', 'run', 'state', 'reason', 'started_at', 'finished_at', 'charged', 'account', 'member']}   # the caller's keys (a run names its caller)
+           'runtime_runs': ['id', 'lane', 'agent_key', 'job_key', 'run', 'state', 'reason', 'started_at', 'finished_at', 'charged', 'account', 'member', 'provider_ref', 'error_class']}   # provider_ref + error_class: a make's provider id and our word for why it failed (frost-05 2026-11-07), never data   # the caller's keys (a run names its caller)
 PLANTED = 'Zanzibar-7731-private-pitch'   # a value only the input records carry
 
 

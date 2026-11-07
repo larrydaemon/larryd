@@ -852,6 +852,13 @@ class Harness:
             if sent > most:
                 raise _Stop('REFUSED', f'the day is full: {most} a day; nothing was sent')
             made, why = hand.make(ask, provider_key, picture, **more)
+            trace = getattr(hand, 'last', None) or {}   # THE MAKE'S TRACE (frost-05 2026-11-07): the provider's own id and, failed, our word for why
+            try:
+                self.records.record('made', agent_key, 'FAILED' if why else 'DONE', f'not made, {why}' if why else '', job_key, int(run), 0,
+                                    caller=self.caller, account=account, member=member,
+                                    provider_ref=str(trace.get('ref') or ''), error_class=(str(trace.get('class') or 'other') if why else ''))
+            except Exception:   # noqa: BLE001 - the trace is for finding a make at the provider; a record that cannot be written never stops the RUN
+                LOG.error('the make trace could not be written for %s', agent_key)
             if why:
                 raise _Stop('FAILED', f'not made, {why}')
             out.append({'name': made['name'], 'content_b64': base64.b64encode(made['data']).decode('ascii'), 'asked_as': ask['name'],

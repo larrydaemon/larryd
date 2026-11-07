@@ -335,6 +335,8 @@ class Hand:
         self.places = {**{p: {'api': v['api'], 'delivery': v['delivery']} for p, v in PROVIDERS.items()}, **(places or {})}
         self.sleep, self.clock = sleep, clock
         self.opener = opener or urllib.request.build_opener(_NoRedirect)
+        self.last = {'ref': '', 'class': ''}   # THE LAST MAKE'S TRACE (frost-05 2026-11-07): the provider's own id for it and, when it failed, one of
+        #                                        records.ERROR_CLASSES (our word, never the provider's text); the harness writes both to the run record
 
     def _call(self, method, url, key, body=None, most=1024 * 1024, seconds=60, raw=None):
         """-> (status, bytes). 0 when the provider could not be reached. The key rides in the one header and nowhere else.
@@ -362,6 +364,35 @@ class Hand:
         except (ValueError, UnicodeDecodeError):
             return {}
         return out if isinstance(out, dict) else {}
+
+    @staticmethod
+    def _status_class(status):
+        """One of our own words for a refused door (records.ERROR_CLASSES)."""
+        if status == 0:
+            return 'unreachable'
+        if status in (401, 403):
+            return 'refused'
+        if status == 402:
+            return 'credit'
+        if status in (400, 404, 409, 413, 415, 422):
+            return 'input'
+        return 'other'
+
+    @staticmethod
+    def error_class(text):
+        """ONE OF OUR OWN WORDS for why the provider failed a make, picked by fixed patterns from its answer's error field; the text itself
+        is never kept, said or carried (law: outside text). 'fetch' first: the provider could not read an address we gave it (a reference)."""
+        t = str(text or '').lower()
+        if not t:
+            return 'other'
+        for word, cls in ((('download', 'fetch', 'url', 'urlopen', 'retriev', 'could not open', 'cannot open', 'unable to open', 'connection', 'http error'), 'fetch'),
+                          (('nsfw', 'safety', 'sensitive', 'flagged', 'moderation'), 'content'),
+                          (('timed out', 'timeout', 'time limit'), 'timed_out'),
+                          (('out of memory', 'cuda', 'oom', 'gpu'), 'model'),
+                          (('invalid', 'validation', 'not a valid', 'must be', 'required', 'unsupported', 'expected', 'input', 'unexpected keyword', 'shape'), 'input')):
+            if any(w in t for w in word):
+                return cls
+        return 'other'
 
     def _refusal(self, status, name):
         if status == 0:
@@ -392,6 +423,7 @@ class Hand:
         body = (f'--{edge}\r\nContent-Disposition: form-data; name="content"; filename="reference.{kind}"\r\nContent-Type: {mime}\r\n\r\n').encode('ascii') + picture + f'\r\n--{edge}--\r\n'.encode('ascii')
         status, raw = self._call('POST', f"{place['api']}/files", key, raw=(body, f'multipart/form-data; boundary={edge}'), seconds=120)
         if status not in (200, 201):
+            self.last['class'] = self._status_class(status)
             return '', self._refusal(status, name)
         urls = self._json(raw).get('urls')
         address = urls.get('get') if isinstance(urls, dict) else None
@@ -408,10 +440,13 @@ class Hand:
         else:
             status, raw = self._call('POST', f"{place['api']}/models/{spec['path']}/predictions", key, {'input': goes_out(ask, reference)})
         if status not in (200, 201, 202):
+            self.last['class'] = self._status_class(status)
             return '', self._refusal(status, name)
         rid = self._json(raw).get('id')
         if not (isinstance(rid, str) and _ID.fullmatch(rid)):
+            self.last['class'] = 'other'
             return '', f'{name} gave no request id'
+        self.last['ref'] = rid
         return rid, ''
 
     def poll(self, ask, rid, key):
@@ -420,6 +455,7 @@ class Hand:
         place, name = self.places[spec['provider']], PROVIDERS[spec['provider']]['name']
         status, raw = self._call('GET', f"{place['api']}/predictions/{rid}", key)
         if status in (401, 403, 402):
+            self.last['class'] = self._status_class(status)
             return 'failed', self._refusal(status, name)
         if status != 200:
             return 'waiting', ''   # a blip: asked again until the model's time is up
@@ -432,8 +468,11 @@ class Hand:
             elif isinstance(out, list):   # files: the one the list names, else the first
                 at = spec.get('output_index', 0)
                 out = out[at] if len(out) > at else None
+            if not (isinstance(out, str) and out):
+                self.last['class'] = 'other'
             return ('done', out) if isinstance(out, str) and out else ('failed', f'{name} made nothing')
         if state in ('failed', 'canceled'):
+            self.last['class'] = self.error_class(body.get('error'))   # our word for it; the text is never kept
             return 'failed', f'{name} failed'   # its own reason is outside text: never carried
         return 'waiting', ''
 
@@ -497,6 +536,7 @@ class Hand:
         ask whose references were not all read makes nothing."""
         spec = MODELS[ask['model']]
         name = PROVIDERS[spec['provider']]['name']
+        self.last = {'ref': '', 'class': ''}
         pictures = [picture] if isinstance(picture, (bytes, bytearray)) else list(picture or ())
         pictures = [p for p in pictures if p]
         wanted = ask.get('reference') or []
@@ -508,6 +548,7 @@ class Hand:
             for slot, one in enumerate(pictures):
                 address, why = self.lend(ask, one, key, slot)
                 if why:
+                    self.last['class'] = self.last['class'] or 'input'
                     return None, why
                 reference.append(address)
         rid, why = self.submit(ask, key, reference)
@@ -522,6 +563,7 @@ class Hand:
                 break
             if self.clock() >= until:
                 self.cancel(ask, rid, key)   # the provider stops it: never finished and billed after we gave up
+                self.last['class'] = 'timed_out'
                 return None, f'{name} timed out'
             self.sleep(EVERY_SECONDS)
         data, kind, why = self.words(ask, said) if spec['kind'] == 'text' else self.fetch(ask, said)

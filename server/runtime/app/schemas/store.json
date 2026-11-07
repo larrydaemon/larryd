@@ -85,6 +85,14 @@
         [
           "member",
           "TEXT NOT NULL DEFAULT ''"
+        ],
+        [
+          "provider_ref",
+          "TEXT NOT NULL DEFAULT ''"
+        ],
+        [
+          "error_class",
+          "TEXT NOT NULL DEFAULT ''"
         ]
       ]
     }
