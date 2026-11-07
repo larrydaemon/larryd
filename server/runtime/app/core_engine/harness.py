@@ -291,6 +291,26 @@ class Harness:
                         'unhires': rec.count(key, 'hire', 'OFF'), 'charged': rec.charged(key)})
         return {'agents': out}
 
+    def remove(self, key):
+        """THE `remove <key>` COMMAND (frost-05's approval 2026-11-06: revoked leftovers sat in the locker, inert): the agent held under
+        exactly this key is taken out (its folder and its row) ONLY when the platform's word on its exact hashes is revoked (FROST's
+        latest review, through wid's review_state door); anything else is refused in words and nothing is touched. Logged either way.
+        -> {agent_key, removed: its folder} or {agent_key, refused: why}."""
+        row = locker.held(self.db, key)
+        if row is None or row['agent_key'] != key:
+            out = {'agent_key': key, 'refused': 'not in the locker under this key'}
+        else:
+            review, _note = self._review(key, row)
+            if review != 'revoked':
+                out = {'agent_key': key, 'refused': f'its review is {review}, not revoked: kept'}
+            else:
+                try:
+                    out = {'agent_key': key, 'removed': locker.remove(self.db, self.agents, key)}
+                except ValueError as why:
+                    out = {'agent_key': key, 'refused': str(why)}
+        LOG.warning('remove %s: %s', key, out.get('removed') and f"removed {out['removed']}" or f"refused: {out['refused']}")
+        return out
+
     def _review(self, key, row):
         """The platform's word on these exact hashes: -> (review, note). waiting · approved · rejected · revoked · not submitted,
         from wid's review_state door (approved only when FROST's review approved exactly these hashes); a silent platform is

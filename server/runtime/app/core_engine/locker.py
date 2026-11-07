@@ -5,6 +5,7 @@ import datetime
 import hashlib
 import json
 import pathlib
+import shutil
 import sqlite3
 import sys
 
@@ -100,6 +101,28 @@ def verify(db, root, agent_key):
     if _code_sha256(path) != row['code_sha256']:
         return False, 'tampered: the code changed'
     return True, ''
+
+
+def remove(db, root, agent_key):
+    """A PLACED AGENT TAKEN OUT (frost-05's approval 2026-11-06, the revoked leftovers): its folder deleted and its row with it, by the
+    runtime's own key exactly (never a card key's alias). The caller decides it may go (Harness.remove: FROST's word on its exact hashes
+    is revoked). -> the folder removed; ValueError when it is not held or its folder is not inside the locker."""
+    con = sqlite3.connect(db)
+    con.row_factory = sqlite3.Row
+    try:
+        row = con.execute('SELECT * FROM runtime_locker WHERE agent_key = ?', (agent_key,)).fetchone()
+        if row is None:
+            raise ValueError('not in the locker')
+        path = _inside(root, row['folder'])
+        if (pathlib.Path(root) / row['folder']).is_symlink():
+            raise ValueError('the folder is a link')   # never followed out of the locker
+        if path.is_dir():
+            shutil.rmtree(path)
+        con.execute('DELETE FROM runtime_locker WHERE agent_key = ?', (agent_key,))
+        con.commit()
+        return row['folder']
+    finally:
+        con.close()
 
 
 def main(argv):

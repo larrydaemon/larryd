@@ -530,6 +530,7 @@ def main(argv):
     python runtime/app/web/app.py submit <key> [--slot <slot>]        an agent the runtime holds, to the platform's wid (its key, its exact hashes, its manifest)
     python runtime/app/web/app.py place <card key> <file.larryd> [marketplace] [--slot <slot>]   an agent the owner approved: into the locker (and, on Cloud Run, the lockers bucket), then to the platform's wid
     python runtime/app/web/app.py review <card key>... [--slot <slot>]   what the runtime records for those agents, with the platform's word on the hashes it holds
+    python runtime/app/web/app.py remove <key> [--slot <slot>]        a placed agent taken out of the locker, only when the platform's word on its exact hashes is revoked
       (on Cloud Run --slot, or LARRYD_SLOT, names the slot whose wid is asked: slot-a, slot-b or proof)
     python runtime/app/web/app.py job <slot> <account> <scope> <member> <job key> <run>   a Cloud Run job execution: one RUN, its result to that slot
     python runtime/app/web/app.py callbacks <slot> <n>                Cloud Run: the warm-up, the first call back to that slot and n more (statuses and times)
@@ -554,6 +555,14 @@ def main(argv):
         return
     if argv[1:2] == ['review'] and len(argv) >= 3:
         print(json.dumps(harness_for_slot(app, slot).review_state(argv[2:])))
+        return
+    if argv[1:2] == ['remove'] and len(argv) == 3:
+        if app.config.get('lockers') is not None:   # Cloud Run: the lockers bucket keeps the package too; this command never leaves it half done
+            raise SystemExit('refused: on Cloud Run the lockers bucket keeps the agent too; remove it where its locker is a folder')
+        got = harness_for_slot(app, slot).remove(argv[2])
+        if 'refused' in got:
+            raise SystemExit(f"refused: {got['refused']}")
+        print(json.dumps(got))
         return
     if argv[1:2] == ['submit'] and len(argv) == 3:
         try:
