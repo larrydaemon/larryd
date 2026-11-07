@@ -104,6 +104,12 @@ def _outside_gives(manifest, answer):
     extra = sorted(set(answer) - (set(gives) - RUNTIME_OWN))
     return f'the answer holds {extra}, which "gives" does not name' if extra else ''
 
+
+def _first_line(text):
+    """An internal agent's delivery, its first line alone, plain and short (its job's TODAY line)."""
+    return ((text if isinstance(text, str) else '').strip().splitlines() or [''])[0][:280]
+
+
 FILE_SLOTS = {'image': 'data_image_key', 'video': 'data_video_key', 'audio': 'data_audio_key'}   # THE STORED FILES' SLOTS (the owner 2026-11-05): the runtime's own word, never an agent's
 
 
@@ -386,6 +392,24 @@ class Harness:
         """THE PAYMENTS (CORE_CLEANUP_IV row 142, pf Alerts): given['payments'] = [{kind, amount_cents, landed_at}] on a CALL."""
         return self._hand_of('payments', member_records.payments_declared, member_records.payments, manifest, given, account, scope, member, agent_key)
 
+    def _internal_hand_of(self, word, declared, read, manifest, given, account, scope, member, agent_key):
+        """A HAND FOR AN INTERNAL AGENT ONLY (the reviews waiting, the review history): as _hand_of, but ONLY when this runtime is
+        LARRYD RUNTIME INTERNAL (INTERNAL); elsewhere it never asks, hands nothing and says nothing, exactly as the external runtime
+        always did (fail closed); wid refuses any card that is not internal and SYSTEM's own (two guards)."""
+        if not self.INTERNAL:
+            return ''
+        return self._hand_of(word, declared, read, manifest, given, account, scope, member, agent_key)
+
+    def _reviews(self, manifest, given, account, scope, member, agent_key):
+        """THE REVIEWS WAITING (CORE_CLEANUP_IV 23, pf Review Lane): "records": {"*": [... "reviews"]} hands given['reviews'] on a CALL,
+        the agents waiting for FROST's review as wid's reviews door hands them; LARRYD RUNTIME INTERNAL only."""
+        return self._internal_hand_of('reviews', member_records.reviews_declared, member_records.reviews, manifest, given, account, scope, member, agent_key)
+
+    def _history(self, manifest, given, account, scope, member, agent_key):
+        """THE REVIEW HISTORY (CORE_CLEANUP_IV row 78): "records": {"*": [... "history"]} hands given['history'] on a CALL, as wid's
+        history door hands it; LARRYD RUNTIME INTERNAL only."""
+        return self._internal_hand_of('history', member_records.history_declared, member_records.history, manifest, given, account, scope, member, agent_key)
+
     # ---------------------------------------------------------------- the CALL lane: an agent answers now
     def answer(self, account, scope, member, agent_key, beside=None, act=False, handed=None):
         """An agent's answer for the member's screen: only an agent that answers calls, passing the gate itself. handed: the
@@ -445,7 +469,9 @@ class Harness:
         not_read = '; '.join(r for r in (not_read, self._counts(manifest, given, account, scope, member, agent_key),
                                          self._roster(manifest, given, account, scope, member, agent_key),
                                          self._joins(manifest, given, account, scope, member, agent_key),
-                                         self._payments(manifest, given, account, scope, member, agent_key)) if r)   # THE COUNTS and THE ROSTER, when the approved manifest declares them
+                                         self._payments(manifest, given, account, scope, member, agent_key),
+                                         self._reviews(manifest, given, account, scope, member, agent_key),
+                                         self._history(manifest, given, account, scope, member, agent_key)) if r)   # THE COUNTS, THE ROSTER, the joins, the payments, and (LARRYD RUNTIME INTERNAL only) the reviews waiting and their history, when the approved manifest declares them
         if fabric.declared(manifest):   # THE DATA FABRIC'S ONE SNAPSHOT (the owner 2026-11-04: "no connections / just 1 updated snapshot per day"): one read through wid (FROST's store)
             try:
                 state, who = fabric.viewer(self._ask, account, scope, member)
@@ -573,9 +599,23 @@ class Harness:
             return None, 'run not asked: it carries a word the member did not send'
         return {'inputs': {declared[n]: v for n, v in asked.items() if v != ''}}, ''
 
+    INTERNAL = os.environ.get('LARRYD_INTERNAL') == '1'   # LARRYD RUNTIME INTERNAL: this runtime runs on this computer for internal agents (its start says so); the external one never
+    MOST_INTERNAL_SECONDS = 6 * 3600   # an internal agent's own limit at most (the night's Web build and Test each hold the smoke test, up to 4 hours, after the Judge)
+    INTERNAL_HANDS = ('service_key',)  # what a RUN can be handed on LARRYD RUNTIME INTERNAL only, beside HANDS
+
+    def internal_for(self, manifest):
+        """Does this agent run with this computer's reach? Only on LARRYD RUNTIME INTERNAL, and only when its approved manifest declares
+        "internal" (the owner 2026-11-03: "all virtual sanity agents will use 1 single internal larryd run")."""
+        return self.INTERNAL and isinstance(manifest.get('internal'), dict)
+
     def _run(self, folder, manifest, given, **kw):
-        """ONE RUN OF AN AGENT: in the sandbox, always (LARRYD is external only: the owner 2026-11-05)."""
+        """ONE RUN OF AN AGENT: in the sandbox (every external agent, and any agent on the external runtime); an internal agent on
+        LARRYD RUNTIME INTERNAL as this computer's own process, its time limit its manifest's own (internal.seconds, at most 6 hours)."""
         kw.setdefault('most_bytes', answer_most(manifest))   # an agent that declares the DA-M store may answer a file up to DA-M's 25 MB
+        if self.internal_for(manifest):
+            seconds = manifest['internal'].get('seconds')
+            seconds = min(int(seconds), self.MOST_INTERNAL_SECONDS) if isinstance(seconds, int) and seconds > 0 else self.seconds
+            return sandbox.run(self.agents / folder, manifest['entry'], given, seconds, on_start=self.on_start, internal=True, **kw)
         return sandbox.run(self.agents / folder, manifest['entry'], given, self.seconds, on_start=self.on_start, **kw)
 
     def hire(self, account, scope, member, agent_key, on):
@@ -677,8 +717,9 @@ class Harness:
         manifest = locker.manifest(self.agents, folder)
         plan = manifest.get('run') or {}
         hands = plan.get('hands') or []
-        if set(hands) - set(HANDS):
-            return self._end(account, scope, member, key, job_key, run, 'FAILED', f"LARRYD cannot hand {sorted(set(hands) - set(HANDS))} yet")
+        may_hand = set(HANDS) | (set(self.INTERNAL_HANDS) if self.INTERNAL else set())
+        if set(hands) - may_hand:
+            return self._end(account, scope, member, key, job_key, run, 'FAILED', f"LARRYD cannot hand {sorted(set(hands) - may_hand)} yet")
         given = {'do': plan.get('do', 'run')}
         try:
             given.update(self._skill_hands(manifest, account, scope, member, job_key, run))
@@ -687,6 +728,11 @@ class Harness:
         if 'job' in hands:
             try:
                 given['job'] = self._job_inputs(manifest, account, scope, job_key, run)
+            except _Stop as stop:
+                return self._end(account, scope, member, key, job_key, run, stop.state, stop.reason)
+        if 'service_key' in hands:   # THE MEMBER'S OWN KEY FOR THE SERVICE ITS CARD NAMES FIRST (CORE_CLEANUP_IV 50, 53, 100: a connector of PF_Loot's), for this RUN only; LARRYD RUNTIME INTERNAL only (the hands check above)
+            try:
+                given['service_key'] = self._service_key(card, key, job_key, run, account, scope, member)
             except _Stop as stop:
                 return self._end(account, scope, member, key, job_key, run, stop.state, stop.reason)
         if 'files' in hands:   # THE MEMBER'S FILES ON A RUN (CORE_CLEANUP_IV 21, the owner's blanket approval 2026-11-06): the files the member named in this RUN's own inputs, each read through wid's job file door for this member while the RUN is open (wid decides and asks DA-M as itself, as a reference picture is read), handed as bytes, kept nowhere
@@ -706,6 +752,13 @@ class Harness:
         if 'cards' in hands:
             given['cards'] = lanes.assemble(cards, hired, groups, verify, own=key)
         self._counts(manifest, given, account, scope, member, key)   # THE COUNTS, when the approved manifest declares them: handed on a RUN as on a CALL; not handed, the agent runs without
+        if self.internal_for(manifest) and 'records' not in hands:   # RECORDS ON A RUN, internal agents (the owner 2026-11-03): what its manifest declares, read as a CALL reads them, without the "records" hand
+            wanted = member_records.declared(manifest)
+            if wanted:
+                try:
+                    given['records'] = member_records.read(self._ask, wanted, account, scope, member, key, custom=False)
+                except Refused as no:
+                    return self._end(account, scope, member, key, job_key, run, 'FAILED', f'the records could not be read: {no.reason}')
         state, answer, reason = self._run(folder, manifest, given)
         if state != 'DONE':
             return self._end(account, scope, member, key, job_key, run, 'FAILED', reason)
@@ -716,6 +769,10 @@ class Harness:
         if 'job' in answer and slots is None:
             return self._end(account, scope, member, key, job_key, run, 'FAILED', 'the answer\'s job is not an object of slots; the delivery is withheld')
         slots = stored_slots(slots, [], {})   # an agent's own image, video or sound key is never kept: those slots are the runtime's
+        inside = self.internal_for(manifest)
+        said = _first_line(answer.get('delivery')) if inside else ''   # AN INTERNAL AGENT'S OWN WORDS ON ITS JOB (the owner 2026-11-03, Scrum Master 3: every value from the database): its delivery's first line is its log, so its job's TODAY says what it found
+        if inside and answer.get('light') == 'RED':   # AN INTERNAL CHECK THAT FOUND A RED (Lie Detector, New Files ...): the RUN ran, what it found is red; its light RED and its own words, never just an exit code
+            return self._end(account, scope, member, key, job_key, run, 'FAILED', f'RUN {run} RED · {said or "red"}', delivery=answer.get('delivery') if isinstance(answer.get('delivery'), str) else '', job=slots)
         try:
             files = self._files(manifest, answer)
             beside = self._companions(files, given.get('files'), given.get('records'))   # {a file's place: the record it is stored beside}: checked before anything is charged
@@ -775,7 +832,7 @@ class Harness:
         kept = {k: v for k, v in answer.items() if k not in ('files', 'makes', 'keeps', 'job')}   # job: its own slots, never the delivery
         delivery = answer.get('delivery') if isinstance(answer.get('delivery'), str) else json.dumps(kept, sort_keys=True)
         stored_note = f" · {len(files)} file{'' if len(files) == 1 else 's'} in DA-M" if files else ''
-        return self._end(account, scope, member, key, job_key, run, 'DONE', f'RUN {run} DONE · {paid}{stored_note}{kept_note}', charged=charged, delivery=delivery, job=slots)
+        return self._end(account, scope, member, key, job_key, run, 'DONE', f'RUN {run} DONE · {said}' if said else f'RUN {run} DONE · {paid}{stored_note}{kept_note}', charged=charged, delivery=delivery, job=slots)
 
     def started(self, agent_key, job_key, run, account, member):
         """A RUN the runtime took is written down as STARTED, once (at the door when the platform names the agent, else here as it
@@ -1045,6 +1102,29 @@ class Harness:
         except Exception:   # the platform away: the pass goes without them
             return {}
         return body if status == 200 and isinstance(body, dict) else {}
+
+    def _service_key(self, card, agent_key, job_key, run, account, scope, member):
+        """THE SERVICE KEY OF A CONNECTOR (CORE_CLEANUP_IV 50, 53; frost-07's shape, 100): the service is the first plain word of the
+        card's sends_to ("monday.com (...)" -> monday), asked of wid's /jobs/provider_key for this open RUN of this member; wid decides
+        (an internal agent's approved card naming it first, the member's own Allow) and reads THE MEMBER'S OWN key from FROST's vault.
+        -> {service, key}; {service, key: '', why: 'not allowed' | 'none stored'} when wid refuses for those reasons (the agent then
+        draws its step and sends nothing); any other answer stops the RUN before it starts. The key lives in this RUN's memory only:
+        never kept, never written, never in a reason or a log."""
+        found = re.match(r'\s*([A-Za-z0-9_-]{1,32})', str((card or {}).get('sends_to') or ''))
+        if not found:
+            raise _Stop('FAILED', 'the agent hands "service_key" but its card names no service first in sends_to')
+        service = found.group(1).lower()
+        status, body = self.client.post('wid', '/jobs/provider_key', {'account': account, 'scope': scope, 'member': member, 'job_key': job_key,
+                                                                     'run': str(run), 'provider': service})
+        held = body.get('key') if status == 200 and isinstance(body, dict) else None
+        if isinstance(held, str) and held:
+            return {'service': service, 'key': held}
+        said = str(body.get('refused') or '') if isinstance(body, dict) else ''
+        if status == 403 and said.startswith('not allowed'):
+            return {'service': service, 'key': '', 'why': 'not allowed'}
+        if status == 404:
+            return {'service': service, 'key': '', 'why': 'none stored'}
+        raise _Stop('FAILED', f"LARRYD could not read the service key: {said or f'wid answered {status}'}")
 
     def _run_files(self, manifest, job, account, scope, member, job_key, run):
         """THE MEMBER'S FILES ON A RUN: the manifest's "files" names which of its job inputs carry a DA-M key ([name, ...], each a

@@ -179,7 +179,7 @@ def _kill_group(pid):
         pass
 
 
-def run(folder, entry, given, seconds=20, on_start=None, most_bytes=MOST_BYTES):
+def run(folder, entry, given, seconds=20, on_start=None, most_bytes=MOST_BYTES, internal=False):
     """-> (state, answer, reason): ('DONE', {...}, '') or ('FAILED', None, why). The run is its own process group
     (start_new_session); on_start(pid) is told it before the run is fed, so the slot can kill the whole group if it
     ever has to; on the time limit the whole group is killed and waited for. most_bytes: the answer's limit (the
@@ -189,7 +189,9 @@ def run(folder, entry, given, seconds=20, on_start=None, most_bytes=MOST_BYTES):
     out_dir = os.path.realpath(tempfile.mkdtemp(prefix='runtime_out_'))   # its answer, outside the folder the agent can write
     try:
         try:
-            if sys.platform == 'darwin' and os.path.isfile(SANDBOX_EXEC):
+            if internal:   # LARRYD RUNTIME INTERNAL (the owner 2026-11-03: "its internal so i dont think it matters and seems normal"): an internal agent runs as this computer's own process, in its own folder, with this computer's reach; never on the external runtime (harness._run decides)
+                command = [sys.executable, '-B', str(pathlib.Path(agent) / entry)]
+            elif sys.platform == 'darwin' and os.path.isfile(SANDBOX_EXEC):
                 command = [SANDBOX_EXEC, '-p', _profile(agent, run_dir), PYTHON, '-I', '-B', str(pathlib.Path(agent) / entry)]
             elif sys.platform.startswith('linux') and os.path.isfile(BWRAP):
                 command = _linux_command(agent, run_dir, entry)
@@ -198,9 +200,9 @@ def run(folder, entry, given, seconds=20, on_start=None, most_bytes=MOST_BYTES):
             linux = sys.platform.startswith('linux')
             out_path, err_path = os.path.join(out_dir, 'out'), os.path.join(out_dir, 'err')
             with open(out_path, 'w') as out, open(err_path, 'w') as err:
-                child = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=out, stderr=err, text=True, cwd=run_dir,
-                                         preexec_fn=(lambda: limits(most_bytes + 1)) if linux else None, start_new_session=True,
-                                         env={'PATH': '/usr/bin:/bin', 'HOME': run_dir, 'TMPDIR': run_dir, 'LC_CTYPE': 'UTF-8'})
+                child = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=out, stderr=err, text=True, cwd=agent if internal else run_dir,
+                                         preexec_fn=(lambda: limits(most_bytes + 1)) if linux and not internal else None, start_new_session=True,
+                                         env=dict(os.environ) if internal else {'PATH': '/usr/bin:/bin', 'HOME': run_dir, 'TMPDIR': run_dir, 'LC_CTYPE': 'UTF-8'})
                 try:
                     if on_start:
                         on_start(child.pid)

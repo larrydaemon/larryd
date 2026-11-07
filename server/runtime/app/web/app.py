@@ -82,9 +82,11 @@ def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, deve
     harnesses = {}
     if keys is not None:   # one harness per slot: its calls go back to THAT slot, signed with the runtime's key for it
         slots = CONFIG['slots']
+        here = pathlib.Path(instance) / 'slots.json'   # THE RUNTIME ON THIS COMPUTER (LARRYD RUNTIME INTERNAL only, the owner 2026-11-03: "the localhost one is on the computer localhost here"): its instance names where each caller's offices answer, {caller: {office: address}}
+        local = json.loads(here.read_text()) if os.environ.get('LARRYD_INTERNAL') == '1' and here.is_file() else {}
         for caller in cloud['outbound'].slots():
             base = slots.get(caller, '')
-            offices = {o: f'{base}/{o}' for o in slots['offices']} if base else {}
+            offices = local[caller] if isinstance(local.get(caller), dict) else {o: f'{base}/{o}' for o in slots['offices']} if base else {}
             harnesses[caller] = lanes_harness.Harness(
                 db, locker_dir, platform.Client(offices, '',
                                                 outbound=cloud['outbound'], slot=caller, retry_seconds=retry_seconds),
@@ -188,7 +190,8 @@ def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, deve
         """GET: the agent's answer for the member's screen. POST (a JSON body, signed whole like every POST door): the same, and
         the body may hand the agent what the page asks beside its cards: find (the controller's search, sort and filters), themes
         (each theme a card may wear) and page (the page's own already-loaded logos); each a JSON object, else left out."""
-        token = slot.take()   # the slot first, atomically, before any of the agent's code
+        inside = os.environ.get('LARRYD_INTERNAL') == '1'   # LARRYD RUNTIME INTERNAL (this computer, internal agents): every page's agents answered at once, never one at a time (the owner 2026-11-03: "it loads very slow")
+        token = object() if inside else slot.take()   # the slot first, atomically, before any of the agent's code
         if not token:
             return busy()
         run_with = harness_for()
@@ -203,7 +206,8 @@ def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, deve
             return answered(work)
         finally:
             run_with.on_start = None
-            slot.give_back(token)
+            if not inside:
+                slot.give_back(token)
 
     @app.post('/api/live/records')
     def live_records():
@@ -495,7 +499,7 @@ def catch_up(app):
     sources = list(app.config['harnesses'].items()) or [('', app.config['harness'])]
     for caller, h in sources:
         began = time.monotonic()
-        status, body = h.client.get('wid', '/jobs/queued', None)   # the external runtime's own queue (LARRYD is external only: the owner 2026-11-05)
+        status, body = h.client.get('wid', '/jobs/queued', {'runtime': 'internal'} if os.environ.get('LARRYD_INTERNAL') == '1' else None)   # THE TWO RUNTIMES: each is handed its own queue (the external one's as before, None)
         if caller:   # the instance's first call back to that slot: its answer and how long it took (no data)
             logging.getLogger('runtime').warning('catch-up: %s answered %s in %.1f s', caller, status, time.monotonic() - began)
         for j in body.get('jobs', []) if status == 200 else []:

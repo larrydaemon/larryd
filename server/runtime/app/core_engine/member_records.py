@@ -9,6 +9,7 @@ hash, so FROST approves what an agent may read and write with the agent itself.
 THE COUNTS (2026-10-09): a manifest that declares "records": {"*": ["count"]} is handed, on a CALL and on a RUN, counts =
 {scope, modules: {species: how many}, products: {species: product}, ties: [[from, to, how many]]}: the numbers of the
 member's own account as their own grid lets them list it, asked of wid's counts door; never a record, never a key."""
+import os
 import re
 
 VERBS = ('read', 'add', 'edit', 'remove')
@@ -44,6 +45,15 @@ JOINS, PAYMENTS = 'joins', 'payments'            # THE JOIN REQUESTS and THE PAY
 JOINS_DOOR = ('GET', '/agnt/records/joins')        # wid's (frost-8f, e8e0e77d): {"requests": [{name, asked_at}]}, the roster's refusals
 PAYMENTS_DOOR = ('GET', '/agnt/records/payments')  # wid's (frost-8f, e8e0e77d): {"payments": [{kind, amount_cents, landed_at}]}, the same
 MOST_HANDED = 1000                                  # the join requests or payments handed at most; more refuses the answer whole
+REVIEWS = 'reviews'                             # THE REVIEWS WAITING (CORE_CLEANUP_IV 23, pf Review Lane): "records": {"*": ["reviews"]}: on a CALL, an INTERNAL agent only
+REVIEWS_DOOR = ('GET', '/agnt/reviews/waiting')  # wid's (frost-8f, item 23): {"waiting": [...]}; wid refuses any card that is not internal and SYSTEM's own (the second guard)
+MOST_WAITING = 500                              # the reviews waiting handed at most; more refuses the answer whole
+HISTORY = 'history'                             # THE REVIEW HISTORY (CORE_CLEANUP_IV row 78): "records": {"*": ["history"]}: on a CALL, an INTERNAL agent only
+HISTORY_DOOR = ('GET', '/agnt/reviews/history')  # wid's (frost-8f, f9a169b2): {"history": [...]}; wid refuses any card that is not internal and SYSTEM's own (the second guard)
+HISTORY_FIELDS = {'id', 'agent_key', 'card_key', 'name', 'code_sha256', 'manifest_sha256', 'state', 'submitted_at', 'decided_at', 'note'}
+MOST_HISTORY = 1000                             # the history entries handed at most; more refuses the answer whole
+INTERNAL_WORDS = (REVIEWS, HISTORY)              # words of "*" on LARRYD RUNTIME INTERNAL only (harness.Harness.INTERNAL decides whether they are ever asked)
+INTERNAL = os.environ.get('LARRYD_INTERNAL') == '1'   # LARRYD RUNTIME INTERNAL (its start says so): there "*" may hold INTERNAL_WORDS beside the rest
 EVERY_WORDS = (COUNT, ROSTER, JOINS, PAYMENTS)                   # what "*" may hold, each once; anything else under "*" counts for nothing (fail closed)
 COUNTS_DOOR = ('GET', '/agnt/records/counts')
 ROSTER_DOOR = ('GET', '/agnt/records/roster')   # wid's (frost-8f, 22203d5a): {"members": [{key, name, type, active[, organization]}]}, the same refusals as the counts door
@@ -54,11 +64,13 @@ SCOPE = re.compile(r'^[A-Za-z0-9]{1,40}$')      # an account's scope name, as th
 PRODUCT = re.compile(r'^[a-z]{1,24}$')          # a product's slug
 
 
-def _every(manifest):
-    """What "*" declares, well formed: a list of EVERY_WORDS, each once -> their set; anything else -> empty (fail closed)."""
+def _every(manifest, words=None):
+    """What "*" declares, well formed: a list of EVERY_WORDS (and INTERNAL_WORDS on LARRYD RUNTIME INTERNAL; words: the list asked
+    of), each once -> their set; anything else -> empty (fail closed)."""
+    allowed = words if words is not None else EVERY_WORDS + (INTERNAL_WORDS if INTERNAL else ())
     asked = manifest.get('records') if isinstance(manifest, dict) else None
     words = asked.get(EVERY) if isinstance(asked, dict) else None
-    if not (isinstance(words, list) and words and all(isinstance(w, str) and w in EVERY_WORDS for w in words) and len(set(words)) == len(words)):
+    if not (isinstance(words, list) and words and all(isinstance(w, str) and w in allowed for w in words) and len(set(words)) == len(words)):
         return set()
     return set(words)
 
@@ -156,6 +168,51 @@ def payments(ask, account, scope, member, agent_key=''):
     """THE PAYMENTS through wid's payments door for this member: -> [{kind, amount_cents, landed_at}]. A refusal propagates; any
     other shape is ValueError (nothing is handed)."""
     return paid(ask('wid', PAYMENTS_DOOR[0], PAYMENTS_DOOR[1], {'account': account, 'scope': scope, 'member': member, 'agent_key': agent_key}))
+
+
+def reviews_declared(manifest):
+    """Does the manifest declare THE REVIEWS WAITING: "*" holds "reviews"? No right on any species either."""
+    return REVIEWS in _every(manifest, EVERY_WORDS + INTERNAL_WORDS)
+
+
+def reviewed(body):
+    """The reviews door's answer as the agent is handed it, or ValueError: {"waiting": [objects]}, at most MOST_WAITING; anything else
+    (another field, a waiting entry that is not an object) refuses it whole."""
+    waiting = body.get('waiting') if isinstance(body, dict) and set(body) == {'waiting'} else None
+    if not (isinstance(waiting, list) and len(waiting) <= MOST_WAITING and all(isinstance(w, dict) for w in waiting)):
+        raise ValueError('the reviews waiting are not {waiting: [...]}')
+    return waiting
+
+
+def reviews(ask, account, scope, member, agent_key=''):
+    """THE REVIEWS WAITING through wid's reviews door for this member: -> [entries]. A refusal propagates; an answer of any other
+    shape is ValueError (nothing is handed). Asked only by LARRYD RUNTIME INTERNAL (harness._reviews)."""
+    return reviewed(ask('wid', REVIEWS_DOOR[0], REVIEWS_DOOR[1], {'account': account, 'scope': scope, 'member': member, 'agent_key': agent_key}))
+
+
+def history_declared(manifest):
+    """Does the manifest declare THE REVIEW HISTORY: "*" holds "history"? No right on any species either."""
+    return HISTORY in _every(manifest, EVERY_WORDS + INTERNAL_WORDS)
+
+
+def historied(body):
+    """The history door's answer as the agent is handed it, or ValueError: {"history": [entries]}, each exactly HISTORY_FIELDS, its
+    state approved or revoked, its words plain text; at most MOST_HISTORY; anything else refuses it whole."""
+    got = body.get('history') if isinstance(body, dict) and set(body) == {'history'} else None
+    if not (isinstance(got, list) and len(got) <= MOST_HISTORY):
+        raise ValueError('the review history is not {history: [...]}')
+    for h in got:
+        if not (isinstance(h, dict) and set(h) == HISTORY_FIELDS and h['state'] in ('approved', 'revoked')
+                and isinstance(h['id'], (int, str)) and not isinstance(h['id'], bool)
+                and all(isinstance(h[f], str) and len(h[f]) <= 4000 for f in HISTORY_FIELDS - {'id'})):
+            raise ValueError('a history entry is not its ten fields')
+    return got
+
+
+def history(ask, account, scope, member, agent_key=''):
+    """THE REVIEW HISTORY through wid's history door for this member: -> [entries]. A refusal propagates; any other shape is
+    ValueError (nothing is handed). Asked only by LARRYD RUNTIME INTERNAL (harness._history)."""
+    return historied(ask('wid', HISTORY_DOOR[0], HISTORY_DOOR[1], {'account': account, 'scope': scope, 'member': member, 'agent_key': agent_key}))
 
 
 def _whole(n):
