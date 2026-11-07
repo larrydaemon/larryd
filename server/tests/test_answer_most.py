@@ -34,15 +34,23 @@ class TheAnswersMost(unittest.TestCase):
 
     @unittest.skipUnless(sys.platform.startswith('linux'), 'the sandbox runs on Linux (the server); this Mac cannot start it (exit 71)')
     def test_a_declared_agents_20_mb_answer_is_kept_an_undeclared_agents_2_mb_is_refused(self):
+        """Through the REAL sandbox (frost-cb's question, 2026-11-06: proven, not a stand-in): the agent says where it ran (HOME is
+        the run's own private folder, runtime_run_*, which only sandbox.run gives) and that it could not write outside it; the
+        20 MB answer comes back byte for byte; the 2 MB one is refused for its length and nothing else."""
+        agent = ("import json, os, sys\n"
+                 "try:\n    open('/etc/larryd_escape', 'w'); wrote = True\nexcept OSError:\n    wrote = False\n"
+                 "sys.stdout.write(json.dumps({'home': os.environ.get('HOME', ''), 'wrote_outside': wrote, 'x': 'y' * %d}))\n")
         with tempfile.TemporaryDirectory() as a:
-            pathlib.Path(a, 'agent.py').write_text("import sys, json\nsys.stdout.write(json.dumps({'x': 'y' * %d}))\n" % (20 * 1000 * 1000))
-            state, answer, _why = sandbox.run(a, 'agent.py', {}, seconds=60, most_bytes=harness.answer_most(DECLARED))
-            self.assertEqual((state, len(answer.get('x', ''))), ('DONE', 20 * 1000 * 1000))
+            pathlib.Path(a, 'agent.py').write_text(agent % (20 * 1000 * 1000))
+            state, answer, why = sandbox.run(a, 'agent.py', {}, seconds=60, most_bytes=harness.answer_most(DECLARED))
+            self.assertEqual((state, why), ('DONE', ''))
+            self.assertEqual(answer['x'], 'y' * (20 * 1000 * 1000))
+            self.assertTrue(pathlib.Path(answer['home']).name.startswith('runtime_run_'), answer['home'])   # the sandbox's own run folder
+            self.assertIs(answer['wrote_outside'], False)   # the sandbox held: nothing written outside the run folder
         with tempfile.TemporaryDirectory() as a:
-            pathlib.Path(a, 'agent.py').write_text("import sys, json\nsys.stdout.write(json.dumps({'x': 'y' * %d}))\n" % (2 * 1000 * 1000))
-            state, _answer, _why = sandbox.run(a, 'agent.py', {}, seconds=60, most_bytes=harness.answer_most(UNDECLARED))
-            self.assertEqual(state, 'FAILED')
-
+            pathlib.Path(a, 'agent.py').write_text(agent % (2 * 1000 * 1000))
+            state, answer, why = sandbox.run(a, 'agent.py', {}, seconds=60, most_bytes=harness.answer_most(UNDECLARED))
+            self.assertEqual((state, answer, why), ('FAILED', None, 'the answer is too long'))   # refused for its length alone
 
 if __name__ == '__main__':
     unittest.main()
