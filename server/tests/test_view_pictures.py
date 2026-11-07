@@ -41,7 +41,8 @@ class Markers(unittest.TestCase):
         self.assertNotIn('larryd:', got)   # the unbuildable ones: no src left at all (the picture inert)
         self.assertEqual(got.count('src='), 1)
         self.assertEqual(view.pictures(html, '').count('src='), 0)   # no page path: every marker dropped
-        self.assertNotEqual(view.checked({'view': {'html': f'<a href="larryd:picture/{KEY}">x</a>', 'css': ''}}, PATH, B)[1], '')   # a picture is a src, never a link: the gate refuses it
+        out, why = view.checked({'view': {'html': f'<a href="larryd:picture/{KEY}">x</a>', 'css': ''}}, PATH, B)   # a picture is a src, never a link:
+        self.assertEqual((why, out['view']['html']), ('', '<span>x</span>'))   # the gate refuses that address, so it goes alone (frost-05 2026-11-06)
 
     def test_checked_passes_the_built_picture_and_the_gate_takes_it_on_every_box(self):
         for origins, local in ((B, False), (LOCAL, True), (None, False)):   # the door is a path: the same on a public box and on the laptop

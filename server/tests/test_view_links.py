@@ -93,8 +93,9 @@ class TheGate(unittest.TestCase):
 
     def test_checked_on_a_box_that_is_not_localhost_never_takes_http(self):
         out, why = view.checked(view_of('http://127.0.0.1:5006/so/rnd/en/app/files/add'), PATH, LOCAL, local=False)
-        self.assertNotEqual(why, '')
-        self.assertNotIn('view', out)
+        self.assertEqual(why, '')   # the http link is refused, so it goes alone (frost-05 2026-11-06): the view stays, the address never passes
+        self.assertNotIn('http://', out['view']['html'])
+        self.assertIn('<span', out['view']['html'])
         self.assertEqual(view.checked(view_of('https://example.com/x'), PATH, None)[1], '')   # a plain link out, as before
 
 

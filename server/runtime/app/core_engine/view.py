@@ -332,6 +332,55 @@ def refused(view, path='', local=()):
     return _markup(markup, path, local) or _sheet(sheet)
 
 
+ANY_LINK = re.compile(r'<a\b([^>]*?)\shref="([^"]*)"([^>]*)>(.*?)</a>', re.S)   # a whole link with a quoted address, as written
+ANY_PICTURE = re.compile(r'<img\b[^>]*>', re.S)   # a picture's start tag, as written
+_SRC = re.compile(r'\ssrc="[^"]*"')
+
+
+def _tag_why(tag, path, local):
+    """The gate's own word on one start tag alone (its parser, its rules): '' when it is taken."""
+    check = _Check(path, local)
+    try:
+        check.feed(tag)
+        check.close()
+    except Exception:   # noqa: BLE001 - a tag the parser cannot read: the gate refuses the view
+        return 'unreadable'
+    return check.why
+
+
+def addresses_dropped(markup, path='', local=()):
+    """A REFUSED ADDRESS GOES ALONE, BEFORE THE ANSWER LEAVES (frost-05's ruling 2026-11-06: wid places a view whole or not at all and
+    never rewrites it, so the agent's own side does): a picture whose src the gate refuses loses that src (the <img> stays, inert, its
+    words kept); a link whose address the gate refuses becomes a <span> with its own words and class (as an unbuildable marker does).
+    Only when the tag is refused for its address alone: the changed tag must pass the gate, else it is left as written and the gate
+    refuses the whole view (a handler, a script, anything else: as before). -> (the markup, how many addresses went)."""
+    if not isinstance(markup, str):
+        return markup, 0
+    gone = [0]
+
+    def picture(m):
+        tag = m.group(0)
+        if not _tag_why(tag, path, local) or not _SRC.search(tag):
+            return tag
+        bare = _SRC.sub('', tag, count=1)
+        if _SRC.search(bare) or _tag_why(bare, path, local):
+            return tag
+        gone[0] += 1
+        return bare
+
+    def link(m):
+        before, address, after, words = m.groups()
+        if not _tag_why(f'<a{before} href="{address}"{after}>', path, local):
+            return m.group(0)
+        span = f'<span{_LINK_ONLY.sub("", before + after)}>'
+        if _tag_why(span, path, local):
+            return m.group(0)
+        gone[0] += 1
+        return f'{span}{words}</span>'
+    out = ANY_PICTURE.sub(picture, ANY_LINK.sub(link, markup))
+    return out, gone[0]
+
+
 def checked(answer, path='', origins=None, local=False):
     """The answer with its view passed on, or dropped whole when refused (-> (answer, why)). origins: the platform's own word for this page's
     offices ({wid, so, fs}); its markers are resolved first; on a localhost box (local) the gate takes http for exactly those origins."""
@@ -340,6 +389,8 @@ def checked(answer, path='', origins=None, local=False):
     if isinstance(answer['view'], dict) and isinstance(answer['view'].get('html'), str):
         answer = {**answer, 'view': {**answer['view'], 'html': pictures(resolve(answer['view']['html'], path, origins, local), path)}}
     allowed = tuple(v for v in (origins or {}).values() if isinstance(v, str)) if local and isinstance(origins, dict) else ()
+    if isinstance(answer['view'], dict) and isinstance(answer['view'].get('html'), str):
+        answer = {**answer, 'view': {**answer['view'], 'html': addresses_dropped(answer['view']['html'], path, allowed)[0]}}   # a refused address goes alone
     why = refused(answer['view'], path, allowed)
     if why:
         answer = {k: v for k, v in answer.items() if k != 'view'}
