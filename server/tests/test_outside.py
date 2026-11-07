@@ -234,6 +234,32 @@ class TheRunWritesTheTrace(World):
         self.assertEqual(self.h.records.sent_today(KEY, MEMBER), 2)   # the two errands, never their traces
 
 
+class ASmallPictureGoesInsideTheAsk(World):
+    """frost-05's (A), 2026-11-07, after pf Krea's reference failed as 'fetch' (vttr29f20hrzw0d1pgrsxyr0rw): a picture whose whole data:
+    address fits Replicate's documented data-URL size (<= 256kb) goes inside the ask; nothing is uploaded to the Files API."""
+    def test_a_small_picture_is_a_data_address_in_the_models_own_field(self):
+        p = Provider()
+        made, why = hand(p).make({**ASK, 'model': 'flux-krea', 'reference': ['DA-M_0123456789AB_00CF'], 'aspect': '1:1'}, SECRET_KEY, PNG)
+        self.assertEqual(why, '')
+        self.assertNotIn('https://api.replicate.com/v1/files', [u for _m, u, _h, _d in p.asked])
+        body = json.loads(next(d for m, u, _h, d in p.asked if m == 'POST' and u.endswith('/predictions')))
+        field = outside.MODELS['flux-krea']['reference']
+        self.assertEqual(body['input'][field], 'data:image/png;base64,' + base64.b64encode(PNG).decode('ascii'))
+
+    def test_the_limit_is_the_whole_address(self):
+        h = hand(Provider())
+        fits = b'\x89PNG\r\n\x1a\n' + b'0' * (outside.DATA_URI_MOST * 3 // 4 - 64)
+        address, why = h.lend({**ASK, 'model': 'flux-krea'}, fits, SECRET_KEY)
+        self.assertTrue(address.startswith('data:image/png;base64,') and len(address) <= outside.DATA_URI_MOST, len(address))
+        over = fits + b'0' * 4096
+        p = FileDoor()
+        address, why = hand(p).lend({**ASK, 'model': 'flux-krea'}, over, SECRET_KEY)
+        self.assertEqual((address, why), ('https://api.replicate.com/v1/files/f1', ''))   # above it: the Files API, as before
+
+    def test_the_documented_size(self):
+        self.assertEqual(outside.DATA_URI_MOST, 256 * 1000)
+
+
 class TheRun(World):
     def placed(self, answer, manifest_more, gives):
         self.agent([], answer=answer, gives=gives)
@@ -499,6 +525,15 @@ class RefPlatform(Platform):
 
 
 class TheReference(World):
+
+    def setUp(self):
+        super().setUp()
+        self._data_uri_most, outside.DATA_URI_MOST = outside.DATA_URI_MOST, 0   # THIS CLASS PROVES THE FILES-API PATH (a reference above the data-URL size): every picture takes it here
+
+    def tearDown(self):
+        outside.DATA_URI_MOST = self._data_uri_most
+        super().tearDown()
+
     def test_every_length_seedance_takes_from_4_to_30_and_no_other(self):
         ask = {'model': 'seedance-2.5', 'prompt': 'a boat', 'name': 'A boat', 'size': '720p'}
         for n in range(4, 31):
@@ -603,6 +638,15 @@ class TheRowsFiftyOneToFiftyFour(World):
     the enhanced sound out). The member's file is lent through Replicate's file door as its own kind; a model Replicate does not mark
     official goes by its pinned version; what comes back must be the kind each makes. The provider is the fake opener: nothing leaves."""
 
+    def setUp(self):
+        super().setUp()
+        self._data_uri_most, outside.DATA_URI_MOST = outside.DATA_URI_MOST, 0   # THIS CLASS PROVES THE FILES-API PATH (a reference above the data-URL size): every picture takes it here
+
+    def tearDown(self):
+        outside.DATA_URI_MOST = self._data_uri_most
+        super().tearDown()
+
+
     def ask(self, model, **more):
         asks, why = outside.check([{'model': model, 'name': 'Made', **more}], (model,))
         self.assertEqual(why, '', (model, more))
@@ -695,6 +739,15 @@ class TheMadeCompanion(World):
     """CORE_CLEANUP_IV 94 b FOR A MADE FILE (frost-05 2026-11-06, pf Subtitles Tool): an ask may say "companion_of": "reference"; the made
     file is then stored with its first reference's record as its source (the record wid names for that DA-M file), never as a loose
     file and never as a new record. A record wid does not name, or a keep of the same file: nothing is sent and nothing is charged."""
+
+    def setUp(self):
+        super().setUp()
+        self._data_uri_most, outside.DATA_URI_MOST = outside.DATA_URI_MOST, 0   # THIS CLASS PROVES THE FILES-API PATH (a reference above the data-URL size): every picture takes it here
+
+    def tearDown(self):
+        outside.DATA_URI_MOST = self._data_uri_most
+        super().tearDown()
+
     VIDEO = 'MVDO_0123456789AB_0007'
     ASK = {'model': 'whisper', 'name': 'Talk', 'reference': REF, 'companion_of': 'reference'}
 

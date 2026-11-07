@@ -15,6 +15,7 @@ lane and the owner's errand standard:
    member's DA-M and nowhere else: never into an agent's run.
 Every refusal is LARRYD's own fixed words (never the provider's text, which is outside text: data, never orders), short
 and without a colon, so the run record's code keeps the whole of it (NOT_MADE_REPLICATE_REFUSED_THE_KEY)."""
+import base64
 import hashlib
 import json
 import re
@@ -154,6 +155,8 @@ def _exxact_models():
 
 
 REFERENCE_KINDS = ('png', 'jpg', 'webp')                 # a Replicate model's reference is a picture, read from its first bytes
+DATA_URI_MOST = 256 * 1000   # the WHOLE data: address (its base64 included) within Replicate's documented data-URL size: "you have a small file <= 256kb"
+#                              (replicate.com/docs/reference/http, predictions.create input; the guide's "less than 1MB" is the looser of the two)
 MOST_REFERENCE = 10 * 1024 * 1024                        # bytes of one reference picture (a Replicate model's)
 MOST_ASK_REFERENCES = 100 * 1000 * 1000                  # bytes of ALL of one ask's references together (frost-05 2026-11-06: a quarter of the RUN's
                                                          # 1 GiB at most; a file read as base64 in JSON, then decoded, holds about 2.4 times its size)
@@ -419,6 +422,10 @@ class Hand:
         if len(picture) > most:
             return '', 'reference too large'
         mime = MIME[kind]
+        inline = f'data:{mime};base64,' + base64.b64encode(picture).decode('ascii')
+        if kind in REFERENCE_KINDS and len(inline) <= DATA_URI_MOST:   # A SMALL PICTURE GOES INSIDE THE ASK (frost-05's (A), 2026-11-07): Replicate's documented
+            return inline, ''                                         # way for a file <= 256kb ("Files should be passed as HTTP URLs or data URLs");
+            #                                                           its Files API address failed as 'fetch' (pf Krea run 6, vttr29f20hrzw0d1pgrsxyr0rw)
         edge = 'larryd' + hashlib.sha256(picture).hexdigest()[:24]
         body = (f'--{edge}\r\nContent-Disposition: form-data; name="content"; filename="reference.{kind}"\r\nContent-Type: {mime}\r\n\r\n').encode('ascii') + picture + f'\r\n--{edge}--\r\n'.encode('ascii')
         status, raw = self._call('POST', f"{place['api']}/files", key, raw=(body, f'multipart/form-data; boundary={edge}'), seconds=120)
