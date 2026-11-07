@@ -74,3 +74,25 @@ class Remove(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class Stranded(unittest.TestCase):
+    """THE LOCKER IN PLACE: a row 'not submitted' whose folder is not in the one locker goes (row only); one whose folder is there is kept"""
+    setUp, tearDown, place = test_intake.Intake.setUp, test_intake.Intake.tearDown, test_intake.Intake.place
+
+    def test_a_not_submitted_row_outside_the_locker_goes_one_inside_stays(self):
+        held = self.place(_agent())
+        self.wid_state = lambda: None
+        self.wid.states = {(KEY, held['code_sha256'], held['manifest_sha256']): ('not submitted', '')}
+        elsewhere = self.agents.parent / 'one_locker'
+        elsewhere.mkdir()
+        with mock.patch.dict('os.environ', {'LARRYD_INTERNAL': '1', 'LARRYD_LOCKER': str(elsewhere)}):
+            got = self.h.remove(KEY)   # its folder dev/<key> is not in the one locker
+        self.assertEqual(got, {'agent_key': KEY, 'removed': f'dev/{KEY}'})
+        self.assertIsNone(locker.held(self.db, KEY))
+        held = self.place(_agent())
+        self.wid.states = {(KEY, held['code_sha256'], held['manifest_sha256']): ('not submitted', '')}
+        with mock.patch.dict('os.environ', {'LARRYD_INTERNAL': '1', 'LARRYD_LOCKER': str(self.agents)}):
+            got = self.h.remove(KEY)   # its folder IS in the locker: kept, as every not-submitted agent
+        self.assertEqual(got['refused'], 'its review is not submitted, not revoked: kept')
+        self.assertIsNotNone(locker.held(self.db, KEY))

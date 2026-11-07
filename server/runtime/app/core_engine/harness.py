@@ -315,7 +315,11 @@ class Harness:
             out = {'agent_key': key, 'refused': 'not in the locker under this key'}
         else:
             review, _note = self._review(key, row)
-            if review != 'revoked':
+            home = locker.in_place()
+            stranded = review == 'not submitted' and home is not None and not (home / row['folder']).is_dir()   # THE LOCKER IN PLACE: a row whose
+            # folder is not in the one locker (a copy left in instance/ by the old runtime) can never run again and was never submitted under this
+            # key (the owner 2026-11-07, the retired CMO, Creative Director and Operations Manager rows): only its row goes, nothing is deleted
+            if review != 'revoked' and not stranded:
                 out = {'agent_key': key, 'refused': f'its review is {review}, not revoked: kept'}
             else:
                 try:
