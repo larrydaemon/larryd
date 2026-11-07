@@ -133,7 +133,7 @@ class Companion(Echo):
     RECORD = 'MIMG_' + 'A' * 12 + '_0007'
     agent = RunFiles.agent   # the same echo agent as RunFiles, without running RunFiles' own tests again
 
-    def stored(self, answer, source_key=RECORD):
+    def stored(self, answer, source_key=RECORD, records=None):
         self.agent()
         manifest = self.agents / 'echo' / 'agent.json'
         card = json.loads(manifest.read_text())
@@ -153,7 +153,8 @@ class Companion(Echo):
         h.facts = lambda account, scope, member: ([CARD], HIRED, [], lambda key: (True, ''))
         h._skill_hands = lambda *a, **k: {}
         seen = {}
-        h._run = lambda folder, manifest, given: (seen.update(given) or 'DONE', answer, '')
+        h._run = lambda folder, manifest, given: (given.update({'records': records}) if records is not None else None,
+                                                  seen.update(given) or 'DONE', answer, '')[1:]   # records: as wid's records hand gives them
         return h.run_job(ACCOUNT, SCOPE, MEMBER, JOB, 1), wid, seen
 
     @staticmethod
@@ -170,7 +171,7 @@ class Companion(Echo):
         self.assertEqual([(u['name'], u['source_key']) for u in self.uploads(wid)], [('preview.png', self.RECORD), ('other.png', KEY)])   # the other: the agent's card, as before
 
     def test_a_companion_of_an_input_not_handed_or_with_no_record_is_refused_before_anything_is_stored(self):
-        for answer, source_key, said in (({'delivery': 'x', 'files': [self.file('p.png', 'mood')]}, self.RECORD, 'which is not a file this RUN was handed'),
+        for answer, source_key, said in (({'delivery': 'x', 'files': [self.file('p.png', 'mood')]}, self.RECORD, 'which is neither a file nor a record this RUN was handed'),
                                          ({'delivery': 'x', 'files': [self.file('p.png', 'picture')]}, '', 'whose record the platform did not name'),
                                          ({'delivery': 'x', 'files': [self.file('p.png', 'picture')]}, 'not a key', 'whose record the platform did not name')):
             with self.subTest(said=said, source_key=source_key):
@@ -179,6 +180,27 @@ class Companion(Echo):
                 self.assertIn(said, self.results(wid)[-1]['log'])
                 self.assertEqual(self.uploads(wid), [])
                 self.assertFalse([r for _o, r, _d in wid.said if r == '/jobs/charge'])   # nothing charged
+
+    INVOICE = 'MINV_' + 'B' * 12 + '_0003'
+
+    def test_a_companion_of_a_handed_record_is_stored_with_that_record(self):
+        """Rows 260 and 9 (frost-05 2026-11-06): companion_of may name a record this RUN was handed: an invoice's PDF beside its invoice."""
+        records = {'invc': [{'key': self.INVOICE, 'data_amount': '10'}], 'cont': [{'key': 'MCON_' + 'C' * 12 + '_0001'}]}
+        state, wid, _seen = self.stored({'delivery': 'x', 'files': [self.file('invoice.png', self.INVOICE)]}, records=records)
+        self.assertEqual(state, 'DONE')
+        self.assertEqual([(u['name'], u['source_key']) for u in self.uploads(wid)], [('invoice.png', self.INVOICE)])
+
+    def test_a_companion_of_a_record_not_handed_is_refused_before_anything_is_charged(self):
+        records = {'invc': [{'key': self.INVOICE}], 'odd': 'not rows', 'bad': [7, {'key': 9}, {'key': ''}]}
+        for name in ('MINV_' + 'D' * 12 + '_0009', '', 9):
+            if name == 9:
+                continue   # a companion that is not text is refused by the files' own shape (the test below)
+            with self.subTest(name=name):
+                state, wid, _seen = self.stored({'delivery': 'x', 'files': [self.file('p.png', name or None) | ({'companion_of': ''} if name == '' else {})]}, records=records)
+                self.assertEqual(state, 'FAILED')
+                self.assertIn('which is neither a file nor a record this RUN was handed', self.results(wid)[-1]['log'])
+                self.assertEqual(self.uploads(wid), [])
+                self.assertFalse([r for _o, r, _d in wid.said if r == '/jobs/charge'])
 
     def test_a_companion_must_be_text_and_files_keep_their_shape(self):
         state, wid, _seen = self.stored({'delivery': 'x', 'files': [{**self.file('p.png'), 'companion_of': 7}]})

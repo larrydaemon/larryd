@@ -698,7 +698,7 @@ class Harness:
         slots = stored_slots(slots, [], {})   # an agent's own image, video or sound key is never kept: those slots are the runtime's
         try:
             files = self._files(manifest, answer)
-            beside = self._companions(files, given.get('files'))   # {a file's place: the record it is stored beside}: checked before anything is charged
+            beside = self._companions(files, given.get('files'), given.get('records'))   # {a file's place: the record it is stored beside}: checked before anything is charged
             asks = self._asks(manifest, answer, key, member)
             keeps = self._keeps(manifest, answer, files, asks, custom=fabric.custom(card, manifest, account))
             if {files[n]['name'] for n in beside} & {k['file'] for k in keeps}:   # one file, one place: beside the member's record OR its own new record, never both
@@ -928,22 +928,29 @@ class Harness:
         return files
 
     @staticmethod
-    def _companions(files, handed):
-        """A FILE STORED BESIDE THE MEMBER'S OWN (CORE_CLEANUP_IV 94): an answer file may carry "companion_of": <one of this RUN's handed
-        file inputs>; it is then stored with that input file's own record as its source (a picture's preview beside the picture), and wid
-        checks the member owns that record. -> {the file's place in files: the record key}. Refused, nothing charged or stored: a name
-        that is not a handed file of this RUN, or one whose record wid did not name."""
+    def _companions(files, handed, records=None):
+        """A FILE STORED BESIDE THE MEMBER'S OWN (CORE_CLEANUP_IV 94; rows 260 and 9, frost-05 2026-11-06): an answer file may carry
+        "companion_of": <one of this RUN's handed file inputs> (stored with that input file's own record as its source: a picture's
+        preview beside the picture), or <the key of a record this RUN was handed in its records> (stored with that record as its
+        source: an invoice's PDF beside its invoice). -> {the file's place in files: the record key}. Refused, nothing charged or
+        stored: a name that is neither, or a handed file whose record wid did not name. A record key is taken only as handed here:
+        the platform read those records for this RUN's member."""
+        own = {r['key'] for rows in (records.values() if isinstance(records, dict) else []) if isinstance(rows, list)
+               for r in rows if isinstance(r, dict) and isinstance(r.get('key'), str) and r['key']}
         out = {}
         for n, f in enumerate(files):
             name = f.get('companion_of')
             if name is None:
                 continue
             got = (handed or {}).get(name) if isinstance(handed, dict) else None
-            if not isinstance(got, dict):
-                raise _Stop('FAILED', f'file {n + 1} is the companion of "{name}", which is not a file this RUN was handed; the delivery is withheld')
-            if not got.get('record_key'):
-                raise _Stop('FAILED', f'file {n + 1} is the companion of "{name}", whose record the platform did not name; the delivery is withheld')
-            out[n] = got['record_key']
+            if isinstance(got, dict):
+                if not got.get('record_key'):
+                    raise _Stop('FAILED', f'file {n + 1} is the companion of "{name}", whose record the platform did not name; the delivery is withheld')
+                out[n] = got['record_key']
+            elif name in own:
+                out[n] = name
+            else:
+                raise _Stop('FAILED', f'file {n + 1} is the companion of "{name}", which is neither a file nor a record this RUN was handed; the delivery is withheld')
         return out
 
     def _skill_hands(self, manifest, account, scope, member, job_key, run):
