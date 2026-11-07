@@ -52,7 +52,17 @@ def _skills():
 
 
 SKILLS = _skills()
-MOST_FILES = 10   # what the DA-M store keeps from one answer (all of it inside the sandbox's 1 MB answer)
+MOST_FILES = 10   # what the DA-M store keeps from one answer (all of it inside the answer's own most, below)
+STORE_ANSWER_MOST = 34 * 1024 * 1024   # THE ANSWER'S MOST for an agent that declares the DA-M store (frost-05 2026-11-06, row 92 pf fal): one
+                                       # file up to DA-M's 25 MB as base64 and its words; every other agent keeps sandbox.MOST_BYTES (1 MB)
+
+
+def answer_most(manifest):
+    """How many bytes this agent's answer may be: STORE_ANSWER_MOST when its manifest declares the DA-M store skill (the very test _files
+    makes), else the sandbox's own 1 MB. The sandbox reads at most this + 2 bytes and refuses past it: never held whole."""
+    skills = manifest.get('skills') if isinstance(manifest, dict) else None
+    stores = any(SKILLS.get(h, {}).get('after') == 'files' for h in (skills or []) if isinstance(h, str))
+    return STORE_ANSWER_MOST if stores else sandbox.MOST_BYTES
 FILE_NAME = re.compile(r'^[A-Za-z0-9][A-Za-z0-9 ._-]{0,120}$')
 HANDED = {   # a skill's hand: the wid door the runtime asks for the RUN's member and account (wid asks LARRY LLM or FROST as itself)
     'greeting': ('wid', '/jobs/greeting', "the member's greeting", 'wid'),
@@ -545,6 +555,7 @@ class Harness:
 
     def _run(self, folder, manifest, given, **kw):
         """ONE RUN OF AN AGENT: in the sandbox, always (LARRYD is external only: the owner 2026-11-05)."""
+        kw.setdefault('most_bytes', answer_most(manifest))   # an agent that declares the DA-M store may answer a file up to DA-M's 25 MB
         return sandbox.run(self.agents / folder, manifest['entry'], given, self.seconds, on_start=self.on_start, **kw)
 
     def hire(self, account, scope, member, agent_key, on):
