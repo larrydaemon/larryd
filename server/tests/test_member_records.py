@@ -114,6 +114,15 @@ class TheCounts(unittest.TestCase):
             with self.assertRaises(ValueError, msg=bad):
                 member_records.counted(bad)
 
+    def test_each_member_carries_the_organization_frost_keeps_or_nothing(self):
+        """Row 21 (frost-5e's Vendors and Partners Portal): each member's FROST Organization, as typed; '' when empty or not handed."""
+        one = GOOD_ROSTER['members'][0]
+        for org in ('Acme Studio LLC', 'ÉCOLE Nord', ''):
+            self.assertEqual(member_records.rostered({'members': [{**one, 'organization': org}]}), [{**one, 'organization': org}], org)
+        for bad in (7, None, 'x' * 201, ' padded', 'two\nlines', ['Acme']):
+            with self.assertRaises(ValueError, msg=bad):
+                member_records.rostered({'members': [{**one, 'organization': bad}]})
+
     def test_the_door_is_asked_for_the_member_the_platform_named(self):
         asked = []
         got = member_records.counts(lambda *a: asked.append(a) or GOOD_COUNTS, 'ACCT_A', 'SCRATCH', 'MCON_M', 'MAGT_K')
@@ -154,7 +163,7 @@ class TheRoster(unittest.TestCase):
         self.assertEqual(member_records.declared({'records': {'*': ['count', 'roster'], 'opns': ['read']}}), {'opns': ('read',)})   # no right on any species
 
     def test_the_answer_is_exactly_the_four_fields_or_nothing(self):
-        self.assertEqual(member_records.rostered(GOOD_ROSTER), GOOD_ROSTER['members'])
+        self.assertEqual(member_records.rostered(GOOD_ROSTER), [{**m, 'organization': ''} for m in GOOD_ROSTER['members']])   # wid hands no organization yet: ''
         self.assertEqual(member_records.rostered({'members': []}), [])
         one = GOOD_ROSTER['members'][0]
         for bad in ({**one, 'email': 'a@b.c'}, {k: v for k, v in one.items() if k != 'active'}, {**one, 'active': 'yes'}, {**one, 'key': 'ACCT_000000000001_0001'},
@@ -167,7 +176,7 @@ class TheRoster(unittest.TestCase):
 
     def test_the_door_is_asked_for_the_member_the_platform_named(self):
         asked = []
-        self.assertEqual(member_records.roster(lambda *a: asked.append(a) or GOOD_ROSTER, 'ACCT_A', 'SCRATCH', 'MCON_M', 'MAGT_K'), GOOD_ROSTER['members'])
+        self.assertEqual(member_records.roster(lambda *a: asked.append(a) or GOOD_ROSTER, 'ACCT_A', 'SCRATCH', 'MCON_M', 'MAGT_K'), [{**m, 'organization': ''} for m in GOOD_ROSTER['members']])
         self.assertEqual(asked, [('wid', 'GET', '/agnt/records/roster', {'account': 'ACCT_A', 'scope': 'SCRATCH', 'member': 'MCON_M', 'agent_key': 'MAGT_K'})])
 
     def test_the_harness_hands_it_or_says_it_did_not(self):
@@ -175,7 +184,7 @@ class TheRoster(unittest.TestCase):
         who = ('ACCT_A', 'SCRATCH', 'MCON_M', 'MAGT_K')
         given = {}
         h._ask = lambda *a: GOOD_ROSTER
-        self.assertEqual((h._roster({'records': {'*': ['count', 'roster']}}, given, *who), given), ('', {'roster': GOOD_ROSTER['members']}))
+        self.assertEqual((h._roster({'records': {'*': ['count', 'roster']}}, given, *who), given), ('', {'roster': [{**m, 'organization': ''} for m in GOOD_ROSTER['members']]}))   # each with its organization ('' until wid hands it)
         given, asked = {}, []
         h._ask = lambda *a: asked.append(a) or GOOD_ROSTER
         self.assertEqual((h._roster({'records': {'*': ['count']}}, given, *who), given, asked), ('', {}, []))   # not declared: the door is never asked

@@ -329,7 +329,7 @@ class Harness:
 
     def _roster(self, manifest, given, account, scope, member, agent_key):
         """THE ROSTER (CORE_CLEANUP_IV 37): an agent whose APPROVED manifest declares "records": {"*": [... "roster"]} is handed
-        given['roster'] on a CALL, the account's members (key, name, type, active) as wid's roster door hands them for that member,
+        given['roster'] on a CALL, the account's members (key, name, type, active, organization) as wid's roster door hands them for that member,
         checked to be exactly that shape. Not handed (refused, away, any other shape): the agent is handed none and the runtime says
         so in its own fixed words -> 'roster not read', else ''."""
         if not member_records.roster_declared(manifest):

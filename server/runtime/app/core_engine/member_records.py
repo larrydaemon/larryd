@@ -46,7 +46,7 @@ PAYMENTS_DOOR = ('GET', '/agnt/records/payments')  # wid's (frost-8f, e8e0e77d):
 MOST_HANDED = 1000                                  # the join requests or payments handed at most; more refuses the answer whole
 EVERY_WORDS = (COUNT, ROSTER, JOINS, PAYMENTS)                   # what "*" may hold, each once; anything else under "*" counts for nothing (fail closed)
 COUNTS_DOOR = ('GET', '/agnt/records/counts')
-ROSTER_DOOR = ('GET', '/agnt/records/roster')   # wid's (frost-8f, 22203d5a): {"members": [{key, name, type, active}]}, the same refusals as the counts door
+ROSTER_DOOR = ('GET', '/agnt/records/roster')   # wid's (frost-8f, 22203d5a): {"members": [{key, name, type, active[, organization]}]}, the same refusals as the counts door
 MEMBER_KEY = re.compile(r'^MCON_[0-9A-F]{12}_[0-9A-F]{4}$')
 MEMBER_TYPE = re.compile(r'^[a-z][a-z_]{0,39}$')   # owner, user, vendor, partner, system_owner ...
 MOST_MEMBERS = 1000
@@ -74,24 +74,29 @@ def roster_declared(manifest):
     return ROSTER in _every(manifest)
 
 
+ROSTER_FIELDS = frozenset({'key', 'name', 'type', 'active'})   # and "organization" once wid hands it (row 21)
+
+
 def rostered(body):
-    """The roster door's answer as the agent is handed it, or ValueError: [{key, name, type, active}], each a member's own key,
-    a plain name, a type word and a yes or no; anything else (another field, another type, more than MOST_MEMBERS) refuses it whole."""
+    """The roster door's answer as the agent is handed it, or ValueError: [{key, name, type, active, organization}], each a member's
+    own key, a plain name, a type word, a yes or no, and the organization FROST keeps for that member (users_members.Organization,
+    as typed: row 21, a vendor told from a partner; '' when it is empty or the platform does not hand it yet). Anything else
+    (another field, another type, more than MOST_MEMBERS) refuses it whole."""
     members = body.get('members') if isinstance(body, dict) and set(body) == {'members'} else None
     if not (isinstance(members, list) and len(members) <= MOST_MEMBERS):
         raise ValueError('the roster is not {members: [...]}')
     out = []
     for m in members:
-        if not (isinstance(m, dict) and set(m) == {'key', 'name', 'type', 'active'} and isinstance(m['key'], str) and MEMBER_KEY.fullmatch(m['key'])
+        if not (isinstance(m, dict) and set(m) in (ROSTER_FIELDS, ROSTER_FIELDS | {'organization'}) and isinstance(m['key'], str) and MEMBER_KEY.fullmatch(m['key'])
                 and isinstance(m['name'], str) and len(m['name']) <= 200 and isinstance(m['type'], str) and MEMBER_TYPE.fullmatch(m['type'])
-                and isinstance(m['active'], bool)):
-            raise ValueError('a roster member is not {key, name, type, active}')
-        out.append({'key': m['key'], 'name': m['name'], 'type': m['type'], 'active': m['active']})
+                and isinstance(m['active'], bool) and _plain(m.get('organization', ''), 200)):
+            raise ValueError('a roster member is not {key, name, type, active, organization}')
+        out.append({'key': m['key'], 'name': m['name'], 'type': m['type'], 'active': m['active'], 'organization': m.get('organization', '')})
     return out
 
 
 def roster(ask, account, scope, member, agent_key=''):
-    """THE ROSTER of the account the platform named, through wid's roster door for this member: -> [{key, name, type, active}].
+    """THE ROSTER of the account the platform named, through wid's roster door for this member: -> [{key, name, type, active, organization}].
     A refusal propagates; an answer of any other shape is ValueError (nothing is handed)."""
     return rostered(ask('wid', ROSTER_DOOR[0], ROSTER_DOOR[1], {'account': account, 'scope': scope, 'member': member, 'agent_key': agent_key}))
 
