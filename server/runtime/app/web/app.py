@@ -25,7 +25,7 @@ from werkzeug.exceptions import HTTPException
 APP = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(APP))
 
-from core_engine import callers, harness as lanes_harness, intake, jobs as long_runs, live, locker, lockers as bucket_lockers, platform, preview, records as run_records, sandbox, signing, slot as one_slot, store, warmup  # noqa: E402
+from core_engine import callers, clock, harness as lanes_harness, intake, jobs as long_runs, live, locker, lockers as bucket_lockers, platform, preview, records as run_records, sandbox, signing, slot as one_slot, store, warmup  # noqa: E402
 
 CONFIG = json.loads((APP / 'schemas' / 'runtime.json').read_text())
 INSTANCE = pathlib.Path(os.environ['LARRYD_INSTANCE']) if os.environ.get('LARRYD_INSTANCE') else APP.parent / 'instance'   # the daemon names it
@@ -301,7 +301,14 @@ def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, deve
             (harnesses.get(caller) or h).started(card, d['job_key'], int(d['run']), d['account'], d['member'])
         return jsonify({'accepted': d['job_key'], 'run': int(d['run']), 'already': not started}), 202
 
+    @app.post('/api/clock/tick')
+    def clock_tick():
+        """THE CLOCK'S TICK BY A DOOR (Cloud Run: Cloud Scheduler calls it, signed as every call; this computer ticks in-process):
+        each due job whose agent is held and approved is pressed RUN in wid, then the catch-up. -> job keys and words only."""
+        return jsonify({'ticked': [{'job_key': k, 'said': w} for k, w in app.config['clocks'].tick(now())]}), 200
+
     app.config['start'] = start
+    app.config['clocks'] = clocks(app)
     if developer:
         _marketplace_pages(app, h, pathlib.Path(instance), secrets.token_hex(16))
     return app
@@ -510,6 +517,16 @@ def catch_up(app):
     return status
 
 
+def clocks(app):
+    """THE CLOCK READER (core_engine/clock.py) over the same sources as the catch-up: one clock per slot's harness (its wid, its
+    verify), the catch-up run once after a tick that queued a RUN. The same on both runtimes; LARRYD_INTERNAL=1 asks wid for the
+    internal jobs, as the catch-up does."""
+    inside = os.environ.get('LARRYD_INTERNAL') == '1'
+    sources = list(app.config['harnesses'].values()) or [app.config['harness']]
+    return clock.Clocks([clock.Clock(clock.WidJobs(h.client, internal=inside), h.verify_now, clock.Memory(h.db)) for h in sources],
+                        then=lambda: catch_up(app))
+
+
 def locker_root(instance):
     """Where the agents are kept: the instance's own agents/ folder when there is one (a server: it outlives every release
     of the code), else the code's (the laptop)."""
@@ -603,6 +620,8 @@ def main(argv):
         threading.Thread(target=warm_up, args=(app,), kwargs={'then': catch_up}, daemon=True).start()
     else:
         catch_up(app)
+    if os.environ.get('LARRYD_INTERNAL') == '1':   # THIS COMPUTER: the clock ticks in-process every 60 s (Cloud Run ticks it through /api/clock/tick)
+        app.config['clocks'].start()
     app.run(host=os.environ.get('LARRYD_HOST') or CONFIG['host'], port=int(os.environ.get('PORT') or os.environ.get('LARRYD_PORT') or CONFIG['ports'][side]),
             threaded=True)   # 127.0.0.1, except in a container (Cloud Run names LARRYD_HOST and PORT)
 

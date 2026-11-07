@@ -95,6 +95,23 @@
           "TEXT NOT NULL DEFAULT ''"
         ]
       ]
+    },
+    "runtime_clock": {
+      "about": "the clock reader's own memory (core_engine/clock.py), per job by account/scope/job key only: the moment the runtime first saw the job's clock and the scheduled moment it last pressed RUN for, so one moment is never pressed twice; never a job's data",
+      "columns": [
+        [
+          "job",
+          "TEXT PRIMARY KEY"
+        ],
+        [
+          "first_seen",
+          "TEXT NOT NULL"
+        ],
+        [
+          "pressed_for",
+          "TEXT NOT NULL"
+        ]
+      ]
     }
   }
 }

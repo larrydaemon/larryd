@@ -224,6 +224,14 @@ class Harness:
         locker IS the approval, so a placed agent shows at once, never after APPROVED_KEEP)."""
         self._approved = (0.0, None)
 
+    def verify_now(self, agent_key):
+        """THE CLOCK'S CHECK before it presses RUN (core_engine/clock.py): the locker holds the agent by either key and FROST approved
+        its exact hashes, the same two guards as every call and run. -> (ok, why); a silent platform is a no."""
+        try:
+            return self._verifier(self._approved_now())(agent_key)
+        except Refused as silent:
+            return False, f'the platform did not answer: {silent.reason}'
+
     def _approved_now(self, fresh=False):
         """The platform's approved list (FROST's review, through wid), the runtime's own word: kept APPROVED_KEEP seconds (fresh:
         asked again now)."""
