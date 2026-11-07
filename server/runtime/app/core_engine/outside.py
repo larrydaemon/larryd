@@ -62,7 +62,7 @@ MODELS = {
         'first': {'aspect': '1:1'},
         'reference': 'image', 'reference_one': True,   # image to image: ONE picture, sent as a plain address (the model's "image" is a string)
         'most_references': 1,
-        'most_bytes': 20 * 1024 * 1024, 'most_seconds': 180,
+        'most_bytes': 20 * 1024 * 1024, 'most_seconds': 600,   # 180 timed out on its first real make (2026-11-07 02:58Z, flux-krea-dev's cold boot): frost-05's ruling, 600
     },
     'kling-2.5': {
         'provider': 'replicate', 'path': 'kwaivgi/kling-v2.5-turbo-pro', 'kind': 'video', 'name': 'Kling 2.5', 'prompt': True,
@@ -437,6 +437,20 @@ class Hand:
             return 'failed', f'{name} failed'   # its own reason is outside text: never carried
         return 'waiting', ''
 
+    def cancel(self, ask, rid, key):
+        """A MAKE WE STOPPED WAITING FOR IS CANCELLED AT THE PROVIDER (frost-05's ruling 2026-11-07): Replicate's own cancel of that very
+        prediction (POST <api>/predictions/<id>/cancel, the same api address and key the errand used), so it is not finished and billed
+        for nothing. Best effort: its answer is never read past the status and a refusal changes nothing (the RUN already says why)."""
+        spec = MODELS[ask['model']]
+        place = self.places[spec['provider']]
+        if not (isinstance(rid, str) and _ID.fullmatch(rid)):
+            return False
+        try:
+            status, _raw = self._call('POST', f"{place['api']}/predictions/{rid}/cancel", key, {}, most=4096, seconds=20)
+        except Exception:
+            return False
+        return status in (200, 201, 202)
+
     def _from_delivery(self, address, hosts):
         try:
             parts = urllib.parse.urlsplit(address)
@@ -507,6 +521,7 @@ class Hand:
             if state == 'done':
                 break
             if self.clock() >= until:
+                self.cancel(ask, rid, key)   # the provider stops it: never finished and billed after we gave up
                 return None, f'{name} timed out'
             self.sleep(EVERY_SECONDS)
         data, kind, why = self.words(ask, said) if spec['kind'] == 'text' else self.fetch(ask, said)
