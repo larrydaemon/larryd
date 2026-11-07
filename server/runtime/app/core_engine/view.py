@@ -72,49 +72,41 @@ def download_of(path, dam_key, origin='', local=()):
 
 
 _DAM_KEY = re.compile(r'DA-M_[0-9A-F]{12}_[0-9A-F]{4}')
-_DAM_RAW = re.compile(r'/so/([a-z0-9_-]{1,32})/([a-z]{2}(?:-[a-z]{2,4})?)/app/files/card/DA-M_[0-9A-F]{12}_[0-9A-F]{4}/raw')
-_ORIGIN_REST = re.compile(r'(https?://[^/?#]+)(/.*)', re.S)
+_PICTURE_DOOR = re.compile(r'(/[a-z0-9_-]{1,32}/[a-z0-9_-]{1,32}/[a-z]{2}(?:-[a-z]{2,4})?)/embedded/picture/DA-M_[0-9A-F]{12}_[0-9A-F]{4}')   # wid's own door to one DA-M picture
+_PAGE_OF = re.compile(r'(/[a-z0-9_-]{1,32}/[a-z0-9_-]{1,32}/[a-z]{2}(?:-[a-z]{2,4})?)/app/.*')   # a page's office, side and language
 PICTURE = re.compile(r'src="larryd:picture/([^"<>\s]{0,80})"')   # an agent's own word for THE MEMBER'S OWN DA-M PICTURE it may show (CORE_CLEANUP_IV 26/33/94): the runtime builds the address
 
 
-def dam_picture(address, path, local=()):
-    """Is this exactly DA-M's raw picture of one file on the page's own side and language (a src the gate takes beside our CDN's)? https to a
-    named host, or (a localhost box only) plain http to exactly one of the handed origins; then /so/<side>/<lang>/app/files/card/<DA-M key>/raw
-    and nothing more: no other DA-M path, side, language, query or fragment."""
-    page = _PAGE_SIDE.fullmatch(path) if isinstance(path, str) else None
-    split = _ORIGIN_REST.fullmatch(address) if isinstance(address, str) else None
-    if not (page and split):
-        return False
-    got = _DAM_RAW.fullmatch(split.group(2))
-    if not (got and got.groups() == page.groups()):
-        return False
-    return link_address(address) or (split.group(1) in (local or ()) and local_link(address, local))
+def member_picture(address, path):
+    """Is this exactly wid's own door to one of the member's DA-M pictures on the page's own office, side and language (a src the gate takes
+    beside our CDN's)? /<office>/<side>/<lang>/embedded/picture/<DA-M key>, a path at the page's own origin and nothing more: no host, query,
+    fragment or other door. wid answers it under the member's own session (frost-99 2026-11-06: DA-M's own address drew nothing for a
+    member who had not opened DA-M, since an <img> follows no sign-in)."""
+    page = _PAGE_OF.fullmatch(path) if isinstance(path, str) else None
+    got = _PICTURE_DOOR.fullmatch(address) if isinstance(address, str) else None
+    return bool(page and got and got.group(1) == page.group(1))
 
 
-def picture_of(path, dam_key, origin='', local=()):
-    """DA-M's own RAW PICTURE of one file (the bytes inline, DA-M's door deciding with the member's own session whether the file is theirs),
-    on the page's own side and language: /so/<side>/<lang>/app/files/card/<DA-M key>/raw on DA-M's origin, the twin of download_of
-    (CORE_CLEANUP_IV 26/33/94). '' when the page's path, the key or the origin is not plain."""
-    page = _PAGE_SIDE.fullmatch(path) if isinstance(path, str) else None
+def picture_of(path, dam_key):
+    """THE MEMBER'S OWN DA-M PICTURE (CORE_CLEANUP_IV 26/33/94): wid's door /<office>/<side>/<lang>/embedded/picture/<DA-M key> on the page's
+    own office, side and language (wid reads the file from DA-M for the signed-in member; DA-M decides whose it is). '' when the page's path
+    or the key is not plain."""
+    page = _PAGE_OF.fullmatch(path) if isinstance(path, str) else None
     if not (page and isinstance(dam_key, str) and _DAM_KEY.fullmatch(dam_key)):
         return ''
-    whole = _built(origin, f'/so/{page.group(1)}/{page.group(2)}/app/files/card/{dam_key}/raw', local)
-    return whole if dam_picture(whole, path, local) else ''
+    whole = f'{page.group(1)}/embedded/picture/{dam_key}'
+    return whole if member_picture(whole, path) else ''
 
 
-def pictures(markup, path, origins, local=False):
+def pictures(markup, path):
     """THE PICTURE MARKER (CORE_CLEANUP_IV 26/33/94), the twin of resolve's links: an agent never writes an address of the platform's. It
-    writes src="larryd:picture/<DA-M key>"; this builds DA-M's raw picture of that file on DA-M's origin (origins['so'], the platform's own
-    word for this page), or drops the src when none can be built (the picture is then inert, the view still drawn).
-    local: a localhost box, where the handed origins are plain http (each office its own port)."""
+    writes src="larryd:picture/<DA-M key>"; this builds wid's own door to that picture on the page's own office (picture_of), or drops the
+    src when none can be built (the picture is then inert, the view still drawn)."""
     if not isinstance(markup, str) or 'larryd:picture/' not in markup:
         return markup
-    origins = origins if isinstance(origins, dict) else {}
-    allowed = tuple(v for v in origins.values() if isinstance(v, str)) if local else ()
-    origin = origins[SERVES['picture']] if isinstance(origins.get(SERVES['picture']), str) else ''   # the origin wid handed for DA-M (a lookup in wid's own word; no office is called)
 
     def one(m):
-        address = picture_of(path, m.group(1), origin, allowed)
+        address = picture_of(path, m.group(1))
         return f'src="{address}"' if address else ''
     return PICTURE.sub(one, markup)
 
@@ -124,7 +116,7 @@ _FROST_PAGE = re.compile(r'/fs/([a-z0-9_-]{1,32})/([a-z]{2}(?:-[a-z]{2,4})?)/[a-
 _ZONE = re.compile(r'[a-z0-9_-]{1,32}')
 _PAGE_NAME = re.compile(r'[a-z0-9_-]{1,32}(?:/[a-z0-9_-]{1,32}){0,2}')
 _LOCAL_ORIGIN = re.compile(r'http://(?:127\.0\.0\.1|localhost):[0-9]{2,5}')
-SERVES = {'upload': 'so', 'download': 'so', 'frost': 'fs', 'picture': 'so'}   # which office serves each marker's page (DA-M: so; FROST: fs): only to pick its origin from page.origins
+SERVES = {'upload': 'so', 'download': 'so', 'frost': 'fs'}   # which office serves each marker's page (DA-M: so; FROST: fs): only to pick its origin from page.origins
 MARKER = re.compile(r'href="larryd:(upload|download|frost)/([^"<>\s]{0,80})"')   # an agent's own word for a platform page it may link: the runtime builds the address
 
 
@@ -275,8 +267,8 @@ class _Check(html.parser.HTMLParser):
                 return self._no(f'{name} on a <{tag}>')
             if name in ('href', 'target', 'rel') and tag != 'a':
                 return self._no(f'{name} on a <{tag}>')
-            if name == 'src' and not (picture_address(value) or dam_picture(value, self.path, self.local)):
-                return self._no('the view\'s markup reaches outside our CDN and DA-M\'s own picture of a file')
+            if name == 'src' and not (picture_address(value) or member_picture(value, self.path)):
+                return self._no('the view\'s markup reaches outside our CDN and the member\'s own picture at the page\'s office')
             if name == 'loading' and value not in ('lazy', 'eager'):
                 return self._no('a loading other than lazy or eager')
 
@@ -346,7 +338,7 @@ def checked(answer, path='', origins=None, local=False):
     if not isinstance(answer, dict) or 'view' not in answer:
         return answer, ''
     if isinstance(answer['view'], dict) and isinstance(answer['view'].get('html'), str):
-        answer = {**answer, 'view': {**answer['view'], 'html': pictures(resolve(answer['view']['html'], path, origins, local), path, origins, local)}}
+        answer = {**answer, 'view': {**answer['view'], 'html': pictures(resolve(answer['view']['html'], path, origins, local), path)}}
     allowed = tuple(v for v in (origins or {}).values() if isinstance(v, str)) if local and isinstance(origins, dict) else ()
     why = refused(answer['view'], path, allowed)
     if why:
