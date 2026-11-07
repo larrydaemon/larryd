@@ -14,6 +14,7 @@ from core_engine import harness, locker, sandbox, store
 
 ALLOWED = {'runtime_locker': ['agent_key', 'name', 'folder', 'code_sha256', 'manifest_sha256', 'registered_at', 'card_key'],   # card_key: the platform's card for it, linked at approval (a key, no data)
            'runtime_runs': ['id', 'lane', 'agent_key', 'job_key', 'run', 'state', 'reason', 'started_at', 'finished_at', 'charged', 'account', 'member', 'provider_ref', 'error_class']}   # provider_ref + error_class: a make's provider id and our word for why it failed (frost-05 2026-11-07), never data   # the caller's keys (a run names its caller)
+ALLOWED['runtime_clock'] = ['job', 'first_seen', 'pressed_for']   # the clock reader's memory: account/scope/job key and two moments, never a job's data (core_engine/clock.py)
 PLANTED = 'Zanzibar-7731-private-pitch'   # a value only the input records carry
 
 
