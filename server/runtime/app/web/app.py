@@ -475,6 +475,36 @@ def place(app, agent_key, data, role='', slot=''):
     return {**held, 'review': review}
 
 
+def place_in_place(app, agent_key, where, kits=None, slot=''):
+    """THE PLACE, IN PLACE (LARRYD_INTERNAL=1 and LARRYD_LOCKER, core_engine/locker.in_place): the agent is held where it is,
+    <LARRYD_LOCKER>/<name>/agent (where: that folder, or <name>, or its path), its kits written into it first (kits: their folder;
+    by default the locker's own _office), nothing copied into instance/. Then to wid as place does (its card PENDING until FROST's
+    review approves these exact hashes). -> what was held, and wid's answer or why wid did not take it."""
+    h, conf, root = harness_for_slot(app, slot), CONFIG['intake'], locker.in_place()
+    path = pathlib.Path(where).expanduser()
+    path = path if path.is_absolute() or path.exists() else root / path
+    path = path / 'agent' if (path / 'agent').is_dir() else path
+    if kits is None and (root / '_office').is_dir():
+        kits = root / '_office'
+    try:
+        rel = path.resolve().relative_to(root)
+    except ValueError:
+        raise SystemExit(f'refused (400): {where} is not inside the locker {root}')
+    try:
+        row = intake.hold_in_place(h.db, root, agent_key, rel.as_posix(), conf['most_files'], conf['most_bytes'], kits=kits)
+    except intake.Refused as no:
+        raise SystemExit(f'refused ({no.status}): {no.reason}')
+    held = {'agent_key': agent_key, 'folder': row['folder'], 'code_sha256': row['code_sha256'], 'manifest_sha256': row['manifest_sha256']}
+    try:
+        review = h.submit(agent_key)
+    except lanes_harness.Refused as no:
+        return {**held, 'refused': f'held in the locker, but wid did not take it: {no.reason}; send it again with submit {agent_key}'}
+    card_key = str(review.get('card_key') or '')
+    if KEY.fullmatch(card_key):   # BOTH KEYS LINKED, as place
+        locker.link(h.db, agent_key, card_key)
+    return {**held, 'review': review}
+
+
 def warm_up(app, shake=None, sleep=None, then=None):
     """Cloud Run, at start (the service) or before a run (a job execution): the warm-up handshakes to every slot with a
     callback address, then `then` (the service's catch-up: still inside the start-up, where the instance has its CPU),
@@ -550,6 +580,8 @@ def main(argv):
     """python runtime/app/web/app.py                                   the host
     python runtime/app/web/app.py submit <key> [--slot <slot>]        an agent the runtime holds, to the platform's wid (its key, its exact hashes, its manifest)
     python runtime/app/web/app.py place <card key> <file.larryd> [marketplace] [--slot <slot>]   an agent the owner approved: into the locker (and, on Cloud Run, the lockers bucket), then to the platform's wid
+    python runtime/app/web/app.py place <card key> <folder> [--kits <folder>] [--slot <slot>]   LARRYD_INTERNAL=1 and LARRYD_LOCKER: the agent held in place, <LARRYD_LOCKER>/<name>/agent, its kits written into it
+    python runtime/app/web/app.py adopt <card key> <name> [--slot <slot>]   LARRYD_INTERNAL=1 and LARRYD_LOCKER: a copy held in instance/agents moved to <name>/agent in place, on its approved hashes
     python runtime/app/web/app.py review <card key>... [--slot <slot>]   what the runtime records for those agents, with the platform's word on the hashes it holds
     python runtime/app/web/app.py remove <key> [--slot <slot>]        a placed agent taken out of the locker, only when the platform's word on its exact hashes is revoked
       (on Cloud Run --slot, or LARRYD_SLOT, names the slot whose wid is asked: slot-a, slot-b or proof)
@@ -561,8 +593,11 @@ def main(argv):
     secret = secret_file.read_text().strip() if secret_file.is_file() else ''
     keys_dir = os.environ.get('LARRYD_KEYS_DIR')   # Cloud Run: the callers' keys, one folder each (the hardened call)
     cloud = cloud_parts()
+    here = locker.in_place()   # THE LOCKER IN PLACE (LARRYD_INTERNAL=1 and LARRYD_LOCKER): every agent held where it is, none in instance/
+    if here is not None and not here.is_dir():
+        raise SystemExit(f'{locker.IN_PLACE} names no folder: {here}')
     app = create_app(INSTANCE, secret, retry_seconds=RETRY_IN_JOB if argv[1:2] == ['job'] else RETRY_IN_REQUEST, addresses=platform.addresses(CONFIG, side, INSTANCE) if not cloud else {},
-                     agents=(INSTANCE / 'agents') if cloud and cloud.get('lockers') else locker_root(INSTANCE),
+                     agents=here or ((INSTANCE / 'agents') if cloud and cloud.get('lockers') else locker_root(INSTANCE)),
                      developer=os.environ.get(DEVELOPER) == '1',
                      keys=callers.Keys(keys_dir) if keys_dir else None, nonces=callers.nonces() if keys_dir else None, cloud=cloud)
     slot = ''
@@ -571,6 +606,25 @@ def main(argv):
         if at + 1 >= len(argv):
             raise SystemExit('--slot needs a slot name')
         slot, argv = argv[at + 1], argv[:at] + argv[at + 2:]
+    kits = None
+    if '--kits' in argv[2:]:   # place in place: the folder of the kits written into the agent (default: the locker's _office)
+        at = argv.index('--kits')
+        if at + 1 >= len(argv):
+            raise SystemExit('--kits needs a folder')
+        kits, argv = pathlib.Path(argv[at + 1]).expanduser(), argv[:at] + argv[at + 2:]
+    if here is not None and argv[1:2] == ['place']:   # IN PLACE: a folder in the locker, never a .larryd file unpacked into it
+        if len(argv) != 4 or not pathlib.Path(argv[3]).expanduser().is_dir() and not (here / argv[3]).is_dir():
+            raise SystemExit(f'in place: place <card key> <the agent\'s folder in {here}> [--kits <folder>] [--slot <slot>]')
+        print(json.dumps(place_in_place(app, argv[2], argv[3], kits=kits, slot=slot)))
+        return
+    if here is not None and argv[1:2] == ['adopt'] and len(argv) == 4:   # THE ONE-TIME MOVE: a held copy in instance/agents adopted in place, its approved hashes kept
+        db = harness_for_slot(app, slot).db
+        try:
+            row = locker.adopt(db, INSTANCE / 'agents', here, argv[2], argv[3] if (here / argv[3] / locker.MANIFEST).is_file() else f'{argv[3]}/agent')
+        except ValueError as why:
+            raise SystemExit(f'refused: {why}')
+        print(json.dumps({'agent_key': argv[2], 'folder': row['folder'], 'code_sha256': row['code_sha256'], 'manifest_sha256': row['manifest_sha256']}))
+        return
     if argv[1:2] == ['place'] and len(argv) in (4, 5):
         print(json.dumps(place(app, argv[2], pathlib.Path(argv[3]).read_bytes(), role=argv[4] if len(argv) == 5 else '', slot=slot)))
         return

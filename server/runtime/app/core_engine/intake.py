@@ -108,3 +108,66 @@ def receive(db, agents, folder, agent_key, files):
     finally:
         if incoming.exists():
             shutil.rmtree(incoming, ignore_errors=True)
+
+
+KIT = 'office.py'   # the office library every internal agent is packed with (its repo's _office/place.sh), beside the kits agent.json "libs" names
+
+
+def kits_in(path, kits):
+    """THE KITS INSIDE THE AGENT (the locker in place: an agent's folder is self-contained, production's shape): the office library
+    and each kit its agent.json "libs" names, <kits>/<lib>.py, written into the agent's own folder, so the folder's hashes cover them
+    and the agent finds them beside its entry, as it did in its packed copy. -> the kits written; Refused when one is missing."""
+    try:
+        libs = json.loads((path / locker.MANIFEST).read_text()).get('libs') or []
+    except (OSError, ValueError):
+        raise Refused(400, f'{locker.MANIFEST} is not readable')
+    if not isinstance(libs, list) or not all(isinstance(lib, str) and PART.match(lib) and '.' not in lib for lib in libs):
+        raise Refused(400, '"libs" names kits by their plain names')
+    kits = pathlib.Path(kits)
+    names = ([KIT] if (kits / KIT).is_file() else []) + [f'{lib}.py' for lib in libs]
+    missing = [n for n in names if not (kits / n).is_file() or (kits / n).is_symlink()]
+    if missing:
+        raise Refused(400, f'no kit {", ".join(missing)} in {kits}')
+    for n in names:
+        try:
+            (path / n).write_bytes((kits / n).read_bytes())
+        except OSError:   # a locked folder (virtual_sanity's lock): nothing is held until it is opened
+            raise Refused(409, f'{n} could not be written into the agent\'s folder (is the locker locked?)')
+    return names
+
+
+def hold_in_place(db, root, agent_key, folder, most_files, most_bytes, kits=None):
+    """THE PLACE, IN PLACE (LARRYD_INTERNAL=1 and LARRYD_LOCKER): the agent is held where it is, <root>/<folder> (<name>/agent),
+    nothing copied anywhere. Its kits written in first (kits_in, when a kits folder is named), then the same guards as a .larryd file
+    (only plain files and paths, no link, within the limits, the manifest and its entry; agent.json's "key", when it names one, is
+    the card key placed), then its row: the folder and the sha256 of its code (kits included) and manifest, which verify() checks
+    before every call and run. The same folder placed again replaces its row. -> the locker row."""
+    if not KEY.match(agent_key or ''):
+        raise Refused(400, 'not a card key')
+    root = pathlib.Path(root).resolve()
+    try:
+        path = locker._inside(root, folder)
+    except ValueError:
+        raise Refused(400, f'{folder} is not inside the locker {root}')
+    if not path.is_dir() or (root / folder).is_symlink():
+        raise Refused(400, f'{folder} is not a folder in the locker')
+    if locker._links(path):
+        raise Refused(400, f'{folder} holds a link; an agent is only its own files')
+    if kits is not None:
+        kits_in(path, kits)
+    files = {p.relative_to(path).as_posix(): p.read_bytes() for p in sorted(path.rglob('*')) if p.is_file() and '__pycache__' not in p.relative_to(path).parts}
+    check(files, most_files, most_bytes)
+    named = json.loads(files[locker.MANIFEST]).get('key')
+    if named not in (None, '', agent_key):
+        raise Refused(400, f'{locker.MANIFEST} names the key {named}, not {agent_key}')
+    con = sqlite3.connect(db)
+    try:
+        con.execute('DELETE FROM runtime_locker WHERE agent_key = ?', (agent_key,))
+        con.commit()
+    finally:
+        con.close()
+    try:
+        locker.add(db, root, agent_key, path.relative_to(root).as_posix())
+    except ValueError as why:
+        raise Refused(400, str(why))
+    return locker.held(db, agent_key)

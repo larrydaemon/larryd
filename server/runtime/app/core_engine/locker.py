@@ -4,6 +4,7 @@ run verifies the folder against the row first; any change, an added file or a li
 import datetime
 import hashlib
 import json
+import os
 import pathlib
 import shutil
 import sqlite3
@@ -11,6 +12,20 @@ import sys
 
 MANIFEST = 'agent.json'
 NEEDS = ('name', 'entry')
+
+
+IN_PLACE = 'LARRYD_LOCKER'   # THE LOCKER IN PLACE (LARRYD_INTERNAL=1 only): the one folder holding every internal agent, each at <name>/agent
+
+
+def in_place():
+    """THE LOCKER IN PLACE (ONE SYSTEM, the owner 2026-11-07: "1 single locker for all agents internal (sanity_agents/<name>";
+    "zero agents should live in the runtime itself"): with LARRYD_INTERNAL=1 and LARRYD_LOCKER naming a folder, the runtime holds
+    each agent where it is, <LARRYD_LOCKER>/<name>/agent, and copies nothing into instance/. -> that folder, or None (every other
+    runtime: production's bucket and cache, a laptop's own locker, exactly as before)."""
+    root = os.environ.get(IN_PLACE, '')
+    if os.environ.get('LARRYD_INTERNAL') != '1' or not root:
+        return None
+    return pathlib.Path(root).expanduser().resolve()
 
 
 def _inside(root, folder):
@@ -116,13 +131,50 @@ def remove(db, root, agent_key):
         path = _inside(root, row['folder'])
         if (pathlib.Path(root) / row['folder']).is_symlink():
             raise ValueError('the folder is a link')   # never followed out of the locker
-        if path.is_dir():
+        if path.is_dir() and in_place() != pathlib.Path(root).resolve():   # IN PLACE the folder is the agent's own home: only its row goes
             shutil.rmtree(path)
         con.execute('DELETE FROM runtime_locker WHERE agent_key = ?', (agent_key,))
         con.commit()
         return row['folder']
     finally:
         con.close()
+
+
+def adopt(db, old_root, root, agent_key, folder):
+    """THE ONE-TIME MOVE INTO THE LOCKER IN PLACE: an agent already held (its row and its copy under old_root, instance/agents) is held
+    at <root>/<folder> instead, ON THE SAME APPROVED HASHES. The copy's files the folder lacks (the kits packed at its place: office.py,
+    look.py ...) are written into the folder from the copy, byte for byte as approved; a file the folder has with other bytes, or a file
+    the copy never had, refuses it (the agent changed since its approval: place it again, for a new review). Nothing is written unless
+    the copy still verifies; the row moves only when the folder hashes to exactly the approved hashes. The copy is left where it was.
+    -> the row; ValueError and why otherwise."""
+    ok, why = verify(db, old_root, agent_key)
+    if not ok:
+        raise ValueError(f'the held copy does not verify: {why}')
+    row = held(db, agent_key)
+    if row['agent_key'] != agent_key:
+        raise ValueError('held under another key: adopt it by its own key')
+    old, path = _inside(old_root, row['folder']), _inside(root, folder)
+    if not (path / MANIFEST).is_file() or _links(path):
+        raise ValueError(f'{folder} is not an agent folder of plain files')
+    have = {p.relative_to(old).as_posix() for p in old.rglob('*') if p.is_file() and '__pycache__' not in p.parts}
+    mine = {p.relative_to(path).as_posix() for p in path.rglob('*') if p.is_file() and '__pycache__' not in p.parts}
+    if mine - have:
+        raise ValueError(f'{folder} holds files the approved copy never had: {", ".join(sorted(mine - have))}')
+    changed = sorted(f for f in mine if (path / f).read_bytes() != (old / f).read_bytes())
+    if changed:
+        raise ValueError(f'{folder} changed since its approval: {", ".join(changed)}')
+    for f in sorted(have - mine):
+        (path / f).parent.mkdir(parents=True, exist_ok=True)
+        (path / f).write_bytes((old / f).read_bytes())
+    if (_code_sha256(path), _manifest_sha256(path)) != (row['code_sha256'], row['manifest_sha256']):
+        raise ValueError(f'{folder} does not hash to the approved hashes')
+    con = sqlite3.connect(db)
+    try:
+        con.execute('UPDATE runtime_locker SET folder = ? WHERE agent_key = ?', (path.relative_to(pathlib.Path(root).resolve()).as_posix(), agent_key))
+        con.commit()
+    finally:
+        con.close()
+    return held(db, agent_key)
 
 
 def main(argv):
