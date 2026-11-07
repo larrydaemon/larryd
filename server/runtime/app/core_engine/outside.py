@@ -25,6 +25,7 @@ import urllib.parse
 import urllib.request
 
 from . import exxact
+from . import handoff as _handoff
 
 PROVIDERS = {
     'replicate': {'name': 'Replicate', 'api': 'https://api.replicate.com/v1', 'delivery': ('.replicate.delivery',)},
@@ -330,11 +331,16 @@ class _NoRedirect(urllib.request.HTTPRedirectHandler):
         return None
 
 
+_FROM_ENVIRONMENT = object()   # Hand's default: the handoff the environment names (Cloud Run), else none
+
+
 class Hand:
     """One provider's doors, reached only as the list says. places: {provider: {'api', 'delivery'}} replaces the list's addresses
     (the lab's stand-in provider, a test); it comes from the runtime's own start, never from a call."""
 
-    def __init__(self, places=None, sleep=time.sleep, clock=time.monotonic, opener=None):
+    def __init__(self, places=None, sleep=time.sleep, clock=time.monotonic, opener=None, handoff=_FROM_ENVIRONMENT):
+        self.handoff = _handoff.from_environment() if handoff is _FROM_ENVIRONMENT else handoff   # a large input's signed URL (handoff.py); None: the Files API, as before
+        self._handed = []   # this make's handoff objects, deleted when it ends
         self.places = {**{p: {'api': v['api'], 'delivery': v['delivery']} for p, v in PROVIDERS.items()}, **(places or {})}
         self.sleep, self.clock = sleep, clock
         self.opener = opener or urllib.request.build_opener(_NoRedirect)
@@ -426,6 +432,14 @@ class Hand:
         if kind in REFERENCE_KINDS and len(inline) <= DATA_URI_MOST:   # A SMALL PICTURE GOES INSIDE THE ASK (frost-05's (A), 2026-11-07): Replicate's documented
             return inline, ''                                         # way for a file <= 256kb ("Files should be passed as HTTP URLs or data URLs");
             #                                                           its Files API address failed as 'fetch' (pf Krea run 6, vttr29f20hrzw0d1pgrsxyr0rw)
+        if self.handoff is not None:   # A LARGE INPUT: Replicate's documented way, "an HTTP URL" (handoff.py): a signed GET URL for one object, 60 minutes, deleted when the make ends
+            try:
+                url, handed = self.handoff.put(picture, mime)
+            except Exception:   # noqa: BLE001 - nothing is sent when the input could not be handed
+                self.last['class'] = 'unreachable'
+                return '', 'reference not handed'
+            self._handed.append(handed)
+            return url, ''
         edge = 'larryd' + hashlib.sha256(picture).hexdigest()[:24]
         body = (f'--{edge}\r\nContent-Disposition: form-data; name="content"; filename="reference.{kind}"\r\nContent-Type: {mime}\r\n\r\n').encode('ascii') + picture + f'\r\n--{edge}--\r\n'.encode('ascii')
         status, raw = self._call('POST', f"{place['api']}/files", key, raw=(body, f'multipart/form-data; boundary={edge}'), seconds=120)
@@ -541,6 +555,15 @@ class Hand:
         """The whole errand: -> ({'name', 'kind', 'data'}, '') or (None, why). picture: the references' bytes when the ask names
         them (the harness read them from the member's DA-M), one per reference in the ask's order (bytes alone: a list of one); an
         ask whose references were not all read makes nothing."""
+        self._handed = []
+        try:
+            return self._make(ask, key, picture)
+        finally:   # EVERY HANDOFF OBJECT DELETED WHEN THE MAKE ENDS: made, failed, timed out or broken
+            for handed in self._handed:
+                self.handoff.drop(handed)
+            self._handed = []
+
+    def _make(self, ask, key, picture=b''):
         spec = MODELS[ask['model']]
         name = PROVIDERS[spec['provider']]['name']
         self.last = {'ref': '', 'class': ''}
