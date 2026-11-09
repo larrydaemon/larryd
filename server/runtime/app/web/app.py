@@ -264,6 +264,8 @@ def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, deve
         def go():
             try:
                 runner.run_job(account, scope, member, job_key, run)
+            except lanes_harness.Refused as no:   # the platform refused the RUN before its agent ran (already ended: two starts met, the push and the queue walk): said in one line, never a trace
+                logging.getLogger('runtime').warning('run %s of %s not started: %s', run, job_key, no.reason)
             finally:
                 with lock:
                     running.discard((job_key, run))
