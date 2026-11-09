@@ -528,10 +528,12 @@ def access_granted(d):
     return str(d.get(CONFIG['access']['field']) or '') == CONFIG['access']['grants']
 
 
-def catch_up(app):
+def catch_up(app, wait=None, sleep=time.sleep):
     """At start, once (never a loop): the RUNs the platform queued while the runtime was away. On Cloud Run every
     slot's queue is read, and each run is claimed once across every instance before it starts (two new instances never
-    start the same run). A queued run without the platform's access decision is ended REFUSED, never started."""
+    start the same run). A queued run without the platform's access decision is ended REFUSED, never started.
+    wait (seconds, the drain's): a run met while the one slot is held waits for it, up to that long, so the queue is walked
+    one run after another (ONE RUN PER INSTANCE kept); without it, a busy slot leaves that run QUEUED in the platform."""
     status = 0
     sources = list(app.config['harnesses'].items()) or [('', app.config['harness'])]
     for caller, h in sources:
@@ -543,8 +545,43 @@ def catch_up(app):
             if not access_granted(j):   # the second guard on this path too: ended REFUSED (told and recorded), never started
                 h._end(j['account'], j['scope'], j['member'], '', j['job_key'], int(j['run']), 'REFUSED', NOT_GRANTED)
                 continue
-            app.config['start'](j['account'], j['scope'], j['member'], j['job_key'], int(j['run']), caller)
+            args = (j['account'], j['scope'], j['member'], j['job_key'], int(j['run']), caller)
+            started, until = app.config['start'](*args), time.monotonic() + (wait or 0)
+            while started is None and wait and time.monotonic() < until:   # THE ONE SLOT IS HELD: wait for it (the drain only)
+                sleep(1)
+                started = app.config['start'](*args)
     return status
+
+
+class Drain:
+    """THE QUEUE WALKED TO ITS END (2026-11-09: the clock pressed 42 Scrum Master 3 blocks, the runtime started 2 and left
+    40 QUEUED until the platform closed them). One thread at a time walks the platform's queue (catch_up with wait); a
+    call while it walks marks it to read the queue once more when it ends, so a run queued meanwhile is never left behind."""
+
+    def __init__(self, app, wait, thread=threading.Thread):
+        self.app, self.wait, self.thread = app, wait, thread
+        self.lock, self.busy, self.again = threading.Lock(), False, False
+
+    def __call__(self):
+        with self.lock:
+            if self.busy:
+                self.again = True
+                return False
+            self.busy, self.again = True, False
+        self.thread(target=self._walk, daemon=True).start()
+        return True
+
+    def _walk(self):
+        while True:
+            try:
+                catch_up(self.app, wait=self.wait)
+            except Exception:   # a walk that failed is logged; the next tick's press calls the drain again
+                logging.getLogger('runtime').exception('drain: the queue walk failed')
+            with self.lock:
+                if not self.again:
+                    self.busy = False
+                    return
+                self.again = False
 
 
 def clocks(app):
@@ -553,8 +590,10 @@ def clocks(app):
     internal jobs, as the catch-up does."""
     inside = os.environ.get('LARRYD_INTERNAL') == '1'
     sources = list(app.config['harnesses'].values()) or [app.config['harness']]
+    drain = Drain(app, wait=CONFIG['run']['seconds'] + 60)   # a held slot is waited for up to the run's hard limit plus the slot's margin
+    app.config['drain'] = drain
     return clock.Clocks([clock.Clock(clock.WidJobs(h.client, internal=inside), h.verify_now, clock.Memory(h.db)) for h in sources],
-                        then=lambda: catch_up(app))
+                        then=drain)
 
 
 def locker_root(instance):
