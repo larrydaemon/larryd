@@ -268,6 +268,9 @@ def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, deve
                 with lock:
                     running.discard((job_key, run))
                 slot.give_back(token)
+                kick = app.config.get('drain')
+                if kick is not None:   # THE SLOT IS FREE: the queue walked once more, so a chain's next step the platform handed while this run held the slot starts now, not at the next tick
+                    kick()
         try:
             threading.Thread(target=go, daemon=True).start()
         except BaseException:

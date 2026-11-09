@@ -1,5 +1,6 @@
 """THE QUEUE WALKED TO ITS END (2026-11-09): 42 RUNs queued by the clock, one slot: every one starts, one after another,
 never two at once; a run queued while the walk is on is not left behind; the plain catch-up (no wait) is unchanged."""
+import threading
 import unittest
 
 from _here import APP  # noqa: F401
@@ -94,6 +95,25 @@ class Drain(unittest.TestCase):
         self.assertTrue(d())
         self.assertFalse(d())
         self.assertTrue(d.again)
+
+
+class SlotFreed(unittest.TestCase):
+    def test_a_run_ending_walks_the_queue_once_more(self):
+        import tempfile, pathlib
+        from unittest import mock
+        with tempfile.TemporaryDirectory() as d:
+            app = host.create_app(pathlib.Path(d), 's' * 32)
+            kicked = []
+            app.config['drain'] = lambda: kicked.append(1)
+            ended = threading.Event()
+            with mock.patch.object(host.lanes_harness.Harness, 'run_job', lambda self, *a: ended.set()):
+                self.assertTrue(app.config['start']('A', 'S', 'M', 'J', 1))
+                self.assertTrue(ended.wait(5))
+                for _ in range(50):
+                    if kicked:
+                        break
+                    threading.Event().wait(0.05)
+            self.assertEqual(kicked, [1])
 
 
 if __name__ == '__main__':
