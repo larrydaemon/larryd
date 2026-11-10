@@ -13,6 +13,7 @@ import logging
 import os
 import pathlib
 import re
+import resource
 import secrets
 import sys
 import threading
@@ -611,6 +612,25 @@ class Drain:
                 self.again = False
 
 
+OPEN_FILES = 4096   # the runtime's open files, at least: launchd starts it with 256 (open_files)
+
+
+def open_files(at_least=OPEN_FILES):
+    """THE RUNTIME'S OPEN FILES (the owner 2026-11-10, "we need it all healthy and working"): launchd starts the runtime
+    with 256 open files; a board's page has it draw every agent's view together and each view asks wid back, every call a
+    socket, so the same limit that silenced wid at 02:00 (its "Too many open files") stands here. The runtime raises its
+    own soft limit to at_least as it starts, never above the hard one, never lowering one already higher; a kernel that
+    refuses leaves it as it stood -> (before, after)."""
+    soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
+    want = at_least if hard == resource.RLIM_INFINITY else min(at_least, hard)
+    if soft < want:
+        try:
+            resource.setrlimit(resource.RLIMIT_NOFILE, (want, hard))
+        except (ValueError, OSError):
+            pass
+    return soft, resource.getrlimit(resource.RLIMIT_NOFILE)[0]
+
+
 def clocks(app):
     """THE CLOCK READER (core_engine/clock.py) over the same sources as the catch-up: one clock per slot's harness (its wid, its
     verify), the catch-up run once after a tick that queued a RUN. The same on both runtimes; LARRYD_INTERNAL=1 asks wid for the
@@ -742,6 +762,8 @@ def main(argv):
         catch_up(app)
     if os.environ.get('LARRYD_INTERNAL') == '1':   # THIS COMPUTER: the clock ticks in-process every 60 s (Cloud Run ticks it through /api/clock/tick)
         app.config['clocks'].start()
+    before, after = open_files()   # THE RUNTIME'S OPEN FILES: raised as it starts, said in its log
+    logging.getLogger('runtime').warning('open files: %d -> %d', before, after)   # the runtime's log says what it did
     app.run(host=os.environ.get('LARRYD_HOST') or CONFIG['host'], port=int(os.environ.get('PORT') or os.environ.get('LARRYD_PORT') or CONFIG['ports'][side]),
             threaded=True)   # 127.0.0.1, except in a container (Cloud Run names LARRYD_HOST and PORT)
 
