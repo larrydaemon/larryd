@@ -151,6 +151,7 @@ class InPlace(Scratch):
         self.assertEqual(got['review'], {'id': 1, 'state': 'waiting'})
         submitted = [d for _o, r, d in wid.said if r == '/agnt/submit'][0]
         self.assertEqual((submitted['code_sha256'], submitted['manifest_sha256']), (got['code_sha256'], got['manifest_sha256']))
+        self.assertEqual(submitted['runtime'], 'internal')   # LARRYD RUNTIME INTERNAL names itself: FROST's review row reads INTERNAL (the owner 2026-11-10: "make sure all use the new runtime")
         self.assertIn('look.py', os.listdir(self.agent))
         with self.assertRaises(SystemExit):
             host.place_in_place(app, KEY, str(self.instance))   # a folder outside the locker

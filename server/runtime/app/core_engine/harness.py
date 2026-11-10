@@ -269,8 +269,10 @@ class Harness:
         if not ok:
             raise Refused(409, why)
         row = locker.held(self.db, agent_key)
+        inside = os.environ.get('LARRYD_INTERNAL') == '1'   # LARRYD RUNTIME INTERNAL NAMES ITSELF (the owner 2026-11-10: "make sure all use the new runtime"): wid writes FROST's review row with THE TAG from this word (wid larryd_runtime.submit: INTERNAL when runtime=internal, else EXTERNAL), as the queue and the clock name it (/jobs/queued, /jobs/scheduled); without it every internal agent was tagged EXTERNAL and handed to the outside runtime
         return self._ask('wid', 'POST', '/agnt/submit', {'agent_key': agent_key, 'name': row['name'], 'code_sha256': row['code_sha256'],
-                                                           'manifest_sha256': row['manifest_sha256'], 'manifest': locker.manifest(self.agents, row['folder'])})
+                                                           'manifest_sha256': row['manifest_sha256'], 'manifest': locker.manifest(self.agents, row['folder']),
+                                                           **({'runtime': 'internal'} if inside else {})})
 
     def marketplace_key(self):
         """The marketplace's key ON THE PLATFORM: the card key wid minted when one is linked (the platform's cards are

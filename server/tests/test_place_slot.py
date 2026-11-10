@@ -22,6 +22,7 @@ class Wid:
 
     def post(self, office, route, data):
         self.asked.append((office, route))
+        self.said = data
         return 200, {'id': 1, 'state': 'waiting', 'card_key': CARD}
 
     def get(self, office, route, data=None):
@@ -46,6 +47,7 @@ class PlaceOnCloudRun(CloudApp):
         out = host.place(self.app, MARKET, self.package, role='marketplace', slot='slot-b')
         self.assertEqual(out['review']['state'], 'waiting', out)
         self.assertIn(('wid', '/agnt/submit'), self.wid['slot-b'].asked)
+        self.assertNotIn('runtime', self.wid['slot-b'].said)   # the outside runtime never claims the internal word: wid tags its agents EXTERNAL
         self.assertEqual(self.wid['slot-a'].asked, [])
 
     def test_the_door_s_configured_slot(self):
