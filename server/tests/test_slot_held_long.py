@@ -180,6 +180,9 @@ class RunningNotWritten(unittest.TestCase):
         self.assertEqual(state, 'FAILED')
         self.assertEqual(ran, [])
         self.assertTrue(any(JOB in line and 'already FAILED' in line for line in said.output), said.output)
+        # a RUN wid already ended (a second start of it, 2026-11-10 11:08) is not written again: no FAILED sent, no CALLBACK_FAILED recorded
+        self.assertEqual([d['state'] for route, d in client.said if route == '/jobs/result'], ['RUNNING'])
+        self.assertFalse(any('callback failed' in line for line in said.output), said.output)
 
 
 class OnStartIsTheRunsOwn(unittest.TestCase):

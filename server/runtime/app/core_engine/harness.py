@@ -811,7 +811,10 @@ class Harness:
         self.started(key, job_key, run, account, member)
         try:
             self._result(account, scope, job_key, run, 'RUNNING', f'RUN {run} RUNNING')
-        except Refused as no:   # THE PLATFORM DID NOT TAKE RUNNING (OPERATION BDAY item 1): the agent never runs; the RUN is ended FAILED with the true reason, the slot is given back by its caller
+        except Refused as no:   # THE PLATFORM DID NOT TAKE RUNNING (OPERATION BDAY item 1): the agent never runs, the slot is given back by its caller
+            if no.status != 502:   # wid answered and refused: the RUN is no longer open (a second start of a RUN already ended): nothing more is written or recorded
+                LOG.warning('RUN %s of %s: RUNNING refused by the platform (%s); the agent does not run', run, job_key, no.reason)
+                return 'FAILED'
             LOG.warning('RUN %s of %s: RUNNING not written (%s); the agent does not run, the RUN is ended FAILED', run, job_key, no.reason)
             return self._end(account, scope, member, key, job_key, run, 'FAILED', f'LARRYD could not write RUNNING to the platform: {no.reason}')
         if 'cards' in hands:
