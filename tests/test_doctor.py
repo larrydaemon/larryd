@@ -462,11 +462,11 @@ def test_the_counts_declaration_passes_alone_beside_species_and_without_a_call(a
 
 
 @pytest.mark.parametrize('records, said', [
-    ({'*': ['read']}, 'records "*" is not a list of "count", "roster", "reviews", "joins", "payments" and "history"'),
-    ({'*': ['count', 'read']}, 'records "*" is not a list of "count", "roster", "reviews", "joins", "payments" and "history"'),
-    ({'*': 'count'}, 'records "*" is not a list of "count", "roster", "reviews", "joins", "payments" and "history"'),
-    ({'*': True}, 'records "*" is not a list of "count", "roster", "reviews", "joins", "payments" and "history"'),
-    ({'*': ['roster', 'roster']}, 'records "*" is not a list of "count", "roster", "reviews", "joins", "payments" and "history"'),
+    ({'*': ['read']}, 'records "*" is not a list of "count", "roster", "reviews", "joins", "payments", "history" and "guards"'),
+    ({'*': ['count', 'read']}, 'records "*" is not a list of "count", "roster", "reviews", "joins", "payments", "history" and "guards"'),
+    ({'*': 'count'}, 'records "*" is not a list of "count", "roster", "reviews", "joins", "payments", "history" and "guards"'),
+    ({'*': True}, 'records "*" is not a list of "count", "roster", "reviews", "joins", "payments", "history" and "guards"'),
+    ({'*': ['roster', 'roster']}, 'records "*" is not a list of "count", "roster", "reviews", "joins", "payments", "history" and "guards"'),
     ({'opns': ['count']}, 'not a list of verbs'),
 ])
 def test_the_counts_declaration_catches(agent, records, said):
@@ -506,6 +506,15 @@ def test_the_review_history_passes_with_a_call_and_needs_one(agent):   # row 78 
         assert doctor.check(agent) == [], records
     _records(agent, {'*': ['history']}, calls=())
     assert doctor.check(agent) != []
+
+
+def test_the_guards_reports_pass_with_a_call_and_need_one(agent):   # Agents Security Plan, the Agent Ecosystem agent (handed by LARRYD RUNTIME INTERNAL only)
+    for records in ({'*': ['guards']}, {'*': ['history', 'guards']}):
+        _records(agent, records, calls=('answer',))
+        assert doctor.check(agent) == [], records
+    for records in ({'*': ['guards']}, {'*': ['guards', 'guards']}):
+        _records(agent, records, calls=())
+        assert doctor.check(agent) != [], records   # handed on a CALL: it needs one (and a word twice is refused)
 
 
 def test_the_roster_is_handed_on_a_call_so_it_needs_one(agent):

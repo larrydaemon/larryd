@@ -405,7 +405,7 @@ class Harness:
         return self._hand_of('payments', member_records.payments_declared, member_records.payments, manifest, given, account, scope, member, agent_key)
 
     def _internal_hand_of(self, word, declared, read, manifest, given, account, scope, member, agent_key):
-        """A HAND FOR AN INTERNAL AGENT ONLY (the reviews waiting, the review history): as _hand_of, but ONLY when this runtime is
+        """A HAND FOR AN INTERNAL AGENT ONLY (the reviews waiting, the review history, the two guards' reports): as _hand_of, but ONLY when this runtime is
         LARRYD RUNTIME INTERNAL (INTERNAL); elsewhere it never asks, hands nothing and says nothing, exactly as the external runtime
         always did (fail closed); wid refuses any card that is not internal and SYSTEM's own (two guards)."""
         if not self.INTERNAL:
@@ -421,6 +421,11 @@ class Harness:
         """THE REVIEW HISTORY (CORE_CLEANUP_IV row 78): "records": {"*": [... "history"]} hands given['history'] on a CALL, as wid's
         history door hands it; LARRYD RUNTIME INTERNAL only."""
         return self._internal_hand_of('history', member_records.history_declared, member_records.history, manifest, given, account, scope, member, agent_key)
+
+    def _guards(self, manifest, given, account, scope, member, agent_key):
+        """THE TWO GUARDS' REPORTS (Agents Security Plan, the Agent Ecosystem agent): "records": {"*": [... "guards"]} hands
+        given['guards'] on a CALL, FROST active monitoring's and HADES's reports as wid's guards door hands them; LARRYD RUNTIME INTERNAL only."""
+        return self._internal_hand_of('guards', member_records.guards_declared, member_records.guards, manifest, given, account, scope, member, agent_key)
 
     # ---------------------------------------------------------------- the CALL lane: an agent answers now
     def answer(self, account, scope, member, agent_key, beside=None, act=False, handed=None):
@@ -483,7 +488,8 @@ class Harness:
                                          self._joins(manifest, given, account, scope, member, agent_key),
                                          self._payments(manifest, given, account, scope, member, agent_key),
                                          self._reviews(manifest, given, account, scope, member, agent_key),
-                                         self._history(manifest, given, account, scope, member, agent_key)) if r)   # THE COUNTS, THE ROSTER, the joins, the payments, and (LARRYD RUNTIME INTERNAL only) the reviews waiting and their history, when the approved manifest declares them
+                                         self._history(manifest, given, account, scope, member, agent_key),
+                                         self._guards(manifest, given, account, scope, member, agent_key)) if r)   # THE COUNTS, THE ROSTER, the joins, the payments, and (LARRYD RUNTIME INTERNAL only) the reviews waiting, their history and the two guards' reports, when the approved manifest declares them
         if fabric.declared(manifest):   # THE DATA FABRIC'S ONE SNAPSHOT (the owner 2026-11-04: "no connections / just 1 updated snapshot per day"): one read through wid (FROST's store)
             try:
                 state, who = fabric.viewer(self._ask, account, scope, member)

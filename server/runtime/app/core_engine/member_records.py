@@ -52,7 +52,11 @@ HISTORY = 'history'                             # THE REVIEW HISTORY (CORE_CLEAN
 HISTORY_DOOR = ('GET', '/agnt/reviews/history')  # wid's (frost-8f, f9a169b2): {"history": [...]}; wid refuses any card that is not internal and SYSTEM's own (the second guard)
 HISTORY_FIELDS = {'id', 'agent_key', 'card_key', 'name', 'code_sha256', 'manifest_sha256', 'state', 'submitted_at', 'decided_at', 'note'}
 MOST_HISTORY = 1000                             # the history entries handed at most; more refuses the answer whole
-INTERNAL_WORDS = (REVIEWS, HISTORY)              # words of "*" on LARRYD RUNTIME INTERNAL only (harness.Harness.INTERNAL decides whether they are ever asked)
+GUARDS = 'guards'                               # THE TWO GUARDS' REPORTS (Agents Security Plan, the Agent Ecosystem agent): "records": {"*": ["guards"]}: on a CALL, an INTERNAL agent only
+GUARDS_DOOR = ('GET', '/agnt/guards')           # wid's (060695c4): {"frost": FROST active monitoring's agents_report, "hades": HADES's}; wid refuses any account but SYSTEM's own (the second guard)
+GUARDS_PARTS = {'rules', 'agents', 'counts', 'at'}   # each guard's report, as wid hands it
+MOST_GUARD_ROWS = 1000                          # the rules or agents of one guard's report handed at most; more refuses the answer whole
+INTERNAL_WORDS = (REVIEWS, HISTORY, GUARDS)      # words of "*" on LARRYD RUNTIME INTERNAL only (harness.Harness.INTERNAL decides whether they are ever asked)
 INTERNAL = os.environ.get('LARRYD_INTERNAL') == '1'   # LARRYD RUNTIME INTERNAL (its start says so): there "*" may hold INTERNAL_WORDS beside the rest
 EVERY_WORDS = (COUNT, ROSTER, JOINS, PAYMENTS)                   # what "*" may hold, each once; anything else under "*" counts for nothing (fail closed)
 COUNTS_DOOR = ('GET', '/agnt/records/counts')
@@ -213,6 +217,33 @@ def history(ask, account, scope, member, agent_key=''):
     """THE REVIEW HISTORY through wid's history door for this member: -> [entries]. A refusal propagates; any other shape is
     ValueError (nothing is handed). Asked only by LARRYD RUNTIME INTERNAL (harness._history)."""
     return historied(ask('wid', HISTORY_DOOR[0], HISTORY_DOOR[1], {'account': account, 'scope': scope, 'member': member, 'agent_key': agent_key}))
+
+
+def guards_declared(manifest):
+    """Does the manifest declare THE TWO GUARDS' REPORTS: "*" holds "guards"? No right on any species either."""
+    return GUARDS in _every(manifest, EVERY_WORDS + INTERNAL_WORDS)
+
+
+def guarded(body):
+    """The guards door's answer as the agent is handed it, or ValueError: {"frost": report, "hades": report}, each report exactly
+    {rules: [objects], agents: [objects], counts: {word: a whole number}, at: plain time}, at most MOST_GUARD_ROWS rules and agents
+    each; anything else (another guard, another part, a part of another kind) refuses it whole."""
+    if not (isinstance(body, dict) and set(body) == {'frost', 'hades'}):
+        raise ValueError('the guards are not {frost, hades}')
+    for name in ('frost', 'hades'):
+        r = body[name]
+        if not (isinstance(r, dict) and set(r) == GUARDS_PARTS
+                and all(isinstance(r[p], list) and len(r[p]) <= MOST_GUARD_ROWS and all(isinstance(x, dict) for x in r[p]) for p in ('rules', 'agents'))
+                and isinstance(r['counts'], dict) and all(isinstance(k, str) and _whole(n) for k, n in r['counts'].items())
+                and _plain(r['at'], 40)):
+            raise ValueError(f'the {name} guard\'s report is not {{rules, agents, counts, at}}')
+    return {'frost': body['frost'], 'hades': body['hades']}
+
+
+def guards(ask, account, scope, member, agent_key=''):
+    """THE TWO GUARDS' REPORTS through wid's guards door for this member: -> {frost, hades}. A refusal propagates; any other shape is
+    ValueError (nothing is handed). Asked only by LARRYD RUNTIME INTERNAL (harness._guards)."""
+    return guarded(ask('wid', GUARDS_DOOR[0], GUARDS_DOOR[1], {'account': account, 'scope': scope, 'member': member, 'agent_key': agent_key}))
 
 
 def _whole(n):
