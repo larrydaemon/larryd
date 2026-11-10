@@ -820,6 +820,7 @@ class Harness:
         if 'cards' in hands:
             given['cards'] = lanes.assemble(cards, hired, groups, verify, own=key)
         self._counts(manifest, given, account, scope, member, key)   # THE COUNTS, when the approved manifest declares them: handed on a RUN as on a CALL; not handed, the agent runs without
+        self._guards(manifest, given, account, scope, member, key)   # THE TWO GUARDS' REPORTS, the same: on a RUN as on a CALL (LARRYD RUNTIME INTERNAL only; OPERATION BDAY 2026-11-10: Agent Ecosystem's every RUN read "the guards' door did not answer" while wid answered 200)
         if self.internal_for(manifest) and 'records' not in hands:   # RECORDS ON A RUN, internal agents (the owner 2026-11-03): what its manifest declares, read as a CALL reads them, without the "records" hand
             wanted = member_records.declared(manifest)
             if wanted:
