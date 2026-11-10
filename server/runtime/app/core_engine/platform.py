@@ -30,15 +30,22 @@ class Client:
     retry_seconds (Cloud Run): a call that gets no answer is tried again after 0.5, 1, 2, 4, 8 ... seconds until that
     many seconds have passed, each try signed again with a FRESH nonce and moment. A GET is retried on any lost answer;
     a POST only when it never left (the connection or the handshake failed), so a delivery or a charge is never sent
-    twice. 0 = one try (the laptop)."""
+    twice. 0 = one try (the laptop).
+
+    asks_again_once_sent=False (an office on this computer, LARRYD RUNTIME INTERNAL; the owner 2026-11-10: "slow"): a GET that
+    left and got no answer in time is never sent again. The office holds it and is still working on it (no Cloud NAT between
+    them loses an answer here); asking again only adds the same work while it is behind: on 2026-11-10 one board page made
+    each call 3 to 4 copies and every answer took 30 to 70 s. A call that never left (the office restarting) is still retried."""
     BACKOFF = (0.5, 1, 2, 4, 8, 16, 32)
 
-    def __init__(self, addresses, secret, timeout=10, outbound=None, slot=None, retry_seconds=0, clock=time.monotonic, sleep=time.sleep):
+    def __init__(self, addresses, secret, timeout=10, outbound=None, slot=None, retry_seconds=0, clock=time.monotonic, sleep=time.sleep,
+                 asks_again_once_sent=True):
         self.addresses = dict(addresses)
         self.secret = secret
         self.timeout = timeout
         self.outbound, self.slot = outbound, slot
         self.retry_seconds, self.clock, self.sleep = retry_seconds, clock, sleep
+        self.asks_again_once_sent = asks_again_once_sent
 
     def _headers(self, route, data, at):
         if self.outbound is not None:
@@ -95,7 +102,7 @@ class Client:
         except urllib.error.URLError:   # raised before the answer was read: the connection, the handshake or the sending failed
             return 0, {'refused': f'{office} does not answer'}, True
         except OSError:   # sent, then no answer: a GET may ask again, a POST may have been taken
-            return 0, {'refused': f'{office} does not answer'}, method == 'GET'
+            return 0, {'refused': f'{office} does not answer'}, method == 'GET' and self.asks_again_once_sent
 
     def get(self, office, route, data=None, most=None):
         return self._send(office, 'GET', route, {k: str(v) for k, v in (data or {}).items()}, most)

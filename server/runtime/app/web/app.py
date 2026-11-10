@@ -90,7 +90,8 @@ def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, deve
             offices = local[caller] if isinstance(local.get(caller), dict) else {o: f'{base}/{o}' for o in slots['offices']} if base else {}
             harnesses[caller] = lanes_harness.Harness(
                 db, locker_dir, platform.Client(offices, '',
-                                                outbound=cloud['outbound'], slot=caller, retry_seconds=retry_seconds),
+                                                outbound=cloud['outbound'], slot=caller, retry_seconds=retry_seconds,
+                                                asks_again_once_sent=not isinstance(local.get(caller), dict)),   # an office on this computer is never asked twice for what it already holds
                 CONFIG['run']['seconds'], records=records, caller=caller, **hand_parts)
     claims = cloud.get('claims') or long_runs.MemoryClaims()
     job_starter = cloud.get('jobs')
