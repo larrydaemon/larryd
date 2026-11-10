@@ -38,7 +38,8 @@ FIELDS['live'] = ('the agent\'s own live page (optional, only on an agent that a
 FIELDS['makes'] = ('what the agent asks LARRYD to have made by an outside model on a RUN (optional): a list of models on LARRYD\'s list, e.g. '
                    '["nano-banana-2"]; the agent never reaches out: its answer carries "makes": [one ask], LARRYD\'s own hand does the errand and '
                    'stores the file in the member\'s DA-M; the card\'s "sends_to" and "data_sent" must say where the words go')
-FIELDS['fabric'] = ('THE DATA FABRIC (optional, Positive Feedback\'s own PF DATA FABRIC): {"modules": [module codes]}, each also declared in '
+FIELDS['fabric'] = ('THE DATA FABRIC (optional, Positive Feedback\'s own PF DATA FABRIC): {"snapshot": true}, the one snapshot a day: on a CALL LARRYD hands '
+                    'fabric = {"state": the account\'s state, "viewer": {"member_type": who looks}}; or {"modules": [module codes]}, each also declared in '
                     '"records" with read and edit; on a RUN LARRYD hands fabric = {files: the newest official pf_<module>.csv of each, '
                     'state: the account\'s Fabric state} and those modules\' records with their custom fields, and carries the answer\'s '
                     '"fabric": {"writes": [edits of custom fields only], "state": {...}}; on a CALL it hands fabric = {"state": the account\'s state, "viewer": {"member_type": who looks, for the page\'s mask}}')

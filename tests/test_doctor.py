@@ -549,11 +549,22 @@ def test_a_declared_fabric_passes(agent):
     assert doctor.check(agent) == []
 
 
+def test_the_one_snapshot_passes(agent):   # the runtime's form since 2026-11-03 (fabric.declared): nothing else to declare
+    _fabric(agent, {'snapshot': True}, records={}, gives=None)
+    assert [p for p in doctor.check(agent) if 'fabric' in p.wrong] == []
+
+
+@pytest.mark.parametrize('fabric', [{'snapshot': False}, {'snapshot': 'yes'}, {'snapshot': True, 'modules': ['invc']}])
+def test_a_snapshot_not_exactly_true_fails(agent, fabric):
+    _fabric(agent, fabric)
+    assert any('"fabric" is not' in p.wrong for p in doctor.check(agent))
+
+
 @pytest.mark.parametrize('fabric, records, gives, said', [
-    ('invc', None, None, 'not {"modules": [module codes]}'),
-    ({'modules': []}, None, None, 'not {"modules": [module codes]}'),
-    ({'modules': ['zzzz']}, None, None, 'not {"modules": [module codes]}'),
-    ({'modules': ['invc'], 'more': 1}, None, None, 'not {"modules": [module codes]}'),
+    ('invc', None, None, 'nor {"modules": [module codes]}'),
+    ({'modules': []}, None, None, 'nor {"modules": [module codes]}'),
+    ({'modules': ['zzzz']}, None, None, 'nor {"modules": [module codes]}'),
+    ({'modules': ['invc'], 'more': 1}, None, None, 'nor {"modules": [module codes]}'),
     ({'modules': ['invc', 'cont']}, None, None, 'names cont, which "records" does not declare with read, edit'),
     ({'modules': ['invc']}, {'invc': ['read']}, None, 'names invc, which "records" does not declare'),
     ({'modules': ['invc']}, None, ['view', 'delivery'], '"gives" does not name "fabric"'),

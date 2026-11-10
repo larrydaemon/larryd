@@ -516,9 +516,11 @@ def _fabric(card, c, where, f):
     """"fabric": THE DATA FABRIC's modules, {"modules": [codes]}, each a module with a pf_<module>.csv and declared in "records"
     with read and edit (its writes are edits of custom fields, through the record doors); the answer names "fabric" in gives."""
     asked = card['fabric']
+    if asked == {'snapshot': True}:   # THE DATA FABRIC'S ONE SNAPSHOT (the runtime since 2026-11-03, fabric.declared: "no connections / just 1 updated snapshot per day"): on a CALL it hands fabric = {state, viewer}, nothing else to declare
+        return
     modules = asked.get('modules') if isinstance(asked, dict) and set(asked) == {'modules'} else None
     if not (isinstance(modules, list) and modules and all(isinstance(m, str) and m in shape.FABRIC_MODULES for m in modules)):
-        f.add(c, where, '"fabric" is not {"modules": [module codes]}', f'set "fabric" to {{"modules": [...]}} from: {", ".join(shape.FABRIC_MODULES)}')
+        f.add(c, where, '"fabric" is not {"snapshot": true} nor {"modules": [module codes]}', f'set "fabric" to {{"snapshot": true}} (the one snapshot), or to {{"modules": [...]}} from: {", ".join(shape.FABRIC_MODULES)}')
         return
     records = card.get('records') if isinstance(card.get('records'), dict) else {}
     short = [m for m in modules if not all(v in (records.get(m) or []) for v in shape.FABRIC_NEEDS)]
