@@ -18,6 +18,7 @@ import secrets
 import sys
 import threading
 import time
+import traceback
 from urllib.parse import quote
 
 from flask import Flask, Response, jsonify, redirect, render_template, request, send_from_directory
@@ -46,6 +47,22 @@ HERE_RUNS = 3           # how many RUNs the runtime on this computer runs at one
 
 
 KEY = re.compile(r'[A-Z]{4}_[0-9A-F]{12}_[0-9A-F]{4}')   # a key as the platform's one generator writes it
+
+
+AGENT_KEY = re.compile(r'^MAGT_[0-9A-F]{12}_[0-9A-F]{4}$')
+
+
+def failed_where(error):
+    """A failed call's own place for the log (2026-11-10: "FileNotFoundError on /api/agents/answer" named no agent): the file and line it was
+    raised at (the innermost frame, the file's name alone) and the agent key the call names, only when it is a well-formed MAGT key;
+    nothing else of the call, and nothing of it to the caller"""
+    frames = traceback.extract_tb(error.__traceback__) if error.__traceback__ else []
+    at = f' at {os.path.basename(frames[-1].filename)}:{frames[-1].lineno}' if frames else ''
+    try:
+        named = request.values.get('agent_key') or ((request.get_json(silent=True) or {}).get('agent_key') if request.is_json else '')
+    except Exception:   # a body that cannot be read names no agent
+        named = ''
+    return at + (f' for {named}' if isinstance(named, str) and AGENT_KEY.match(named) else '')
 
 
 def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, developer=False, keys=None, nonces=None, cloud=None,
@@ -161,7 +178,7 @@ def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, deve
     def failed(error):   # nothing of an exception is ever echoed to a caller (the security review, 2026-10-06)
         if isinstance(error, HTTPException):
             return jsonify({'refused': error.name}), error.code   # a 404 or 405 stays itself, with its plain name only
-        logging.getLogger('runtime').error('a call failed: %s on %s', type(error).__name__, request.path)   # the kind and the door only, never a run's data
+        logging.getLogger('runtime').error('a call failed: %s on %s%s', type(error).__name__, request.path, failed_where(error))   # the kind, the door, where it was raised and whose agent; never a run's data
         return jsonify({'refused': 'the runtime could not answer'}), 500
 
     @app.get('/api/health')
