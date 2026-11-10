@@ -103,6 +103,7 @@ def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, deve
     slot = (one_slot.Slots(HERE_RUNS, CONFIG['run']['seconds'] + 60) if os.environ.get('LARRYD_INTERNAL') == '1'   # THIS COMPUTER: a few runs at a time, so a long step never makes the other blocks wait past the platform's 20 minutes
             else one_slot.Slot(CONFIG['run']['seconds'] + 60))   # ONE RUN PER INSTANCE: above the run's own hard limit, plus a minute
     run_most = (lanes_harness.Harness.MOST_INTERNAL_SECONDS + 60) if os.environ.get('LARRYD_INTERNAL') == '1' else None   # A RUN's slot on this computer: an internal agent's own limit (up to 6 hours) plus a minute, never a CALL's 80 s (the 305 "slot stuck" lines of 2026-11-09)
+    sandbox.ROOT = str(pathlib.Path(instance) / 'out')   # this instance's own run folders: another runtime's sweep of the shared temp folder never reaches them (Session 9 2026-11-10: a RUN's answer file was gone at sandbox.run, the thread died, the platform closed the RUN at 20 minutes)
     sandbox.sweep(**({'older_than': run_most} if run_most else {}))   # a run's folders left by a stopped instance are removed before anything runs; on this computer a folder younger than the longest RUN is a RUN in flight (OPERATION BDAY item 1: at 12:08 a second start swept two live RUNs' folders)
     app = Flask('runtime', template_folder=str(APP / 'web'))
     app.config['harness'] = h

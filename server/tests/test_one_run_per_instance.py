@@ -164,28 +164,27 @@ class SlotNeverLeaks(unittest.TestCase):
         slot.give_back(t2)
 
     def test_a_timed_out_run_leaves_no_folder_behind(self):
-        before = {p.name for p in pathlib.Path(tempfile.gettempdir()).glob('runtime_*')}
+        before = {p.name for p in pathlib.Path(sandbox.home()).glob('runtime_*')}   # where this instance makes its run folders (its out/ since 2026-11-10)
         with tempfile.TemporaryDirectory() as a:
             pathlib.Path(a, 'agent.py').write_text('while True:\n    pass\n')
             sandbox.run(a, 'agent.py', {}, seconds=1)
-        after = {p.name for p in pathlib.Path(tempfile.gettempdir()).glob('runtime_*')}
+        after = {p.name for p in pathlib.Path(sandbox.home()).glob('runtime_*')}
         self.assertEqual(after - before, set())
 
     def test_leftover_run_folders_are_swept_at_start(self):
         """A leftover is OLD (a run cut off long ago); a folder made just now is a run in flight on this computer (another
         instance's, a thread's) and the start of an instance never pulls it from under that run."""
         import os, time
-        old = pathlib.Path(tempfile.mkdtemp(prefix='runtime_run_'))
-        (old / 'input.json').write_text('{"left": "behind"}')
-        os.utime(old, (time.time() - 600, time.time() - 600))
-        fresh = pathlib.Path(tempfile.mkdtemp(prefix='runtime_run_'))
-        try:
-            with tempfile.TemporaryDirectory() as t:
-                host.create_app(t, secret=SECRET)
+        with tempfile.TemporaryDirectory() as t:
+            out = pathlib.Path(t, 'out')   # the instance's own run folders (since 2026-11-10)
+            out.mkdir()
+            old = pathlib.Path(tempfile.mkdtemp(prefix='runtime_run_', dir=out))
+            (old / 'input.json').write_text('{"left": "behind"}')
+            os.utime(old, (time.time() - 600, time.time() - 600))
+            fresh = pathlib.Path(tempfile.mkdtemp(prefix='runtime_run_', dir=out))
+            host.create_app(t, secret=SECRET)
             self.assertFalse(old.exists())
             self.assertTrue(fresh.exists())
-        finally:
-            shutil.rmtree(fresh, ignore_errors=True)
 
     def test_a_run_folder_is_private(self):
         made = []

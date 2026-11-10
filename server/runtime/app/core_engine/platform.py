@@ -43,6 +43,7 @@ class Client:
     to a minute and the runtime's 10 s ran out. The wait in line is not counted in the call's own time. Each agent still asks for
     itself: its own declaration and the member's allowance are checked by the platform on every call, nothing is shared."""
     BACKOFF = (0.5, 1, 2, 4, 8, 16, 32)
+    SLOW = {'/agnt/guards': 60}   # THE GUARDS ASK ALONE waits longer: wid's two guards take about 4.4 s over 241 agents and a page asks about 10 at once, past the 10 s every other ask keeps (2026-11-10: "guards not read ...: wid does not answer")
 
     def __init__(self, addresses, secret, timeout=10, outbound=None, slot=None, retry_seconds=0, clock=time.monotonic, sleep=time.sleep,
                  asks_again_once_sent=True, gate=None):
@@ -96,7 +97,7 @@ class Client:
             body = json.dumps(data).encode('utf-8')
             headers['Content-Type'] = 'application/json'
         try:
-            with urllib.request.urlopen(urllib.request.Request(url, data=body, headers=headers, method=method), timeout=self.timeout) as r:
+            with urllib.request.urlopen(urllib.request.Request(url, data=body, headers=headers, method=method), timeout=self.SLOW.get(route, self.timeout)) as r:
                 if most is None:
                     return r.status, json.load(r), False
                 said = r.headers.get('Content-Length')

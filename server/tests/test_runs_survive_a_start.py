@@ -19,8 +19,10 @@ SECRET = 'scratch-secret-for-the-sweep-test'
 WHO = ('ACCT_000000000001_0001', 'SCRATCH', 'MCON_000000000002_0002')
 
 
-def folder(age_seconds):
-    p = pathlib.Path(tempfile.mkdtemp(prefix='runtime_out_s1test_'))
+def folder(age_seconds, instance):
+    out = pathlib.Path(instance, 'out')   # the instance's own run folders (since 2026-11-10)
+    out.mkdir(exist_ok=True)
+    p = pathlib.Path(tempfile.mkdtemp(prefix='runtime_out_s1test_', dir=out))
     (p / 'kept').write_text('a run in flight')
     at = time.time() - age_seconds
     os.utime(p, (at, at))
@@ -41,13 +43,13 @@ class InternalStart(unittest.TestCase):
             os.environ['LARRYD_INTERNAL'] = self.was
 
     def test_a_ten_minute_old_run_folder_survives_a_start(self):
-        live = folder(10 * 60)
+        live = folder(10 * 60, self.tmp.name)
         self.addCleanup(lambda: __import__('shutil').rmtree(live, ignore_errors=True))
         host.create_app(self.tmp.name, secret=SECRET)
         self.assertTrue(live.is_dir(), 'a run in flight lost its folder to another runtime\'s start')
 
     def test_a_folder_older_than_the_longest_run_is_still_swept(self):
-        gone = folder(7 * 3600)
+        gone = folder(7 * 3600, self.tmp.name)
         self.addCleanup(lambda: __import__('shutil').rmtree(gone, ignore_errors=True))
         host.create_app(self.tmp.name, secret=SECRET)
         self.assertFalse(gone.exists())

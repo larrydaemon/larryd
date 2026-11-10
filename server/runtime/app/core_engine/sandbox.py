@@ -29,6 +29,16 @@ MOST_BYTES = 1_000_000
 MOST_MEMORY = 512 * 1024 * 1024   # a run's address space (the runtime's own limit, beside Cloud Run's)
 MOST_CPU_SECONDS = 30             # a run's CPU time; the wall clock is `seconds` in run()
 MOST_FILE_BYTES = MOST_BYTES + 1  # any file a run writes, its answer included, is cut at this size
+ROOT = None   # THE RUN FOLDERS' HOME: the instance's own out/ (app.py sets it), never the temp folder every runtime on this computer shares and sweeps; None: the temp folder
+GONE = 'its answer file was removed before it was read (another cleanup took the run folder)'
+
+
+def home():
+    """where this instance makes and sweeps its run folders"""
+    if ROOT:
+        os.makedirs(ROOT, exist_ok=True)
+        return ROOT
+    return tempfile.gettempdir()
 
 
 def limits(most_file=MOST_FILE_BYTES):
@@ -185,8 +195,8 @@ def run(folder, entry, given, seconds=20, on_start=None, most_bytes=MOST_BYTES, 
     ever has to; on the time limit the whole group is killed and waited for. most_bytes: the answer's limit (the
     runtime's own 1 MB)."""
     agent = os.path.realpath(folder)
-    run_dir = os.path.realpath(tempfile.mkdtemp(prefix='runtime_run_'))   # private (0o700), this run's only place
-    out_dir = os.path.realpath(tempfile.mkdtemp(prefix='runtime_out_'))   # its answer, outside the folder the agent can write
+    run_dir = os.path.realpath(tempfile.mkdtemp(prefix='runtime_run_', dir=home()))   # private (0o700), this run's only place
+    out_dir = os.path.realpath(tempfile.mkdtemp(prefix='runtime_out_', dir=home()))   # its answer, outside the folder the agent can write
     try:
         try:
             if internal:   # LARRYD RUNTIME INTERNAL (the owner 2026-11-03: "its internal so i dont think it matters and seems normal"): an internal agent runs as this computer's own process, in its own folder, with this computer's reach; never on the external runtime (harness._run decides)
@@ -218,10 +228,13 @@ def run(folder, entry, given, seconds=20, on_start=None, most_bytes=MOST_BYTES, 
                 finally:
                     if on_start:
                         on_start(None)   # the run's process is gone: the slot holds no process any more
-            with open(out_path) as f:
-                stdout = f.read(most_bytes + 2)
-            with open(err_path) as f:
-                stderr = f.read(MOST_BYTES)
+            try:
+                with open(out_path) as f:
+                    stdout = f.read(most_bytes + 2)
+                with open(err_path) as f:
+                    stderr = f.read(MOST_BYTES)
+            except FileNotFoundError:   # never a thread that dies with no result, leaving the platform to close the RUN at 20 minutes
+                return 'FAILED', None, GONE
         except subprocess.TimeoutExpired:
             return 'FAILED', None, f'over the time limit ({seconds} s)'
         if len(stdout) > most_bytes:
@@ -244,7 +257,7 @@ def sweep(older_than=120):
     """At an instance's start: any run's folders left by a run cut off before its own finally. A folder younger than
     older_than seconds is a run in flight (another instance's, or a thread's, on the same computer) and is left alone."""
     now = time.time()
-    for p in pathlib.Path(tempfile.gettempdir()).glob('runtime_[ro][ua][nt]_*'):
+    for p in pathlib.Path(home()).glob('runtime_[ro][ua][nt]_*'):
         try:
             if now - p.stat().st_mtime < older_than:
                 continue
