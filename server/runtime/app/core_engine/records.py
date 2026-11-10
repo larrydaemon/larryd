@@ -1,5 +1,5 @@
 """THE RUN RECORDS (the LARRYD runtime design, 2026-10-06, decisions 2 and 8): one record per call and run, written by
-the runtime only (the platform reads them to reconcile; mTok alone charges). On a laptop or a test they live in runtime.db;
+the runtime only (the platform reads them to reconcile; mTok alone charges). On a laptop or a test they live in agents.db;
 on Cloud Run in Firestore (`runs`), because an instance's own disk is gone the moment it stops, and they are kept 13
 months (Firestore's own TTL on expire_at). A record holds keys, states, times and counts: never a record value, an
 input or a delivery (data stays in wid)."""
@@ -56,7 +56,7 @@ def _now():
 
 
 class SqliteRecords:
-    """The laptop's and the tests' records: runtime.db's runtime_runs, as before."""
+    """The laptop's and the tests' records: agents.db's runtime_runs, as before."""
     def __init__(self, db):
         self.db = db
 

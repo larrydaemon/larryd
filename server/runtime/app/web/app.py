@@ -25,7 +25,7 @@ from werkzeug.exceptions import HTTPException
 APP = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(APP))
 
-from core_engine import callers, clock, harness as lanes_harness, intake, jobs as long_runs, live, locker, lockers as bucket_lockers, platform, preview, records as run_records, sandbox, signing, slot as one_slot, store, warmup  # noqa: E402
+from core_engine import callers, clock, decision, harness as lanes_harness, intake, jobs as long_runs, live, locker, lockers as bucket_lockers, platform, preview, records as run_records, sandbox, signing, slot as one_slot, store, warmup  # noqa: E402
 
 CONFIG = json.loads((APP / 'schemas' / 'runtime.json').read_text())
 INSTANCE = pathlib.Path(os.environ['LARRYD_INSTANCE']) if os.environ.get('LARRYD_INSTANCE') else APP.parent / 'instance'   # the daemon names it
@@ -180,10 +180,15 @@ def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, deve
     def busy():
         return jsonify({'refused': 'busy: this instance is running another agent, try again'}), 409
 
-    def granted(d):
-        """THE SECOND GUARD at the door: refused here, before the platform is asked or anything is recorded."""
+    def granted(d, what, decided=True):
+        """THE SECOND GUARD at the door: refused here, before the platform is asked or anything is recorded. decided: FROST's
+        signed decision verified too (frost_decided); a let-go carries none (wid decides nothing to let an agent go)."""
         if not access_granted(d):
             raise lanes_harness.Refused(403, NOT_GRANTED)
+        if decided:
+            why = frost_decided(d, what)
+            if why:
+                raise lanes_harness.Refused(403, why)
 
     @app.route('/api/agents/answer', methods=['GET', 'POST'])
     def answer():
@@ -199,6 +204,9 @@ def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, deve
 
         def work():
             d = given('agent_key')
+            why = frost_decided(d, f"CALL of {d['agent_key']}", quiet=True)   # the same check as a hire and a RUN (the coordinator, 2026-11-09)
+            if why:
+                raise lanes_harness.Refused(403, why)
             beside = {k: d[k] for k in lanes_harness.BESIDE if isinstance(d.get(k), dict)} if request.method == 'POST' else {}
             return run_with.answer(*(d[k] for k in NEEDS + ('agent_key',)), beside=beside, handed=d.get('handed') if request.method == 'POST' else None,
                                    act=request.method == 'POST' and d.get('act') is True)   # the member's own confirmed act: only the platform says so, on a POST, as a JSON true
@@ -229,7 +237,7 @@ def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, deve
             d = given('agent_key', 'on')
             if str(d['on']) not in ('on', 'off'):
                 raise lanes_harness.Refused(400, 'on is "on" or "off"')
-            granted(d)
+            granted(d, f"hire of {d['agent_key']}", decided=str(d['on']) == 'on')
             return harness_for().hire(d['account'], d['scope'], d['member'], d['agent_key'], str(d['on']) == 'on')
         return answered(work)
 
@@ -291,7 +299,7 @@ def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, deve
         if not str(d['run']).isdigit():
             return jsonify({'refused': 'run is the RUN number'}), 400
         try:
-            granted(d)
+            granted(d, f"RUN {d['run']} of {d['job_key']}")
         except lanes_harness.Refused as no:
             return jsonify({'refused': no.reason}), no.status
         caller = request.headers.get('X-Office-Key', '') if keys is not None else ''
@@ -533,6 +541,18 @@ def access_granted(d):
     return str(d.get(CONFIG['access']['field']) or '') == CONFIG['access']['grants']
 
 
+def frost_decided(d, what, quiet=False):
+    """FROST'S SIGNED DECISION (core_engine/decision.py), checked on every CALL, hire and RUN: '' verified, else the refusal. Said in
+    the log in one line, by keys only (never a member or a record: data stays in wid); quiet: a verified CALL is not said (a page
+    asks every agent on it at each load), its refusal always is."""
+    why = decision.why_not(d)
+    if why:
+        logging.getLogger('runtime').warning('FROST decision refused for %s: %s', what, why)
+    elif not quiet:
+        logging.getLogger('runtime').warning('FROST decision verified for %s (card %s)', what, d.get('card_key') or '?')
+    return why
+
+
 def catch_up(app, wait=None, sleep=time.sleep):
     """At start, once (never a loop): the RUNs the platform queued while the runtime was away. On Cloud Run every
     slot's queue is read, and each run is claimed once across every instance before it starts (two new instances never
@@ -546,9 +566,11 @@ def catch_up(app, wait=None, sleep=time.sleep):
         status, body = h.client.get('wid', '/jobs/queued', {'runtime': 'internal'} if os.environ.get('LARRYD_INTERNAL') == '1' else None)   # THE TWO RUNTIMES: each is handed its own queue (the external one's as before, None)
         if caller:   # the instance's first call back to that slot: its answer and how long it took (no data)
             logging.getLogger('runtime').warning('catch-up: %s answered %s in %.1f s', caller, status, time.monotonic() - began)
-        for j in body.get('jobs', []) if status == 200 else []:
-            if not access_granted(j):   # the second guard on this path too: ended REFUSED (told and recorded), never started
-                h._end(j['account'], j['scope'], j['member'], '', j['job_key'], int(j['run']), 'REFUSED', NOT_GRANTED)
+        queue = body.get('jobs', []) if status == 200 else []
+        checked = [(j, NOT_GRANTED if not access_granted(j) else frost_decided(j, f"RUN {j['run']} of {j['job_key']}")) for j in queue]   # every run checked as the queue is read (a decision is fresh now, not after the runs before it)
+        for j, why in checked:
+            if why:   # the second guard and FROST's signed decision on this path too: ended REFUSED (told and recorded), never started
+                h._end(j['account'], j['scope'], j['member'], '', j['job_key'], int(j['run']), 'REFUSED', why)
                 continue
             args = (j['account'], j['scope'], j['member'], j['job_key'], int(j['run']), caller)
             started, until = app.config['start'](*args), time.monotonic() + (wait or 0)

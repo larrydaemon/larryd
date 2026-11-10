@@ -78,7 +78,7 @@ class InPlace(Scratch):
         self.assertEqual(row['folder'], 'pf-scratch/agent')
         self.assertEqual(sorted(p.name for p in self.agent.iterdir()), ['agent.json', 'agent.py', 'look.py', 'office.py'])
         self.assertEqual(locker.verify(self.db, self.lock, KEY), (True, ''))
-        self.assertEqual(sorted(p.name for p in self.instance.iterdir()), ['runtime.db'])   # instance/ is for the database
+        self.assertEqual(sorted(p.name for p in self.instance.iterdir()), ['agents.db'])   # instance/ is for the database
 
     def test_the_hashes_cover_the_kits(self):
         self.hold()

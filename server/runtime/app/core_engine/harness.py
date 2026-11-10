@@ -4,7 +4,7 @@ fs, laryllm, so"): the cards, the member's hired shells, the account's subscript
 its files, the provider key, the greeting, who the agent works for), each through a wid door that asks its office AS wid.
 Every agent runs in the sandbox; every call and run is a runtime_runs row. Nothing is assumed when the platform does not answer.
 DATA STAYS IN wid (the owner): what a run is handed lives in memory and its run folder only; its result goes back to wid
-and is not kept; runtime.db never holds a record value, a delivery, an account or a member.
+and is not kept; agents.db never holds a record value, a delivery, an account or a member.
 TWO GUARDS, NEVER ONE (the owner's rule, 2026-10-04): an agent counts as verified only when its folder matches the locker
 (LARRYD's own: held only by `place`, the owner's approved file) AND the platform approved those exact hashes (FROST's
 review, asked through wid's /agnt/approved: the runtime never calls FROST itself)."""
@@ -166,7 +166,7 @@ def _now():
 
 class Harness:
     def __init__(self, db, agents, client, seconds=20, records=None, caller='', on_start=None, hand=None, a_day=None, exxact=None):
-        """records: where every call and run is recorded (runtime.db by default; Firestore on Cloud Run). caller: the key id
+        """records: where every call and run is recorded (agents.db by default; Firestore on Cloud Run). caller: the key id
         of the office that called (a run record names it). on_start(pid): told each sandboxed run's process (the slot).
         hand: THE OUTSIDE HAND (core_engine/outside.py). a_day: {kind: files a member may have made in a day}.
         THE RUNTIME HOLDS NO PROVIDER KEY (the owner, 2026-10-08: "a single source setup"): the key's one home is the platform's

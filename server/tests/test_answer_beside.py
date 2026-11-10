@@ -8,6 +8,7 @@ import shutil
 import tempfile
 import unittest
 
+from _frost import decided_for
 from _here import APP
 from core_engine import preview, signing, view
 from test_preview import GOOD_CARD, KEY_A, KEY_B, SECRET, _agent, _zip
@@ -31,7 +32,7 @@ class TheAnswerDoor(unittest.TestCase):
             r = self.client.post(f'/marketplace/place?key={key}', data=_zip(_agent(name, {**GOOD_CARD, 'developer_site': site})),
                                  content_type='application/octet-stream', headers={'X-Larryd-Place': '1'})
             self.assertIn(r.status_code, (200, 201), r.get_data(as_text=True)[:300])
-        self.who = {'account': preview.ACCOUNT, 'scope': preview.SCOPE, 'member': preview.MEMBER, 'agent_key': preview.MARKETPLACE_KEY}
+        self.who = decided_for({'account': preview.ACCOUNT, 'scope': preview.SCOPE, 'member': preview.MEMBER, 'agent_key': preview.MARKETPLACE_KEY})   # FROST's decision rides every CALL
 
     def tearDown(self):
         self.tmp.cleanup()

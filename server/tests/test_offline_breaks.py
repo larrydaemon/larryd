@@ -110,7 +110,7 @@ class Laptop(unittest.TestCase):
     def test_4_an_old_runs_table_gets_the_two_columns_and_keeps_its_rows(self):
         old = pathlib.Path(self.tmp.name) / 'old'
         old.mkdir()
-        con = sqlite3.connect(old / 'runtime.db')
+        con = sqlite3.connect(old / 'agents.db')
         con.execute('CREATE TABLE runtime_runs ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "lane" TEXT NOT NULL, "agent_key" TEXT NOT NULL, '
                     '"job_key" TEXT NOT NULL DEFAULT \'\', "run" INTEGER NOT NULL DEFAULT 0, "state" TEXT NOT NULL, "reason" TEXT NOT NULL DEFAULT \'\', '
                     '"started_at" TEXT NOT NULL, "finished_at" TEXT, "charged" INTEGER NOT NULL DEFAULT 0)')

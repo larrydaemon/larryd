@@ -22,7 +22,7 @@ class StoreTest(unittest.TestCase):
 
     def test_database_name(self):
         with tempfile.TemporaryDirectory() as d:
-            self.assertTrue(store.open_store(d).endswith('/runtime.db'))
+            self.assertTrue(store.open_store(d).endswith('/agents.db'))
 
     def test_counts_are_rows(self):
         with tempfile.TemporaryDirectory() as d:

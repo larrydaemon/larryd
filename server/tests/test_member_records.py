@@ -10,6 +10,7 @@ import shutil
 import tempfile
 import unittest
 
+from _frost import decided_for
 from _here import APP
 from core_engine import harness, member_records, preview, signing
 from test_preview import GOOD_CARD, KEY_A, SECRET, _zip
@@ -208,7 +209,7 @@ class OnTheDevelopersRuntime(unittest.TestCase):
         self.client = self.app.test_client()
         self.client.get('/marketplace')
         self.records = root / 'preview' / 'records_opns.json'   # the instance is the root here (the stand-in's one small file)
-        self.who = {'account': preview.ACCOUNT, 'scope': preview.SCOPE, 'member': preview.MEMBER, 'agent_key': KEY_A}
+        self.who = decided_for({'account': preview.ACCOUNT, 'scope': preview.SCOPE, 'member': preview.MEMBER, 'agent_key': KEY_A})   # FROST's decision rides every CALL
 
     def tearDown(self):
         self.tmp.cleanup()

@@ -17,6 +17,7 @@ import unittest
 import zipfile
 
 from _here import APP
+from _frost import decided
 from core_engine import callers, jobs, locker, lockers as bucket_lockers, platform, records as run_records, signing
 from web import app as host
 
@@ -201,7 +202,7 @@ class H1RecordsAndLockers(CloudApp):
         bucket_lockers.BucketLockers(bucket=self.bucket).publish(MARKET, row, package, role='marketplace')
         bucket_lockers.BucketLockers(bucket=self.bucket).link(MARKET, 'MAGT_00000000BB02_0002')   # as place() keeps it at submission
         later = self.make('instance-2')
-        self.assertEqual(locker.held(str(pathlib.Path(self.dir.name) / 'instance-2' / 'runtime.db'), 'MAGT_00000000BB02_0002')['agent_key'], MARKET)
+        self.assertEqual(locker.held(str(pathlib.Path(self.dir.name) / 'instance-2' / 'agents.db'), 'MAGT_00000000BB02_0002')['agent_key'], MARKET)
 
     def test_a_locker_whose_files_are_not_what_was_approved_is_not_held(self):
         package, row = marketplace_package()
@@ -264,7 +265,7 @@ class H3H4Jobs(CloudApp):
     def test_a_long_run_is_claimed_once_and_started_as_a_job_never_a_thread(self):
         app = self.make()
         before = threading.active_count()
-        d = {'account': 'ACCT_00000000000A_000A', 'scope': 'S', 'member': 'MCON_00000000000B_000B', 'job_key': 'MJOB_000000000001_0001', 'run': '3', 'access': 'allow'}
+        d = {'account': 'ACCT_00000000000A_000A', 'scope': 'S', 'member': 'MCON_00000000000B_000B', 'job_key': 'MJOB_000000000001_0001', 'run': '3', 'access': 'allow', **decided(member='MCON_00000000000B_000B')}
         r = self.call(app, '/jobs/run', d, 'POST')
         self.assertEqual((r.status_code, json.loads(r.data)['already']), (202, False))
         self.assertEqual(self.started, [['job', 'slot-a', 'ACCT_00000000000A_000A', 'S', 'MCON_00000000000B_000B', 'MJOB_000000000001_0001', '3']])
@@ -275,7 +276,7 @@ class H3H4Jobs(CloudApp):
         self.assertEqual(len(self.started), 1)
 
     def test_the_catch_up_on_two_new_instances_starts_a_queued_run_once(self):
-        queued = {'jobs': [{'account': 'ACCT_00000000000A_000A', 'scope': 'S', 'member': 'MCON_00000000000B_000B', 'job_key': 'MJOB_00000000000A_000A', 'run': 1, 'access': 'allow'}]}
+        queued = {'jobs': [{'account': 'ACCT_00000000000A_000A', 'scope': 'S', 'member': 'MCON_00000000000B_000B', 'job_key': 'MJOB_00000000000A_000A', 'run': 1, 'access': 'allow', **decided(member='MCON_00000000000B_000B')}]}
         for name in ('one', 'two'):
             app = self.make(name)
             for h in app.config['harnesses'].values():

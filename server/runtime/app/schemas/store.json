@@ -1,6 +1,6 @@
 {
-  "about": "runtime.db: the runtime's only database, and only what the runtime itself needs (the owner 2026-09-28: data stays in wid): no record value, no delivery; a member or an account only as its platform key, on a run record (the caller). Tables are created from here and nowhere else; a table that differs is refused, never kept.",
-  "database": "runtime.db",
+  "about": "agents.db: the runtime's only database, and only what the runtime itself needs (the owner 2026-09-28: data stays in wid): no record value, no delivery; a member or an account only as its platform key, on a run record (the caller). Tables are created from here and nowhere else; a table that differs is refused, never kept.",
+  "database": "agents.db",
   "tables": {
     "runtime_locker": {
       "about": "an agent the runtime holds: its folder and the sha256 of its code and manifest, checked on every call and run",

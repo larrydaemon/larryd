@@ -1,5 +1,7 @@
-"""runtime.db, the runtime's only database, created from schemas/store.json and nothing else; a table that differs is refused, and a
-table the schema retired is dropped."""
+"""agents.db, the runtime's only database, created from schemas/store.json and nothing else; a table that differs is refused, and a
+table the schema retired is dropped. Its name is the schema's "database", the one place (runtime.db until 2026-11-09, the owner: "we
+called the instance agents.db ... make sure its consistent please"; the same code on this Mac and in the cloud, where the file is
+made anew on each start)."""
 import json
 import pathlib
 import sqlite3
@@ -22,7 +24,7 @@ def open_store(instance):
                     con.execute(f'ALTER TABLE "{name}" ADD COLUMN "{c}" {kind}')
             have = [r[1] for r in con.execute(f'PRAGMA table_info("{name}")')]
             if have != [c for c, _kind in table['columns']]:
-                raise SystemExit(f'runtime.db: {name} is not the schema\'s ({have}); the runtime refuses to keep it')
+                raise SystemExit(f'agents.db: {name} is not the schema\'s ({have}); the runtime refuses to keep it')
         con.commit()
     finally:
         con.close()

@@ -8,6 +8,7 @@ import time
 import unittest
 
 from _here import APP
+from _frost import decided, decided_for
 from core_engine import locker, signing
 from web import app as host
 
@@ -45,18 +46,18 @@ class HostLanes(unittest.TestCase):
         return self.client.post('/api' + route, json=data, headers=self._headers(route, data))
 
     def test_an_agent_not_in_the_locker_answers_nothing(self):
-        r = self.get('/agents/answer', {**self.who, 'agent_key': 'MAGT_SCRATCH00001_0001'})
+        r = self.get('/agents/answer', decided_for({**self.who, 'agent_key': 'MAGT_SCRATCH00001_0001'}))
         self.assertEqual((r.status_code, r.get_json()), (404, {'refused': 'no agent that answers here'}))
 
     def test_a_silent_platform_is_said(self):
         locker.add(self.db, APP / 'agents', 'MAGT_SCRATCH00001_0001', 'marketplace')
-        r = self.get('/agents/answer', {**self.who, 'agent_key': 'MAGT_SCRATCH00001_0001'})
+        r = self.get('/agents/answer', decided_for({**self.who, 'agent_key': 'MAGT_SCRATCH00001_0001'}))
         self.assertEqual((r.status_code, r.get_json()), (502, {'refused': 'wid does not answer'}))
 
     def test_hire_and_defaults_need_the_marketplace_and_the_platform(self):
         r = self.post('/agents/defaults', {**self.who, 'board': 'larryd/agnt/home'})
         self.assertEqual((r.status_code, r.get_json()), (503, {'refused': 'the marketplace is not in the locker'}))
-        r = self.post('/agents/hire', {**self.who, 'agent_key': 'K', 'on': 'on', 'access': 'allow'})
+        r = self.post('/agents/hire', {**self.who, 'agent_key': 'K', 'on': 'on', 'access': 'allow', **decided(member=self.who['member'])})
         self.assertEqual((r.status_code, r.get_json()), (503, {'refused': 'the marketplace is not in the locker'}))
         locker.add(self.db, APP / 'agents', 'MAGT_SCRATCH00001_0001', 'marketplace')
         r = self.post('/agents/defaults', {**self.who, 'board': 'larryd/agnt/home'})
@@ -73,7 +74,7 @@ class HostLanes(unittest.TestCase):
         self.assertEqual((r.status_code, r.get_json()), (400, {'refused': 'run is the RUN number'}))
 
     def test_a_run_with_a_silent_platform_fails_and_is_recorded(self):
-        r = self.post('/jobs/run', {**self.who, 'job_key': 'MJOB_000000000009_0009', 'run': '1', 'access': 'allow'})
+        r = self.post('/jobs/run', {**self.who, 'job_key': 'MJOB_000000000009_0009', 'run': '1', 'access': 'allow', **decided(member=self.who['member'])})
         self.assertEqual((r.status_code, r.get_json()), (202, {'accepted': 'MJOB_000000000009_0009', 'run': 1, 'already': False}))
         for _ in range(100):
             con = sqlite3.connect(self.db)

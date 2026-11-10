@@ -5,6 +5,7 @@ import pathlib
 import tempfile
 import unittest
 
+from _frost import decided_for
 from _here import APP  # noqa: F401
 from core_engine import signing
 from web import app as host
@@ -34,7 +35,7 @@ class NoPlatformYet(unittest.TestCase):
         from core_engine import locker
         locker.add(self.app.config['harness'].db, APP / 'agents', 'MAGT_00000000A001_0001', 'marketplace')
         who = {'account': 'ACCT_' + 'A' * 12 + '_0001', 'scope': 'SCRATCH', 'member': 'MCON_' + 'B' * 12 + '_0002'}
-        self.assertEqual(self.call('GET', '/agents/answer', {**who, 'agent_key': 'MAGT_00000000A001_0001'}), (502, {'refused': 'wid has no address here'}))
+        self.assertEqual(self.call('GET', '/agents/answer', decided_for({**who, 'agent_key': 'MAGT_00000000A001_0001'})), (502, {'refused': 'wid has no address here'}))
 
     def test_the_start_up_catch_up_does_not_crash(self):
         self.assertEqual(host.catch_up(self.app), 0)

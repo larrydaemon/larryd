@@ -170,7 +170,7 @@ class WidJobs:
 
 
 class Memory:
-    """The runtime's own memory of the clock (runtime_clock in runtime.db): per job, the moment it first saw the job and the
+    """The runtime's own memory of the clock (runtime_clock in agents.db): per job, the moment it first saw the job and the
     moment it last pressed for it. A job first seen after its latest moment waits for its next one (a new runtime never fires
     a moment it was not there for)."""
 

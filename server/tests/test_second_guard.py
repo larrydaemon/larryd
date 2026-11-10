@@ -11,6 +11,7 @@ import time
 import unittest
 
 from _here import APP
+from _frost import decided
 from core_engine import signing
 from web import app as host
 
@@ -55,7 +56,7 @@ class SecondGuard(unittest.TestCase):
         self.assertEqual(r.status_code, 403)
 
     def test_a_hire_with_the_decision_goes_on_to_the_lanes(self):
-        r = self.post('/agents/hire', {**WHO, 'agent_key': 'MAGT_00000000AA01_0001', 'on': 'on', CONF['field']: CONF['grants']})
+        r = self.post('/agents/hire', {**WHO, 'agent_key': 'MAGT_00000000AA01_0001', 'on': 'on', CONF['field']: CONF['grants'], **decided(member=WHO['member'])})
         self.assertEqual((r.status_code, r.get_json()), (503, {'refused': 'the marketplace is not in the locker'}))   # past the guard
 
     def test_a_run_without_the_decision_is_refused_and_never_started(self):
@@ -64,7 +65,7 @@ class SecondGuard(unittest.TestCase):
         self.assertEqual(self.started, [])
 
     def test_a_run_with_the_decision_starts(self):
-        r = self.post('/jobs/run', {**WHO, 'job_key': 'MJOB_00000000000A_0001', 'run': '1', CONF['field']: CONF['grants']})
+        r = self.post('/jobs/run', {**WHO, 'job_key': 'MJOB_00000000000A_0001', 'run': '1', CONF['field']: CONF['grants'], **decided(member=WHO['member'])})
         self.assertEqual(r.status_code, 202)
         for _ in range(50):
             if self.started:
@@ -96,7 +97,7 @@ class CatchUpGuard(unittest.TestCase):
 
         class Platform:
             def get(self, office, route, data=None):
-                return 200, {'jobs': [{**WHO, 'job_key': 'MJOB_00000000000A_0001', 'run': 1, CONF['field']: CONF['grants']},
+                return 200, {'jobs': [{**WHO, 'job_key': 'MJOB_00000000000A_0001', 'run': 1, CONF['field']: CONF['grants'], **decided(member=WHO['member'])},
                                       {**WHO, 'job_key': 'MJOB_00000000000B_0001', 'run': 2},
                                       {**WHO, 'job_key': 'MJOB_00000000000C_0001', 'run': 3, CONF['field']: 'deny'}]}
 

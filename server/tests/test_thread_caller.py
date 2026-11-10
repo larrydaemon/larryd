@@ -7,6 +7,7 @@ import time
 import unittest
 
 from _here import APP  # noqa: F401
+from _frost import decided
 from core_engine import callers, jobs, records as run_records
 from test_review_fixes import CloudApp, Exists
 from web import app as host
@@ -37,14 +38,14 @@ class ThreadCaller(CloudApp):
 
     def test_a_threaded_run_goes_on_the_callers_harness(self):
         app = self.make_threaded()
-        r = self.call(app, '/jobs/run', {**WHO, 'job_key': 'MJOB_000000000001_0001', 'run': '1', 'access': 'allow'}, 'POST', slot='slot-b')
+        r = self.call(app, '/jobs/run', {**WHO, 'job_key': 'MJOB_000000000001_0001', 'run': '1', 'access': 'allow', **decided(member=WHO['member'])}, 'POST', slot='slot-b')
         self.assertEqual(r.status_code, 202)
         self.wait()
         self.assertEqual([x[0] for x in self.ran], ['slot-b'])   # never 'default'
 
     def test_each_slot_its_own(self):
         app = self.make_threaded()
-        self.call(app, '/jobs/run', {**WHO, 'job_key': 'MJOB_000000000002_0001', 'run': '1', 'access': 'allow'}, 'POST', slot='slot-a')
+        self.call(app, '/jobs/run', {**WHO, 'job_key': 'MJOB_000000000002_0001', 'run': '1', 'access': 'allow', **decided(member=WHO['member'])}, 'POST', slot='slot-a')
         self.wait()
         self.assertEqual([x[0] for x in self.ran], ['slot-a'])
 

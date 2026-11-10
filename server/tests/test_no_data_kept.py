@@ -1,4 +1,4 @@
-"""DATA STAYS IN wid, NEVER BACK TO THE RUNTIME (the owner, 2026-09-28). runtime.db holds only what the runtime itself needs: the
+"""DATA STAYS IN wid, NEVER BACK TO THE RUNTIME (the owner, 2026-09-28). agents.db holds only what the runtime itself needs: the
 locker (key, hashes, manifest's name, folder), runtime_runs (lane, the agent's key, job key, run, state, times, charged,
 a plain reason, and the caller's account and member KEYS: a run names its caller, never a name or a value). The inputs of a run live in memory and in its run folder (removed after); its result goes back to wid
 and is not kept. A failed agent's words never reach a reason: only the kind of failure."""
@@ -49,7 +49,7 @@ class NoDataKept(unittest.TestCase):
 
     def test_an_older_table_is_refused_not_kept(self):
         with tempfile.TemporaryDirectory() as d:
-            con = sqlite3.connect(pathlib.Path(d) / 'runtime.db')
+            con = sqlite3.connect(pathlib.Path(d) / 'agents.db')
             con.execute('CREATE TABLE runtime_runs (id INTEGER PRIMARY KEY, lane TEXT, account TEXT, member TEXT, delivery_sha256 TEXT)')
             con.close()
             with self.assertRaises(SystemExit):

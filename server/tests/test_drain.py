@@ -4,6 +4,7 @@ import threading
 import unittest
 
 from _here import APP  # noqa: F401
+from _frost import decided
 from web import app as host
 
 ALLOW = host.CONFIG['access']['grants']
@@ -19,7 +20,7 @@ class Client:
 
 
 def run(n):
-    return {'account': 'A', 'scope': 'S', 'member': 'M', 'job_key': f'J{n}', 'run': '1', host.CONFIG['access']['field']: ALLOW}
+    return {'account': 'A', 'scope': 'S', 'member': 'M', 'job_key': f'J{n}', 'run': '1', host.CONFIG['access']['field']: ALLOW, **decided(member='M')}
 
 
 class Harness:
