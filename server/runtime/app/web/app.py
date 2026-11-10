@@ -41,6 +41,7 @@ NEEDS = ('account', 'scope', 'member')
 MAX_BODY = 4 * 1024 * 1024   # a signed call's body; anything larger is refused unread (4 MB since 2026-11-04: a page's call carries the platform's handed answers, records included, the platform sends at most 3.5 MB)
 RETRY_IN_REQUEST = 40   # a call back made inside a request retries this long (the request itself ends at 60 s)
 RETRY_IN_JOB = 60       # a job execution's calls back retry this long
+HERE_AT_ONCE = 2        # how many calls the runtime on this computer has inside its own platform host at one time; the rest wait in line (platform.Client gate)
 
 
 KEY = re.compile(r'[A-Z]{4}_[0-9A-F]{12}_[0-9A-F]{4}')   # a key as the platform's one generator writes it
@@ -85,13 +86,15 @@ def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, deve
         slots = CONFIG['slots']
         here = pathlib.Path(instance) / 'slots.json'   # THE RUNTIME ON THIS COMPUTER (LARRYD RUNTIME INTERNAL only, the owner 2026-11-03: "the localhost one is on the computer localhost here"): its instance names where each caller's offices answer, {caller: {office: address}}
         local = json.loads(here.read_text()) if os.environ.get('LARRYD_INTERNAL') == '1' and here.is_file() else {}
+        here_gate = threading.BoundedSemaphore(HERE_AT_ONCE)   # one line for every call to the offices on this computer
         for caller in cloud['outbound'].slots():
             base = slots.get(caller, '')
             offices = local[caller] if isinstance(local.get(caller), dict) else {o: f'{base}/{o}' for o in slots['offices']} if base else {}
             harnesses[caller] = lanes_harness.Harness(
                 db, locker_dir, platform.Client(offices, '',
                                                 outbound=cloud['outbound'], slot=caller, retry_seconds=retry_seconds,
-                                                asks_again_once_sent=not isinstance(local.get(caller), dict)),   # an office on this computer is never asked twice for what it already holds
+                                                asks_again_once_sent=not isinstance(local.get(caller), dict),
+                                                gate=here_gate if isinstance(local.get(caller), dict) else None),   # an office on this computer is never asked twice for what it already holds
                 CONFIG['run']['seconds'], records=records, caller=caller, **hand_parts)
     claims = cloud.get('claims') or long_runs.MemoryClaims()
     job_starter = cloud.get('jobs')

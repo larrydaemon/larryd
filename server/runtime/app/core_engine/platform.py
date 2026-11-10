@@ -35,17 +35,24 @@ class Client:
     asks_again_once_sent=False (an office on this computer, LARRYD RUNTIME INTERNAL; the owner 2026-11-10: "slow"): a GET that
     left and got no answer in time is never sent again. The office holds it and is still working on it (no Cloud NAT between
     them loses an answer here); asking again only adds the same work while it is behind: on 2026-11-10 one board page made
-    each call 3 to 4 copies and every answer took 30 to 70 s. A call that never left (the office restarting) is still retried."""
+    each call 3 to 4 copies and every answer took 30 to 70 s. A call that never left (the office restarting) is still retried.
+
+    gate (an office on this computer; the owner 2026-11-10: "THIS PAGE IS SLOW"): a semaphore every call waits at before it leaves, so
+    the office is asked a few things at a time and the rest wait here, in line, not inside it: one Scrum Master page had about 45 agents
+    each asking the same host for its records at the same moment; alone a call is answered in about 50 ms, together each took seconds
+    to a minute and the runtime's 10 s ran out. The wait in line is not counted in the call's own time. Each agent still asks for
+    itself: its own declaration and the member's allowance are checked by the platform on every call, nothing is shared."""
     BACKOFF = (0.5, 1, 2, 4, 8, 16, 32)
 
     def __init__(self, addresses, secret, timeout=10, outbound=None, slot=None, retry_seconds=0, clock=time.monotonic, sleep=time.sleep,
-                 asks_again_once_sent=True):
+                 asks_again_once_sent=True, gate=None):
         self.addresses = dict(addresses)
         self.secret = secret
         self.timeout = timeout
         self.outbound, self.slot = outbound, slot
         self.retry_seconds, self.clock, self.sleep = retry_seconds, clock, sleep
         self.asks_again_once_sent = asks_again_once_sent
+        self.gate = gate
 
     def _headers(self, route, data, at):
         if self.outbound is not None:
@@ -69,6 +76,12 @@ class Client:
         """-> status, body, and whether a retry is safe and useful (no answer came; for a POST, nothing left). most: THE ANSWER'S
         MOST BYTES (a reference file read whole, the lips gaps 2026-11-06): an answer whose length says it is over is refused before a
         byte of it is read, one that turns out over is refused at most + 1 bytes, never held whole; refused in fixed words, never retried."""
+        if self.gate is None:
+            return self._leave(office, method, route, data, most)
+        with self.gate:   # in line here; signed only once it is its turn, so its moment is fresh when it leaves
+            return self._leave(office, method, route, data, most)
+
+    def _leave(self, office, method, route, data, most=None):
         base = self.addresses[office]
         at = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='seconds')
         try:
