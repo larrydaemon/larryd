@@ -176,7 +176,8 @@ class Harness:
         and its keys are S4, later), so such an ask fails in fixed words. THE HAND IS CHOSEN BY THE MODEL'S PROVIDER (self.hands)."""
         self.db, self.agents, self.client, self.seconds = db, agents, client, seconds
         self.records = records if records is not None else run_records.SqliteRecords(db)
-        self.caller, self.on_start = caller, on_start
+        self._here, self._on_start = threading.local(), on_start   # on_start: told per thread (the on_start property)
+        self.caller = caller
         self.hand = hand if hand is not None else outside.Hand()
         self.hands = {'replicate': self.hand, 'exxact': exxact if exxact is not None else exxact_hand.ExxactHand()}
         self.a_day = {**A_DAY, **(a_day or {})}
@@ -738,6 +739,25 @@ class Harness:
             beater.join(timeout=60)
         return done
 
+    _UNSET = object()
+
+    @property
+    def on_start(self):
+        """THE RUN'S OWN on_start (OPERATION BDAY item 1, 2026-11-10): three RUNs and the page's CALLs share one harness, each on its
+        own thread, so each sets and reads its own; a thread that set none reads the one the harness was made with."""
+        mine = getattr(self._local(), 'on_start', self._UNSET)
+        return self.__dict__.get('_on_start') if mine is self._UNSET else mine
+
+    @on_start.setter
+    def on_start(self, told):
+        self._local().on_start = told
+
+    def _local(self):
+        here = self.__dict__.get('_here')
+        if here is None:   # a harness made without __init__ (a test's stand-in) still keeps each thread's own
+            here = self.__dict__.setdefault('_here', threading.local())
+        return here
+
     def run_job(self, account, scope, member, job_key, run):
         """-> the state it ended in. Refused and failed runs are written back and recorded like done ones."""
         try:
@@ -789,7 +809,11 @@ class Harness:
                 return self._end(account, scope, member, key, job_key, run, 'FAILED', f'LARRYD could not read the records: {no.reason}')
             given['who'] = {'member': member}
         self.started(key, job_key, run, account, member)
-        self._result(account, scope, job_key, run, 'RUNNING', f'RUN {run} RUNNING')
+        try:
+            self._result(account, scope, job_key, run, 'RUNNING', f'RUN {run} RUNNING')
+        except Refused as no:   # THE PLATFORM DID NOT TAKE RUNNING (OPERATION BDAY item 1): the agent never runs; the RUN is ended FAILED with the true reason, the slot is given back by its caller
+            LOG.warning('RUN %s of %s: RUNNING not written (%s); the agent does not run, the RUN is ended FAILED', run, job_key, no.reason)
+            return self._end(account, scope, member, key, job_key, run, 'FAILED', f'LARRYD could not write RUNNING to the platform: {no.reason}')
         if 'cards' in hands:
             given['cards'] = lanes.assemble(cards, hired, groups, verify, own=key)
         self._counts(manifest, given, account, scope, member, key)   # THE COUNTS, when the approved manifest declares them: handed on a RUN as on a CALL; not handed, the agent runs without

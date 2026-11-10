@@ -102,6 +102,7 @@ def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, deve
     running, lock = set(), threading.Lock()
     slot = (one_slot.Slots(HERE_RUNS, CONFIG['run']['seconds'] + 60) if os.environ.get('LARRYD_INTERNAL') == '1'   # THIS COMPUTER: a few runs at a time, so a long step never makes the other blocks wait past the platform's 20 minutes
             else one_slot.Slot(CONFIG['run']['seconds'] + 60))   # ONE RUN PER INSTANCE: above the run's own hard limit, plus a minute
+    run_most = (lanes_harness.Harness.MOST_INTERNAL_SECONDS + 60) if os.environ.get('LARRYD_INTERNAL') == '1' else None   # A RUN's slot on this computer: an internal agent's own limit (up to 6 hours) plus a minute, never a CALL's 80 s (the 305 "slot stuck" lines of 2026-11-09)
     sandbox.sweep()   # a run's folders left by a stopped instance are removed before anything runs
     app = Flask('runtime', template_folder=str(APP / 'web'))
     app.config['harness'] = h
@@ -271,17 +272,19 @@ def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, deve
         with lock:
             if (job_key, run) in running:
                 return False
-            token = slot.take()   # the slot is taken here, before the thread exists
+            token = slot.take(f'{job_key}#{run}', run_most)   # the slot is taken here, before the thread exists: named for the log, held for the RUN's own limit
             if not token:
                 return None
             running.add((job_key, run))
 
         def go():
+            runner.on_start = lambda pid: slot.attach(token, pid)   # THE RUN'S PROCESS IS ITS SLOT'S (OPERATION BDAY item 1): this thread's own, never another run's
             try:
                 runner.run_job(account, scope, member, job_key, run)
             except lanes_harness.Refused as no:   # the platform refused the RUN before its agent ran (already ended: two starts met, the push and the queue walk): said in one line, never a trace
                 logging.getLogger('runtime').warning('run %s of %s not started: %s', run, job_key, no.reason)
             finally:
+                runner.on_start = None
                 with lock:
                     running.discard((job_key, run))
                 slot.give_back(token)

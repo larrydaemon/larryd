@@ -4,6 +4,7 @@ run can be proven gone: the holder's sandboxed process group (attached as the ru
 first. A holder with no process attached (code of the runtime itself, never an agent's) is never reclaimed: the slot
 stays held, take() refuses, and stuck() tells the health check, so Cloud Run replaces the instance. The reclaim is
 logged (ids and times only, never a run's data)."""
+import datetime
 import logging
 import os
 import signal
@@ -39,10 +40,16 @@ def _kill_and_confirm(pgid, clock, sleep):
     return not _alive(pgid)
 
 
+def _now():
+    """The time on a slot's line (the runtime's log has no time of its own)."""
+    return datetime.datetime.now().astimezone().isoformat(timespec='seconds')
+
+
 class Slot:
     def __init__(self, most_seconds, clock=time.monotonic, sleep=time.sleep):
         self.lock, self.guard, self.clock, self.sleep = threading.Lock(), threading.Lock(), clock, sleep
         self.most_seconds, self.taken_at, self.owner, self.pgid = most_seconds, None, None, None
+        self.label, self.most = '', most_seconds   # the holder's own: which run (a job key and RUN, for the log) and its own limit
 
     def attach(self, token, pgid):
         """The holder's run started (its process group) or ended (None)."""
@@ -50,8 +57,10 @@ class Slot:
             if token is not None and token is self.owner:
                 self.pgid = pgid
 
-    def take(self):
-        """-> a token (truthy) for the holder, or None: the slot is held, OR anything went wrong while taking or checking
+    def take(self, label='', most=None):
+        """label: which run holds it (said in the log, never a run's data). most: the holder's own limit in seconds (a RUN of
+        an internal agent may work for hours; a CALL keeps the slot's own); past it, and only then, the slot may be reclaimed.
+        -> a token (truthy) for the holder, or None: the slot is held, OR anything went wrong while taking or checking
         it (it fails CLOSED: an error never lets a run through). The stale reclaim is a compare-and-swap on the exact owner
         seen, under the guard, and happens only after the old run's process group is confirmed dead."""
         try:
@@ -59,25 +68,28 @@ class Slot:
                 if self.lock.acquire(blocking=False):
                     try:
                         self.taken_at, self.owner, self.pgid = self.clock(), object(), None
+                        self.label, self.most = str(label or ''), (most if most else self.most_seconds)
                     except Exception:
                         self.taken_at, self.owner, self.pgid = None, None, None
                         self.lock.release()   # never left held with no owner
                         raise
                     return self.owner
                 seen_owner, seen_at, seen_pgid = self.owner, self.taken_at, self.pgid
-                if seen_owner is None or seen_at is None or self.clock() - seen_at <= self.most_seconds:
+                if seen_owner is None or seen_at is None or self.clock() - seen_at <= self.most:
                     return None
                 if seen_pgid is None:   # no process to kill: the old holder may still be alive, so never hand it over
-                    LOG.error('slot stuck: held %.0f s with no run process to reclaim; refused', self.clock() - seen_at)
+                    LOG.error('slot stuck at %s: %s held %.0f s (its limit %d s) with no run process to reclaim; refused',
+                              _now(), self.label or 'a holder with no name', self.clock() - seen_at, self.most)
                     return None
                 if not _kill_and_confirm(seen_pgid, self.clock, self.sleep):
                     LOG.error('slot not reclaimed: the old run could not be confirmed gone; refused')
                     return None
                 if self.owner is not seen_owner:   # the compare: still the very stale holder that was seen
                     return None
-                LOG.warning('slot reclaimed: held %.0f s, past the limit of %d s; the old run killed and confirmed gone',
-                            self.clock() - seen_at, self.most_seconds)
+                LOG.warning('slot reclaimed at %s: %s held %.0f s, past its limit of %d s; the old run killed and confirmed gone',
+                            _now(), self.label or 'a holder with no name', self.clock() - seen_at, self.most)
                 self.taken_at, self.owner, self.pgid = self.clock(), object(), None   # the swap: the lock stays held
+                self.label, self.most = str(label or ''), (most if most else self.most_seconds)
                 return self.owner
         except Exception as error:   # any doubt refuses the run
             LOG.error('slot not taken (refused): %s', type(error).__name__)
@@ -86,7 +98,7 @@ class Slot:
     def stuck(self):
         """True when the slot has been held past the limit with nothing that can be reclaimed: the instance is unhealthy."""
         with self.guard:
-            return self.owner is not None and self.taken_at is not None and self.pgid is None and self.clock() - self.taken_at > self.most_seconds
+            return self.owner is not None and self.taken_at is not None and self.pgid is None and self.clock() - self.taken_at > self.most
 
     def give_back(self, token):
         """A token no longer the owner's (its slot was reclaimed) gives nothing back."""
@@ -94,6 +106,7 @@ class Slot:
             if token is None or token is not self.owner:
                 return
             self.taken_at, self.owner, self.pgid = None, None, None
+            self.label, self.most = '', self.most_seconds
             try:
                 self.lock.release()
             except RuntimeError:
@@ -113,9 +126,9 @@ class Slots:
     def _of(self, token):
         return next((s for s in self.slots if token is not None and s.owner is token), None)
 
-    def take(self):
+    def take(self, label='', most=None):
         for s in self.slots:
-            token = s.take()
+            token = s.take(label, most)
             if token:
                 return token
         return None
