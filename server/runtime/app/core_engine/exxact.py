@@ -509,23 +509,24 @@ def collect(lanes, keys_dir, job, most_bytes=None):
 # WHERE the box is (its address, its user, its home) is never in this file: this file is copied unchanged into LARRYD's runtime, which
 # ships in a public package. The box side reads it from its OWN config, outside every repository (box_config: a JSON file the runner is
 # given, e.g. ~/virtual_sanity/runtime_internal/instance/data/exxact_loot/box.json, never committed, never copied):
-#   {"address": "<the box's address on the home network>", "user": "<the box's user>", "home": "<that user's home on the box>"}
+#   {"address": "<the box's address on the home network>", "user": "<the box's user>", "home": "<that user's home on the box>",
+#    "loot": "<its own folder under that home>", "engines": "<the engines' folder under that home>"}
 
 SSH_UNREACHABLE = 255                              # ssh's own exit when it never reached the box (down, asleep, off the network)
 UNREACHABLE = 'the box could not be reached'
-BOX_ROOT = 'frost/virtual_workspace/exxact_loot'   # its own folder under the box user's home, beside amLLM, never inside it
-ENGINES_ROOT = 'frost/virtual_workspace'           # the engines' folder under the box user's home
 
 
 def box_config(path):
-    """the box side's own config -> {address, user, home}; Red when it is missing or not whole"""
+    """the box side's own config -> {address, user, home, loot, engines}; Red when it is missing or not whole. loot and engines: the box's
+    own folder and its engines' folder under that home, read here at run time and never written in this file (the Judge's AGENT
+    SEPARATION, 2026-11-10: a folder of the box written here was red)"""
     try:
         with open(os.path.expanduser(path or '')) as fh:
             got = json.load(fh)
     except (OSError, ValueError):
         raise Red('SENT', 'the box side has no config of where the box is') from None
     if not (isinstance(got, dict) and all(isinstance(got.get(k), str) and got[k] and all(c.isalnum() or c in '._-/' for c in got[k])
-                                          for k in ('address', 'user', 'home'))):
+                                          for k in ('address', 'user', 'home', 'loot', 'engines'))):
         raise Red('SENT', 'the box side\'s config is not whole')
     return got
 
@@ -582,9 +583,13 @@ class Box:
 
 class LocalBox(Box):
     """The runner ON the box: the engines on its own 127.0.0.1, its folder under its own home."""
-    def __init__(self, root=None):
-        super().__init__(root or os.path.join(os.path.expanduser('~'), BOX_ROOT))
-        self.engines = os.path.join(os.path.expanduser('~'), ENGINES_ROOT)
+    def __init__(self, root=None, config='', engines=''):
+        if root is None:   # the box's own folders, from the box side's own config
+            got = box_config(config)
+            home = got['home'].rstrip('/')
+            root, engines = f"{home}/{got['loot']}", f"{home}/{got['engines']}"
+        super().__init__(root)
+        self.engines = engines
 
     def put(self, job, rel, data):
         p = os.path.join(self.folder(job), rel)
@@ -627,7 +632,7 @@ class SshBox(Box):
     """The runner on this laptop: the box reached by Exxact_Loot's OWN key only (never this Mac's default identity), BatchMode, and only
     after the owner's key step: the key file and the go mark must both exist, else every door refuses."""
     def __init__(self, identity, go_mark, config=''):
-        super().__init__(BOX_ROOT)
+        super().__init__('')   # its folder under the box user's home, from the box side's own config (read when first needed)
         self.identity, self.go_mark, self.config = identity, go_mark, config
         self.host, self.engines, self.target = '', '', ''
 
@@ -636,8 +641,13 @@ class SshBox(Box):
         if not self.target:
             got = box_config(self.config)
             self.host, self.target = got['address'], f"{got['user']}@{got['address']}"
-            self.engines = f"{got['home'].rstrip('/')}/{ENGINES_ROOT}"
+            self.root = got['loot']   # relative: under the box user's home, as ssh resolves it
+            self.engines = f"{got['home'].rstrip('/')}/{got['engines']}"
             self.home = got['home'].rstrip('/')
+
+    def folder(self, job):
+        self._where()
+        return super().folder(job)
 
     def _ready(self):
         if not (self.identity and os.path.isfile(self.identity)):
