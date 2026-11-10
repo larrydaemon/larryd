@@ -20,7 +20,7 @@ WHO = ('ACCT_000000000001_0001', 'SCRATCH', 'MCON_000000000002_0002')
 
 
 def folder(age_seconds, instance):
-    out = pathlib.Path(instance, 'out')   # the instance's own run folders (since 2026-11-10)
+    out = pathlib.Path(instance, 'runs')   # the instance's own run folders (since 2026-11-10)
     out.mkdir(exist_ok=True)
     p = pathlib.Path(tempfile.mkdtemp(prefix='runtime_out_s1test_', dir=out))
     (p / 'kept').write_text('a run in flight')

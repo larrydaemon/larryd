@@ -176,7 +176,7 @@ class SlotNeverLeaks(unittest.TestCase):
         instance's, a thread's) and the start of an instance never pulls it from under that run."""
         import os, time
         with tempfile.TemporaryDirectory() as t:
-            out = pathlib.Path(t, 'out')   # the instance's own run folders (since 2026-11-10)
+            out = pathlib.Path(t, 'runs')   # the instance's own run folders (since 2026-11-10)
             out.mkdir()
             old = pathlib.Path(tempfile.mkdtemp(prefix='runtime_run_', dir=out))
             (old / 'input.json').write_text('{"left": "behind"}')

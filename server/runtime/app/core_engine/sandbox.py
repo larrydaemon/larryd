@@ -29,7 +29,7 @@ MOST_BYTES = 1_000_000
 MOST_MEMORY = 512 * 1024 * 1024   # a run's address space (the runtime's own limit, beside Cloud Run's)
 MOST_CPU_SECONDS = 30             # a run's CPU time; the wall clock is `seconds` in run()
 MOST_FILE_BYTES = MOST_BYTES + 1  # any file a run writes, its answer included, is cut at this size
-ROOT = None   # THE RUN FOLDERS' HOME: the instance's own out/ (app.py sets it), never the temp folder every runtime on this computer shares and sweeps; None: the temp folder
+ROOT = None   # THE RUN FOLDERS' HOME: the instance's own runs/ (app.py sets it), never the temp folder every runtime on this computer shares and sweeps; None: the temp folder
 GONE = 'its answer file was removed before it was read (another cleanup took the run folder)'
 
 
