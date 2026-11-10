@@ -717,6 +717,27 @@ class Harness:
             said['job'] = job
         return self._ask('wid', 'POST', '/jobs/result', said)
 
+    ALIVE_SECONDS = 5 * 60   # how often a RUN still working writes RUNNING again: well inside the platform's 20 minutes, so only a RUN nobody answers is closed
+
+    def _still_running(self, account, scope, job_key, run):
+        """While the agent works, RUNNING is written to its RUN again every ALIVE_SECONDS (wid takes RUNNING while the RUN is open),
+        so the platform's stale close (no write for 20 minutes) never closes a RUN that is only long. -> stop(): no write after it returns."""
+        stop, began = threading.Event(), time.monotonic()
+
+        def beat():
+            while not stop.wait(self.ALIVE_SECONDS):
+                try:
+                    self._result(account, scope, job_key, run, 'RUNNING', f'RUN {run} RUNNING · still working after {int(time.monotonic() - began) // 60} min')
+                except Exception as failed:   # noqa: BLE001  a beat not heard is said in the log; the RUN goes on
+                    LOG.warning('RUN %s of %s: still running, not heard by wid (%s)', run, job_key, failed)
+        beater = threading.Thread(target=beat, name=f'alive {job_key}#{run}', daemon=True)
+        beater.start()
+
+        def done():
+            stop.set()
+            beater.join(timeout=60)
+        return done
+
     def run_job(self, account, scope, member, job_key, run):
         """-> the state it ended in. Refused and failed runs are written back and recorded like done ones."""
         try:
@@ -779,7 +800,11 @@ class Harness:
                     given['records'] = member_records.read(self._ask, wanted, account, scope, member, key, custom=False)
                 except Refused as no:
                     return self._end(account, scope, member, key, job_key, run, 'FAILED', f'the records could not be read: {no.reason}')
-        state, answer, reason = self._run(folder, manifest, given)
+        alive = self._still_running(account, scope, job_key, run)   # A LONG RUN SAYS IT IS ALIVE (the owner 2026-11-10: "fix the scrum master and all agents"): the platform closes a RUN with nothing written for 20 minutes (wid atom.STALE_SECONDS), and the night's Web build holds the Judge, about 45
+        try:
+            state, answer, reason = self._run(folder, manifest, given)
+        finally:
+            alive()
         if state != 'DONE':
             return self._end(account, scope, member, key, job_key, run, 'FAILED', reason)
         outside = _outside_gives(manifest, answer)
