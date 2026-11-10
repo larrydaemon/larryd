@@ -98,3 +98,38 @@ class Slot:
                 self.lock.release()
             except RuntimeError:
                 pass   # already given back: a second give-back in a finally is harmless
+
+
+class Slots:
+    """A FEW RUNS AT A TIME, THE RUNTIME ON THIS COMPUTER ONLY (the owner 2026-11-10: "nobody is going to press run on any of them ever ...
+    this needs to be automated"; "it starts at 6:50am and all day agents run then the night starts at 1am"): with one slot a long step (the
+    night's Web build holds the Judge, about 45 minutes; the day's Build) made every other block's RUN wait, and the platform closes a RUN
+    left QUEUED 20 minutes as FAILED. n Slots, each exactly a Slot (its own take, reclaim and give back): take() hands the first free one's
+    token; attach, give_back and stuck speak to the slot that token belongs to. Cloud Run keeps ONE RUN PER INSTANCE (Slot)."""
+
+    def __init__(self, n, most_seconds, clock=time.monotonic, sleep=time.sleep):
+        self.slots = [Slot(most_seconds, clock, sleep) for _ in range(int(n))]
+
+    def _of(self, token):
+        return next((s for s in self.slots if token is not None and s.owner is token), None)
+
+    def take(self):
+        for s in self.slots:
+            token = s.take()
+            if token:
+                return token
+        return None
+
+    def attach(self, token, pgid):
+        s = self._of(token)
+        if s is not None:
+            s.attach(token, pgid)
+
+    def give_back(self, token):
+        s = self._of(token)
+        if s is not None:
+            s.give_back(token)
+
+    def stuck(self):
+        return all(s.stuck() for s in self.slots)
+

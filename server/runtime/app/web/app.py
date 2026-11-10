@@ -42,6 +42,7 @@ MAX_BODY = 4 * 1024 * 1024   # a signed call's body; anything larger is refused 
 RETRY_IN_REQUEST = 40   # a call back made inside a request retries this long (the request itself ends at 60 s)
 RETRY_IN_JOB = 60       # a job execution's calls back retry this long
 HERE_AT_ONCE = 2        # how many calls the runtime on this computer has inside its own platform host at one time; the rest wait in line (platform.Client gate)
+HERE_RUNS = 3           # how many RUNs the runtime on this computer runs at one time (core_engine/slot.Slots); Cloud Run: one per instance
 
 
 KEY = re.compile(r'[A-Z]{4}_[0-9A-F]{12}_[0-9A-F]{4}')   # a key as the platform's one generator writes it
@@ -99,7 +100,8 @@ def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, deve
     claims = cloud.get('claims') or long_runs.MemoryClaims()
     job_starter = cloud.get('jobs')
     running, lock = set(), threading.Lock()
-    slot = one_slot.Slot(CONFIG['run']['seconds'] + 60)   # ONE RUN PER INSTANCE: above the run's own hard limit, plus a minute
+    slot = (one_slot.Slots(HERE_RUNS, CONFIG['run']['seconds'] + 60) if os.environ.get('LARRYD_INTERNAL') == '1'   # THIS COMPUTER: a few runs at a time, so a long step never makes the other blocks wait past the platform's 20 minutes
+            else one_slot.Slot(CONFIG['run']['seconds'] + 60))   # ONE RUN PER INSTANCE: above the run's own hard limit, plus a minute
     sandbox.sweep()   # a run's folders left by a stopped instance are removed before anything runs
     app = Flask('runtime', template_folder=str(APP / 'web'))
     app.config['harness'] = h
