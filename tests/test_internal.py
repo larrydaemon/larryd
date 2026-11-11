@@ -139,13 +139,6 @@ def test_the_service_key_hand_needs_a_service_named_first(repo):
     assert any('names no service' in w for _, w in failed(bad))
 
 
-def test_the_stream_hand_is_an_internal_agents_own(repo):
-    """run.hands ["stream"]: the measure of its member's live stream on a RUN (LARRYD RUNTIME INTERNAL hands it); it asks nothing of the
-    card; a hand nobody gives is still refused"""
-    assert internal.check(make(repo, 'live-line', {'run': {'do': 'run', 'hands': ['stream']}})) == []
-    assert any('which LARRYD does not hand' in w for _, w in failed(make(repo, 'live-word', {'run': {'do': 'run', 'hands': ['stream', 'words']}})))
-
-
 
 def test_kits_inside_its_own_agent_folder_need_no_office_beside_it(tmp_path):
     """the locker made agents self-contained (<repo>/<name>/agent/office.py ...): no _office in the repository at all"""

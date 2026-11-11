@@ -67,9 +67,7 @@ FILE_NAME = re.compile(r'^[A-Za-z0-9][A-Za-z0-9 ._-]{0,120}$')
 HANDED = {   # a skill's hand: the wid door the runtime asks for the RUN's member and account (wid asks LARRY LLM or FROST as itself)
     'greeting': ('wid', '/jobs/greeting', "the member's greeting", 'wid'),
     'identity': ('wid', '/jobs/identity', 'who the agent works for', 'wid'),
-    'stream': ('wid', '/jobs/stream', "the member's live stream", 'wid'),   # no skill's: a RUN's own hand (run.hands ["stream"], LARRYD RUNTIME INTERNAL only: Harness._stream)
 }
-STREAM_MEASURE = {'opened', 'first_seconds', 'lines', 'seconds'}   # wid's whole answer at its stream door: a measure, never a word of the line
 
 
 
@@ -624,7 +622,7 @@ class Harness:
 
     INTERNAL = os.environ.get('LARRYD_INTERNAL') == '1'   # LARRYD RUNTIME INTERNAL: this runtime runs on this computer for internal agents (its start says so); the external one never
     MOST_INTERNAL_SECONDS = 6 * 3600   # an internal agent's own limit at most (the night's Web build and Test each hold the smoke test, up to 4 hours, after the Judge)
-    INTERNAL_HANDS = ('service_key', 'stream')  # what a RUN can be handed on LARRYD RUNTIME INTERNAL only, beside HANDS
+    INTERNAL_HANDS = ('service_key',)  # what a RUN can be handed on LARRYD RUNTIME INTERNAL only, beside HANDS
 
     def internal_for(self, manifest):
         """Does this agent run with this computer's reach? Only on LARRYD RUNTIME INTERNAL, and only when its approved manifest declares
@@ -798,8 +796,6 @@ class Harness:
                 given['service_key'] = self._service_key(card, key, job_key, run, account, scope, member)
             except _Stop as stop:
                 return self._end(account, scope, member, key, job_key, run, stop.state, stop.reason)
-        if 'stream' in hands:   # THE MEMBER'S LIVE STREAM, MEASURED (Live's rule, the owner 2026-11-10: "Red when your page's live stream will not open or sends no live data within 5 seconds"): LARRYD RUNTIME INTERNAL only (the hands check above); never read: the RUN still runs and its agent says so
-            given['stream'] = self._stream(account, scope, member, job_key, run)
         if 'files' in hands:   # THE MEMBER'S FILES ON A RUN (CORE_CLEANUP_IV 21, the owner's blanket approval 2026-11-06): the files the member named in this RUN's own inputs, each read through wid's job file door for this member while the RUN is open (wid decides and asks DA-M as itself, as a reference picture is read), handed as bytes, kept nowhere
             try:
                 given['files'] = self._run_files(manifest, given.get('job'), account, scope, member, job_key, run)
@@ -1202,27 +1198,6 @@ class Harness:
         if status == 404:
             return {'service': service, 'key': '', 'why': 'none stored'}
         raise _Stop('FAILED', f"LARRYD could not read the service key: {said or f'wid answered {status}'}")
-
-    def _stream(self, account, scope, member, job_key, run):
-        """THE MEMBER'S LIVE STREAM, MEASURED FOR THIS RUN (run.hands ["stream"]): asked of wid's /jobs/stream for this open RUN of this
-        member; wid decides (the RUN open and the member's own, its agent's card approved and internal, hired and on) and opens that
-        member's own live line itself, as wid: the runtime never opens it and never sees a word of it. -> {opened, first_seconds, lines,
-        seconds} exactly (did it open, the seconds until its first data line or None, the data lines in the seconds held); anything
-        else wid answers (a refusal, silence, another shape, one more field) -> {not_read: why} and the RUN still runs: its agent says
-        "not measured", never a guess."""
-        office, route, what, who = HANDED['stream']
-        try:
-            status, body = self.client.get(office, route, {'account': account, 'scope': scope, 'member': member, 'job_key': job_key, 'run': str(run)})
-        except Exception as no:   # the platform away
-            return {'not_read': f'{who} does not answer ({type(no).__name__})'}
-        if status != 200:
-            said = (body.get('refused') or body.get('error')) if isinstance(body, dict) else ''
-            return {'not_read': str(said or f'{who} answered {status}')[:200]}
-        opened, first, lines, seconds = (body.get(k) for k in ('opened', 'first_seconds', 'lines', 'seconds')) if isinstance(body, dict) else (None,) * 4
-        if not (isinstance(body, dict) and set(body) == STREAM_MEASURE and isinstance(opened, bool) and (first is None or (isinstance(first, (int, float)) and not isinstance(first, bool) and first >= 0))
-                and isinstance(lines, int) and not isinstance(lines, bool) and lines >= 0 and isinstance(seconds, int) and not isinstance(seconds, bool) and seconds > 0):
-            return {'not_read': f'{who} answered no measure of {what}'}
-        return {'opened': opened, 'first_seconds': first, 'lines': lines, 'seconds': seconds}
 
     def _run_files(self, manifest, job, account, scope, member, job_key, run):
         """THE MEMBER'S FILES ON A RUN: the manifest's "files" names which of its job inputs carry a DA-M key ([name, ...], each a

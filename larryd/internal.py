@@ -3,8 +3,8 @@ external"). An internal agent (~/virtual_sanity/sanity_agents/<name>, ~/virtual_
 ~/virtual_sanity/pf_loot/<block>) is checked for the SAME things as an external one, by the doctor's own checks: the manifest and its
 card, the entry, no secret, the shape, the skills, the knowledge. Three rules are the internal contract's, not the external's:
 
-1. Its own fields and hands: the "service_key" hand (the member's key for the service its card names first, CORE_CLEANUP_IV 53) and
-   the "stream" hand (the measure of its member's live stream on a RUN), checked here, never handed to an external agent. An OFFICE agent (agent.json names "office") carries "key" (its runtime key, MAGT_<12>_<4>), "office" (one of the
+1. Its own fields and hand: the "service_key" hand (the member's key for the service its card names first, CORE_CLEANUP_IV 53),
+   checked here, never handed to an external agent. An OFFICE agent (agent.json names "office") carries "key" (its runtime key, MAGT_<12>_<4>), "office" (one of the
    offices), "libs" (kits, each in its own agent/ or its repository's _office) and may carry "workflow", "group", "facts", "internal"
    ({"seconds": its own time limit}). They are checked here, then set aside so the shared checks see the rest. "reads" is not asked of
    an office agent: what it reads is its "facts".
@@ -144,8 +144,6 @@ def _records(card, f):
 
 
 SERVICE_KEY = 'service_key'   # an internal agent's own hand (CORE_CLEANUP_IV 53): the member's key for the service its card names FIRST in sends_to
-STREAM = 'stream'   # an internal agent's own hand too: the measure of its member's live stream on a RUN (did it open, the seconds to its first data line, the lines in the seconds held), asked of wid's /jobs/stream by LARRYD RUNTIME INTERNAL; never a word of the stream
-INTERNAL_HANDS = (SERVICE_KEY, STREAM)   # the hands LARRYD RUNTIME INTERNAL alone gives (the runtime's Harness.INTERNAL_HANDS): checked here, never handed to an external agent
 
 
 def _service_key(card, f):
@@ -161,8 +159,8 @@ def _shared(card):
     """the manifest the shared checks read: the internal fields set aside, the records checked by rule 2, the Jobs page as its screen"""
     out = {k: v for k, v in card.items() if k not in INTERNAL_FIELDS and k != 'records'}   # its records: rule 2, checked here
     run = out.get('run')
-    if isinstance(run, dict) and isinstance(run.get('hands'), list) and set(INTERNAL_HANDS) & set(run['hands']):
-        out['run'] = {**run, 'hands': [h for h in run['hands'] if h not in INTERNAL_HANDS]}   # rule 1b, checked here; the stream hand asks nothing of the card
+    if isinstance(run, dict) and isinstance(run.get('hands'), list) and SERVICE_KEY in run['hands']:
+        out['run'] = {**run, 'hands': [h for h in run['hands'] if h != SERVICE_KEY]}   # rule 1b, checked here
     if 'office' in card and 'reads' not in out:
         out['reads'] = ['its facts']   # rule 1: an office agent's reads are its facts
     c = out.get('card')
