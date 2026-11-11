@@ -10,7 +10,8 @@ import urllib.parse
 
 CDN_HOST, CDN_PATH = 'storage.googleapis.com', '/positivefeedback-cdn/'
 MAX_HTML, MAX_CSS = 200 * 1024, 100 * 1024
-TAGS = frozenset('div span section article header footer p b strong i em small img button ul ol li h1 h2 h3 h4 h5 h6 br hr figure figcaption a canvas form input'.split())
+TAGS = frozenset('div span section article header footer p b strong i em small img button ul ol li h1 h2 h3 h4 h5 h6 br hr figure figcaption a canvas form input textarea'.split())
+WORDS_BOX = 'requests_words'   # THE ONE REQUESTS BOX (the owner 2026-11-11, of Scrum Master 3's ADD REQUEST TO BACKLOG: "when i past the prompt into the big box i only see 1 line" · "the text should wrap and have a vertical scroll so its actually usable" · "add a clear button" · "we only need it for this one box"): one <textarea>, named exactly requests_words, inside a form, with a placeholder and a class and nothing else; and, in that same form only, a button of type reset (its Clear). Every other textarea, and a reset anywhere else, is refused as before
 ATTRS = frozenset(('class', 'title', 'alt', 'role', 'type', 'src', 'loading', 'href', 'target', 'rel', 'method', 'action', 'name', 'value', 'placeholder'))
 LINK = {'target': '_blank', 'rel': 'noopener noreferrer'}   # a link out: a new tab that cannot reach back, always both
 _HOST = re.compile(r'(?=.{1,253}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}')
@@ -225,6 +226,7 @@ class _Check(html.parser.HTMLParser):
     def __init__(self, path='', local=()):
         super().__init__(convert_charrefs=True)
         self.why, self.path, self.forms, self.local = '', path, 0, tuple(local or ())
+        self.words_box = False   # this form holds the one requests box (WORDS_BOX): its Clear, a reset, is allowed there
 
     def _no(self, why):
         if not self.why:
@@ -249,6 +251,10 @@ class _Check(html.parser.HTMLParser):
             if not self.forms or had.get('type') not in ('text', 'hidden') or not re.fullmatch(r'[a-z_]{1,32}', had.get('name', '')) \
                     or set(had) - {'type', 'name', 'value', 'placeholder', 'class'}:
                 return self._no('an input that is not a plain text or hidden word of a search')
+        if tag == 'textarea':   # THE ONE REQUESTS BOX (WORDS_BOX), and no other
+            if not self.forms or had.get('name') != WORDS_BOX or set(had) - {'name', 'placeholder', 'class'}:
+                return self._no('a textarea that is not the one requests box, inside its form')
+            self.words_box = True
         for name, value in attrs:
             value = value if value is not None else ''
             if name.startswith(('data-', 'aria-')) and re.fullmatch(r'(data|aria)-[a-z0-9-]+', name):
@@ -257,10 +263,14 @@ class _Check(html.parser.HTMLParser):
                 return self._no(f'the view\'s markup holds the attribute {name}')
             if name == 'type' and tag == 'input':
                 continue
+            if name == 'type' and tag == 'button' and value == 'reset' and self.forms and self.words_box:
+                continue   # the Clear of the one requests box's own form
             if name == 'type' and (tag != 'button' or value not in ('button', 'submit') or (value == 'submit' and not self.forms)):
                 return self._no('a type other than a plain button, or a search\'s own submit')
             if name in ('method', 'action') and tag != 'form':
                 return self._no(f'{name} on a <{tag}>')
+            if name in ('name', 'placeholder') and tag == 'textarea':
+                continue
             if name in ('name', 'value', 'placeholder') and tag != 'input':
                 return self._no(f'{name} on a <{tag}>')
             if name in ('src', 'loading') and tag != 'img':
@@ -279,6 +289,7 @@ class _Check(html.parser.HTMLParser):
             self._no(f'the view\'s markup holds a </{tag}> element')
         if tag == 'form':
             self.forms = max(0, self.forms - 1)
+            self.words_box = False
 
     def handle_comment(self, data):
         self._no('the view\'s markup holds a comment')
