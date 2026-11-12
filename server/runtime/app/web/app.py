@@ -516,9 +516,9 @@ def place(app, agent_key, data, role='', slot=''):
         return {**held, 'refused': f'held in the locker, but wid did not take it: {no.reason}; send it again with submit {agent_key}'}
     card_key = str(review.get('card_key') or '')
     if KEY.fullmatch(card_key):   # BOTH KEYS LINKED (the owner, 2026-10-06): the platform minted its card's key at submission
-        locker.link(h.db, agent_key, card_key)
+        locker.link(h.db, agent_key, card_key, h.caller)   # this slot's own card of it, beside the other slots'
         if app.config.get('lockers') is not None:
-            app.config['lockers'].link(agent_key, card_key)
+            app.config['lockers'].link(agent_key, card_key, h.caller)
     return {**held, 'review': review}
 
 
@@ -548,7 +548,7 @@ def place_in_place(app, agent_key, where, kits=None, slot=''):
         return {**held, 'refused': f'held in the locker, but wid did not take it: {no.reason}; send it again with submit {agent_key}'}
     card_key = str(review.get('card_key') or '')
     if KEY.fullmatch(card_key):   # BOTH KEYS LINKED, as place
-        locker.link(h.db, agent_key, card_key)
+        locker.link(h.db, agent_key, card_key, h.caller)
     return {**held, 'review': review}
 
 
@@ -765,9 +765,9 @@ def main(argv):
             raise SystemExit(f'refused ({no.status}): {no.reason}')
         card_key = str(review.get('card_key') or '')
         if KEY.fullmatch(card_key):   # BOTH KEYS LINKED here too (PF Virtual Wire, 2026-10-08: sent again by its key, its card was approved and never shown: the bucket held no card.json)
-            locker.link(harness_for_slot(app, slot).db, argv[2], card_key)
+            locker.link(harness_for_slot(app, slot).db, argv[2], card_key, harness_for_slot(app, slot).caller)
             if app.config.get('lockers') is not None:
-                app.config['lockers'].link(argv[2], card_key)
+                app.config['lockers'].link(argv[2], card_key, harness_for_slot(app, slot).caller)
         print(json.dumps(review))
         return
     if argv[1:2] == ['job'] and len(argv) == 8:

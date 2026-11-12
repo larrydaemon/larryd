@@ -112,6 +112,23 @@
           "TEXT NOT NULL"
         ]
       ]
+    },
+    "runtime_cards": {
+      "about": "the card of an agent on each platform that calls the runtime (caller: its slot's key id): every platform mints its own card key for the same agent, so each is linked beside the others and found only by its own caller; keys alone, no data",
+      "columns": [
+        [
+          "agent_key",
+          "TEXT NOT NULL"
+        ],
+        [
+          "caller",
+          "TEXT NOT NULL"
+        ],
+        [
+          "card_key",
+          "TEXT NOT NULL"
+        ]
+      ]
     }
   }
 }

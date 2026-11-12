@@ -248,10 +248,10 @@ class Harness:
 
         def verify(agent_key):
             nonlocal approved
-            ok, why = locker.verify(self.db, self.agents, agent_key)   # THE FIRST GUARD: the locker's exact hashes
+            ok, why = locker.verify(self.db, self.agents, agent_key, self.caller)   # THE FIRST GUARD: the locker's exact hashes
             if not ok:
                 return ok, why
-            row = locker.held(self.db, agent_key)   # by its card's key too: the review approved the runtime's own key
+            row = locker.held(self.db, agent_key, self.caller)   # by its card's key too: the review approved the runtime's own key
             exact = (row['agent_key'], row['code_sha256'], row['manifest_sha256'])
             if exact not in approved and again[0] and agent_key == own:   # a kept list without it: asked again now, once, before any refusal (a new approval is seen at once)
                 again[0] = False
@@ -266,10 +266,10 @@ class Harness:
     def submit(self, agent_key):
         """The runtime sends an agent it holds to the platform: wid writes its card (PENDING until the platform's own review
         shows it) and answers the card's key. Its key, its exact hashes, its manifest."""
-        ok, why = locker.verify(self.db, self.agents, agent_key)
+        ok, why = locker.verify(self.db, self.agents, agent_key, self.caller)
         if not ok:
             raise Refused(409, why)
-        row = locker.held(self.db, agent_key)
+        row = locker.held(self.db, agent_key, self.caller)
         inside = os.environ.get('LARRYD_INTERNAL') == '1'   # LARRYD RUNTIME INTERNAL NAMES ITSELF (the owner 2026-11-10: "make sure all use the new runtime"): wid writes FROST's review row with THE TAG from this word (wid larryd_runtime.submit: INTERNAL when runtime=internal, else EXTERNAL), as the queue and the clock name it (/jobs/queued, /jobs/scheduled); without it every internal agent was tagged EXTERNAL and handed to the outside runtime
         return self._ask('wid', 'POST', '/agnt/submit', {'agent_key': agent_key, 'name': row['name'], 'code_sha256': row['code_sha256'],
                                                            'manifest_sha256': row['manifest_sha256'], 'manifest': locker.manifest(self.agents, row['folder']),
@@ -288,7 +288,7 @@ class Harness:
             con.close()
         if row is None:
             raise Refused(503, 'the marketplace is not in the locker')
-        return row[1] or row[0]
+        return (locker.held(self.db, row[0], self.caller) or {}).get('card_key') or row[1] or row[0]   # this caller's own card of it, when it has one
 
     def review_state(self, keys):
         """What the runtime records for these agents (the owner's `review` command): held or not, the platform's word on its
@@ -296,7 +296,7 @@ class Harness:
         counts: no account, no member."""
         out, rec = [], self.records
         for key in keys:
-            row = locker.held(self.db, key)
+            row = locker.held(self.db, key, self.caller)
             note = ''
             if row is None:
                 review = 'not submitted'
@@ -313,7 +313,7 @@ class Harness:
         exactly this key is taken out (its folder and its row) ONLY when the platform's word on its exact hashes is revoked (FROST's
         latest review, through wid's review_state door); anything else is refused in words and nothing is touched. Logged either way.
         -> {agent_key, removed: its folder} or {agent_key, refused: why}."""
-        row = locker.held(self.db, key)
+        row = locker.held(self.db, key, self.caller)
         if row is None or row['agent_key'] != key:
             out = {'agent_key': key, 'refused': 'not in the locker under this key'}
         else:
@@ -443,7 +443,7 @@ class Harness:
 
 
     def _answer(self, account, scope, member, agent_key, beside=None, act=False):
-        held = locker.held(self.db, agent_key)
+        held = locker.held(self.db, agent_key, self.caller)
         calls = locker.manifest(self.agents, held['folder']).get('calls') if held else None
         if not calls:
             raise Refused(404, 'no agent that answers here')
@@ -774,7 +774,7 @@ class Harness:
         ok, why = gate.may_run(card, verify(key), shell.get('on') is True, groups)
         if not ok:
             return self._end(account, scope, member, key, job_key, run, 'REFUSED', why)
-        folder = locker.held(self.db, key)['folder']
+        folder = locker.held(self.db, key, self.caller)['folder']
         manifest = locker.manifest(self.agents, folder)
         plan = manifest.get('run') or {}
         hands = plan.get('hands') or []
@@ -936,7 +936,7 @@ class Harness:
         to that directly always its a single source setup"): asked of wid for this open RUN of this member; wid reads the
         platform's vault at that moment, for the agent the RUN's own job holds, and decides. -> the key, or '' when wid hands
         none. It lives in this call's memory only: never kept, never written, never in a reason or a log."""
-        if locker.held(self.db, agent_key) is None:
+        if locker.held(self.db, agent_key, self.caller) is None:
             return ''
         asked = {'account': account, 'scope': scope, 'member': member, 'job_key': job_key, 'run': str(run), 'provider': provider}
         if whose == 'member':   # the RUN's own member's key (row 92 b); the platform's is asked exactly as before
@@ -1139,13 +1139,13 @@ class Harness:
         live page AND this species with this verb, its card is approved and hired by that member (the gate), and the platform's
         own doors for agents decide the rest (FROST's scope). The member's act is the send on their own live page, which only
         their pass opened. -> {'rows': [...]} for list; {'ok', 'key', 'why'} for add and edit. Nothing is kept."""
-        held = locker.held(self.db, agent_key)
+        held = locker.held(self.db, agent_key, self.caller)
         manifest = locker.manifest(self.agents, held['folder']) if held else None
         wanted = member_records.declared(manifest) if manifest and live.declared(manifest) else {}
         verb = live.DOES.get(do)
         if not verb or species not in wanted or verb not in wanted[species]:
             raise Refused(403, 'the agent does not declare it')
-        ok, why = locker.verify(self.db, self.agents, held['agent_key'])
+        ok, why = locker.verify(self.db, self.agents, held['agent_key'], self.caller)
         if not ok:
             raise Refused(403, why)
         cards, hired, groups, verify = self.facts(account, scope, member)

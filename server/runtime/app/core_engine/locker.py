@@ -74,33 +74,52 @@ def add(db, root, agent_key, folder):
         con.close()
 
 
-def held(db, agent_key):
-    """The locker row of an agent, by the runtime's own key or by the key of its card on the platform (linked at approval)."""
+def held(db, agent_key, caller=''):
+    """The locker row of an agent, by the runtime's own key or by the key of its card on the platform (linked at approval).
+    ONE RUNTIME, EVERY PLATFORM ITS OWN CARD (2026-11-11: the 2026-11-09 ship wrote production B's card key over this Mac's in
+    133 lockers, so this Mac's cards found no agent, 404 on every page): each platform that calls (caller, its slot's key id)
+    mints its own card key for the same agent, so a card is linked per caller (runtime_cards) and found only by the caller it
+    belongs to. The row's card_key is this caller's card when it has one, else the one linked with no caller named (a laptop's
+    one platform; a locker linked before 2026-11-11)."""
     con = sqlite3.connect(db)
     con.row_factory = sqlite3.Row
     try:
-        row = con.execute('SELECT * FROM runtime_locker WHERE agent_key = ? OR (card_key = ? AND card_key != \'\') ORDER BY agent_key = ? DESC',
-                          (agent_key, agent_key, agent_key)).fetchone()
-        return dict(row) if row else None
+        row = con.execute('SELECT * FROM runtime_locker WHERE agent_key = ? OR (card_key = ? AND card_key != \'\') '
+                          'OR agent_key IN (SELECT agent_key FROM runtime_cards WHERE card_key = ? AND card_key != \'\' AND caller = ? AND caller != \'\') '
+                          'ORDER BY agent_key = ? DESC', (agent_key, agent_key, agent_key, caller, agent_key)).fetchone()
+        if row is None:
+            return None
+        row = dict(row)
+        own = con.execute('SELECT card_key FROM runtime_cards WHERE agent_key = ? AND caller = ? AND caller != \'\'', (row['agent_key'], caller)).fetchone()
+        if own:
+            row['card_key'] = own[0]
+        return row
     finally:
         con.close()
 
 
-def link(db, agent_key, card_key):
+def link(db, agent_key, card_key, caller=''):
     """BOTH KEYS SAVED AND LINKED (the owner, 2026-10-06): the runtime mints its own key for the agent; the platform mints
-    its card's key at approval and tells the runtime here. -> True when the agent is held (and now linked)."""
+    its card's key at approval and tells the runtime here. caller: the platform that minted it (its slot's key id); each
+    caller's card is kept beside the others', never over them. -> True when the agent is held (and now linked)."""
     con = sqlite3.connect(db)
     try:
-        n = con.execute('UPDATE runtime_locker SET card_key = ? WHERE agent_key = ?', (card_key, agent_key)).rowcount
+        if caller:
+            n = con.execute('SELECT COUNT(*) FROM runtime_locker WHERE agent_key = ?', (agent_key,)).fetchone()[0]
+            if n == 1:
+                con.execute('DELETE FROM runtime_cards WHERE agent_key = ? AND caller = ?', (agent_key, caller))
+                con.execute('INSERT INTO runtime_cards (agent_key, caller, card_key) VALUES (?,?,?)', (agent_key, caller, card_key))
+        else:
+            n = con.execute('UPDATE runtime_locker SET card_key = ? WHERE agent_key = ?', (card_key, agent_key)).rowcount
         con.commit()
     finally:
         con.close()
     return n == 1
 
 
-def verify(db, root, agent_key):
+def verify(db, root, agent_key, caller=''):
     """(True, '') when the folder is exactly what was registered; (False, the reason) otherwise."""
-    row = held(db, agent_key)
+    row = held(db, agent_key, caller)
     if row is None:
         return False, 'not in the locker'
     try:
@@ -133,6 +152,7 @@ def remove(db, root, agent_key):
             raise ValueError('the folder is a link')   # never followed out of the locker
         if path.is_dir() and in_place() != pathlib.Path(root).resolve():   # IN PLACE the folder is the agent's own home: only its row goes
             shutil.rmtree(path)
+        con.execute('DELETE FROM runtime_cards WHERE agent_key = ?', (agent_key,))
         con.execute('DELETE FROM runtime_locker WHERE agent_key = ?', (agent_key,))
         con.commit()
         return row['folder']

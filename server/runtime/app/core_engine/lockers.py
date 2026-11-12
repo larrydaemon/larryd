@@ -32,9 +32,21 @@ class BucketLockers:
             json.dumps({**{k: row[k] for k in ('name', 'code_sha256', 'manifest_sha256')}, **({'role': role} if role else {})}),
             content_type='application/json')
 
-    def link(self, agent_key, card_key):
-        """The card's key the platform minted at approval, kept beside the agent in the bucket, so every instance links it."""
-        self.bucket.blob(f'{agent_key}/card.json').upload_from_string(json.dumps({'card_key': card_key}), content_type='application/json')
+    def link(self, agent_key, card_key, caller=''):
+        """The card's key the platform minted at approval, kept beside the agent in the bucket, so every instance links it.
+        caller: the platform that minted it (its slot's key id): card.json keeps each caller's card under "cards", beside the
+        others' (one runtime, every platform its own card: 2026-11-11); no caller named: "card_key", as before."""
+        blob = self.bucket.blob(f'{agent_key}/card.json')
+        try:
+            kept = json.loads(blob.download_as_bytes()) if blob.exists() else {}
+        except ValueError:
+            kept = {}
+        kept = kept if isinstance(kept, dict) else {}
+        if caller:
+            kept['cards'] = {**(kept.get('cards') if isinstance(kept.get('cards'), dict) else {}), caller: card_key}
+        else:
+            kept['card_key'] = card_key
+        blob.upload_from_string(json.dumps(kept), content_type='application/json')
 
     def sync(self, db, agents, conf):
         """Every agent in the bucket into this instance's locker, verified. -> the number held."""
@@ -60,7 +72,12 @@ class BucketLockers:
                 continue
             card = self.bucket.blob(f'{key}/card.json')
             if card.exists():
-                locker.link(db, key, json.loads(card.download_as_bytes()).get('card_key', ''))
+                said = json.loads(card.download_as_bytes())
+                if said.get('card_key'):
+                    locker.link(db, key, said['card_key'])
+                for caller, card_key in (said.get('cards') if isinstance(said.get('cards'), dict) else {}).items():   # each platform's own card of it
+                    if isinstance(caller, str) and caller and isinstance(card_key, str) and card_key:
+                        locker.link(db, key, card_key, caller)
             ok, _why = locker.verify(db, agents, key)
             held += 1 if ok else 0
         return held
