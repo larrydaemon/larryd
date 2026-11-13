@@ -844,8 +844,11 @@ class Harness:
         slots = stored_slots(slots, [], {})   # an agent's own image, video or sound key is never kept: those slots are the runtime's
         inside = self.internal_for(manifest)
         said = _first_line(answer.get('delivery')) if inside else ''   # AN INTERNAL AGENT'S OWN WORDS ON ITS JOB (the owner 2026-11-03, Scrum Master 3: every value from the database): its delivery's first line is its log, so its job's TODAY says what it found
+        wrote, stop = self._run_writes(manifest, given, answer, account, scope, member, key)   # THE WRITES OF A RUN (the one new right, below): carried, or dropped and said
+        if stop:
+            return self._end(account, scope, member, key, job_key, run, 'FAILED', f'RUN {run} FAILED · {stop}', delivery=answer.get('delivery') if isinstance(answer.get('delivery'), str) else '', job=slots)
         if inside and answer.get('light') == 'RED':   # AN INTERNAL CHECK THAT FOUND A RED (Lie Detector, New Files ...): the RUN ran, what it found is red; its light RED and its own words, never just an exit code
-            return self._end(account, scope, member, key, job_key, run, 'FAILED', f'RUN {run} RED · {said or "red"}', delivery=answer.get('delivery') if isinstance(answer.get('delivery'), str) else '', job=slots)
+            return self._end(account, scope, member, key, job_key, run, 'FAILED', f'RUN {run} RED · {said or "red"}{wrote}', delivery=answer.get('delivery') if isinstance(answer.get('delivery'), str) else '', job=slots)
         try:
             files = self._files(manifest, answer)
             beside = self._companions(files, given.get('files'), given.get('records'))   # {a file's place: the record it is stored beside}: checked before anything is charged
@@ -902,10 +905,53 @@ class Harness:
                                  f"{paid}{kept_note}, but DA-M did not store the files{left}: {stored.get('refused') or stored.get('error') or f'wid answered {status}'}", charged=charged)
             stored_keys[f['name']] = str(stored.get('dam_key') or '')
         slots = stored_slots(slots, files, stored_keys)   # the stored files' keys, the runtime's own
-        kept = {k: v for k, v in answer.items() if k not in ('files', 'makes', 'keeps', 'job')}   # job: its own slots, never the delivery
+        kept = {k: v for k, v in answer.items() if k not in ('files', 'makes', 'keeps', 'job', 'writes')}   # job: its own slots, never the delivery; writes: carried or dropped above, never the delivery
         delivery = answer.get('delivery') if isinstance(answer.get('delivery'), str) else json.dumps(kept, sort_keys=True)
         stored_note = f" · {len(files)} file{'' if len(files) == 1 else 's'} in DA-M" if files else ''
-        return self._end(account, scope, member, key, job_key, run, 'DONE', f'RUN {run} DONE · {said}' if said else f'RUN {run} DONE · {paid}{stored_note}{kept_note}', charged=charged, delivery=delivery, job=slots)
+        return self._end(account, scope, member, key, job_key, run, 'DONE', f'RUN {run} DONE · {said}{wrote}' if said else f'RUN {run} DONE · {paid}{stored_note}{kept_note}{wrote}', charged=charged, delivery=delivery, job=slots)
+
+    RUN_WRITES_NOT_SAID = 'writes not carried: its approved manifest does not say a RUN of it writes ("run": {"writes": true}, an internal agent\'s alone)'
+
+    def _run_writes(self, manifest, given, answer, account, scope, member, agent_key):
+        """THE WRITES OF A RUN, THE ONE NEW RIGHT (the owner 2026-11-13, of the news nobody presses for: "no run is ever pressed"; "you would
+        need to tie save to run"; asked whether an approved internal agent may write the records its card declares when its RUN is started
+        by a clock or by a member's save: "lets go"). Until now a record was written only on a member's own confirmed act (a CALL with act:
+        the review, 2026-10-07), so nothing a clock or a chain started could put news on a day. A RUN's answer may carry `writes`, held
+        exactly as a CALL's are: the RUN itself is only ever started for an agent the locker holds verified, its card APPROVED and hired by
+        this member (gate.may_run, before the agent ran); each write is a verb its approved manifest declares on a species it declares
+        (member_records.check: one fault refuses them all), carried to wid's own doors for this member, where the platform decides the
+        rest. AND ONLY WHEN BOTH HOLD: (1) the agent is an INTERNAL one on LARRYD RUNTIME INTERNAL (internal_for: this computer's own
+        runtime and a manifest that declares "internal"; the external runtime never carries a RUN's write), and (2) its approved manifest
+        says so in one explicit word, "run": {"writes": true}, inside the hashes FROST approved, so no agent gains the right silently.
+        Without both, the writes are dropped and the RUN's own line says so; the RUN goes on as before. Records not read on this RUN: an
+        agent that saw none decided blind, its writes go nowhere (as a CALL's). A write the platform refuses, or writes that are not well
+        formed: the RUN ends FAILED and its line says what was carried. A CALL is untouched: a page merely opened never writes.
+        -> (what to say on the RUN's line, '' when nothing was asked; why the RUN must end FAILED, '' when it goes on)."""
+        if 'writes' not in answer:
+            return '', ''
+        asked = answer.get('writes')
+        if not (self.internal_for(manifest) and (manifest.get('run') or {}).get('writes') is True):
+            return (f' · {self.RUN_WRITES_NOT_SAID}' if asked else ''), ''
+        if not asked:
+            return '', ''
+        if not isinstance(given.get('records'), dict):
+            return ' · writes not carried: the records were not read', ''
+        wanted = member_records.declared(manifest)
+        if not wanted:
+            return '', 'the answer carries writes, but the manifest declares no records'
+        writes, why = member_records.check(asked, wanted, custom=False)   # custom fields are a custom agent's on a CALL alone
+        if why:
+            return '', f'{why}; nothing was written'
+        try:
+            written = member_records.carry(self.client.post, writes, account, scope, member, agent_key)
+        except (OSError, ValueError, KeyError, Refused) as no:
+            LOG.warning('the writes of a RUN were not carried: %s', no)
+            return '', 'the writes could not be carried to the platform'
+        good = sum(1 for w in written if w['ok'])
+        carried = f'{good} of {len(written)} record write{"" if len(written) == 1 else "s"} carried'
+        if good != len(written):
+            return '', f"{carried}; refused: {next(w['why'] for w in written if not w['ok'])}"
+        return f' · {carried}', ''
 
     def started(self, agent_key, job_key, run, account, member):
         """A RUN the runtime took is written down as STARTED, once (at the door when the platform names the agent, else here as it
