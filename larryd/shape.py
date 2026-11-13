@@ -64,8 +64,9 @@ CARD = {
     'sends_to': 'the outside AI service it sends a member\'s data to, by name; "" when it sends nothing out',
     'data_sent': 'what it sends there, in plain words; "" when nothing',
 }
+AVAILABILITY = ('offline', 'ADMINS ONLY')   # the words a card's availability may say (the platform's agent_card_records: OFFLINE, ADMINS_ONLY; the owner 2026-11-13, of pf Invoice Template: "needs a warning its restricted to admins only")
 CARD_OPTIONAL = {   # a card fact an agent may leave out
-    'availability': '"offline" for an agent shown for information only: its card is dimmed and locked and it cannot be hired (leave the field out for an agent that can be hired)',
+    'availability': '"offline" for an agent shown for information only: its card is dimmed and locked and it cannot be hired; "ADMINS ONLY" for an agent an account\'s admins use: its own page says so in a warning (leave the field out for an agent anyone can hire)',
     'developer_site': 'your website, a plain https address such as https://example.com: the card links your name to it (leave the field out for no link)',
     'environment': 'where the agent runs, the platform\'s data_agent_environment: "POSITIVE FEEDBACK" (the LARRYD runtime, an EXTERNAL agent; the same as leaving it '
                    'out) or "POSITIVE FEEDBACK (INTERNAL-ONLY)" (Positive Feedback\'s own internal runtime, an INTERNAL agent): the one tag that tells them apart',

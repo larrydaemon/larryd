@@ -247,6 +247,7 @@ def test_the_tool_and_the_runtime_agree_on_a_developers_site():   # what the doc
 
 def test_an_offline_agent_says_so_on_its_card_and_only_that_word_passes(tmp_path):
     assert [p.wrong for p in doctor.check(_with_card(tmp_path, 'off1', {'availability': 'offline'})) if p.check == 'the manifest'] == []
-    for n, bad in enumerate(('online', 'OFFLINE', '', True, None)):
+    assert [p.wrong for p in doctor.check(_with_card(tmp_path, 'adm1', {'availability': 'ADMINS ONLY'})) if p.check == 'the manifest'] == []   # an account admins' agent (the owner 2026-11-13): the one other word
+    for n, bad in enumerate(('online', 'OFFLINE', '', True, None, 'admins only', 'ADMINS')):
         problems = [p for p in doctor.check(_with_card(tmp_path, f'off{n + 2}', {'availability': bad})) if p.check == 'the manifest']
         assert any('card "availability" is' in p.wrong for p in problems), bad
