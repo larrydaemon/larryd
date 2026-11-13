@@ -132,7 +132,7 @@ def _manifest(root, f):
         f.add(c, where, '"gives" is empty', 'name what the answer holds, e.g. ["delivery"]')
     run = card.get('run')
     if 'run' in card:
-        if not (isinstance(run, dict) and set(run) == {'do', 'hands'}):
+        if not (isinstance(run, dict) and set(run) - {'writes'} == {'do', 'hands'} and isinstance(run.get('writes', False), bool)):   # writes: the runtime's one new word (2026-11-13): an internal agent's RUN may write the records its manifest declares; true or false, nothing else
             f.add(c, where, '"run" is not {"do": ..., "hands": [...]}', 'set "run" to {"do": "<one of does>", "hands": []}')
         else:
             if run['do'] not in does:
