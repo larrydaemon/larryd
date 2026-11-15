@@ -574,3 +574,18 @@ def test_fabric_catches(agent, fabric, records, gives, said):
     problems = [p for p in doctor.check(agent) if p.check == 'the manifest']
     assert problems and any(said in p.wrong for p in problems), [p.wrong for p in problems]
     assert all(p.todo for p in problems)
+
+
+def test_an_agent_may_declare_the_page_words_it_reads(agent):
+    """THE PAGE WORDS (the owner 2026-11-15: "we add the words / each agent loads the words / they are part of the actual agent and its
+    clean as 1 package"): "words" is a manifest field, a list of plain words each once; [] declares it reads none; "act" is never one."""
+    from larryd import shape
+    assert 'words' in shape.FIELDS and 'words' in shape.OPTIONAL
+    path = agent / 'agent' / 'agent.json'
+    spec = json.loads(path.read_text())
+    for good in (['month', 'day'], [], ['backlog_do']):
+        path.write_text(json.dumps({**spec, 'words': good}))
+        assert not [p for p in doctor.check(agent) if '"words"' in p.wrong], good
+    for bad in (['Month'], ['a b'], ['act'], ['x', 'x'], 'month', ['w' * 33], [f'w_{"a" * n}' for n in range(1, 34)]):
+        path.write_text(json.dumps({**spec, 'words': bad}))
+        assert any('"words" is not a list' in p.wrong for p in doctor.check(agent)), bad

@@ -161,6 +161,12 @@ def _manifest(root, f):
             f.add(c, where, 'run "hands" has "files" but not "job": a file is named by a job input', 'add "job" to run "hands" and the file\'s name to "inputs"')
         elif not (isinstance(files, list) and files and len(files) <= 3 and len(set(files)) == len(files) and all(isinstance(n, str) and isinstance(inputs, dict) and n in inputs for n in files)):
             f.add(c, where, '"files" is not a list of at most 3 of the agent\'s own "inputs"', 'set "files" to the input names that carry a DA-M key, e.g. ["picture"]')
+    if 'words' in card:   # ITS OWN PAGE WORDS (shape.FIELDS words): a list of plain words, each once, never "act"
+        words = card['words']
+        if not (isinstance(words, list) and len(words) <= shape.MOST_WORDS and len(set(map(str, words))) == len(words)
+                and all(isinstance(w, str) and re.fullmatch(shape.PAGE_WORD, w) and w != 'act' for w in words)):
+            f.add(c, where, f'"words" is not a list of at most {shape.MOST_WORDS} page words, each once (small letters and underscores; never "act")',
+                  'set "words" to the words of the page\'s address the agent reads, e.g. ["month", "day"], or [] when it reads none')
     if 'records' in card:
         _records(card, c, where, f)
     if 'live' in card:
