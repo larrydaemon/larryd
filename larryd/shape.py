@@ -75,6 +75,8 @@ CARD_OPTIONAL = {   # a card fact an agent may leave out
     'developer_site': 'your website, a plain https address such as https://example.com: the card links your name to it (leave the field out for no link)',
     'environment': 'where the agent runs, the platform\'s data_agent_environment: "POSITIVE FEEDBACK" (the LARRYD runtime, an EXTERNAL agent; the same as leaving it '
                    'out) or "POSITIVE FEEDBACK (INTERNAL-ONLY)" (Positive Feedback\'s own internal runtime, an INTERNAL agent): the one tag that tells them apart',
+    'group': 'the group its card belongs to, the platform\'s data_agent_group, e.g. "WALL" (the owner 2026-11-16: "group should be called wall"): '
+             'a card of the group WALL may READ the shared SYSTEM account\'s records, never add, edit or remove them; "" or left out: no group',
 }
 ENVIRONMENT, INTERNAL_ONLY = 'POSITIVE FEEDBACK', 'POSITIVE FEEDBACK (INTERNAL-ONLY)'   # the card's "environment" (wid's larryd_runtime ENVIRONMENT, INTERNAL)
 SITE = r'https://(?=[^/?#]{1,253}(?:[/?#]|$))(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}(?:[/?#][^\s"\'<>\\`]*)?'   # https to a named host: no user, no port, no number for a host
