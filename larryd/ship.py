@@ -14,8 +14,13 @@ same internal and external"). The same steps for every agent; only the target di
              submitted to wid through the runtime's job
   6 APPROVE  in localhost FROST, the ONE waiting review of exactly this key and these two hashes, whatever card key wid minted
              (a first placement's card key is never the runtime key)
-  7 CARD     external: card.json (FROST's card key) beside the locker when it is missing; then ONE runtime restart per batch, said
-             here, never done here (the ship lane does it)
+  7 PLATFORMS external: EVERY PLATFORM READY, NO PUBLISHING (the owner 2026-11-17: "make larryd ship --go do this and keep in mind we
+             have macos and ios if they need it too.. should always be ready with no publishing"): each other platform the lane names
+             (production B, ...) gets the same version the same way: the runtime's own submit to that slot (its wid writes its card and its
+             FROST's review), then that platform's FROST approves exactly these hashes. The Mac and iPhone apps call no runtime: they reach
+             agents through their data home (a slot), so a slot ready is its devices ready
+  8 CARD     external: card.json beside the locker: the card key, and each platform's own card (cards: {caller: card key}) merged in,
+             so the runtime finds the agent whichever platform calls; then ONE runtime restart per batch, said here, never done here
 
     larryd ship <the agent's folder>            the plan, step by step: nothing placed, nothing approved
     larryd ship <the agent's folder> --go       do it (the ship lane: frost-cb)
@@ -24,6 +29,7 @@ Every outside step is a command it prints before it runs it; a step that fails s
 import json
 import os
 import pathlib
+import shlex
 import shutil
 import tempfile
 import subprocess
@@ -38,7 +44,10 @@ CONFIG = pathlib.Path(os.environ.get('LARRYD_SHIP') or HOME / '.larryd' / 'ship.
 #                 "cwd": "...", "env": {"LARRYD_INTERNAL": "1", "LARRYD_LOCKER": "<the locker>", ...}}},
 #    "external": {"keys": "<the lane's keys file>", "place": {"argv": [...]}, "submit": {"argv": [...], "cwd": "..."},
 #                 "card": {"argv": [...]}, "card_there": {"argv": [...]}},
-#    "frost": {"python": "...", "cwd": "...", "env": {...}}}
+#    "frost": {"python": "...", "cwd": "...", "env": {...}},
+#    "platforms": [{"name": "production B", "slot": "slot-b", "submit": {"argv": [..., "{key}", ...]},
+#                   "frost": {"remote": ["gcloud", "compute", "ssh", "<box>", ..., "--command"], "python": "...", "cwd": "...", "env": {...}}}]}
+# (external "slot" names localhost's own caller, "proof" when unsaid; "card_read" prints card.json, so the platforms' cards merge into it)
 # ({folder} is <locker>/<name>/agent; --kits names the folder itself, so the runtime writes no other office.py over the agent's own.)
 # internal place answers one JSON line with code_sha256 and manifest_sha256; external place answers "<key> <locker JSON>".
 
@@ -248,13 +257,21 @@ print(json.dumps({"approved": True, "review": found[0]["id"], "card_key": (got o
 '''
 
 
-def approve(key, hashes, note, run=_run):
-    """6 APPROVE -> {review, card_key, state}"""
-    frost = lane().get('frost') or {}
+def approve(key, hashes, note, run=_run, frost=None):
+    """6 APPROVE -> {review, card_key, state}. frost: the FROST to approve in (localhost's when unsaid); one with "remote" is another
+    platform's, reached by that command (its last word takes the whole command line, as gcloud compute ssh --command does)."""
+    frost = lane().get('frost') or {} if frost is None else frost
     if not frost.get('python') or not frost.get('cwd'):
         raise Stop('the ship lane names no FROST to approve in')
-    code, out, err = run([str(pathlib.Path(frost['python']).expanduser()), '-B', '-c', APPROVE, key, hashes['code_sha256'], hashes['manifest_sha256'], note],
-                         cwd=str(pathlib.Path(frost['cwd']).expanduser()), env={k: str(v) for k, v in (frost.get('env') or {}).items()})
+    args = [key, hashes['code_sha256'], hashes['manifest_sha256'], note]
+    env = {k: str(v) for k, v in (frost.get('env') or {}).items()}
+    if frost.get('remote'):
+        line = (f"cd {shlex.quote(frost['cwd'])} && env " + ' '.join(f'{k}={shlex.quote(v)}' for k, v in env.items())
+                + f" {shlex.quote(frost['python'])} -B -c {shlex.quote(APPROVE)} " + ' '.join(shlex.quote(a) for a in args))
+        code, out, err = run([str(a) for a in frost['remote']] + [line])
+    else:
+        code, out, err = run([str(pathlib.Path(frost['python']).expanduser()), '-B', '-c', APPROVE, *args],
+                             cwd=str(pathlib.Path(frost['cwd']).expanduser()), env=env)
     last = (out.strip().splitlines() or [''])[-1]
     try:
         got = json.loads(last)
@@ -265,9 +282,45 @@ def approve(key, hashes, note, run=_run):
     return got
 
 
-def card(key, card_key, run=_run):
-    """7 CARD (external): card.json beside the locker when it is missing"""
+def platforms(key, hashes, note, run=_run, say=print):
+    """7 PLATFORMS (external) -> {caller: its card key}: every other platform the lane names, submitted to and approved, as localhost"""
+    cards = {}
+    for p in lane().get('platforms') or []:
+        name, slot = p.get('name') or p.get('slot'), p.get('slot')
+        if not slot or not isinstance(p.get('frost'), dict):
+            raise Stop(f'the ship lane names a platform with no slot or no FROST: {name}')
+        argv, cwd, env = _cmd(p.get('submit'), key=key, pkg='', root='', slot=slot)
+        code, out, err = run(argv, cwd=cwd, env=env)
+        if code != 0:
+            raise Stop(f'it was not submitted to {name}: {(err or out).strip()[-300:]}')
+        got = approve(key, hashes, note, run, frost=p['frost'])
+        if not got.get('card_key'):
+            raise Stop(f'{name} approved it but named no card key')
+        cards[slot] = got['card_key']
+        say(f"7 PLATFORM {name}: FROST review {got['review']} {got['state']}, card {got['card_key']}")
+    return cards
+
+
+def card(key, card_key, run=_run, cards=None):
+    """8 CARD (external): card.json beside the locker, with each platform's own card merged in (cards: {caller: card key})"""
     conf = lane().get('external') or {}
+    if cards and conf.get('card_read'):
+        argv, cwd, env = _cmd(conf['card_read'], key=key, pkg='', root='', card='')
+        code, out, _ = run(argv, cwd=cwd, env=env)
+        try:
+            held = json.loads(out) if code == 0 and out.strip() else {}
+        except ValueError:
+            raise Stop('card.json is there but is not JSON: it is left as it is')
+        held = held if isinstance(held, dict) else {}
+        merged = {**(held.get('cards') if isinstance(held.get('cards'), dict) else {}), **cards}
+        if held.get('card_key') and merged == held.get('cards'):
+            return 'card.json already names every platform'
+        body = {'card_key': held.get('card_key') or card_key, 'cards': merged}
+        argv, cwd, env = _cmd(conf.get('card'), key=key, pkg='', root='', card=json.dumps(body))
+        code, _, err = run(argv, cwd=cwd, env=env)
+        if code != 0:
+            raise Stop(f'card.json was not written: {err.strip()[-200:]}')
+        return 'card.json names ' + ', '.join(sorted(merged))
     argv, cwd, env = _cmd(conf.get('card_there'), key=key, pkg='', root='', card=json.dumps({'card_key': card_key}))
     if run(argv, cwd=cwd, env=env)[0] == 0:
         return 'card.json already there'
@@ -296,7 +349,9 @@ def ship(path, go=False, note='', run=_run, say=print, scratch=None):
             say(f'5 PLACE    would place it in the {where} runtime' + (' (the lockers bucket, then the submit through the runtime job)' if where == 'external' else f' in place: into {locker_of(root)}, then held there'))
             say('6 APPROVE  would approve the one waiting review of exactly this key and its hashes in localhost FROST')
             if where == 'external':
-                say('7 CARD     would write card.json when missing; then ONE runtime restart for the batch (the ship lane)')
+                for p in lane().get('platforms') or []:
+                    say(f"7 PLATFORM would submit it to {p.get('name') or p.get('slot')} and approve the same hashes in its FROST")
+                say('8 CARD     would write card.json with each platform\'s card; then ONE runtime restart for the batch (the ship lane)')
             return 0
         hashes = place(root, key, data, where, run, scratch)
         key = hashes['key']
@@ -304,7 +359,10 @@ def ship(path, go=False, note='', run=_run, say=print, scratch=None):
         got = approve(key, hashes, note or f'approved by larryd ship (CORE_CLEANUP_IV 55): {root.name} at {commit}', run)
         say(f"6 APPROVE  FROST review {got['review']} {got['state']}, card {got['card_key']}")
         if where == 'external':
-            say(f"7 CARD     {card(key, got['card_key'], run)}; restart the runtime once for the batch (the ship lane)")
+            cards = platforms(key, hashes, note or f'approved by larryd ship: {root.name} at {commit}', run, say)
+            if cards:
+                cards = {(lane().get('external') or {}).get('slot') or 'proof': got['card_key'], **cards}
+            say(f"8 CARD     {card(key, got['card_key'], run, cards)}; restart the runtime once for the batch (the ship lane)")
         return 0
     except Stop as no:
         say(f'STOPPED    {no}')

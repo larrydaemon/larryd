@@ -212,3 +212,83 @@ def test_an_uncommitted_kit_is_never_placed_either(repo):
     code, said = lines(lambda say: ship.ship(repo / 'scratch-agent', go=True, run=Outside(), say=say))
     assert code == 1 and 'a kit it is packed with holds uncommitted changes' in said[-1]
 
+
+
+# ------------------------------------------------ 7 PLATFORMS, 8 CARD: every platform ready from one ship (the owner 2026-11-17)
+PLATFORM = {'name': 'production B', 'slot': 'slot-b', 'submit': {'argv': ['submit', '{key}', '--slot', '{slot}']},
+            'frost': {'remote': ['ssh-to-b', '--command'], 'python': '/b/python', 'cwd': '/b/fs', 'env': {'WID_ENV': 'frost-b.pf'}}}
+HASHES = {'code_sha256': 'c' * 64, 'manifest_sha256': 'm' * 64}
+
+
+class Lane:
+    """the stand-in for the platform commands: what was run, and what each answers"""
+    def __init__(self, card_json=None, approve=None):
+        self.calls, self.card_json, self.written = [], card_json, None
+        self.approve = approve or {'approved': True, 'review': 9, 'card_key': 'MAGT_BBBBBBBBBBBB_0002', 'state': 'approved'}
+
+    def __call__(self, argv, cwd=None, env=None, timeout=900):
+        self.calls.append(argv)
+        if argv[0] == 'submit':
+            return 0, '', ''
+        if argv[0] == 'ssh-to-b':
+            return 0, json.dumps(self.approve) + '\n', ''
+        if argv[0] == 'read':
+            return (0, json.dumps(self.card_json), '') if self.card_json is not None else (1, '', 'no such object')
+        if argv[0] == 'write':
+            self.written = json.loads(argv[1])
+            return 0, '', ''
+        raise AssertionError(f'an outside command the test did not expect: {argv[:3]}')
+
+
+def with_lane(tmp_path, monkeypatch, **more):
+    conf = tmp_path / 'ship_platforms.json'
+    conf.write_text(json.dumps({**LANE, 'platforms': [PLATFORM],
+                                'external': {'card_read': {'argv': ['read', '{key}']}, 'card': {'argv': ['write', '{card}']},
+                                             'card_there': {'argv': ['read', '{key}']}}, **more}))
+    monkeypatch.setattr(ship, 'CONFIG', conf)
+
+
+def test_each_platform_is_submitted_to_its_slot_and_approved_in_its_own_frost(tmp_path, monkeypatch):
+    with_lane(tmp_path, monkeypatch)
+    run = Lane()
+    assert ship.platforms(KEY, HASHES, 'a note', run, say=lambda s: None) == {'slot-b': 'MAGT_BBBBBBBBBBBB_0002'}
+    assert run.calls[0] == ['submit', KEY, '--slot', 'slot-b']
+    remote = run.calls[1]
+    assert remote[:2] == ['ssh-to-b', '--command'] and len(remote) == 3   # the whole line is the last word, as gcloud compute ssh --command takes it
+    assert remote[2].startswith('cd /b/fs && env WID_ENV=frost-b.pf /b/python -B -c ')
+    assert KEY in remote[2] and 'c' * 64 in remote[2] and "'a note'" in remote[2]
+
+
+def test_a_platform_that_will_not_approve_stops_the_ship(tmp_path, monkeypatch):
+    with_lane(tmp_path, monkeypatch)
+    with pytest.raises(ship.Stop, match='not approved'):
+        ship.platforms(KEY, HASHES, 'n', Lane(approve={'approved': False, 'why': '0 waiting reviews'}), say=lambda s: None)
+
+
+def test_card_json_keeps_what_it_held_and_gains_every_platforms_card(tmp_path, monkeypatch):
+    with_lane(tmp_path, monkeypatch)
+    run = Lane(card_json={'card_key': 'MAGT_OLD000000000_0000', 'cards': {'proof': 'MAGT_AAAAAAAAAAAA_0001'}})
+    said = ship.card(KEY, 'MAGT_AAAAAAAAAAAA_0001', run, {'proof': 'MAGT_AAAAAAAAAAAA_0001', 'slot-b': 'MAGT_BBBBBBBBBBBB_0002'})
+    assert run.written == {'card_key': 'MAGT_OLD000000000_0000', 'cards': {'proof': 'MAGT_AAAAAAAAAAAA_0001', 'slot-b': 'MAGT_BBBBBBBBBBBB_0002'}}
+    assert said == 'card.json names proof, slot-b'
+
+
+def test_card_json_already_naming_every_platform_is_not_written_again(tmp_path, monkeypatch):
+    with_lane(tmp_path, monkeypatch)
+    cards = {'proof': 'MAGT_AAAAAAAAAAAA_0001', 'slot-b': 'MAGT_BBBBBBBBBBBB_0002'}
+    run = Lane(card_json={'card_key': 'MAGT_AAAAAAAAAAAA_0001', 'cards': cards})
+    assert ship.card(KEY, 'MAGT_AAAAAAAAAAAA_0001', run, cards) == 'card.json already names every platform'
+    assert run.written is None
+
+
+def test_a_new_agent_gets_card_json_with_every_platform(tmp_path, monkeypatch):
+    with_lane(tmp_path, monkeypatch)
+    run = Lane()
+    ship.card(KEY, 'MAGT_AAAAAAAAAAAA_0001', run, {'proof': 'MAGT_AAAAAAAAAAAA_0001', 'slot-b': 'MAGT_BBBBBBBBBBBB_0002'})
+    assert run.written == {'card_key': 'MAGT_AAAAAAAAAAAA_0001', 'cards': {'proof': 'MAGT_AAAAAAAAAAAA_0001', 'slot-b': 'MAGT_BBBBBBBBBBBB_0002'}}
+
+
+def test_a_lane_with_no_platforms_ships_as_before(tmp_path, monkeypatch):
+    run = Lane()
+    assert ship.platforms(KEY, HASHES, 'n', run, say=lambda s: None) == {}
+    assert run.calls == []
