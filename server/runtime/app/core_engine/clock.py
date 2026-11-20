@@ -5,11 +5,19 @@ for the jobs, and for each one due whose agent the locker holds and FROST approv
 RUN press does, then runs the catch-up so the RUN starts. The same code on both runtimes: on this computer (LARRYD_INTERNAL=1) a
 loop ticks it every 60 s in-process; on Cloud Run the signed door POST /api/clock/tick ticks it (Cloud Scheduler).
 
+ON ARRIVAL (THE PUSH STANDARD, the owner 2026-11-20: "a push type system where it does nothing not every hour... and on a change it
+will push the message right awaay"; of how its writer starts, every minute or only on arrival: "b"): a job whose schedule type is
+`on arrival <name>` has no time of day. Its moment is the last time the mark <the runtime's data>/arrivals/<name> was touched (by
+whoever brings that agent its work: PF_Loot's push chain touches arrivals/push when it files an envelope). No mark, nothing arrived:
+never due, nothing pressed, nothing run. The loop on this computer looks at the arrivals folder every second and ticks at once when
+it changed, so the RUN starts within seconds of the arrival; a runtime with no data folder of its own never fires one.
+
 A missed time (the computer asleep) fires ONCE on wake: only the latest scheduled moment at or before now is ever considered,
 and it is due only when nothing ran since it. The runtime's own memory (runtime_clock) holds the moment it last pressed for
 each job, so one moment is never pressed twice, even when wid refused the press or the RUN has not ended yet."""
 import datetime
 import logging
+import os
 import re
 import sqlite3
 import threading
@@ -20,6 +28,7 @@ LOG = logging.getLogger('runtime')
 NEVER = ('', 'on_demand', 'manual')   # only a press of the member's runs these
 EVERY = re.compile(r'^every\s+(\d+)\s+(minute|minutes|hour|hours)$')
 HM = re.compile(r'^([01]?\d|2[0-3]):([0-5]\d)$')
+ARRIVAL = re.compile(r'^on arrival ([a-z][a-z0-9_]{0,30})$')   # ON ARRIVAL: due when its mark was touched, never by the time of day
 TICK_SECONDS = 60
 FIELDS = ('schedule_type', 'time', 'timezone', 'day_of_week', 'day_of_month', 'month_of_quarter', 'starts_on', 'ends_on')
 
@@ -65,6 +74,30 @@ def zone_of(job):
         return None
 
 
+def arrivals():
+    """The folder of the arrival marks, in the runtime's own data (OFFICE_DATA, else <LARRYD_INSTANCE>/data), or '' on a runtime that has none."""
+    data = os.environ.get('OFFICE_DATA') or (os.path.join(os.environ['LARRYD_INSTANCE'], 'data') if os.environ.get('LARRYD_INSTANCE') else '')
+    return os.path.join(data, 'arrivals') if data else ''
+
+
+def arrived(name):
+    """When the mark arrivals/<name> was last touched (aware, UTC), or None: no folder, no mark."""
+    folder = arrivals()
+    try:
+        return datetime.datetime.fromtimestamp(os.stat(os.path.join(folder, name)).st_mtime, datetime.timezone.utc) if folder else None
+    except OSError:
+        return None
+
+
+def changed():
+    """What the arrivals folder holds now, as one value to compare: every mark's name and time ('' when there is none)."""
+    folder = arrivals()
+    try:
+        return tuple(sorted((e.name, e.stat().st_mtime_ns) for e in os.scandir(folder) if e.is_file())) if folder else ()
+    except OSError:
+        return ()
+
+
 def latest(job, now):
     """The job's latest scheduled moment at or before now (aware), or None: on demand, manual, an unknown kind, a field it needs
     missing or not a value, an unknown zone."""
@@ -74,6 +107,10 @@ def latest(job, now):
     zone = zone_of(job)
     if zone is None:
         return None
+    on = ARRIVAL.match(kind)
+    if on:   # ON ARRIVAL: its one moment is its mark's last touch; nothing arrived, no moment
+        moment = arrived(on.group(1))
+        return moment if moment is not None and moment <= now else None
     here = now.astimezone(zone)
     every = EVERY.match(kind)
     if every:   # every N minutes (or hours): the moments N apart from the local midnight of the day
@@ -223,6 +260,8 @@ class Clock:
                 continue
             moment = latest(job, now)
             if moment is None:
+                if ARRIVAL.match(_f(job, 'schedule_type').lower()) and self.memory.get(job) is None:
+                    self.memory.seen(job, now)   # ON ARRIVAL: seen while nothing has arrived yet, so its first arrival after this is pressed
                 continue
             mem = self.memory.get(job)
             if mem is None:
@@ -273,7 +312,13 @@ class Clocks:
                 self.tick(now())
             except Exception as error:   # the clock never stops for one bad tick
                 LOG.error('clock: a tick failed: %s', type(error).__name__)
-            stop.wait(every)
+            if not arrivals():   # a runtime with no data folder of its own: the plain wait
+                stop.wait(every)
+                continue
+            was = changed()
+            for _ in range(max(1, int(every))):   # ON ARRIVAL: the arrivals folder is looked at every second; a mark touched ends the wait, so the tick is at once
+                if stop.wait(min(1, every)) or changed() != was:
+                    break
 
     def start(self, every=TICK_SECONDS):
         """The loop on its own thread (this computer's runtime). -> the Event that stops it."""
