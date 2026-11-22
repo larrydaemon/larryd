@@ -16,6 +16,7 @@ import re
 import resource
 import secrets
 import shutil
+import sqlite3
 import sys
 import threading
 import time
@@ -88,9 +89,9 @@ def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, deve
     locker_dir = APP / 'agents' if agents is None else pathlib.Path(agents)
     lockers = cloud.get('lockers')
     held_from_bucket = None
-    if lockers is not None:   # Cloud Run: the instance's locker is only a cache of the lockers bucket, filled at start
+    if lockers is not None:   # Cloud Run: the instance's locker is only a cache of the lockers bucket, filled at start (each caller's own locker, 2026-11-22)
         locker_dir.mkdir(parents=True, exist_ok=True)
-        held_from_bucket = lockers.sync(db, locker_dir, CONFIG['intake'])
+        held_from_bucket = lockers.sync(db, locker_dir, CONFIG['intake'], callers=[''] + (cloud['outbound'].slots() if keys is not None and cloud.get('outbound') else []))
     local = bool(developer) and not addresses
     if local:
         preview.hold_marketplace(db, locker_dir)
@@ -109,8 +110,8 @@ def create_app(instance, secret, now=_utc_now, addresses=None, agents=None, deve
         for caller in cloud['outbound'].slots():
             base = slots.get(caller, '')
             offices = local[caller] if isinstance(local.get(caller), dict) else {o: f'{base}/{o}' for o in slots['offices']} if base else {}
-            harnesses[caller] = lanes_harness.Harness(
-                db, locker_dir, platform.Client(offices, '',
+            harnesses[caller] = lanes_harness.Harness(   # EACH CALLER ITS OWN LOCKER (the owner 2026-11-22: "there should be zero agents that are on a and b at the same fucking time"): its rows and its folder alone
+                db, locker.root_for(locker_dir, caller), platform.Client(offices, '',
                                                 outbound=cloud['outbound'], slot=caller, retry_seconds=retry_seconds,
                                                 asks_again_once_sent=not isinstance(local.get(caller), dict),
                                                 gate=here_gate if isinstance(local.get(caller), dict) else None),   # an office on this computer is never asked twice for what it already holds
@@ -496,20 +497,20 @@ def harness_for_slot(app, slot=''):
 
 
 def place(app, agent_key, data, role='', slot=''):
-    """An approved agent file into the locker (<intake folder>/<key>/, or marketplace/<key>/ for the marketplace role): the first
-    guard. Then to the platform's wid (its card written, PENDING until the platform's review, FROST's, approves these exact hashes:
+    """An approved agent file into THE SLOT'S OWN locker (<intake folder>/<key>/, or marketplace/<key>/ for the marketplace role;
+    each caller its own locker, 2026-11-22: a place for slot-b never changes slot-a's copy): the first guard. Then to the platform's wid (its card written, PENDING until the platform's review, FROST's, approves these exact hashes:
     the second guard) through the slot it is for (harness_for_slot). -> what was held, and wid's answer or why wid did not take it (the agent
     stays held; `submit <key>` sends it again)."""
     h, conf = harness_for_slot(app, slot), CONFIG['intake']   # refused before anything is held when no slot is named
     try:
         files = intake.check(intake.from_zip(data, conf['most_files'], conf['most_bytes']), conf['most_files'], conf['most_bytes'])
         group = lanes_harness.MARKETPLACE if role == 'marketplace' else conf['folder']   # the marketplace keeps its own folder (as the bucket's sync files it)
-        row = intake.receive(h.db, h.agents, group, agent_key, files)
+        row = intake.receive(h.db, h.agents, group, agent_key, files, h.caller)   # into THE SLOT'S OWN locker (2026-11-22), never another slot's
     except intake.Refused as no:
         raise SystemExit(f'refused ({no.status}): {no.reason}')
     held = {'agent_key': agent_key, 'code_sha256': row['code_sha256'], 'manifest_sha256': row['manifest_sha256']}
-    if app.config.get('lockers') is not None:   # Cloud Run: the approved package is kept in the lockers bucket, read by every instance
-        app.config['lockers'].publish(agent_key, row, data, role=role)
+    if app.config.get('lockers') is not None:   # Cloud Run: the approved package is kept in the lockers bucket, read by every instance (the slot's own locker there too)
+        app.config['lockers'].publish(agent_key, row, data, role=role, caller=h.caller)
     try:
         review = h.submit(agent_key)
     except lanes_harness.Refused as no:
@@ -538,7 +539,7 @@ def place_in_place(app, agent_key, where, kits=None, slot=''):
     except ValueError:
         raise SystemExit(f'refused (400): {where} is not inside the locker {root}')
     try:
-        row = intake.hold_in_place(h.db, root, agent_key, rel.as_posix(), conf['most_files'], conf['most_bytes'], kits=kits)
+        row = intake.hold_in_place(h.db, root, agent_key, rel.as_posix(), conf['most_files'], conf['most_bytes'], kits=kits, caller=h.caller)
     except intake.Refused as no:
         raise SystemExit(f'refused ({no.status}): {no.reason}')
     held = {'agent_key': agent_key, 'folder': row['folder'], 'code_sha256': row['code_sha256'], 'manifest_sha256': row['manifest_sha256']}
@@ -550,6 +551,58 @@ def place_in_place(app, agent_key, where, kits=None, slot=''):
     if KEY.fullmatch(card_key):   # BOTH KEYS LINKED, as place
         locker.link(h.db, agent_key, card_key, h.caller)
     return {**held, 'review': review}
+
+
+def lockers_copy(app, to, keys=None):
+    """THE MIGRATION TO A LOCKER PER CALLER (the owner 2026-11-22: "there should be zero agents that are on a and b at the same fucking
+    time. if so fix that too"): every agent of the locker of before (slot A's, left exactly as it is) copied into caller `to`'s own
+    locker, never moved: on Cloud Run into the lockers bucket (<to>/<key>/..., read by every instance at its start), else into this
+    runtime's agents.db and <locker>.<to>/ beside the locker. Run again, it copies nothing an agent already has. keys: only these.
+    -> {'to', 'bucket': {copied, kept} or None, 'here': {copied, kept, refused}}."""
+    if not locker.of(to):
+        raise SystemExit(f'refused: {to} is the locker of before itself (or the locker in place): nothing to copy into')
+    harnesses = app.config['harnesses']
+    if harnesses and to not in harnesses:
+        raise SystemExit(f'no slot {to}: the slots are {", ".join(sorted(harnesses))}')
+    h = app.config['harness']   # the locker of before: its db and its folder
+    bucket = app.config['lockers'].copy(to, keys) if app.config.get('lockers') is not None else None
+    return {'to': to, 'bucket': bucket, 'here': locker.copy(h.db, h.agents, to, keys)}
+
+
+def lockers_check(app):
+    """THE NIGHT'S CHECK THAT NO AGENT IS ON TWO PLATFORMS AT ONCE (the owner 2026-11-22: "add ... the agent problem to the smoke test so
+    this runs each night and wont happen again"): every caller this runtime answers is held to a locker of its own, its rows and its
+    folder; no two callers share one, no caller's folder lies inside another's, and no agent's copy is the same folder for two callers.
+    Keys, callers and counts only. -> {'ok', 'lockers': {caller: {locker, root, held}}, 'shared': [why]}."""
+    sources = dict(app.config['harnesses']) or {'': app.config['harness']}
+    seen, out, shared = {}, {}, []
+    con = sqlite3.connect(app.config['harness'].db)
+    try:
+        rows = con.execute('SELECT agent_key, folder, caller FROM runtime_locker').fetchall()
+    finally:
+        con.close()
+    for caller, h in sorted(sources.items()):
+        own, root = locker.of(caller), pathlib.Path(h.agents).resolve()
+        seen.setdefault((own, root), []).append(caller)
+        out[caller or '(one platform)'] = {'locker': own or f'{locker.FIRST} (the locker of before)', 'root': str(root),
+                                           'held': sum(1 for r in rows if r[2] == own)}
+    for (own, root), names in seen.items():
+        if len(names) > 1:
+            shared.append(f'{", ".join(names)} share one locker')
+    roots = [(names, root) for (own, root), names in seen.items()]
+    for names, root in roots:
+        for others, other in roots:
+            if root != other and root in other.parents:
+                shared.append(f'{", ".join(others)} keep their locker inside the locker of {", ".join(names)}')
+    paths = {}
+    for (own, root), names in seen.items():
+        for _key, folder, row_caller in rows:
+            if row_caller == own:
+                paths.setdefault((root / folder).resolve(), set()).update(names)
+    for path, names in paths.items():
+        if len(names) > 1:
+            shared.append(f'one folder held for {", ".join(sorted(names))}')
+    return {'ok': not shared, 'lockers': out, 'shared': sorted(set(shared))}
 
 
 def warm_up(app, shake=None, sleep=None, then=None):
@@ -701,6 +754,8 @@ def main(argv):
     python runtime/app/web/app.py place <card key> <file.larryd> [marketplace] [--slot <slot>]   an agent the owner approved: into the locker (and, on Cloud Run, the lockers bucket), then to the platform's wid
     python runtime/app/web/app.py place <card key> <folder> [--kits <folder>] [--slot <slot>]   LARRYD_INTERNAL=1 and LARRYD_LOCKER: the agent held in place, <LARRYD_LOCKER>/<name>/agent, its kits written into it
     python runtime/app/web/app.py adopt <card key> <name> [--slot <slot>]   LARRYD_INTERNAL=1 and LARRYD_LOCKER: a copy held in instance/agents moved to <name>/agent in place, on its approved hashes
+    python runtime/app/web/app.py lockers copy <slot> [<key>...]       each caller its own locker (2026-11-22): the locker of before (slot A's, untouched) copied into that slot's own (the bucket on Cloud Run)
+    python runtime/app/web/app.py lockers check                       the night's check: every caller its own locker, no agent on two platforms at once (exit 1 when one is)
     python runtime/app/web/app.py review <card key>... [--slot <slot>]   what the runtime records for those agents, with the platform's word on the hashes it holds
     python runtime/app/web/app.py remove <key> [--slot <slot>]        a placed agent taken out of the locker, only when the platform's word on its exact hashes is revoked
       (on Cloud Run --slot, or LARRYD_SLOT, names the slot whose wid is asked: slot-a, slot-b or proof)
@@ -746,6 +801,15 @@ def main(argv):
         return
     if argv[1:2] == ['place'] and len(argv) in (4, 5):
         print(json.dumps(place(app, argv[2], pathlib.Path(argv[3]).read_bytes(), role=argv[4] if len(argv) == 5 else '', slot=slot)))
+        return
+    if argv[1:3] == ['lockers', 'copy'] and len(argv) >= 4:   # THE MIGRATION TO A LOCKER PER CALLER (2026-11-22): a copy, never a move
+        print(json.dumps(lockers_copy(app, argv[3], argv[4:] or None)))
+        return
+    if argv[1:] == ['lockers', 'check']:   # the night's check: no agent on two platforms at once; exit 1 when one is
+        got = lockers_check(app)
+        print(json.dumps(got))
+        if not got['ok']:
+            raise SystemExit(1)
         return
     if argv[1:2] == ['review'] and len(argv) >= 3:
         print(json.dumps(harness_for_slot(app, slot).review_state(argv[2:])))

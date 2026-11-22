@@ -34,7 +34,7 @@ def hold_marketplace(db, agents):
         return MARKETPLACE_KEY
     con = sqlite3.connect(db)
     try:
-        con.execute("DELETE FROM runtime_locker WHERE folder = 'marketplace' OR agent_key = ?", (MARKETPLACE_KEY,))
+        con.execute("DELETE FROM runtime_locker WHERE caller = '' AND (folder = 'marketplace' OR agent_key = ?)", (MARKETPLACE_KEY,))   # the developer's one locker (the locker of before)
         con.commit()
     finally:
         con.close()
@@ -66,7 +66,7 @@ class Local:
         con = sqlite3.connect(self.db)
         con.row_factory = sqlite3.Row
         try:
-            return [dict(r) for r in con.execute('SELECT * FROM runtime_locker ORDER BY registered_at, agent_key')]
+            return [dict(r) for r in con.execute("SELECT * FROM runtime_locker WHERE caller = '' ORDER BY registered_at, agent_key")]   # the developer's one locker
         finally:
             con.close()
 

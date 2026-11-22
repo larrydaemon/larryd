@@ -55,6 +55,10 @@
   "field": "access",
   "grants": "allow"
  },
+ "lockers": {
+  "about": "EACH CALLER ITS OWN LOCKER (the owner 2026-11-22: \"there should be zero agents that are on a and b at the same fucking time\"): an agent's locker row and folder are its caller's, so a manifest changed for one platform never changes another's hashes. first: the caller whose locker is the one held before 2026-11-22, its rows (caller '') and folders exactly where they were (on the lockers bucket <key>/...); every other caller's is its own copy, rows under its name, folders in <locker>.<caller>/ beside it (on the bucket <caller>/<key>/...). The locker in place (LARRYD_INTERNAL=1 and LARRYD_LOCKER, the one internal locker) stays one locker for every caller, as before.",
+  "first": "slot-a"
+ },
  "pages": {
   "about": "THE PAGES' OWN ADDRESS of each caller (the owner, 2026-10-25, THE LARRY DATA FABRIC's DOWNLOAD): where its members open their pages, so a link the runtime builds for a page (DA-M's own download of a file) is an https address of that very host, in a new tab (the platform's view gate takes nothing else). A caller with none here gets no such link.",
   "slot-a": "",

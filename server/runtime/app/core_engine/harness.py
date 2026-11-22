@@ -281,9 +281,9 @@ class Harness:
         (marketplace/), and a linked one before both."""
         con = sqlite3.connect(self.db)
         try:
-            row = con.execute("SELECT agent_key, COALESCE(card_key, '') FROM runtime_locker WHERE folder = ? OR folder LIKE ? "
+            row = con.execute("SELECT agent_key, COALESCE(card_key, '') FROM runtime_locker WHERE caller = ? AND (folder = ? OR folder LIKE ?) "
                               "ORDER BY COALESCE(card_key, '') != '' DESC, folder != ? DESC, registered_at DESC",
-                              (MARKETPLACE, MARKETPLACE + '/%', MARKETPLACE)).fetchone()
+                              (locker.of(self.caller), MARKETPLACE, MARKETPLACE + '/%', MARKETPLACE)).fetchone()   # this caller's own locker (2026-11-22)
         finally:
             con.close()
         if row is None:
@@ -326,7 +326,7 @@ class Harness:
                 out = {'agent_key': key, 'refused': f'its review is {review}, not revoked: kept'}
             else:
                 try:
-                    out = {'agent_key': key, 'removed': locker.remove(self.db, self.agents, key)}
+                    out = {'agent_key': key, 'removed': locker.remove(self.db, self.agents, key, self.caller)}   # this caller's own copy alone
                 except ValueError as why:
                     out = {'agent_key': key, 'refused': str(why)}
         LOG.warning('remove %s: %s', key, out.get('removed') and f"removed {out['removed']}" or f"refused: {out['refused']}")

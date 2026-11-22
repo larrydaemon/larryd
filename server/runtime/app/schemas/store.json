@@ -3,11 +3,15 @@
   "database": "agents.db",
   "tables": {
     "runtime_locker": {
-      "about": "an agent the runtime holds: its folder and the sha256 of its code and manifest, checked on every call and run",
+      "about": "an agent the runtime holds: its folder and the sha256 of its code and manifest, checked on every call and run; one row per agent PER CALLER'S LOCKER (caller: '' is the locker held before 2026-11-22, slot A's and a laptop's one platform; slot-b, proof: each its own copy, the owner 2026-11-22: \"there should be zero agents that are on a and b at the same fucking time\")",
+      "primary_key": [
+        "agent_key",
+        "caller"
+      ],
       "columns": [
         [
           "agent_key",
-          "TEXT PRIMARY KEY"
+          "TEXT NOT NULL"
         ],
         [
           "name",
@@ -32,6 +36,10 @@
         [
           "card_key",
           "TEXT"
+        ],
+        [
+          "caller",
+          "TEXT NOT NULL DEFAULT ''"
         ]
       ]
     },

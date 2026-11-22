@@ -12,7 +12,7 @@ import unittest
 from _here import APP
 from core_engine import harness, locker, sandbox, store
 
-ALLOWED = {'runtime_locker': ['agent_key', 'name', 'folder', 'code_sha256', 'manifest_sha256', 'registered_at', 'card_key'],   # card_key: the platform's card for it, linked at approval (a key, no data)
+ALLOWED = {'runtime_locker': ['agent_key', 'name', 'folder', 'code_sha256', 'manifest_sha256', 'registered_at', 'card_key', 'caller'],   # card_key: the platform's card for it, linked at approval (a key, no data); caller: whose locker the row is (a slot's key id, 2026-11-22)
            'runtime_runs': ['id', 'lane', 'agent_key', 'job_key', 'run', 'state', 'reason', 'started_at', 'finished_at', 'charged', 'account', 'member', 'provider_ref', 'error_class']}   # provider_ref + error_class: a make's provider id and our word for why it failed (frost-05 2026-11-07), never data   # the caller's keys (a run names its caller)
 ALLOWED['runtime_cards'] = ['agent_key', 'caller', 'card_key']   # each calling platform's own card of an agent: the runtime's key, the slot's key id, the card's key; keys alone, no data (2026-11-11)
 ALLOWED['runtime_clock'] = ['job', 'first_seen', 'pressed_for']   # the clock reader's memory: account/scope/job key and two moments, never a job's data (core_engine/clock.py)

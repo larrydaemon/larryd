@@ -75,14 +75,16 @@ def check(raw, most_files, most_bytes):
     return out
 
 
-def receive(db, agents, folder, agent_key, files):
+def receive(db, agents, folder, agent_key, files, caller=''):
     """Write checked files into agents/<folder>/<agent_key>/ and hold them in the locker: a changed agent replaces the old
-    one, the same files give the same hashes. Everything is written aside before the old one is touched. -> the locker row."""
+    one, the same files give the same hashes. Everything is written aside before the old one is touched. caller: whose locker
+    it is held in (locker.of; agents is that locker's own folder, locker.root_for): only that caller's copy is replaced, never
+    another caller's (2026-11-22). -> the locker row."""
     if not KEY.match(agent_key or ''):
         raise Refused(400, 'not a card key')
     agents = pathlib.Path(agents).resolve()
     home = agents / folder
-    home.mkdir(exist_ok=True)
+    home.mkdir(parents=True, exist_ok=True)
     incoming = home / f'incoming_{secrets.token_hex(8)}'
     try:
         incoming.mkdir()
@@ -96,15 +98,15 @@ def receive(db, agents, folder, agent_key, files):
         con = sqlite3.connect(db)
         try:
             con.execute('BEGIN IMMEDIATE')
-            con.execute('DELETE FROM runtime_locker WHERE agent_key = ?', (agent_key,))
+            con.execute('DELETE FROM runtime_locker WHERE agent_key = ? AND caller = ?', (agent_key, locker.of(caller)))
             if target.exists():
                 shutil.rmtree(target)
             incoming.rename(target)
             con.commit()
         finally:
             con.close()
-        locker.add(db, agents, agent_key, f'{folder}/{agent_key}')
-        return locker.held(db, agent_key)
+        locker.add(db, agents, agent_key, f'{folder}/{agent_key}', caller)
+        return locker.held(db, agent_key, caller)
     finally:
         if incoming.exists():
             shutil.rmtree(incoming, ignore_errors=True)
@@ -136,7 +138,7 @@ def kits_in(path, kits):
     return names
 
 
-def hold_in_place(db, root, agent_key, folder, most_files, most_bytes, kits=None):
+def hold_in_place(db, root, agent_key, folder, most_files, most_bytes, kits=None, caller=''):
     """THE PLACE, IN PLACE (LARRYD_INTERNAL=1 and LARRYD_LOCKER): the agent is held where it is, <root>/<folder> (<name>/agent),
     nothing copied anywhere. Its kits written in first (kits_in, when a kits folder is named), then the same guards as a .larryd file
     (only plain files and paths, no link, within the limits, the manifest and its entry; agent.json's "key", when it names one, is
@@ -162,12 +164,12 @@ def hold_in_place(db, root, agent_key, folder, most_files, most_bytes, kits=None
         raise Refused(400, f'{locker.MANIFEST} names the key {named}, not {agent_key}')
     con = sqlite3.connect(db)
     try:
-        con.execute('DELETE FROM runtime_locker WHERE agent_key = ?', (agent_key,))
+        con.execute('DELETE FROM runtime_locker WHERE agent_key = ? AND caller = ?', (agent_key, locker.of(caller)))
         con.commit()
     finally:
         con.close()
     try:
-        locker.add(db, root, agent_key, path.relative_to(root).as_posix())
+        locker.add(db, root, agent_key, path.relative_to(root).as_posix(), caller)
     except ValueError as why:
         raise Refused(400, str(why))
-    return locker.held(db, agent_key)
+    return locker.held(db, agent_key, caller)

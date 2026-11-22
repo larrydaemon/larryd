@@ -44,7 +44,8 @@ asks its office AS wid (wid's `core_engine/offices.py`), only while that member'
 
 TWO GUARDS, NEVER ONE (the owner's rule, 2026-10-04): an agent is verified at every call, hire and run only when (1) the
 runtime's locker holds it with exactly these hashes (`place`, the owner's approved file; on Cloud Run the lockers bucket's
-locker.json) AND (2) wid's /agnt/approved lists exactly these hashes (FROST's review, read by wid as an office; the runtime
+locker.json; EACH CALLER ITS OWN LOCKER since 2026-11-22: slot A's is the locker of before, `<key>/` on the bucket, slot-b's and
+proof's their own copies, `<caller>/<key>/`, so one platform's manifest never changes another's hashes) AND (2) wid's /agnt/approved lists exactly these hashes (FROST's review, read by wid as an office; the runtime
 never calls FROST). The list is kept APPROVED_KEEP seconds for a page's CALL (a miss asks again, once); a hire and a RUN ask
 it now. A new version (new hashes) waits for its approval again.
 
