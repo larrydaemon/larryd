@@ -47,7 +47,7 @@ CONFIG = pathlib.Path(os.environ.get('LARRYD_SHIP') or HOME / '.larryd' / 'ship.
 #    "frost": {"python": "...", "cwd": "...", "env": {...}},
 #    "platforms": [{"name": "production B", "slot": "slot-b", "submit": {"argv": [..., "{key}", ...]},
 #                   "frost": {"remote": ["gcloud", "compute", "ssh", "<box>", ..., "--command"], "python": "...", "cwd": "...", "env": {...}}}]}
-# (external "slot" names localhost's own caller, "proof" when unsaid; "card_read" prints card.json, so the platforms' cards merge into it)
+# (external "slot" names localhost's own caller, required since 2026-11-22: its locker is <slot>/<key>/ in the bucket; "card_read" prints card.json, so the platforms' cards merge into it)
 # ({folder} is <locker>/<name>/agent; --kits names the folder itself, so the runtime writes no other office.py over the agent's own.)
 # internal place answers one JSON line with code_sha256 and manifest_sha256; external place answers "<key> <locker JSON>".
 
@@ -200,6 +200,15 @@ def key_of(root, card, where):
     return keys.get(root.name) or ''   # a first placement: the ship lane mints it (place_agent.py) and it is read back from there
 
 
+def _slot(conf):
+    """EACH CALLER ITS OWN LOCKER (the owner 2026-11-22: "there should be zero agents that are on a and b at the same fucking time"):
+    the external lane's own slot, named in its file (no default): its locker is <slot>/<key>/ in the lockers bucket."""
+    slot = conf.get('slot') if isinstance(conf, dict) else None
+    if not isinstance(slot, str) or not slot:
+        raise Stop(f'the ship lane names no external "slot" in {CONFIG}: every locker is one slot\'s own')
+    return slot
+
+
 def place(root, key, data, where, run=_run, scratch=None):
     """5 PLACE -> {key, code_sha256, manifest_sha256}"""
     conf = lane().get(where) or {}
@@ -219,7 +228,7 @@ def place(root, key, data, where, run=_run, scratch=None):
         return {'key': key, 'code_sha256': got['code_sha256'], 'manifest_sha256': got['manifest_sha256'], 'folder': str(folder)}
     pkg = pathlib.Path(scratch or tempfile.mkdtemp(prefix='larryd_ship_')) / f'{key or root.name}.larryd'
     pkg.write_bytes(data)
-    argv, cwd, env = _cmd(conf.get('place'), key=key, pkg=pkg, root=root)
+    argv, cwd, env = _cmd(conf.get('place'), key=key, pkg=pkg, root=root, slot=_slot(conf))
     code, out, err = run(argv, cwd=cwd, env=env)
     last = (out.strip().splitlines() or [''])[-1]
     if code != 0:
@@ -282,13 +291,24 @@ def approve(key, hashes, note, run=_run, frost=None):
     return got
 
 
-def platforms(key, hashes, note, run=_run, say=print):
-    """7 PLATFORMS (external) -> {caller: its card key}: every other platform the lane names, submitted to and approved, as localhost"""
+def platforms(key, hashes, note, run=_run, say=print, root=''):
+    """7 PLATFORMS (external) -> {caller: its card key}: every other platform the lane names, submitted to and approved, as localhost.
+    A platform with a "place" has the agent placed in ITS OWN locker first (<slot>/<key>/, 2026-11-22), on exactly the same hashes."""
     cards = {}
     for p in lane().get('platforms') or []:
         name, slot = p.get('name') or p.get('slot'), p.get('slot')
         if not slot or not isinstance(p.get('frost'), dict):
             raise Stop(f'the ship lane names a platform with no slot or no FROST: {name}')
+        if p.get('place'):
+            argv, cwd, env = _cmd(p['place'], key=key, pkg='', root=root, slot=slot)
+            code, out, err = run(argv, cwd=cwd, env=env)
+            placed_key, _, held = ((out.strip().splitlines() or [''])[-1]).partition(' ')
+            try:
+                held = json.loads(held) if code == 0 else {}
+            except ValueError:
+                held = {}
+            if placed_key != key or (held.get('code_sha256'), held.get('manifest_sha256')) != (hashes['code_sha256'], hashes['manifest_sha256']):
+                raise Stop(f'it was not placed in the locker of {name} on the same hashes: {(err or out).strip()[-300:]}')
         argv, cwd, env = _cmd(p.get('submit'), key=key, pkg='', root='', slot=slot)
         code, out, err = run(argv, cwd=cwd, env=env)
         if code != 0:
@@ -305,7 +325,7 @@ def card(key, card_key, run=_run, cards=None):
     """8 CARD (external): card.json beside the locker, with each platform's own card merged in (cards: {caller: card key})"""
     conf = lane().get('external') or {}
     if cards and conf.get('card_read'):
-        argv, cwd, env = _cmd(conf['card_read'], key=key, pkg='', root='', card='')
+        argv, cwd, env = _cmd(conf['card_read'], key=key, pkg='', root='', card='', slot=_slot(conf))
         code, out, _ = run(argv, cwd=cwd, env=env)
         try:
             held = json.loads(out) if code == 0 and out.strip() else {}
@@ -316,15 +336,15 @@ def card(key, card_key, run=_run, cards=None):
         if held.get('card_key') and merged == held.get('cards'):
             return 'card.json already names every platform'
         body = {'card_key': held.get('card_key') or card_key, 'cards': merged}
-        argv, cwd, env = _cmd(conf.get('card'), key=key, pkg='', root='', card=json.dumps(body))
+        argv, cwd, env = _cmd(conf.get('card'), key=key, pkg='', root='', card=json.dumps(body), slot=_slot(conf))
         code, _, err = run(argv, cwd=cwd, env=env)
         if code != 0:
             raise Stop(f'card.json was not written: {err.strip()[-200:]}')
         return 'card.json names ' + ', '.join(sorted(merged))
-    argv, cwd, env = _cmd(conf.get('card_there'), key=key, pkg='', root='', card=json.dumps({'card_key': card_key}))
+    argv, cwd, env = _cmd(conf.get('card_there'), key=key, pkg='', root='', card=json.dumps({'card_key': card_key}), slot=_slot(conf))
     if run(argv, cwd=cwd, env=env)[0] == 0:
         return 'card.json already there'
-    argv, cwd, env = _cmd(conf.get('card'), key=key, pkg='', root='', card=json.dumps({'card_key': card_key}))
+    argv, cwd, env = _cmd(conf.get('card'), key=key, pkg='', root='', card=json.dumps({'card_key': card_key}), slot=_slot(conf))
     code, _, err = run(argv, cwd=cwd, env=env)
     if code != 0:
         raise Stop(f'card.json was not written: {err.strip()[-200:]}')
@@ -359,9 +379,9 @@ def ship(path, go=False, note='', run=_run, say=print, scratch=None):
         got = approve(key, hashes, note or f'approved by larryd ship (CORE_CLEANUP_IV 55): {root.name} at {commit}', run)
         say(f"6 APPROVE  FROST review {got['review']} {got['state']}, card {got['card_key']}")
         if where == 'external':
-            cards = platforms(key, hashes, note or f'approved by larryd ship: {root.name} at {commit}', run, say)
+            cards = platforms(key, hashes, note or f'approved by larryd ship: {root.name} at {commit}', run, say, root=root)
             if cards:
-                cards = {(lane().get('external') or {}).get('slot') or 'proof': got['card_key'], **cards}
+                cards = {_slot(lane().get('external') or {}): got['card_key'], **cards}
             say(f"8 CARD     {card(key, got['card_key'], run, cards)}; restart the runtime once for the batch (the ship lane)")
         return 0
     except Stop as no:

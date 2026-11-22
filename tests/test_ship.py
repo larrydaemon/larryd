@@ -243,8 +243,8 @@ class Lane:
 def with_lane(tmp_path, monkeypatch, **more):
     conf = tmp_path / 'ship_platforms.json'
     conf.write_text(json.dumps({**LANE, 'platforms': [PLATFORM],
-                                'external': {'card_read': {'argv': ['read', '{key}']}, 'card': {'argv': ['write', '{card}']},
-                                             'card_there': {'argv': ['read', '{key}']}}, **more}))
+                                'external': {'slot': 'proof', 'card_read': {'argv': ['read', '{key}', '{slot}']}, 'card': {'argv': ['write', '{card}', '{slot}']},
+                                             'card_there': {'argv': ['read', '{key}', '{slot}']}}, **more}))
     monkeypatch.setattr(ship, 'CONFIG', conf)
 
 
@@ -292,3 +292,26 @@ def test_a_lane_with_no_platforms_ships_as_before(tmp_path, monkeypatch):
     run = Lane()
     assert ship.platforms(KEY, HASHES, 'n', run, say=lambda s: None) == {}
     assert run.calls == []
+
+
+def test_every_locker_is_one_slot_s_own(tmp_path, monkeypatch):
+    """EACH CALLER ITS OWN LOCKER (the owner 2026-11-22: "there should be zero agents that are on a and b at the same fucking time"): the
+    external lane names its slot (no default) and every card command is filled with it; a platform with a "place" is placed in ITS OWN
+    locker first, on exactly the same hashes, or the ship stops before its submit."""
+    conf = tmp_path / 'ship_platforms.json'
+    conf.write_text(json.dumps({**LANE, 'external': {'card_there': {'argv': ['read', '{key}', '{slot}']}, 'card': {'argv': ['write', '{card}']}}}))
+    monkeypatch.setattr(ship, 'CONFIG', conf)
+    with pytest.raises(ship.Stop, match='names no external "slot"'):
+        ship.card(KEY, 'MAGT_AAAAAAAAAAAA_0001', lambda argv, **k: (0, '', ''))
+    said = []
+    platform = {**PLATFORM, 'place': {'argv': ['place', '{root}', '--slot', '{slot}']}}
+    conf.write_text(json.dumps({**LANE, 'platforms': [platform], 'external': {'slot': 'proof'}}))
+
+    def run(argv, cwd=None, env=None, **k):
+        said.append(argv)
+        if argv[0] == 'place':
+            return 0, KEY + ' ' + json.dumps({'name': 'x', 'code_sha256': HASHES['code_sha256'], 'manifest_sha256': 'f' * 64}), ''
+        raise AssertionError(argv)
+    with pytest.raises(ship.Stop, match='same hashes'):
+        ship.platforms(KEY, HASHES, 'n', run, say=lambda s: None, root='/scratch/agent')
+    assert said == [['place', '/scratch/agent', '--slot', 'slot-b']]   # the platform's own slot; nothing submitted after a miss
